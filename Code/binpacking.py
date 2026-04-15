@@ -1,6 +1,8 @@
-"""Bin packing environment implementation and formulation"""
+"""Simple bin packing environment implementation and formulation.
+Has n dimensions, a bin is defined by its capacity, and the environment takes items one at a time,
+and knows all items that will come in and their order."""
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Union
 
 class Bin:
     """Bin definition for bin packing, representing the physical machine at the datacentre"""
@@ -33,9 +35,10 @@ class Bin:
         self.add(item)
 
 
-class basicBinPackingEnv:
-    """Basic bin packing environment, items (VM requests) arrive one at a time, all items and bins are aleady known."""
-    def __init__(self, items: List = None, bins:List[Bin] = None, dimensionality:int=0) -> None:
+class BasicBinPackingEnv:
+    """Basic bin packing environment, items (VM requests) arrive one at a time, all items and their order aleady known,
+    bins can be created if action states so."""
+    def __init__(self, items: List, newbinCapacity:np.ndarray, bins:List[Bin]=None) -> None:
         """___"""
         # Items
         self.items = items
@@ -44,27 +47,23 @@ class basicBinPackingEnv:
 
         # Bins
         self.bins = bins
-        self.num_bins = len(bins)
-        if dimensionality == 0 and self.num_bins != 0:
-            self.dimensionality = bins[0].capacity.copy()
-        else:
-            self.dimensionality = dimensionality
+        self.num_bins = len(bins) if bins is not None else 0
+        self.dimensionality = len(newbinCapacity)
+
+        # The capacity of any new bins to be created
+        self.new_bin_capacity = newbinCapacity
 
     def total_items(self) -> int:
         """Return the total amount of items in the environment"""
         return self.num_items
     
+    def cur_item(self):
+        """Return the current item bin environment is looking at"""
+        return self.items[self.item_index] if self.item_index < self.num_items else None
+    
     def total_bins(self) -> int:
         """Return the total amount of bins in the environment"""
         return self.num_bins
-
-    def _add_bins(self, capacityList:List[np.ndarray]) -> None:
-        """Add a list of bins to the bin packing environment given a capacity vector.
-        Should not be needed in this bin packing where everything is known."""
-        for capacity in capacityList:
-            self.bins.append(Bin(capacity))
-        # Recalculate the size
-        self.num_bins = len(self.bins)
 
     def reset(self):
         """Reset the environment to the initial state"""
@@ -73,7 +72,7 @@ class basicBinPackingEnv:
         self.item_index = 0
         return self.get_state()
     
-    def get_state(self) -> Dict[str, np.ndarray | int | None]:
+    def get_state(self) -> Dict[str, Union[np.ndarray, List[np.ndarray], int]]:
         """State representation of the bin packing environment. Returns a dictionary
         of the current item vector and the list of remaining capacities of each bin"""
         capacityArr = np.zeros((self.num_bins, self.dimensionality))
@@ -92,10 +91,32 @@ class basicBinPackingEnv:
             "num_bins": self.num_bins
         }
     
-    def step(self, action):
-        """Place current item into bin index based on provided action"""
-        ...
+    def step(self, action:int) -> tuple[Dict[str, Union[np.ndarray, int, None]], int, bool]:
+        """Place current item into bin index based on provided action.
+        Inputs:
+            action (int): Bin to place current item"""
+        item = self.cur_item()
         
+        # Create new bin if decided so
+        if action == self.num_bins:
+            self.bins.append(Bin(self.new_bin_capacity))
+            self.num_bins += 1
+
+        chosen_bin = self.bins[action]
+
+        # Ensure feasibility
+        if not chosen_bin.check_fit(item):
+            reward = -20
+        else:
+            chosen_bin.add(item)
+            reward = 0
+
+        # Move to next item
+        self.item_index += 1
+        # Done if reached all items
+        done = self.item_index == self.num_items
+
+        return self.get_state(), reward, done
 
                     ###### AI GENERATED ########
 def generate_random_bins(
@@ -195,8 +216,6 @@ def plot_bins_3d_prisms(bins):
 
 
 if __name__ == "__main__":
-    # Testing bins
-
-
+    # Visualizing bins
     bins = generate_random_bins(n_bins=6, dim=3)
     plot_bins_3d_prisms(bins)
