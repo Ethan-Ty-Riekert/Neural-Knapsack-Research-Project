@@ -38,7 +38,7 @@ class Bin:
 class BasicBinPackingEnv:
     """Basic bin packing environment, items (VM requests) arrive one at a time, all items and their order aleady known,
     bins can be created if action states so."""
-    def __init__(self, items: List, newbinCapacity:np.ndarray, bins:List[Bin]=None) -> None:
+    def __init__(self, items: List[np.ndarray], newbinCapacity:np.ndarray, bins:List[Bin]=None) -> None:
         """___"""
         # Items
         self.items = items
@@ -57,7 +57,7 @@ class BasicBinPackingEnv:
         """Return the total amount of items in the environment"""
         return self.num_items
     
-    def cur_item(self):
+    def cur_item(self) -> np.ndarray | None:
         """Return the current item bin environment is looking at"""
         return self.items[self.item_index] if self.item_index < self.num_items else None
     
@@ -91,6 +91,27 @@ class BasicBinPackingEnv:
             "num_bins": self.num_bins
         }
     
+    def get_stateVec(self) -> np.ndarray:
+        """
+        Return the state as a flat numpy vector:
+        [ current_item , bin1_remaining , bin2_remaining , ... ]
+        """
+        item = self.cur_item()
+        if item is None:
+            item = np.zeros(self.dimensionality)
+
+        # Flatten bin remaining capacities
+        if self.num_bins > 0:
+            bin_rem = np.concatenate([b.remaining for b in self.bins])
+        else:
+            bin_rem = np.array([])
+
+        # Final state vector
+        stateVec = np.concatenate([item, bin_rem])
+
+        return stateVec
+
+    
     def step(self, action:int) -> tuple[Dict[str, Union[np.ndarray, int, None]], int, bool]:
         """Place current item into bin index based on provided action.
         Inputs:
@@ -117,6 +138,29 @@ class BasicBinPackingEnv:
         done = self.item_index == self.num_items
 
         return self.get_state(), reward, done
+    
+    def get_action_mask(self) -> np.ndarray:
+        """
+        Returns a binary mask of valid actions.
+        Action i is valid if:
+        - i < num_bins AND bin i can fit the item
+        - OR i == num_bins (create new bin)
+        """
+        mask = np.zeros(self.num_bins + 1, dtype=np.int32)
+        item = self.cur_item()
+
+        # Existing bins
+        for i in range(self.num_bins):
+            if self.bins[i].check_fit(item):
+                mask[i] = 1
+
+        # Creating a new bin is always allowed
+        mask[self.num_bins] = 1
+
+        return mask
+    
+
+
 
                     ###### AI GENERATED ########
 def generate_random_bins(
@@ -213,6 +257,8 @@ def plot_bins_3d_prisms(bins):
 
     plt.show()
                 ###### END AI GENERATED ########
+
+
 
 
 if __name__ == "__main__":
