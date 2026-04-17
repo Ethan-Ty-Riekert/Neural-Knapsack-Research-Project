@@ -119,16 +119,19 @@ class BasicBinPackingEnv:
         item = self.cur_item()
         
         # Create new bin if decided so
+        new_bin_created = False
         if action == self.num_bins:
             self.bins.append(Bin(self.new_bin_capacity))
             self.num_bins += 1
+            reward = -10 # For opening a new bin
+            new_bin_created = True
 
         chosen_bin = self.bins[action]
 
-        # Ensure feasibility
+        # Rewards
         if not chosen_bin.check_fit(item):
-            reward = -20
-        else:
+            reward = -100 # infeasible placement
+        elif new_bin_created is False:
             chosen_bin.add(item)
             reward = 0
 
