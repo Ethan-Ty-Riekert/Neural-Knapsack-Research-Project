@@ -12,7 +12,12 @@ class GymBinPackingEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, items: List[np.ndarray],  bin_capacity:np.ndarray, max_size:int=50) -> None:
-        """Gym bin packing environment initialisation"""
+        """Gym bin packing environment initialisation.
+        
+        Inputs:
+            items (list[np.ndarray]): List of the item vectors to pack
+            bin_capacity (np.ndarray): Capacity vector for each new bin
+            max_size (int): The maximum allowed bins to ensure a fixed-size observation and action space"""
         super().__init__() # Have to initialise the parent gym environment
 
         ### The internal environment
@@ -33,8 +38,25 @@ class GymBinPackingEnv(gym.Env):
         # Action = chooose bin index to place item or create new bin
         self.action_space = gym.spaces.Discrete(self.max_bins + 1)
 
-    def _pad_state(self, stateVec):
+    def _pad_state(self, stateVec) -> np.ndarray:
         """Gym required method. Pad the state vector to fixed size for Gym"""
         padded = np.zeros(self.observation_space.shape[0], dtype=np.float32)
         padded[:len(stateVec)] = stateVec
         return padded
+    
+    def reset(self, *, seed=None, options=None):
+        """Reset method combining both the super class' (gym) reset module
+        and the bustom bin packing environment's reset"""
+        super().reset(seed=seed)
+
+        state = self.env.reset() # The custom reset()
+        stateVec = self.env.get_stateVec()
+        padded_state = self._pad_state(stateVec)
+
+        info = {
+            "action_mask": self.env.get_action_mask()
+        }
+
+        return padded_state, info
+    
+    def step
