@@ -59,4 +59,4 @@ class GymBinPackingEnv(gym.Env):
 
         return padded_state, info
     
-    def step
+    

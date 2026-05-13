@@ -112,35 +112,48 @@ class BasicBinPackingEnv:
         return stateVec
 
     
-    def step(self, action:int) -> tuple[Dict[str, Union[np.ndarray, int, None]], int, bool]:
+    def step(self, action: int) -> tuple[Dict[str, Union[np.ndarray, int, None]], int, bool]:
         """Place current item into bin index based on provided action.
         Inputs:
-            action (int): Bin to place current item"""
+            action (int): Bin to place current item
+        Returns:
+            (state vector, reward:int, done:bool, info: dict)"""
         item = self.cur_item()
-        
-        # Create new bin if decided so
-        new_bin_created = False
+
+        # Handling the "create new bin" action
         if action == self.num_bins:
             self.bins.append(Bin(self.new_bin_capacity))
             self.num_bins += 1
-            reward = -10 # For opening a new bin
-            new_bin_created = True
 
         chosen_bin = self.bins[action]
 
-        # Rewards
-        if not chosen_bin.check_fit(item):
-            reward = -100 # infeasible placement
-        elif new_bin_created is False:
-            chosen_bin.add(item)
-            reward = 0
+        # Check feasibility
+        valid = chosen_bin.check_fit(item)
 
-        # Move to next item
+        # If invalid: penalise, do not advance item (allow the optimiser or agent to try again)
+        if not valid:
+            reward = self.rewardfc(action, valid)
+            return self.get_stateVec(), reward, False, {
+                "action_mask": self.get_action_mask(),
+                "valid": False
+            }
+
+        # Valid action: place item 
+        chosen_bin.add(item)
         self.item_index += 1
-        # Done if reached all items
-        done = self.item_index == self.num_items
 
-        return self.get_state(), reward, done
+        # Compute reward 
+        reward = self.rewardfc(action, valid)
+
+        # Checking termination
+        done = (self.item_index == self.num_items)
+
+        # --- 7. Return clean RL tuple ---
+        return self.get_stateVec(), reward, done, {
+        "action_mask": self.get_action_mask(),
+        "valid": True
+    }
+        
     
     def get_action_mask(self) -> np.ndarray:
         """
@@ -162,6 +175,31 @@ class BasicBinPackingEnv:
 
         return mask
     
+    def rewardfc(self, action:int, valid:bool) -> float:
+        """The bin packing environments dedicated reward function. We want to encourage:
+        1. Fewer bins 2. High utilisation 3. Limit fragmentation 4. Avoid invalid actions 5. Stable reward for RL learning"""
+
+         # 1. Invalid placement is a strong penalty
+        if not valid:
+            return -10.0
+
+        reward = 0.0
+
+        # 2. Penalty for opening a new bin
+        if action == self.num_bins - 1:   # because new bin was just created
+            reward -= 2.0
+
+        # 3. Reward for utilisation gain
+        #    (how much of the bin was filled by this item)
+        item = self.items[self.item_index - 1]  # the item just placed
+        capacity = self.new_bin_capacity
+        utilisation_gain = np.sum(item / capacity)
+        reward += utilisation_gain
+
+        # 4. Small penalty for total number of bins used
+        reward -= 0.05 * self.num_bins
+
+        return reward
 
 
 
