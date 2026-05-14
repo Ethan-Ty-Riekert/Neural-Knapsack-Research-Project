@@ -1,135 +1,188 @@
-"""AI GENERATED TESTING FILE"""
+"""Testing file made entirely with AI.
+To run, go to parent directory Code/ and run python3 -m Testing.test_env"""
+import time
 import numpy as np
-from Code.binpacking import BasicBinPackingEnv, Bin
 import matplotlib.pyplot as plt
-
-# Create random items (3D: CPU, RAM, Disk)
-items = [np.random.randint(1, 10, size=3) for _ in range(10)]
-
-# Capacity of each new bin
-bin_capacity = np.array([20, 20, 20])
-
-# Create environment
-env = BasicBinPackingEnv(items, bin_capacity)
-
-state = env.reset()
-done = False
-
-print("Initial state:")
-print(state)
-
-# Simple policy: always place in first bin, else create new bin
-while not done:
-    item = env.cur_item()
-
-    # Try all existing bins
-    placed = False
-    for i in range(env.num_bins):
-        if env.bins[i].check_fit(item):
-            action = i
-            placed = True
-            break
-
-    # If no bin fits → create a new bin
-    if not placed:
-        action = env.num_bins
-
-    state, reward, done = env.step(action)
-    print(f"Step: item={env.item_index}, reward={reward}, bins={env.num_bins}")
-
-
-# Visualise bins
-print("\nFinal bins:")
-for i, b in enumerate(env.bins):
-    print(f"Bin {i} remaining: {b.remaining}")
-
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-def plot_bins_capacity_usage_3d(bins):
+from scheduling import SchedulingEnv
+
+
+# ============================================================
+# 1. Simple heuristic for testing
+# ============================================================
+def heuristic_action(env: SchedulingEnv):
     """
-    Visualise each bin as:
-      - Outer prism = total capacity
-      - Inner prism = used capacity
-    Bins are placed side-by-side along X.
+    Simple heuristic:
+    - Pick the job with earliest deadline among remaining jobs.
+    - Assign it to the machine with the most remaining capacity at current time.
     """
-    if len(bins) == 0:
-        print("No bins to plot.")
-        return
 
-    dim = len(bins[0].capacity)
-    if dim != 3:
-        raise ValueError("3D capacity plotting only works for 3D bins.")
+    if len(env.remaining_jobs) == 0:
+        return None, None
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    remaining = list(env.remaining_jobs)
+    job = min(remaining, key=lambda j: env.job_deadlines[j])
 
-    colors = plt.cm.tab10(np.linspace(0, 1, len(bins)))
-    global_offset = 0.0
+    t = env.time
+    machine_caps = [np.sum(env.capacity[m, :, t]) for m in range(env.num_machines)]
+    machine = int(np.argmax(machine_caps))
 
-    for idx, b in enumerate(bins):
-        bx, by, bz = b.capacity
-        ux, uy, uz = b.capacity - b.remaining  # used capacity
+    return job, machine
 
-        # Outer bin (capacity)
-        outer_vertices = np.array([
-            [global_offset,     0, 0],
-            [global_offset+bx,  0, 0],
-            [global_offset+bx, by, 0],
-            [global_offset,    by, 0],
-            [global_offset,     0, bz],
-            [global_offset+bx,  0, bz],
-            [global_offset+bx, by, bz],
-            [global_offset,    by, bz]
-        ])
 
-        outer_faces = [
-            [outer_vertices[0], outer_vertices[1], outer_vertices[2], outer_vertices[3]],
-            [outer_vertices[4], outer_vertices[5], outer_vertices[6], outer_vertices[7]],
-            [outer_vertices[0], outer_vertices[1], outer_vertices[5], outer_vertices[4]],
-            [outer_vertices[2], outer_vertices[3], outer_vertices[7], outer_vertices[6]],
-            [outer_vertices[1], outer_vertices[2], outer_vertices[6], outer_vertices[5]],
-            [outer_vertices[0], outer_vertices[3], outer_vertices[7], outer_vertices[4]]
-        ]
+# ============================================================
+# 2. 3D time-stacked block plot (grows upward)
+# ============================================================
+def plot_capacity_over_time(env: SchedulingEnv, ax):
+    """
+    3D block plot where:
+    - X axis = machines placed side-by-side (resource 1 footprint)
+    - Y axis = resource 2 footprint
+    - Z axis = time
+    - At each time step t, a 3D block is drawn from z=t to z=t+1
+      with top face shrinking according to remaining capacity.
+    - Only draw blocks up to env.time (so the graph grows over time).
+    """
 
-        outer_poly = Poly3DCollection(outer_faces, alpha=0.12, facecolor=colors[idx])
-        outer_poly.set_edgecolor('k')
-        ax.add_collection3d(outer_poly)
+    ax.clear()
+    ax.set_title(f"Machine Capacity Over Time (t = {env.time})")
+    ax.set_xlabel("Machine stacking (Resource 1)")
+    ax.set_ylabel("Resource 2")
+    ax.set_zlabel("Time")
 
-        # Inner prism (used capacity)
-        used_vertices = np.array([
-            [global_offset,     0, 0],
-            [global_offset+ux,  0, 0],
-            [global_offset+ux, uy, 0],
-            [global_offset,    uy, 0],
-            [global_offset,     0, uz],
-            [global_offset+ux,  0, uz],
-            [global_offset+ux, uy, uz],
-            [global_offset,    uy, uz]
-        ])
+    num_machines = env.num_machines
+    max_t = env.time + 1  # draw up to current time
 
-        used_faces = [
-            [used_vertices[0], used_vertices[1], used_vertices[2], used_vertices[3]],
-            [used_vertices[4], used_vertices[5], used_vertices[6], used_vertices[7]],
-            [used_vertices[0], used_vertices[1], used_vertices[5], used_vertices[4]],
-            [used_vertices[2], used_vertices[3], used_vertices[7], used_vertices[6]],
-            [used_vertices[1], used_vertices[2], used_vertices[6], used_vertices[5]],
-            [used_vertices[0], used_vertices[3], used_vertices[7], used_vertices[4]]
-        ]
+    # Initial capacities (constant footprint)
+    init_cap = env.capacity[:, :, 0]  # shape (M, 2)
 
-        used_poly = Poly3DCollection(used_faces, alpha=0.55, facecolor=colors[idx])
-        used_poly.set_edgecolor('k')
-        ax.add_collection3d(used_poly)
+    # Precompute x-offsets for each machine
+    x_offsets = [0]
+    for m in range(1, num_machines):
+        x_offsets.append(x_offsets[-1] + init_cap[m-1, 0])
 
-        ax.text(global_offset, 0, 0, f"Bin {idx}", color='black')
+    colors = plt.cm.tab10(np.linspace(0, 1, num_machines))
 
-        global_offset += bx + 5  # spacing between bins
+    # Draw blocks for each machine and each time step up to env.time
+    for m in range(num_machines):
+        x0 = x_offsets[m]
 
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
-    ax.set_title("3D Bin Capacity vs Used")
+        for t in range(max_t):
+            # Skip out of bounds error
+            if m == horizon:
+                break
+            rem_r1 = env.capacity[m, 0, t]
+            rem_r2 = env.capacity[m, 1, t]
+
+            # Shrinking top face
+            x1 = x0 + rem_r1
+            y1 = rem_r2
+
+            # Block spans from z=t to z=t+1
+            z0 = t
+            z1 = t + 1
+
+            # 8 vertices of the block
+            vertices = np.array([
+                [x0, 0,  z0],
+                [x1, 0,  z0],
+                [x1, y1, z0],
+                [x0, y1, z0],
+
+                [x0, 0,  z1],
+                [x1, 0,  z1],
+                [x1, y1, z1],
+                [x0, y1, z1],
+            ])
+
+            faces = [
+                [vertices[0], vertices[1], vertices[2], vertices[3]],  # bottom
+                [vertices[4], vertices[5], vertices[6], vertices[7]],  # top
+                [vertices[0], vertices[1], vertices[5], vertices[4]],  # front
+                [vertices[2], vertices[3], vertices[7], vertices[6]],  # back
+                [vertices[1], vertices[2], vertices[6], vertices[5]],  # right
+                [vertices[0], vertices[3], vertices[7], vertices[4]],  # left
+            ]
+
+            poly = Poly3DCollection(faces, alpha=0.35, facecolor=colors[m])
+            poly.set_edgecolor('k')
+            ax.add_collection3d(poly)
+
+    # Axis limits
+    ax.set_xlim(0, x_offsets[-1] + init_cap[-1, 0])
+    ax.set_ylim(0, np.max(init_cap[:, 1]) * 1.1)
+    ax.set_zlim(0, env.horizon)
+
+
+# ============================================================
+# 3. Run heuristic + visualise (60-second simulation)
+# ============================================================
+def run_test(env: SchedulingEnv, delay=1.0):
+    """
+    Run the heuristic policy on the environment for exactly 60 time steps.
+    """
+
+    rewards = []
+    fig = plt.figure(figsize=(14, 6))
+    ax3d = fig.add_subplot(121, projection='3d')
+    ax_reward = fig.add_subplot(122)
+
+    for _ in range(env.horizon):  # horizon = 60
+        if len(env.remaining_jobs) > 0:
+            job, machine = heuristic_action(env)
+            state, reward, done = env.step((job, machine))
+            rewards.append(float(reward))
+        else:
+            # No jobs left, but continue time progression
+            env.time += 1
+            rewards.append(0.0)
+
+        # Update 3D plot
+        plot_capacity_over_time(env, ax3d)
+
+        # Update reward plot
+        ax_reward.clear()
+        ax_reward.plot(rewards, label="Reward per step")
+        ax_reward.set_title("Reward Over Time")
+        ax_reward.set_xlabel("Step")
+        ax_reward.set_ylabel("Reward")
+        ax_reward.legend()
+
+        plt.pause(0.01)
+        time.sleep(delay)
 
     plt.show()
 
 
-plot_bins_capacity_usage_3d(env.bins)
+# ============================================================
+# 4. Example usage — 60-second simulation, 5 machines
+# ============================================================
+if __name__ == "__main__":
+    num_jobs = 40
+    num_machines = 5
+    horizon = 60  # 60 seconds
+
+    # Random but reasonable job set
+    job_durations = np.random.randint(1, 6, size=num_jobs)
+    job_resources = np.random.randint(1, 6, size=(num_jobs, 2))
+    job_deadlines = np.random.randint(10, 80, size=num_jobs)
+    job_weights = np.ones(num_jobs)
+
+    # Machine capacity (2D resources)
+    machine_capacity = np.array([20, 20])
+
+    env = SchedulingEnv(
+        job_durations,
+        job_resources,
+        job_deadlines,
+        job_weights,
+        num_machines,
+        machine_capacity,
+        horizon,
+        lambda_1=1.0,
+        lambda_2=1.0,
+        lambda_3=1.0
+    )
+
+    run_test(env, delay=1.0)  # 1 second per time step
