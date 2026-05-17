@@ -76,7 +76,7 @@ class SchedulingEnv:
                 self.capacity[m, :, t] = self.capacity[m, :, 0]
         
         self.machine_active[:] = 0
-        self.start_times[:] = np.inf
+        self.start_times[:] = -1
         self.tardiness[:] = 0
         self.remaining_jobs = set(range(self.num_jobs))
         self.time = 0
