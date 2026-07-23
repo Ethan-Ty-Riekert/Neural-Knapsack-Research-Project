@@ -8,10 +8,13 @@ environment.
 
 ## `research/`
 
-Dated write-ups investigating specific problems encountered during training/
-evaluation (e.g. why a policy collapsed, what the literature says, what was tried),
-kept alongside the code changes they informed rather than only living in personal
-notes. See `research/2026-07-24-idle-action-policy-collapse.md` for the first entry.
+- `training-log.md` -- chronological, appended-to record of every training run:
+  config changed, resulting stats, observation, conclusion/next step. Check here
+  first for "what have we tried and what happened."
+- Dated write-ups (e.g. `2026-07-24-idle-action-policy-collapse.md`) investigating
+  one specific problem in depth -- symptom, diagnosis, literature review with
+  citations, what was adopted vs. deferred. Linked from the relevant training-log
+  entry rather than duplicated.
 
 Candidate directions, roughly in order of how directly they build on the current
 codebase (see `NotesForAI/` for the fuller research background):
