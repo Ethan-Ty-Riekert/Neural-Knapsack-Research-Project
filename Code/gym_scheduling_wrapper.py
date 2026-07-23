@@ -32,7 +32,7 @@ class GymSchedulingEnv(gym.Env):
         self.initial_capacity = env.capacity[:, :, 0].copy()
 
         ### Action Space ###
-        self.action_space = gym.spaces.Discrete(self.num_jobs * self.num_machines)
+        self.action_space = gym.spaces.Discrete(self.num_jobs * self.num_machines + 1) # +1 to allow for the idling action
 
         ### Observation Space ###
         obs_dim = self._compute_obs_dim() # gymnasium method
@@ -126,17 +126,27 @@ class GymSchedulingEnv(gym.Env):
 
     def get_action_mask(self):
         """Action mask building:
-        mask[a] = 1 if (job, machine) is feasible at current time"""
-        mask = np.zeros(self.num_jobs * self.num_machines, dtype=np.int8)
+        mask[a] = 1 if (job, machine) is feasible at current time
+        The final action (index = num_jobs * num_machines) is the idle action.
+        """
+        total_actions = self.num_jobs * self.num_machines + 1
+        mask = np.zeros(total_actions, dtype=np.int8)
+
         t = min(self.env.time, self.horizon - 1)
 
+        # Normal feasible scheduling actions
         for j in self.env.remaining_jobs:
             for m in range(self.num_machines):
                 action_id = j * self.num_machines + m
                 if self.env.is_feasible(j, m, t):
                     mask[action_id] = 1
 
+        # Idle action is ALWAYS allowed
+        idle_action = self.num_jobs * self.num_machines
+        mask[idle_action] = 1
+
         return mask
+
     
     def reset(self, *, seed=None, options=None):
         """GYM API"""
@@ -151,11 +161,16 @@ class GymSchedulingEnv(gym.Env):
         return obs, info
     
     def step(self, action_id):
-        job = action_id // self.num_machines
-        machine = action_id % self.num_machines
+        # Idle action index
+        idle_action = self.env.num_jobs * self.env.num_machines
 
-        # Let SchedulingEnv handle invalid actions (it applies invalidPenalty)
-        _, reward, done = self.env.step((job, machine))
+        if action_id == idle_action:
+            obs, reward, done = self.env.step_idle()
+        else:
+            job = action_id // self.env.num_machines
+            machine = action_id % self.env.num_machines
+            # Let SchedulingEnv handle invalid actions (it applies invalidPenalty)
+            _, reward, done = self.env.step((job, machine))
 
         obs = self._get_obs()
         info = {"action_mask": self.get_action_mask()}

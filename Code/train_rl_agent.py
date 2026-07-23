@@ -1,5 +1,6 @@
 """train_rl_agent.py - Import the gym wrapper, create the environment, train, save and evaluate the model"""
 import os
+import csv
 import numpy as np
 import argparse
 
@@ -72,6 +73,10 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
 ############################## Generative AI Made ##############################
 # Make a training function for my RL agent given my code below: ... #
 def main():
+    log_file = os.path.join(LOG_DIR, "ppo_training_log.csv")
+    with open(log_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["timestep", "episode_reward"])
     # -----------------------------
     # Training configuration
     # -----------------------------
@@ -147,7 +152,9 @@ def main():
                 total_timesteps=stage["timesteps"],
                 tb_log_name="ppo_scheduling",
                 progress_bar=True,
+                callback=lambda locals_: writer.writerow([locals_['self'].num_timesteps, locals_['rewards'][-1]]),
             )
+                        
 
         # Save PPO model
         model.save(PPO_MODEL_PATH)

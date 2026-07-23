@@ -49,7 +49,7 @@ def make_env():
     gym_env = GymSchedulingEnv(base_env)
     masked_env = ActionMasker(gym_env, mask_fn)
 
-    return masked_env, base_env
+    return masked_env
 
 
 # ============================================================
@@ -57,21 +57,45 @@ def make_env():
 # ============================================================
 def run_ppo(model):
     print("Running PPO episode...")
-    env, base_env = make_env()
-
+    env = make_env()
     obs, info = env.reset()
+
     done = False
     truncated = False
 
     rewards = []
     utilisation_over_time = []
 
+    base_env = env.env.env
     initial_capacity = base_env.capacity[:, :, 0].copy()
     horizon = base_env.horizon
 
     while not (done or truncated):
-        action_mask = info.get("action_mask", None)
-        # PPO uses model.predict(), A2C uses model.act()
+        action_mask = info["action_mask"]
+
+        print("\n--- DEBUG ---")
+        print("Time:", base_env.time)
+        print("Remaining jobs:", len(base_env.remaining_jobs))
+
+        print("Obs shape:", obs.shape)
+        print("Mask type:", type(action_mask))
+
+        try:
+            print("Mask shape:", action_mask.shape)
+        except Exception:
+            print("Mask shape: (could not read shape)")
+
+        # Count how many valid actions exist
+        if hasattr(action_mask, "__len__"):
+            print("Valid actions:", sum(action_mask))
+        else:
+            print("Valid actions: mask not iterable")
+
+        # Print first few mask entries
+        print("Mask sample:", action_mask[:20])
+        print("--- END DEBUG ---\n")
+
+
         if hasattr(model, "predict"):
             action, _ = model.predict(obs, action_masks=action_mask, deterministic=True)
         else:
@@ -96,6 +120,7 @@ def run_ppo(model):
     }
 
 
+
 # ============================================================
 # Run heuristic
 # ============================================================
@@ -118,7 +143,7 @@ def run_heuristic(name):
         return a // num_machines, a % num_machines
 
     def choose_action():
-        mask = env.env.get_action_mask()
+        mask = env.env.env.get_action_mask()
         valid = [a for a, ok in enumerate(mask) if ok]
         if not valid:
             return None
@@ -139,7 +164,10 @@ def run_heuristic(name):
         if action is None:
             break
 
-        obs, reward, done, truncated, info = env.step(action)
+        obs, reward, done = env.step(action)
+        truncated = False
+        info = {"action_mask": env.env.get_action_mask()}
+
         rewards.append(float(reward))
 
         t_idx = min(base_env.time - 1, horizon - 1)

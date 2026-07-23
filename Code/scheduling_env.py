@@ -19,7 +19,8 @@ class SchedulingEnv:
         lambda_1: float = 1.0,            # machine activation penalty
         lambda_2: float = 1.0,            # tardiness penalty
         lambda_3: float = 1.0,            # hotspot penalty
-        invalid_penalty: float = 5.0      # invalid placement penalty
+        invalid_penalty: float = 5.0,     # invalid placement penalty
+        idle_penalty: float = 1.0         # penalty for idling (doing nothing)
     ):
         """Initiate the scheduling environment"""
 
@@ -64,6 +65,7 @@ class SchedulingEnv:
         self.lambda2 = lambda_2
         self.lambda3 = lambda_3
         self.invalidPenalty = invalid_penalty
+        self.idling_penalty = idle_penalty
 
         self.prev_theta = 0.0 # For hotspot tracking
 
@@ -143,8 +145,20 @@ class SchedulingEnv:
         delta_theta = max(0, new_theta - self.prev_theta)
         self.prev_theta = new_theta
 
-        # Compute reward
+        # Compute mathematical reward
         reward = self.reward(job, machine, machine_was_inactive, delta_theta)
+
+        ## Reward shaping to help with convergence of policy methods
+        # Small positive reward for any valid scheduling action
+        reward += 0.1 # i.e if no penalty is applied we get 0.1, else we just add 0.1 to negative reward which doesn't matter
+
+        # Reward for reducing hotspot severity
+        reward += 0.05 * (0-delta_theta)
+
+        # Reward for finishing all jobs
+        if len(self.remaining_jobs) == 0:
+            reward += 50
+        ## End reward shaping
 
         # Advance time
         self.time += 1
@@ -154,7 +168,7 @@ class SchedulingEnv:
 
         return (self.get_state(), reward, done)
     
-    def reward(self, j:int, m:int, ym:bool, delta_theta: float) -> float:
+    def reward(self, j:int, m:int, ym:bool, delta_theta: float, idle: bool = False) -> float:
         """Reward function"""
         reward = 0.0
 
@@ -162,11 +176,15 @@ class SchedulingEnv:
         if ym is True:
             reward -= self.lambda1
 
-        # Tardiness penalty
+        # Tardiness penalty 1.0 is linear
         reward -= self.lambda2 * self.job_weights[j] * self.tardiness[j]
 
         # Hotspot penalty
         reward -= self.lambda3 * delta_theta
+
+        # Idling penalty, encourage scheduling if possible, but allow to idle
+        if idle:
+            reward -= self.idling_penalty
 
         return reward
     
@@ -193,4 +211,13 @@ class SchedulingEnv:
             "tardiness": self.tardiness.copy(),
         }
 
+    def step_idle(self):
+        """Idle step: advance time without scheduling a job."""
+        self.time += 1
+
+        reward = -self.idling_penalty
+
+        done = len(self.remaining_jobs) == 0 or self.time > self.horizon
+
+        return self.get_state(), reward, done
 
