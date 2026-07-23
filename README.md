@@ -31,11 +31,21 @@ This forms the foundation for later extensions into dynamic cloud resource alloc
 Neural-Knapsack-Research-Project/
 │
 ├── Code/
-│   ├── binpacking.py          # Core environment and Bin class
-│   ├── pycache/           # Python cache files
+│   ├── scheduling_env.py       # Core resource-constrained scheduling environment
+│   ├── gym_scheduling_wrapper.py # Gymnasium wrapper (flattened actions, obs, masking)
+│   ├── env_config.py           # Centralised, seeded environment configuration
+│   ├── train_rl_agent.py       # Curriculum training entry point (PPO / A2C)
+│   ├── eval_rl_agent.py        # Evaluation of a trained agent against heuristics
+│   ├── plotting_utils.py       # Shared live + saved plotting for training/evaluation
+│   ├── Policies/                # PPO (sb3_contrib) and hand-rolled maskable A2C
 │   └── Testing/
-│       ├── test_env.py        # Test script and visualisation
-│       └── pycache/       # Python cache files
+│       └── test_env.py         # Test script and visualisation
+│
+├── rl_training/
+│   ├── models/                 # Saved model checkpoints + env config snapshots
+│   ├── logs/                   # TensorBoard logs
+│   └── plots/                  # Live-plotting output: training/<run>/ and eval/<run>/
+│       └── ...                 # PNG snapshots + CSV reward logs per run (see plotting_utils.py)
 │
 ├── README.md                  # Project documentation
 └── requirements.txt           # Python dependencies

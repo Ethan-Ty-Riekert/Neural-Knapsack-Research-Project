@@ -1,11 +1,11 @@
 """train_rl_agent.py - Import the gym wrapper, create the environment, train, save and evaluate the model"""
 import os
-import csv
 import numpy as np
 import argparse
 
 import gymnasium as gym
 import torch
+from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO # native action masking to help reduce our massive action space (num_jobs * num_machines) by removing invalid actions
 from sb3_contrib.common.wrappers import ActionMasker #
 
@@ -14,6 +14,7 @@ from gym_scheduling_wrapper import GymSchedulingEnv
 from env_config import generate_env_config
 from Policies.a2c_policy import make_maskable_a2c, train_a2c
 from Policies.ppo_policy import make_maskable_ppo, train_ppo
+from plotting_utils import make_run_dir, LiveTrainingPlotter
 
 
 
@@ -66,17 +67,17 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
     gym_env = GymSchedulingEnv(base_env)
     masked_env = ActionMasker(gym_env, mask_fn)
 
-    return masked_env
+    # Monitor records per-episode reward/length into info["episode"], which
+    # LiveTrainingPlotter reads to build the live reward curve.
+    monitored_env = Monitor(masked_env)
+
+    return monitored_env
 
 
 
 ############################## Generative AI Made ##############################
 # Make a training function for my RL agent given my code below: ... #
 def main():
-    log_file = os.path.join(LOG_DIR, "ppo_training_log.csv")
-    with open(log_file, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["timestep", "episode_reward"])
     # -----------------------------
     # Training configuration
     # -----------------------------
@@ -98,6 +99,11 @@ def main():
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
+
+    # Live + saved reward plot for this training run (one instance reused across
+    # every curriculum stage below so the curve stays continuous).
+    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", args.algo)
+    plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
 
     # -----------------------------
     # Curriculum definition
@@ -152,9 +158,9 @@ def main():
                 total_timesteps=stage["timesteps"],
                 tb_log_name="ppo_scheduling",
                 progress_bar=True,
-                callback=lambda locals_: writer.writerow([locals_['self'].num_timesteps, locals_['rewards'][-1]]),
+                callback=plotter,
+                reset_num_timesteps=False,
             )
-                        
 
         # Save PPO model
         model.save(PPO_MODEL_PATH)
@@ -182,11 +188,14 @@ def main():
                 horizon=stage["horizon"]
             )
             model.env = env
-            train_a2c(model, total_timesteps=stage["timesteps"])
+            train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)
 
         # Save A2C model
         torch.save(model.model.state_dict(), A2C_MODEL_PATH)
         print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
+
+    plotter.close()
+    print(f"Training reward plot saved to: {plot_run_dir}\n")
 
     print("View TensorBoard with:")
     print("  tensorboard --logdir ./logs\n")

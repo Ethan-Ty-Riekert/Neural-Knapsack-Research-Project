@@ -196,15 +196,20 @@ class MaskableA2C:
             action, _, _ = select_action(self.model, obs, mask, self.device)
         return action
 
-    def train(self, total_timesteps=200_000):
+    def train(self, total_timesteps=200_000, plotter=None):
         """
         Main A2C training loop.
+
+        plotter: optional LiveTrainingPlotter (see Code/plotting_utils.py). If given,
+        notify_episode(episode_reward, timestep) is called each time an episode ends,
+        which live-plots and periodically saves the reward curve.
         """
 
         obs, info = self.env.reset()
         done = False
         truncated = False
         t = 0
+        episode_reward = 0.0
 
         while t < total_timesteps:
 
@@ -222,6 +227,7 @@ class MaskableA2C:
 
                 # Step environment
                 next_obs, reward, done, truncated, info = self.env.step(action)
+                episode_reward += reward
 
                 # Store transition
                 self.buffer.add(obs, action, reward, float(done or truncated), value, log_prob)
@@ -231,6 +237,9 @@ class MaskableA2C:
 
                 # If episode ends, reset environment
                 if done or truncated:
+                    if plotter is not None:
+                        plotter.notify_episode(episode_reward, t)
+                    episode_reward = 0.0
                     obs, info = self.env.reset()
                     done = False
                     truncated = False
@@ -288,9 +297,9 @@ def make_maskable_a2c(env, device="cpu"):
     return MaskableA2C(env, device=device)
 
 
-def train_a2c(agent, total_timesteps=200_000):
+def train_a2c(agent, total_timesteps=200_000, plotter=None):
     """
     Train the agent.
     """
-    agent.train(total_timesteps)
+    agent.train(total_timesteps, plotter=plotter)
     return agent

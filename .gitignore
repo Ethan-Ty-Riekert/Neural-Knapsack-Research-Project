@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Generated training/evaluation artifacts
+rl_training/plots/
