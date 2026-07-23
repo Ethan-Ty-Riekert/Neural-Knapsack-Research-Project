@@ -22,8 +22,17 @@ def mask_fn(env: GymSchedulingEnv):
     """Action mask function for ActionMasker"""
     return env.get_action_mask()
 
-def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
-    """Environment creation using centralised env_config.py and allowing for curriculum learning"""
+def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_jobs=None):
+    """Environment creation using centralised env_config.py and allowing for curriculum learning.
+
+    num_jobs: actual/logical number of jobs generated for this env instance -- may
+    vary freely between curriculum stages.
+    max_jobs: fixed job-slot capacity used to size GymSchedulingEnv's observation and
+    action spaces (see gym_scheduling_wrapper.py). Must stay constant across every
+    stage of a curriculum sharing the same model, regardless of num_jobs, since
+    model.set_env() requires matching obs/action spaces. Defaults to num_jobs (no
+    padding) when not given.
+    """
 
     # Load environment configuration
     config = generate_env_config(seed=seed)
@@ -43,6 +52,9 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
 
     if horizon is not None:
         config["horizon"] = horizon
+
+    if max_jobs is not None:
+        config["max_jobs"] = max_jobs
 
 
     # Save config for evaluation
@@ -65,7 +77,7 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
     )
 
     # Wrap in Gym + Masking
-    gym_env = GymSchedulingEnv(base_env)
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
     masked_env = ActionMasker(gym_env, mask_fn)
 
     # Monitor records per-episode reward/length into info["episode"], which
@@ -108,24 +120,24 @@ def main():
 
     # -----------------------------
     # Curriculum definition
-    # (IMPORTANT: only horizon changes across stages. num_jobs must stay fixed for
-    # the whole curriculum -- it feeds into both the observation size and the
-    # action space size, and model.set_env() requires every stage's env to match
-    # the obs/action space the model was first built with.)
+    # num_jobs now varies per stage (kept <= horizon so completing every job --
+    # and therefore earning the +50 completion bonus in SchedulingEnv.step() -- is
+    # reachable at every stage, not just once horizon catches up to num_jobs).
     #
-    # NUM_JOBS is set well below the smallest horizon (20) so that completing
-    # every job in an episode -- and therefore earning the +50 completion bonus
-    # in SchedulingEnv.step() -- is reachable from stage 1 onward, not just in
-    # the final stage. Previously num_jobs stayed at env_config's default of 100,
-    # so completion was only reachable once horizon caught up to 100 in the last
-    # stage, leaving the agent with no positive signal for most of training.
+    # This only works because MAX_JOBS below is passed to every make_env() call as
+    # a fixed padding capacity: GymSchedulingEnv sizes its observation/action
+    # spaces off max_jobs, not the stage's actual num_jobs, and zero-pads/masks out
+    # the unused job slots (see gym_scheduling_wrapper.py). That keeps the obs/
+    # action space constant across every stage, which model.set_env() requires --
+    # without it, varying num_jobs directly changes those space sizes and
+    # set_env() raises "Observation spaces do not match".
     # -----------------------------
-    NUM_JOBS = 15
+    MAX_JOBS = 100
     curriculum = [
-        {"horizon": 20,  "timesteps": 50_000},
-        {"horizon": 40,  "timesteps": 75_000},
-        {"horizon": 60,  "timesteps": 100_000},
-        {"horizon": 100, "timesteps": 150_000},
+        {"horizon": 20,  "num_jobs": 15,  "timesteps": 50_000},
+        {"horizon": 40,  "num_jobs": 30,  "timesteps": 75_000},
+        {"horizon": 60,  "num_jobs": 60,  "timesteps": 100_000},
+        {"horizon": 100, "num_jobs": 100, "timesteps": 150_000},
     ]
 
     # -----------------------------
@@ -137,7 +149,8 @@ def main():
         first_env = make_env(
             seed=0,
             horizon=curriculum[0]["horizon"],
-            num_jobs=NUM_JOBS,
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
         )
 
         # Create PPO model WITH FIRST ENV
@@ -166,7 +179,8 @@ def main():
             env = make_env(
                 seed=0,
                 horizon=stage["horizon"],
-                num_jobs=NUM_JOBS,
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
             )
 
             model.set_env(env)
@@ -195,7 +209,8 @@ def main():
         first_env = make_env(
             seed=0,
             horizon=curriculum[0]["horizon"],
-            num_jobs=NUM_JOBS,
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
         )
 
         model = make_maskable_a2c(first_env, device="cpu")
@@ -205,7 +220,8 @@ def main():
             env = make_env(
                 seed=0,
                 horizon=stage["horizon"],
-                num_jobs=NUM_JOBS,
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
             )
             model.env = env
             train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)

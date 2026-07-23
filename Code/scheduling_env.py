@@ -20,7 +20,7 @@ class SchedulingEnv:
         lambda_2: float = 1.0,            # tardiness penalty
         lambda_3: float = 1.0,            # hotspot penalty
         invalid_penalty: float = 5.0,     # invalid placement penalty
-        idle_penalty: float = 1.0         # penalty for idling (doing nothing)
+        idle_penalty: float = 0.5         # penalty for idling (doing nothing)
     ):
         """Initiate the scheduling environment"""
 
@@ -149,11 +149,12 @@ class SchedulingEnv:
         reward = self.reward(job, machine, machine_was_inactive, delta_theta)
 
         ## Reward shaping to help with convergence of policy methods
-        # Small positive reward for any valid scheduling action
-        reward += 0.1 # i.e if no penalty is applied we get 0.1, else we just add 0.1 to negative reward which doesn't matter
+        # Positive reward for any valid scheduling action
+        reward += 1 # i.e if no penalty is applied we get 1, else we just add 1 to negative reward which doesn't matter
 
-        # Reward for reducing hotspot severity
-        reward += 0.05 * (0-delta_theta)
+        # NOTE: hotspot severity is already penalised by -lambda3 * delta_theta inside
+        # self.reward() above; there used to be a second "reward += 0.05 * (0-delta_theta)"
+        # term here that double-counted the same penalty on top of lambda3. Removed.
 
         # Reward for finishing all jobs
         if len(self.remaining_jobs) == 0:

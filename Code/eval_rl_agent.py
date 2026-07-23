@@ -46,7 +46,10 @@ def make_env():
         invalid_penalty=5.0,
     )
 
-    gym_env = GymSchedulingEnv(base_env)
+    # max_jobs (padding capacity) must match what the model was trained with -- see
+    # gym_scheduling_wrapper.py and train_rl_agent.py's curriculum for why.
+    max_jobs = int(config["max_jobs"]) if "max_jobs" in config else None
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
     masked_env = ActionMasker(gym_env, mask_fn)
 
     return masked_env
@@ -117,7 +120,7 @@ def run_heuristic(name):
     horizon = base_env.horizon
     num_machines = base_env.num_machines
 
-    idle_action = base_env.num_jobs * num_machines
+    idle_action = env.env.max_jobs * num_machines
 
     def decode(a):
         return a // num_machines, a % num_machines
