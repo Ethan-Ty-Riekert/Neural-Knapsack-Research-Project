@@ -45,7 +45,7 @@ class LiveTrainingPlotter(BaseCallback):
     since it keeps its own history rather than relying on SB3's per-call step counter.
     """
 
-    def __init__(self, save_dir: str, plot_freq_steps: int = 2048, plot_freq_episodes: int = 5, verbose: int = 0):
+    def __init__(self, save_dir: str, plot_freq_steps: int = 1000, plot_freq_episodes: int = 5, verbose: int = 0):
         super().__init__(verbose)
         self.save_dir = save_dir
         self.plot_freq_steps = plot_freq_steps
@@ -68,6 +68,9 @@ class LiveTrainingPlotter(BaseCallback):
         self.ax.set_title("Training Episode Reward")
         self.ax.set_xlabel("Episode")
         self.ax.set_ylabel("Episode Reward")
+        # Rewards span a large negative range but trend toward 0, so a symmetric
+        # log scale (linear near 0, log further out) keeps both ends readable.
+        self.ax.set_yscale("symlog")
         self.ax.grid(True, alpha=0.3)
 
     def notify_episode(self, episode_reward: float, timestep: int):
@@ -110,9 +113,11 @@ class LiveTrainingPlotter(BaseCallback):
         self.line.set_data(range(1, len(self.episode_rewards) + 1), self.episode_rewards)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
+        # draw_idle()+flush_events() updates the figure without stealing window
+        # focus the way plt.pause() does (which was popping the window to the
+        # front on every redraw).
+        self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
-        plt.pause(0.001)
         self.fig.savefig(self.png_path)
 
     def _flush_csv(self):
@@ -167,9 +172,8 @@ class EvalProgressPlotter:
 
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
-        plt.pause(0.001)
 
     def save(self, run_dir: str, filename: str = "eval_progress.png"):
         os.makedirs(run_dir, exist_ok=True)
