@@ -34,6 +34,7 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
         config["job_resources"] = config["job_resources"][:num_jobs, :]
         config["job_deadlines"] = config["job_deadlines"][:num_jobs]
         config["job_weights"] = config["job_weights"][:num_jobs]
+        config["num_jobs"] = num_jobs
 
     if num_machines is not None:
         config["num_machines"] = num_machines
@@ -107,8 +108,19 @@ def main():
 
     # -----------------------------
     # Curriculum definition
-    # (IMPORTANT: only horizon changes)
+    # (IMPORTANT: only horizon changes across stages. num_jobs must stay fixed for
+    # the whole curriculum -- it feeds into both the observation size and the
+    # action space size, and model.set_env() requires every stage's env to match
+    # the obs/action space the model was first built with.)
+    #
+    # NUM_JOBS is set well below the smallest horizon (20) so that completing
+    # every job in an episode -- and therefore earning the +50 completion bonus
+    # in SchedulingEnv.step() -- is reachable from stage 1 onward, not just in
+    # the final stage. Previously num_jobs stayed at env_config's default of 100,
+    # so completion was only reachable once horizon caught up to 100 in the last
+    # stage, leaving the agent with no positive signal for most of training.
     # -----------------------------
+    NUM_JOBS = 15
     curriculum = [
         {"horizon": 20,  "timesteps": 50_000},
         {"horizon": 40,  "timesteps": 75_000},
@@ -124,7 +136,8 @@ def main():
         # Create FIRST curriculum environment
         first_env = make_env(
             seed=0,
-            horizon=curriculum[0]["horizon"]
+            horizon=curriculum[0]["horizon"],
+            num_jobs=NUM_JOBS,
         )
 
         # Create PPO model WITH FIRST ENV
@@ -138,7 +151,11 @@ def main():
             learning_rate=3e-4,
             gamma=0.99,
             gae_lambda=0.95,
-            ent_coef=0.01,
+            # Raised from 0.01: the policy was collapsing onto "always idle"
+            # (entropy/approx_kl/policy_gradient_loss all underflowing to 0)
+            # well before it discovered the reward for actually placing jobs.
+            # A stronger entropy bonus keeps exploration alive for longer.
+            ent_coef=0.05,
             clip_range=0.2,
             n_epochs=10,
             seed=0,
@@ -148,7 +165,8 @@ def main():
         for stage in curriculum:
             env = make_env(
                 seed=0,
-                horizon=stage["horizon"]
+                horizon=stage["horizon"],
+                num_jobs=NUM_JOBS,
             )
 
             model.set_env(env)
@@ -176,7 +194,8 @@ def main():
         # Create FIRST curriculum environment
         first_env = make_env(
             seed=0,
-            horizon=curriculum[0]["horizon"]
+            horizon=curriculum[0]["horizon"],
+            num_jobs=NUM_JOBS,
         )
 
         model = make_maskable_a2c(first_env, device="cpu")
@@ -185,7 +204,8 @@ def main():
         for stage in curriculum:
             env = make_env(
                 seed=0,
-                horizon=stage["horizon"]
+                horizon=stage["horizon"],
+                num_jobs=NUM_JOBS,
             )
             model.env = env
             train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)
