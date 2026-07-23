@@ -6,6 +6,13 @@ working reliably. Nothing here is implemented yet -- this folder exists so futur
 work has an obvious home and doesn't get bolted onto the existing simple
 environment.
 
+## `research/`
+
+Dated write-ups investigating specific problems encountered during training/
+evaluation (e.g. why a policy collapsed, what the literature says, what was tried),
+kept alongside the code changes they informed rather than only living in personal
+notes. See `research/2026-07-24-idle-action-policy-collapse.md` for the first entry.
+
 Candidate directions, roughly in order of how directly they build on the current
 codebase (see `NotesForAI/` for the fuller research background):
 

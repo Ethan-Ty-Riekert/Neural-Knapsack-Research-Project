@@ -5,6 +5,7 @@ import argparse
 
 import gymnasium as gym
 import torch
+import torch.nn as nn
 from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO # native action masking to help reduce our massive action space (num_jobs * num_machines) by removing invalid actions
 from sb3_contrib.common.wrappers import ActionMasker #
@@ -170,8 +171,19 @@ def main():
             # A stronger entropy bonus keeps exploration alive for longer.
             ent_coef=0.05,
             clip_range=0.2,
-            n_epochs=10,
+            # Lowered from 10: 10 gradient epochs over a single rollout risks
+            # overfitting to (and locking in on) whatever that rollout happened to
+            # contain, which compounds the collapse risk on a large action space.
+            n_epochs=4,
             seed=0,
+            # Default MlpPolicy net_arch is only [64, 64] for both actor and critic,
+            # which is a severe bottleneck for an ~840-dim observation and a
+            # ~1000-way action space -- see Future/research/ for why this was
+            # suspected to contribute to the idle-collapse behaviour.
+            policy_kwargs=dict(
+                net_arch=dict(pi=[256, 256], vf=[256, 256]),
+                activation_fn=nn.Tanh,
+            ),
         )
 
         # Curriculum training loop
