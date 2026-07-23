@@ -1,4 +1,4 @@
-"""The gym wrapper for the scheduling environment to allow for RL implementation
+"""gym_scheduling_wrapper.py - The gym wrapper for the scheduling environment to allow for RL implementation
 https://www.datacamp.com/tutorial/reinforcement-learning-with-gymnasium
 https://gymnasium.farama.org/
 """
@@ -48,7 +48,7 @@ class GymSchedulingEnv(gym.Env):
         -> total per job = 3 + R + 1 = R + 4"""
 
         return 1 + (self.num_machines * self.num_resources) + self.num_jobs * (self.num_resources + 4)
-    
+
     def _get_obs(self):
         """Observation vector construction: Build the observation vector"""
         obs = []
@@ -85,8 +85,45 @@ class GymSchedulingEnv(gym.Env):
             obs.append(scheduled)
 
         return np.array(obs, dtype=np.float32) # use numpy for efficiency
-    
-    
+
+    # OLD VERSION, AI OPTIMISED
+    # def _get_obs(self):
+    #     """Observation vector construction: Build the observation vector"""
+    #     obs = []
+
+    #     # 1. Normalised time
+    #     t = min(self.env.time, self.horizon)
+    #     obs.append(t/self.horizon)
+
+    #     # 2. Remaining capacity (normalised)
+    #     t_idx = min(self.env.time, self.horizon - 1)
+    #     for m in range(self.num_machines):
+    #         for r in range(self.num_resources):
+    #             cap = self.env.capacity[m, r, t_idx] / (self.initial_capacity[m, r] + 1e-8) # for non zero division
+    #             obs.append(cap)
+
+    #     # Precompute normalisation constants
+    #     max_dur = max(1.0, float(np.max(self.env.job_durations)))
+    #     max_wgt = max(1.0, float(np.max(self.env.job_weights)))
+    #     max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))   
+
+    #     # 3. Job features
+    #     for j in range(self.num_jobs):
+    #         # duration, deadline, weights
+    #         obs.append(self.env.job_durations[j] / max_dur)
+    #         obs.append(self.env.job_deadlines[j] / self.horizon)
+    #         obs.append(self.env.job_weights[j] / max_wgt)
+
+    #         # resource requirements (R dims)
+    #         for r in range(self.num_resources):
+    #             obs.append(self.env.job_resources[j, r] / max_res[r])
+
+    #         # scheduled mask
+    #         scheduled = 0.0 if j in self.env.remaining_jobs else 1.0
+    #         obs.append(scheduled)
+
+    #     return np.array(obs, dtype=np.float32) # use numpy for efficiency
+
     def get_action_mask(self):
         """Action mask building:
         mask[a] = 1 if (job, machine) is feasible at current time"""

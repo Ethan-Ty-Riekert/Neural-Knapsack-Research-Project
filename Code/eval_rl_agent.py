@@ -1,50 +1,45 @@
-"""Generative AI made.
-NOTE TO SELF: MAKE MY OWN VERSION WHEN TIME PERMITS"""
+"""eval_rl_agent.py - Generative AI made.
+NOTE TO SELF: 
+- MAKE MY OWN VERSION WHEN TIME PERMITS
+- ALLOW FOR CHANGING THE CONFIGURATION WITHOUT HAVING TO RETRAIN THE ENTIRE AGENT
+"""
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+from tqdm import tqdm
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
 from scheduling_env import SchedulingEnv
 from gym_scheduling_wrapper import GymSchedulingEnv
+from env_config import generate_env_config
+from Policies.a2c_policy import make_maskable_a2c
+import torch
 
 
-# ============================================================
-# Action mask function
-# ============================================================
+
 def mask_fn(env: GymSchedulingEnv):
-    return env._get_action_mask()
+    return env.get_action_mask()
 
 
 # ============================================================
-# Environment factory (same config as training)
+# Environment factory
 # ============================================================
-def make_env(seed: int = 0):
-    rng = np.random.default_rng(seed)
-
-    num_jobs = 40
-    num_machines = 5
-    horizon = 60
-    num_resources = 3  # keep consistent with training
-
-    job_durations = rng.integers(1, 6, size=num_jobs)
-    job_resources = rng.integers(1, 6, size=(num_jobs, num_resources))
-    job_deadlines = rng.integers(10, 80, size=num_jobs)
-    job_weights = np.ones(num_jobs)
-
-    machine_capacity = np.array([20] * num_resources)
+def make_env():
+    data = np.load("rl_training/models/env_config.npz")
+    config = {k: data[k] for k in data.files}
 
     base_env = SchedulingEnv(
-        job_durations=job_durations,
-        job_resources=job_resources,
-        job_deadlines=job_deadlines,
-        job_weights=job_weights,
-        num_machines=num_machines,
-        machine_capacity=machine_capacity,
-        horizon=horizon,
+        job_durations=config["job_durations"],
+        job_resources=config["job_resources"],
+        job_deadlines=config["job_deadlines"],
+        job_weights=config["job_weights"],
+        num_machines=int(config["num_machines"]),
+        machine_capacity=config["machine_capacity"],
+        horizon=int(config["horizon"]),
         lambda_1=1.0,
         lambda_2=1.0,
         lambda_3=1.0,
@@ -58,155 +53,204 @@ def make_env(seed: int = 0):
 
 
 # ============================================================
-# Run one evaluation episode
+# Run one PPO evaluation episode
 # ============================================================
-def run_evaluation(model_path: str):
-    if not os.path.exists(model_path + ".zip"):
-        raise FileNotFoundError(f"Model not found at {model_path}.zip")
-
-    # Load model
-    model = MaskablePPO.load(model_path)
-
-    # Create env
-    env, base_env = make_env(seed=123)
+def run_ppo(model):
+    print("Running PPO episode...")
+    env, base_env = make_env()
 
     obs, info = env.reset()
     done = False
     truncated = False
 
     rewards = []
-    jobs_completed_over_time = []
     utilisation_over_time = []
 
     initial_capacity = base_env.capacity[:, :, 0].copy()
-    num_machines = base_env.num_machines
     horizon = base_env.horizon
-
-    step_count = 0
 
     while not (done or truncated):
         action_mask = info.get("action_mask", None)
-        action, _ = model.predict(
-            obs,
-            action_masks=action_mask,
-            deterministic=True,
-        )
+        # PPO uses model.predict(), A2C uses model.act()
+        if hasattr(model, "predict"):
+            action, _ = model.predict(obs, action_masks=action_mask, deterministic=True)
+        else:
+            action = model.act(obs, action_mask)
 
         obs, reward, done, truncated, info = env.step(action)
 
         rewards.append(float(reward))
 
-        # Jobs completed so far
-        jobs_completed = base_env.num_jobs - len(base_env.remaining_jobs)
-        jobs_completed_over_time.append(jobs_completed)
-
-        # Machine utilisation at current time
         t_idx = min(base_env.time - 1, horizon - 1)
         used = initial_capacity - base_env.capacity[:, :, t_idx]
-        utilisation = np.mean(used / (initial_capacity + 1e-8), axis=1)  # per machine
+        utilisation = np.mean(used / (initial_capacity + 1e-8), axis=1)
         utilisation_over_time.append(utilisation)
 
-        step_count += 1
-        if step_count > horizon * 2:
-            # Safety break in case something goes weird
-            break
-
-    utilisation_over_time = np.array(utilisation_over_time)  # shape (T, M)
-
-    # Final metrics
-    total_reward = np.sum(rewards)
-    tardiness = base_env.tardiness.copy()
-    machine_active = base_env.machine_active.copy()
-    theta = base_env.compute_theta()
+    utilisation_over_time = np.array(utilisation_over_time)
 
     return {
-        "rewards": np.array(rewards),
-        "jobs_completed_over_time": np.array(jobs_completed_over_time),
+        "total_reward": np.sum(rewards),
+        "tardiness": base_env.tardiness.copy(),
+        "late_jobs": (base_env.tardiness > 0).sum(),
         "utilisation_over_time": utilisation_over_time,
-        "tardiness": tardiness,
-        "machine_active": machine_active,
-        "theta": theta,
-        "total_reward": total_reward,
     }
 
 
 # ============================================================
-# Plot professional evaluation dashboard
+# Run heuristic
 # ============================================================
-def plot_dashboard(results):
-    rewards = results["rewards"]
-    jobs_completed_over_time = results["jobs_completed_over_time"]
-    utilisation_over_time = results["utilisation_over_time"]
-    tardiness = results["tardiness"]
-    machine_active = results["machine_active"]
-    theta = results["theta"]
-    total_reward = results["total_reward"]
+def run_heuristic(name):
 
-    num_steps = len(rewards)
-    num_machines = utilisation_over_time.shape[1]
+    env, base_env = make_env()
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    ax_reward = axes[0, 0]
-    ax_jobs = axes[0, 1]
-    ax_util = axes[1, 0]
-    ax_tard = axes[1, 1]
+    obs, info = env.reset()
+    done = False
+    truncated = False
 
-    # 1) Reward per step
-    ax_reward.plot(range(num_steps), rewards, color="tab:blue")
-    ax_reward.set_title("Step-wise Reward")
-    ax_reward.set_xlabel("Step")
-    ax_reward.set_ylabel("Reward")
-    ax_reward.grid(True, alpha=0.3)
+    rewards = []
+    utilisation_over_time = []
 
-    # 2) Jobs completed over time
-    ax_jobs.plot(range(num_steps), jobs_completed_over_time, color="tab:green")
-    ax_jobs.set_title("Jobs Completed Over Time")
-    ax_jobs.set_xlabel("Step")
-    ax_jobs.set_ylabel("Completed Jobs")
-    ax_jobs.grid(True, alpha=0.3)
+    initial_capacity = base_env.capacity[:, :, 0].copy()
+    horizon = base_env.horizon
+    num_machines = base_env.num_machines
 
-    # 3) Machine utilisation over time
-    for m in range(num_machines):
-        ax_util.plot(
-            range(num_steps),
-            utilisation_over_time[:, m],
-            label=f"Machine {m}",
-        )
-    ax_util.set_title("Machine Utilisation Over Time")
-    ax_util.set_xlabel("Step")
-    ax_util.set_ylabel("Utilisation (avg over resources)")
-    ax_util.set_ylim(0, 1.05)
-    ax_util.grid(True, alpha=0.3)
-    ax_util.legend(loc="upper right", fontsize=8)
+    def decode(a):
+        return a // num_machines, a % num_machines
 
-    # 4) Tardiness distribution + summary text
-    nonzero_tardiness = tardiness[tardiness > 0]
-    if len(nonzero_tardiness) > 0:
-        ax_tard.hist(nonzero_tardiness, bins=10, color="tab:red", alpha=0.7)
-    ax_tard.set_title("Tardiness Distribution (Non-zero Jobs)")
-    ax_tard.set_xlabel("Tardiness")
-    ax_tard.set_ylabel("Job Count")
+    def choose_action():
+        mask = env.env.get_action_mask()
+        valid = [a for a, ok in enumerate(mask) if ok]
+        if not valid:
+            return None
 
-    # Add summary text box
-    text_lines = [
-        f"Total reward: {total_reward:.2f}",
-        f"Mean tardiness: {np.mean(tardiness):.2f}",
-        f"Max tardiness: {np.max(tardiness):.2f}",
-        f"Active machines: {int(np.sum(machine_active))}",
-        f"Max utilisation θ: {theta:.3f}",
-    ]
-    ax_tard.text(
-        0.95,
-        0.95,
-        "\n".join(text_lines),
-        transform=ax_tard.transAxes,
-        fontsize=9,
-        va="top",
-        ha="right",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-    )
+        if name == "EDF":
+            return min(valid, key=lambda a: base_env.job_deadlines[decode(a)[0]])
+        if name == "SPT":
+            return min(valid, key=lambda a: base_env.job_durations[decode(a)[0]])
+        if name == "LST":
+            return min(valid, key=lambda a:
+                       base_env.job_deadlines[decode(a)[0]]
+                       - base_env.job_durations[decode(a)[0]]
+                       - base_env.time)
+        return np.random.choice(valid)
 
-    plt.tight_layout()
+    while not (done or truncated):
+        action = choose_action()
+        if action is None:
+            break
+
+        obs, reward, done, truncated, info = env.step(action)
+        rewards.append(float(reward))
+
+        t_idx = min(base_env.time - 1, horizon - 1)
+        used = initial_capacity - base_env.capacity[:, :, t_idx]
+        utilisation = np.mean(used / (initial_capacity + 1e-8), axis=1)
+        utilisation_over_time.append(utilisation)
+
+    utilisation_over_time = np.array(utilisation_over_time)
+
+    return {
+        "total_reward": np.sum(rewards),
+        "tardiness": base_env.tardiness.copy(),
+        "late_jobs": (base_env.tardiness > 0).sum(),
+        "utilisation_over_time": utilisation_over_time,
+    }
+
+
+# ============================================================
+# Aggregate over N runs
+# ============================================================
+def evaluate_multiple(model, heuristic_name, runs=50):
+    ppo_metrics = []
+    heur_metrics = []
+
+    print("Evaluating PPO...")
+    for _ in tqdm(range(runs)):
+        ppo_metrics.append(run_ppo(model))
+
+    print("Evaluating heuristic...")
+    for _ in tqdm(range(runs)):
+        heur_metrics.append(run_heuristic(heuristic_name))
+
+    return ppo_metrics, heur_metrics
+
+
+
+# ============================================================
+# Plot clean, informative graphs
+# ============================================================
+def plot_results(ppo_runs, heur_runs, heuristic_name):
+    # Convert to arrays
+    ppo_util = np.stack([r["utilisation_over_time"] for r in ppo_runs])
+    heur_util = np.stack([r["utilisation_over_time"] for r in heur_runs])
+
+    # Compute mean curves
+    ppo_mean = ppo_util.mean(axis=0).mean(axis=1)
+    ppo_std = ppo_util.mean(axis=2).std(axis=0)
+
+    heur_mean = heur_util.mean(axis=0).mean(axis=1)
+    heur_std = heur_util.mean(axis=2).std(axis=0)
+
+    # Scalar metrics
+    ppo_tard = np.array([r["tardiness"].sum() for r in ppo_runs])
+    heur_tard = np.array([r["tardiness"].sum() for r in heur_runs])
+
+    ppo_late = np.array([r["late_jobs"] for r in ppo_runs])
+    heur_late = np.array([r["late_jobs"] for r in heur_runs])
+
+    ppo_reward = np.array([r["total_reward"] for r in ppo_runs])
+    heur_reward = np.array([r["total_reward"] for r in heur_runs])
+
+    # ---------------------------------------------------------
+    # 1. Mean utilisation curve
+    # ---------------------------------------------------------
+    plt.figure(figsize=(12, 5))
+    steps = np.arange(len(ppo_mean))
+
+    plt.plot(steps, ppo_mean, label="PPO", color="tab:blue")
+    plt.fill_between(steps, ppo_mean - ppo_std, ppo_mean + ppo_std, alpha=0.2)
+
+    plt.plot(steps, heur_mean, label="Fixed Heuristic", color="tab:orange")
+    plt.fill_between(steps, heur_mean - heur_std, heur_mean + heur_std, alpha=0.2)
+
+    plt.title("Mean Machine Utilisation Over Time (50 runs)")
+    plt.xlabel("Step")
+    plt.ylabel("Utilisation")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
+    # ---------------------------------------------------------
+    # 2. Total tardiness (bar chart)
+    # ---------------------------------------------------------
+    plt.figure(figsize=(6, 5))
+    plt.bar(["PPO", heuristic_name], [ppo_tard.mean(), heur_tard.mean()],
+            yerr=[ppo_tard.std(), heur_tard.std()],
+            color=["tab:blue", "tab:orange"])
+    plt.title("Total Tardiness (mean ± std over 50 runs)")
+    plt.ylabel("Tardiness")
+    plt.show()
+
+    # ---------------------------------------------------------
+    # 3. Late jobs
+    # ---------------------------------------------------------
+    plt.figure(figsize=(6, 5))
+    plt.bar(["PPO", heuristic_name], [ppo_late.mean(), heur_late.mean()],
+            yerr=[ppo_late.std(), heur_late.std()],
+            color=["tab:blue", "tab:orange"])
+    plt.title("Number of Late Jobs (mean ± std)")
+    plt.ylabel("Late Jobs")
+    plt.show()
+
+    # ---------------------------------------------------------
+    # 4. Total reward
+    # ---------------------------------------------------------
+    plt.figure(figsize=(6, 5))
+    plt.bar(["PPO", heuristic_name], [ppo_reward.mean(), heur_reward.mean()],
+            yerr=[ppo_reward.std(), heur_reward.std()],
+            color=["tab:blue", "tab:orange"])
+    plt.title("Total Reward (mean ± std)")
+    plt.ylabel("Reward")
     plt.show()
 
 
@@ -214,10 +258,34 @@ def plot_dashboard(results):
 # Main
 # ============================================================
 def main():
-    MODEL_PATH = "./rl_training/models/ppo_scheduling"
+    # -----------------------------------------
+    # Parse command‑line argument: --algo ppo/a2c
+    # -----------------------------------------
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
+    args = parser.parse_args()
 
-    results = run_evaluation(MODEL_PATH)
-    plot_dashboard(results)
+    USE_PPO = (args.algo == "ppo")
+
+    # -----------------------------------------
+    # Load model depending on algorithm
+    # -----------------------------------------
+    if USE_PPO:
+        MODEL_PATH = "./rl_training/models/ppo_scheduling"
+        model = MaskablePPO.load(MODEL_PATH)
+    else:
+        MODEL_PATH = "./rl_training/models/a2c_scheduling.pt"
+        env, _ = make_env()
+        model = make_maskable_a2c(env)
+        model.model.load_state_dict(torch.load(MODEL_PATH))
+
+    # -----------------------------------------
+    # Evaluate
+    # -----------------------------------------
+    ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=50)
+    plot_results(ppo_runs, heur_runs, "EDF")
+
+
 
 
 if __name__ == "__main__":

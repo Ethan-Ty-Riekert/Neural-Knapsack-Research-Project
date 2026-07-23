@@ -1,56 +1,68 @@
-"""Import the gym wrapper, create the environment, train, save and evaluate the model"""
+"""train_rl_agent.py - Import the gym wrapper, create the environment, train, save and evaluate the model"""
 import os
-import argparse
 import numpy as np
+import argparse
 
 import gymnasium as gym
+import torch
 from sb3_contrib import MaskablePPO # native action masking to help reduce our massive action space (num_jobs * num_machines) by removing invalid actions
 from sb3_contrib.common.wrappers import ActionMasker #
 
 from scheduling_env import SchedulingEnv
 from gym_scheduling_wrapper import GymSchedulingEnv
+from env_config import generate_env_config
+from Policies.a2c_policy import make_maskable_a2c, train_a2c
+from Policies.ppo_policy import make_maskable_ppo, train_ppo
+
 
 
 def mask_fn(env: GymSchedulingEnv):
     """Action mask function for ActionMasker"""
     return env.get_action_mask()
 
-def make_env(seed:int=0):
-    """Environment creation """
-    num_jobs = 40
-    num_machines = 5
-    horizon = 60
-    num_resources = 3 # resource dimensions. Directly effects training time
+def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None):
+    """Environment creation using centralised env_config.py and allowing for curriculum learning"""
 
-    # np array randomizer
-    rng = np.random.default_rng(seed)
+    # Load environment configuration
+    config = generate_env_config(seed=seed)
 
-    job_durations = rng.integers(1, 6, size=num_jobs)
-    job_resources = rng.integers(1, 6, size=(num_jobs, num_resources))
-    job_deadlines = rng.integers(10, 80, size=num_jobs)
-    job_weights = np.ones(num_jobs)
+    # Curriculum overrides
+    if num_jobs is not None:
+        config["job_durations"] = config["job_durations"][:num_jobs]
+        config["job_resources"] = config["job_resources"][:num_jobs, :]
+        config["job_deadlines"] = config["job_deadlines"][:num_jobs]
+        config["job_weights"] = config["job_weights"][:num_jobs]
 
-    fixed_capacity = 20
-    machine_capacity = np.array([fixed_capacity] * num_resources) # All machines are the same
+    if num_machines is not None:
+        config["num_machines"] = num_machines
+        config["machine_capacity"] = config["machine_capacity"]
 
-    # Creating the base environment to pass into the gym wrapper
+
+    if horizon is not None:
+        config["horizon"] = horizon
+
+
+    # Save config for evaluation
+    np.savez("rl_training/models/env_config.npz", **config)
+
+
+    # Create the base environment
     base_env = SchedulingEnv(
-        job_durations=job_durations,
-        job_resources=job_resources,
-        job_deadlines=job_deadlines,
-        job_weights=job_weights,
-        num_machines=num_machines,
-        machine_capacity=machine_capacity,
-        horizon=horizon,
+        job_durations=config["job_durations"],
+        job_resources=config["job_resources"],
+        job_deadlines=config["job_deadlines"],
+        job_weights=config["job_weights"],
+        num_machines=config["num_machines"],
+        machine_capacity=config["machine_capacity"],
+        horizon=config["horizon"],
         lambda_1=1.0,
         lambda_2=1.0,
         lambda_3=1.0,
         invalid_penalty=5.0,
     )
 
-    # Gym wrapped environment for RL
+    # Wrap in Gym + Masking
     gym_env = GymSchedulingEnv(base_env)
-    # masked environment for making actions - efficient with this library
     masked_env = ActionMasker(gym_env, mask_fn)
 
     return masked_env
@@ -67,53 +79,111 @@ def main():
     RL_DIR = "./rl_training"
     LOG_DIR = f"{RL_DIR}/logs"
     MODEL_DIR = f"{RL_DIR}/models"
-    MODEL_PATH = os.path.join(MODEL_DIR, "ppo_scheduling")
+    PPO_MODEL_PATH = os.path.join(MODEL_DIR, "ppo_scheduling")
+    A2C_MODEL_PATH = os.path.join(MODEL_DIR, "a2c_scheduling.pt")
 
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
 
     # -----------------------------
-    # Create environment
+    # Choose which RL algorithm to train
     # -----------------------------
-    env = make_env(seed=0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
+    args = parser.parse_args()
+
+    USE_PPO = (args.algo == "ppo")
 
     # -----------------------------
-    # Create PPO model
+    # Curriculum definition
+    # (IMPORTANT: only horizon changes)
     # -----------------------------
-    model = MaskablePPO(
-        "MlpPolicy",
-        env,
-        verbose=1,
-        tensorboard_log=LOG_DIR,
-        n_steps=2048,
-        batch_size=256,
-        learning_rate=3e-4,
-        gamma=0.99,
-        gae_lambda=0.95,
-        ent_coef=0.01,
-        clip_range=0.2,
-        n_epochs=10,
-        seed=0,
-    )
+    curriculum = [
+        {"horizon": 20,  "timesteps": 50_000},
+        {"horizon": 40,  "timesteps": 75_000},
+        {"horizon": 60,  "timesteps": 100_000},
+        {"horizon": 100, "timesteps": 150_000},
+    ]
 
     # -----------------------------
-    # Train
+    # PPO TRAINING
     # -----------------------------
-    model.learn(
-        total_timesteps=TOTAL_TIMESTEPS,
-        tb_log_name="ppo_scheduling",
-        progress_bar=True,
-    )
+    if USE_PPO:
+
+        # Create FIRST curriculum environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"]
+        )
+
+        # Create PPO model WITH FIRST ENV
+        model = MaskablePPO(
+            "MlpPolicy",
+            first_env,
+            verbose=1,
+            tensorboard_log=LOG_DIR,
+            n_steps=2048,
+            batch_size=256,
+            learning_rate=3e-4,
+            gamma=0.99,
+            gae_lambda=0.95,
+            ent_coef=0.01,
+            clip_range=0.2,
+            n_epochs=10,
+            seed=0,
+        )
+
+        # Curriculum training loop
+        for stage in curriculum:
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"]
+            )
+
+            model.set_env(env)
+
+            print(f"Training stage: {stage}")
+            model.learn(
+                total_timesteps=stage["timesteps"],
+                tb_log_name="ppo_scheduling",
+                progress_bar=True,
+            )
+
+        # Save PPO model
+        model.save(PPO_MODEL_PATH)
+        print(f"\nPPO training complete. Model saved to: {PPO_MODEL_PATH}\n")
 
     # -----------------------------
-    # Save model
+    # A2C TRAINING
     # -----------------------------
-    model.save(MODEL_PATH)
-    env.close()
+    else:
+        from Policies.a2c_policy import make_maskable_a2c, train_a2c
+        import torch
 
-    print(f"\nTraining complete. Model saved to: {MODEL_PATH}\n")
+        # Create FIRST curriculum environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"]
+        )
+
+        model = make_maskable_a2c(first_env, device="cpu")
+
+        # Curriculum training loop
+        for stage in curriculum:
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"]
+            )
+            model.env = env
+            train_a2c(model, total_timesteps=stage["timesteps"])
+
+        # Save A2C model
+        torch.save(model.model.state_dict(), A2C_MODEL_PATH)
+        print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
+
     print("View TensorBoard with:")
     print("  tensorboard --logdir ./logs\n")
+
 
 ############################## END AI Made ##############################
 
