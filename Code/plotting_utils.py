@@ -45,7 +45,7 @@ class LiveTrainingPlotter(BaseCallback):
     since it keeps its own history rather than relying on SB3's per-call step counter.
     """
 
-    def __init__(self, save_dir: str, plot_freq_steps: int = 1000, plot_freq_episodes: int = 5, verbose: int = 0):
+    def __init__(self, save_dir: str, plot_freq_steps: int = 10_000, plot_freq_episodes: int = 5, verbose: int = 0):
         super().__init__(verbose)
         self.save_dir = save_dir
         self.plot_freq_steps = plot_freq_steps
