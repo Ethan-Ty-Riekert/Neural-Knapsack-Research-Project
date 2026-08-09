@@ -149,8 +149,9 @@ class SchedulingEnv:
         reward = self.reward(job, machine, machine_was_inactive, delta_theta)
 
         ## Reward shaping to help with convergence of policy methods
-        # Positive reward for any valid scheduling action
-        reward += 1 # i.e if no penalty is applied we get 1, else we just add 1 to negative reward which doesn't matter
+        # STRONG positive reward for any valid scheduling action
+        # This makes scheduling immediately attractive and helps prevent idle collapse
+        reward += 3.0  # Increased from 1.0 to make scheduling more rewarding than idling
 
         # NOTE: hotspot severity is already penalised by -lambda3 * delta_theta inside
         # self.reward() above; there used to be a second "reward += 0.05 * (0-delta_theta)"

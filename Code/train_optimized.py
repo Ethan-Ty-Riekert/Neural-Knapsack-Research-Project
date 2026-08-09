@@ -1,0 +1,364 @@
+"""train_optimized.py - Train RL agent using Optuna-optimized hyperparameters
+
+This script loads the best hyperparameters found by Optuna and trains
+a full-scale model with curriculum learning.
+"""
+
+import os
+import json
+import argparse
+import numpy as np
+import torch
+import torch.nn as nn
+from stable_baselines3.common.monitor import Monitor
+from sb3_contrib import MaskablePPO
+from sb3_contrib.common.wrappers import ActionMasker
+
+from scheduling_env import SchedulingEnv
+from gym_scheduling_wrapper import GymSchedulingEnv
+from env_config import generate_env_config
+from plotting_utils import make_run_dir, LiveTrainingPlotter
+
+
+def mask_fn(env: GymSchedulingEnv):
+    """Action mask function for ActionMasker"""
+    return env.get_action_mask()
+
+
+def make_env(
+    seed: int = 0,
+    num_jobs=None,
+    num_machines=None,
+    horizon=None,
+    max_jobs=None,
+    lambda_1: float = 1.0,
+    lambda_2: float = 1.0,
+    lambda_3: float = 1.0,
+    invalid_penalty: float = 5.0,
+    idle_penalty: float = 0.5,
+):
+    """Environment creation with tunable reward penalties."""
+
+    config = generate_env_config(seed=seed)
+
+    # Curriculum overrides
+    if num_jobs is not None:
+        config["job_durations"] = config["job_durations"][:num_jobs]
+        config["job_resources"] = config["job_resources"][:num_jobs, :]
+        config["job_deadlines"] = config["job_deadlines"][:num_jobs]
+        config["job_weights"] = config["job_weights"][:num_jobs]
+        config["num_jobs"] = num_jobs
+
+    if num_machines is not None:
+        config["num_machines"] = num_machines
+        config["machine_capacity"] = config["machine_capacity"]
+
+    if horizon is not None:
+        config["horizon"] = horizon
+
+    if max_jobs is not None:
+        config["max_jobs"] = max_jobs
+
+    # Save config for evaluation
+    np.savez("rl_training/models/env_config.npz", **config)
+
+    # Create the base environment with tunable penalties
+    base_env = SchedulingEnv(
+        job_durations=config["job_durations"],
+        job_resources=config["job_resources"],
+        job_deadlines=config["job_deadlines"],
+        job_weights=config["job_weights"],
+        num_machines=config["num_machines"],
+        machine_capacity=config["machine_capacity"],
+        horizon=config["horizon"],
+        lambda_1=lambda_1,
+        lambda_2=lambda_2,
+        lambda_3=lambda_3,
+        invalid_penalty=invalid_penalty,
+        idle_penalty=idle_penalty,
+    )
+
+    # Wrap in Gym + Masking
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
+    masked_env = ActionMasker(gym_env, mask_fn)
+    monitored_env = Monitor(masked_env)
+
+    return monitored_env
+
+
+def load_best_params(algorithm: str = "ppo"):
+    """Load best hyperparameters from Optuna optimization."""
+    results_dir = "./rl_training/optuna_results"
+    best_params_file = os.path.join(results_dir, f"{algorithm}_best_params.json")
+
+    if not os.path.exists(best_params_file):
+        raise FileNotFoundError(
+            f"Best parameters file not found: {best_params_file}\n"
+            f"Please run optuna_tune.py first to optimize hyperparameters."
+        )
+
+    with open(best_params_file, "r") as f:
+        params = json.load(f)
+
+    print(f"\nLoaded best hyperparameters from: {best_params_file}")
+    print("\nHyperparameters:")
+    for key, value in params.items():
+        print(f"  {key}: {value}")
+    print()
+
+    return params
+
+
+def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = True):
+    """Train agent using optimized hyperparameters from Optuna.
+
+    Args:
+        algorithm: "ppo" or "a2c"
+        use_curriculum: Whether to use curriculum learning
+    """
+
+    # Load best hyperparameters
+    params = load_best_params(algorithm)
+
+    # Setup directories
+    TOTAL_TIMESTEPS = 500_000 if use_curriculum else 300_000
+    RL_DIR = "./rl_training"
+    LOG_DIR = f"{RL_DIR}/logs"
+    MODEL_DIR = f"{RL_DIR}/models"
+    PPO_MODEL_PATH = os.path.join(MODEL_DIR, "ppo_scheduling_optimized")
+    A2C_MODEL_PATH = os.path.join(MODEL_DIR, "a2c_scheduling_optimized.pt")
+
+    os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    # Live plotter
+    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", f"{algorithm}_optimized")
+    plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
+
+    # Extract reward penalties from params
+    lambda_1 = params.get("lambda_1", 1.0)
+    lambda_2 = params.get("lambda_2", 1.0)
+    lambda_3 = params.get("lambda_3", 1.0)
+    idle_penalty = params.get("idle_penalty", 0.5)
+    invalid_penalty = params.get("invalid_penalty", 5.0)
+
+    print(f"\nReward penalties:")
+    print(f"  Machine activation (λ₁): {lambda_1}")
+    print(f"  Tardiness (λ₂): {lambda_2}")
+    print(f"  Hotspot (λ₃): {lambda_3}")
+    print(f"  Idle penalty: {idle_penalty}")
+    print(f"  Invalid penalty: {invalid_penalty}\n")
+
+    # ==================== PPO TRAINING ====================
+    if algorithm == "ppo":
+        # Build network architecture
+        layer_size = params.get("layer_size", 256)
+        n_layers = params.get("n_layers", 2)
+        activation = params.get("activation", "tanh")
+
+        if n_layers == 2:
+            net_arch = dict(pi=[layer_size, layer_size], vf=[layer_size, layer_size])
+        else:
+            net_arch = dict(
+                pi=[layer_size, layer_size, layer_size],
+                vf=[layer_size, layer_size, layer_size]
+            )
+
+        activation_fn = nn.Tanh if activation == "tanh" else nn.ReLU
+
+        policy_kwargs = dict(
+            net_arch=net_arch,
+            activation_fn=activation_fn,
+        )
+
+        # Curriculum or single-stage training
+        if use_curriculum:
+            MAX_JOBS = 100
+            curriculum = [
+                {"horizon": 20,  "num_jobs": 15,  "timesteps": 50_000},
+                {"horizon": 40,  "num_jobs": 30,  "timesteps": 100_000},
+                {"horizon": 60,  "num_jobs": 60,  "timesteps": 150_000},
+                {"horizon": 100, "num_jobs": 100, "timesteps": 200_000},
+            ]
+        else:
+            MAX_JOBS = 100
+            curriculum = [
+                {"horizon": 100, "num_jobs": 100, "timesteps": TOTAL_TIMESTEPS},
+            ]
+
+        # Create first environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"],
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
+            lambda_1=lambda_1,
+            lambda_2=lambda_2,
+            lambda_3=lambda_3,
+            idle_penalty=idle_penalty,
+            invalid_penalty=invalid_penalty,
+        )
+
+        # Create PPO model with optimized hyperparameters
+        model = MaskablePPO(
+            "MlpPolicy",
+            first_env,
+            verbose=1,
+            tensorboard_log=LOG_DIR,
+            learning_rate=params.get("learning_rate", 3e-4),
+            n_steps=params.get("n_steps", 2048),
+            batch_size=params.get("batch_size", 256),
+            n_epochs=params.get("n_epochs", 4),
+            gamma=params.get("gamma", 0.99),
+            gae_lambda=params.get("gae_lambda", 0.95),
+            ent_coef=params.get("ent_coef", 0.05),
+            clip_range=params.get("clip_range", 0.2),
+            vf_coef=params.get("vf_coef", 0.5),
+            max_grad_norm=params.get("max_grad_norm", 0.5),
+            seed=0,
+            policy_kwargs=policy_kwargs,
+        )
+
+        print(f"\n{'='*80}")
+        print(f"Training PPO with optimized hyperparameters")
+        print(f"Curriculum stages: {len(curriculum)}")
+        print(f"Total timesteps: {sum(stage['timesteps'] for stage in curriculum)}")
+        print(f"{'='*80}\n")
+
+        # Curriculum training loop
+        for i, stage in enumerate(curriculum):
+            print(f"\n--- Stage {i+1}/{len(curriculum)} ---")
+            print(f"  Horizon: {stage['horizon']}, Jobs: {stage['num_jobs']}, Timesteps: {stage['timesteps']}")
+
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"],
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
+                lambda_1=lambda_1,
+                lambda_2=lambda_2,
+                lambda_3=lambda_3,
+                idle_penalty=idle_penalty,
+                invalid_penalty=invalid_penalty,
+            )
+
+            model.set_env(env)
+
+            model.learn(
+                total_timesteps=stage["timesteps"],
+                tb_log_name="ppo_scheduling_optimized",
+                progress_bar=True,
+                callback=plotter,
+                reset_num_timesteps=False,
+            )
+
+        # Save PPO model
+        model.save(PPO_MODEL_PATH)
+        print(f"\nPPO training complete. Model saved to: {PPO_MODEL_PATH}\n")
+
+    # ==================== A2C TRAINING ====================
+    else:
+        from Policies.a2c_policy import MaskableA2C
+
+        # For A2C, we need to modify the class to accept hyperparameters
+        # This is similar to what we did in optuna_tune.py
+
+        if use_curriculum:
+            MAX_JOBS = 100
+            curriculum = [
+                {"horizon": 20,  "num_jobs": 15,  "timesteps": 50_000},
+                {"horizon": 40,  "num_jobs": 30,  "timesteps": 100_000},
+                {"horizon": 60,  "num_jobs": 60,  "timesteps": 150_000},
+                {"horizon": 100, "num_jobs": 100, "timesteps": 200_000},
+            ]
+        else:
+            MAX_JOBS = 100
+            curriculum = [
+                {"horizon": 100, "num_jobs": 100, "timesteps": TOTAL_TIMESTEPS},
+            ]
+
+        # Create first environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"],
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
+            lambda_1=lambda_1,
+            lambda_2=lambda_2,
+            lambda_3=lambda_3,
+            idle_penalty=idle_penalty,
+            invalid_penalty=invalid_penalty,
+        )
+
+        # Create A2C agent
+        agent = MaskableA2C(first_env, device="cpu")
+
+        # Override hyperparameters
+        agent.n_steps = params.get("n_steps", 5)
+        agent.gamma = params.get("gamma", 0.99)
+        agent.lam = params.get("gae_lambda", 1.0)
+        agent.ent_coef = params.get("ent_coef", 0.0)
+        agent.value_coef = params.get("value_coef", 0.5)
+        agent.max_grad_norm = params.get("max_grad_norm", 0.5)
+        agent.lr = params.get("learning_rate", 7e-4)
+
+        # Rebuild optimizer with new learning rate
+        agent.optimizer = torch.optim.Adam(agent.model.parameters(), lr=agent.lr)
+
+        print(f"\n{'='*80}")
+        print(f"Training A2C with optimized hyperparameters")
+        print(f"Curriculum stages: {len(curriculum)}")
+        print(f"Total timesteps: {sum(stage['timesteps'] for stage in curriculum)}")
+        print(f"{'='*80}\n")
+
+        # Curriculum training loop
+        for i, stage in enumerate(curriculum):
+            print(f"\n--- Stage {i+1}/{len(curriculum)} ---")
+            print(f"  Horizon: {stage['horizon']}, Jobs: {stage['num_jobs']}, Timesteps: {stage['timesteps']}")
+
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"],
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
+                lambda_1=lambda_1,
+                lambda_2=lambda_2,
+                lambda_3=lambda_3,
+                idle_penalty=idle_penalty,
+                invalid_penalty=invalid_penalty,
+            )
+
+            agent.env = env
+            agent.train(total_timesteps=stage["timesteps"], plotter=plotter)
+
+        # Save A2C model
+        torch.save(agent.model.state_dict(), A2C_MODEL_PATH)
+        print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
+
+    plotter.close()
+    print(f"Training reward plot saved to: {plot_run_dir}\n")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Train RL agent with Optuna-optimized hyperparameters"
+    )
+    parser.add_argument(
+        "--algo",
+        type=str,
+        default="ppo",
+        choices=["ppo", "a2c"],
+        help="Algorithm to train"
+    )
+    parser.add_argument(
+        "--no-curriculum",
+        action="store_true",
+        help="Disable curriculum learning (single-stage training)"
+    )
+
+    args = parser.parse_args()
+
+    train_with_optimized_params(
+        algorithm=args.algo,
+        use_curriculum=not args.no_curriculum
+    )

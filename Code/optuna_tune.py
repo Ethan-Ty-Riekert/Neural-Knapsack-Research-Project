@@ -366,7 +366,8 @@ def objective_a2c(trial: optuna.Trial):
 
             # Collect rollout
             for _ in range(agent.n_steps):
-                mask = info.get("action_mask", env.get_action_mask())
+                # Get mask from info (Monitor passes it through)
+                mask = info.get("action_mask")
 
                 from Policies.a2c_policy import select_action
                 action, log_prob, value = select_action(

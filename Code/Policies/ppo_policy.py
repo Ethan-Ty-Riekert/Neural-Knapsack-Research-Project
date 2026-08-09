@@ -24,7 +24,7 @@ def make_maskable_ppo(env, log_dir: str = "./rl_training/logs", policy_kwargs: D
     # vf: critic network
     # Both typically use two hidden layers of size 256
     default_policy_kwargs = dict(
-        net_arch=[dict(pi=[2356,256], vf=[256, 256])],
+        net_arch=[dict(pi=[256, 256], vf=[256, 256])],
         activation_fn = None
     )
 
