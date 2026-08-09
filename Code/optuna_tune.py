@@ -249,14 +249,25 @@ def objective_a2c(trial: optuna.Trial):
 
     A2C doesn't have the same gradient clipping issues as PPO, so it may
     be more suitable for this large action space problem.
+
+    Previously this hand-reconstructed its own flat actor-critic (a monkey-patched
+    MaskableA2C.__init__ building a "ModifiedActorCritic") and duplicated the entire
+    rollout/loss loop independently of Policies/a2c_policy.py's MaskableA2C.train()
+    -- including that method's masked-entropy bug, in a second place, silently.
+    Left as-is, it would keep tuning a stale architecture no longer deployed
+    (MaskableA2C now defaults to PointerActorCritic; see pointer_policy.py and
+    Future/research/2026-08-09-pointer-network-action-head.md) and would need the
+    same fixes applied twice. Rebuilt to construct a real MaskableA2C(policy_type=
+    "pointer") and call its own .train(), so there is exactly one A2C training loop
+    in the codebase.
     """
     from Policies.a2c_policy import MaskableA2C
 
     # ==================== SEARCH SPACE ====================
 
-    # Network architecture
-    layer_size = trial.suggest_categorical("layer_size", [128, 256, 512])
-    n_layers = trial.suggest_int("n_layers", 2, 3)
+    # Pointer-network architecture (see pointer_policy.PointerActorCritic)
+    embed_dim = trial.suggest_categorical("embed_dim", [64, 128, 256])
+    hidden = trial.suggest_categorical("hidden", [32, 64, 128])
 
     # A2C hyperparameters
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
@@ -291,146 +302,47 @@ def objective_a2c(trial: optuna.Trial):
         invalid_penalty=invalid_penalty,
     )
 
-    # ==================== MODIFY A2C NETWORK ====================
-
-    # We need to temporarily modify the A2C network architecture
-    # This is a bit hacky but works for hyperparameter tuning
-    original_init = MaskableA2C.__init__
-
-    def modified_init(self, env, device="cpu"):
-        # Call original init
-        original_init(self, env, device)
-
-        # Override hyperparameters
-        self.n_steps = n_steps
-        self.gamma = gamma
-        self.lam = gae_lambda
-        self.ent_coef = ent_coef
-        self.value_coef = value_coef
-        self.max_grad_norm = max_grad_norm
-        self.lr = learning_rate
-
-        # Rebuild network with new architecture
-        from Policies.a2c_policy import MaskableActorCritic
-
-        class ModifiedActorCritic(nn.Module):
-            def __init__(self, obs_dim, act_dim):
-                super().__init__()
-
-                if n_layers == 2:
-                    self.shared = nn.Sequential(
-                        nn.Linear(obs_dim, layer_size),
-                        nn.ReLU(),
-                        nn.Linear(layer_size, layer_size),
-                        nn.ReLU(),
-                    )
-                else:  # n_layers == 3
-                    self.shared = nn.Sequential(
-                        nn.Linear(obs_dim, layer_size),
-                        nn.ReLU(),
-                        nn.Linear(layer_size, layer_size),
-                        nn.ReLU(),
-                        nn.Linear(layer_size, layer_size),
-                        nn.ReLU(),
-                    )
-
-                self.policy_head = nn.Linear(layer_size, act_dim)
-                self.value_head = nn.Linear(layer_size, 1)
-
-            def forward(self, obs):
-                x = self.shared(obs)
-                logits = self.policy_head(x)
-                value = self.value_head(x)
-                return logits, value
-
-        self.model = ModifiedActorCritic(self.obs_dim, self.act_dim).to(self.device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-
-    # Temporarily replace __init__
-    MaskableA2C.__init__ = modified_init
-
     try:
-        agent = MaskableA2C(env, device="cpu")
+        agent = MaskableA2C(
+            env,
+            device="cpu",
+            policy_type="pointer",
+            policy_kwargs=dict(embed_dim=embed_dim, hidden=hidden),
+        )
 
-        # Train
+        # Override hyperparameters sampled above (constructor sets sensible
+        # defaults; trial-specific values replace them before training starts)
+        agent.n_steps = n_steps
+        agent.gamma = gamma
+        agent.lam = gae_lambda
+        agent.ent_coef = ent_coef
+        agent.value_coef = value_coef
+        agent.max_grad_norm = max_grad_norm
+        agent.lr = learning_rate
+        agent.optimizer = torch.optim.Adam(agent.model.parameters(), lr=learning_rate)
+
         eval_timesteps = 30_000
+        agent.train(total_timesteps=eval_timesteps)
 
-        obs, info = env.reset()
-        done = False
-        t = 0
+        # Evaluate deterministically over a handful of fresh episodes
+        n_eval_episodes = 10
         episode_rewards = []
-        current_episode_reward = 0.0
+        for _ in range(n_eval_episodes):
+            obs, info = env.reset()
+            done = False
+            ep_reward = 0.0
+            while not done:
+                mask = info["action_mask"]
+                action = agent.act(obs, mask)
+                obs, reward, terminated, truncated, info = env.step(action)
+                ep_reward += reward
+                done = terminated or truncated
+            episode_rewards.append(ep_reward)
 
-        while t < eval_timesteps:
-            agent.buffer.reset()
-
-            # Collect rollout
-            for _ in range(agent.n_steps):
-                # Get mask from info (Monitor passes it through)
-                mask = info.get("action_mask")
-
-                from Policies.a2c_policy import select_action
-                action, log_prob, value = select_action(
-                    agent.model, obs, mask, agent.device
-                )
-
-                next_obs, reward, done, truncated, info = env.step(action)
-                current_episode_reward += reward
-
-                agent.buffer.add(obs, action, reward, float(done or truncated), value, log_prob)
-
-                obs = next_obs
-                t += 1
-
-                if done or truncated:
-                    episode_rewards.append(current_episode_reward)
-                    current_episode_reward = 0.0
-                    obs, info = env.reset()
-                    done = False
-                    break
-
-            # Update (simplified, without full training loop)
-            obs_t = torch.tensor(obs, dtype=torch.float32, device=agent.device).unsqueeze(0)
-            with torch.no_grad():
-                _, last_value = agent.model(obs_t)
-            last_value = float(last_value.item())
-
-            returns, advantages = agent.buffer.compute_returns_and_advantages(
-                last_value, agent.gamma, agent.lam
-            )
-
-            obs_batch = torch.tensor(np.array(agent.buffer.obs), dtype=torch.float32, device=agent.device)
-            actions_batch = torch.tensor(agent.buffer.actions, dtype=torch.int64, device=agent.device)
-            returns_batch = torch.tensor(returns, dtype=torch.float32, device=agent.device)
-            advantages_batch = torch.tensor(advantages, dtype=torch.float32, device=agent.device)
-
-            logits, values = agent.model(obs_batch)
-            values = values.squeeze(-1)
-
-            probs = torch.softmax(logits, dim=-1)
-            dist = torch.distributions.Categorical(probs)
-            log_probs = dist.log_prob(actions_batch)
-            entropy = dist.entropy().mean()
-
-            policy_loss = -(log_probs * advantages_batch.detach()).mean()
-            value_loss = (returns_batch - values).pow(2).mean()
-            entropy_loss = -entropy * agent.ent_coef
-
-            loss = policy_loss + agent.value_coef * value_loss + entropy_loss
-
-            agent.optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(agent.model.parameters(), agent.max_grad_norm)
-            agent.optimizer.step()
-
-        # Evaluate
-        if len(episode_rewards) > 0:
-            mean_reward = np.mean(episode_rewards[-10:])  # Last 10 episodes
-        else:
-            mean_reward = -1000.0
+        mean_reward = float(np.mean(episode_rewards))
 
         trial.set_user_attr("mean_reward", mean_reward)
-        trial.set_user_attr("n_episodes", len(episode_rewards))
+        trial.set_user_attr("n_episodes", n_eval_episodes)
 
         return mean_reward
 
@@ -439,8 +351,6 @@ def objective_a2c(trial: optuna.Trial):
         return -1000.0
 
     finally:
-        # Restore original __init__
-        MaskableA2C.__init__ = original_init
         env.close()
 
 

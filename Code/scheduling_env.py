@@ -20,7 +20,9 @@ class SchedulingEnv:
         lambda_2: float = 1.0,            # tardiness penalty
         lambda_3: float = 1.0,            # hotspot penalty
         invalid_penalty: float = 5.0,     # invalid placement penalty
-        idle_penalty: float = 0.5         # penalty for idling (doing nothing)
+        idle_penalty: float = 0.5,        # penalty for idling (doing nothing)
+        use_potential_shaping: bool = False,  # Solution 3: optional potential-based reward shaping
+        shaping_gamma: float = 0.99,      # discount factor used in the shaping term; should match the RL algorithm's gamma
     ):
         """Initiate the scheduling environment"""
 
@@ -37,11 +39,15 @@ class SchedulingEnv:
         self.job_deadlines = job_deadlines # Set of job deadlines 
         self.job_weights = job_weights # Set of job weights w
 
+        # Pristine per-resource capacity vector, kept separately from self.capacity
+        # so reset() has an untouched value to restore from (see reset()).
+        self.machine_capacity = np.array(machine_capacity, dtype=float).copy()
+
         # Machine capacity over time: shape (num_machines, num_resources, horizon)
         self.capacity = np.zeros((self.num_machines, self.num_resources, self.horizon))
         for m in range(self.num_machines):
             for t in range(self.horizon):
-                self.capacity[m, :, t] = machine_capacity
+                self.capacity[m, :, t] = self.machine_capacity
         # We have no need to store the entire capacity matrix as for everything we subtract
         # from this capacity over time matrix, we will eventually add back (- for job starting,+ for job finishing)
 
@@ -69,22 +75,80 @@ class SchedulingEnv:
 
         self.prev_theta = 0.0 # For hotspot tracking
 
-        
+        # Solution 3: optional potential-based reward shaping (Ng, Harada, Russell
+        # 1999) -- see _compute_potential() and Future/research/2026-08-09-pointer-
+        # network-action-head.md. Off by default so it's A/B-able against the
+        # unshaped reward.
+        self.use_potential_shaping = use_potential_shaping
+        self.shaping_gamma = shaping_gamma
+        self.prev_potential = self._compute_potential()
+
+
 
     def reset(self):
-        """Reset the environment to the initial state"""
+        """Reset the environment to the initial state.
+
+        BUG FIX (2026-08-09): this used to copy self.capacity[m, :, 0] into every
+        timestep -- but capacity[:, :, 0] is itself mutated by step() whenever a job
+        starts at time 0 (which is most episodes), so it was never actually the
+        original capacity after the first episode. Every subsequent reset()
+        re-broadcast that already-depleted slice across the whole horizon, so
+        capacity leaked downward, permanently, across the SchedulingEnv instance's
+        entire lifetime (confirmed: repeated reset()+step() calls monotonically
+        shrink capacity[:, :, 0] and it never recovers). Given a single instance is
+        reused for many hundreds/thousands of episodes per curriculum stage, this
+        eventually makes every job infeasible on every machine regardless of policy
+        quality, which produces the exact "-idle_penalty * episode_length" signature
+        used throughout Future/research/training-log.md to diagnose "policy
+        collapse" -- i.e. this bug is a plausible confound (partial or total) for
+        that diagnosis, not just a coincidental separate issue. See
+        Future/research/2026-08-09-pointer-network-action-head.md.
+        """
         for m in range(self.num_machines):
             for t in range(self.horizon):
-                self.capacity[m, :, t] = self.capacity[m, :, 0]
-        
+                self.capacity[m, :, t] = self.machine_capacity
+
         self.machine_active[:] = 0
         self.start_times[:] = -1
         self.tardiness[:] = 0
         self.remaining_jobs = set(range(self.num_jobs))
         self.time = 0
         self.prev_theta = 0.0
+        self.prev_potential = self._compute_potential()
 
         return self.get_state()
+
+    def _compute_potential(self) -> float:
+        """Potential function for optional potential-based reward shaping (Ng,
+        Harada, Russell 1999, "Policy Invariance Under Reward Transformations"):
+        shaped_reward = reward + shaping_gamma * Phi(s') - Phi(s) is provably
+        policy-invariant (does not change which policy is optimal) for any bounded
+        Phi. Unlike raw reward-magnitude tuning (e.g. a much larger idle_penalty),
+        which DOES change the optimum and, per Future/research/training-log.md,
+        still didn't prevent idle collapse anyway, this only reshapes the gradient
+        signal, giving credit for progress toward urgent jobs before their
+        tardiness penalty would otherwise fire.
+
+        Phi(s) = -sum_{j in remaining_jobs} urgency_j(t), where
+        urgency_j(t) = 1 / (max(slack_j(t), 0) + 1), slack_j(t) = deadline_j - t -
+        duration_j. urgency_j is bounded in (0, 1]: it saturates at 1 once a job is
+        already at risk of being late (slack <= 0) rather than blowing up or
+        flipping sign, and decays towards 0 the more comfortably ahead of schedule
+        a job is. Phi(s) is therefore bounded in [-len(remaining_jobs), 0] --
+        completing a job (removing it from remaining_jobs) always removes its
+        (negative) contribution, and letting time pass without scheduling an urgent
+        job makes Phi(s) more negative, so the shaping term rewards moving urgent
+        jobs to completion before their deadline penalty would fire, without
+        altering which final policy is optimal.
+        """
+        if not self.remaining_jobs:
+            return 0.0
+        potential = 0.0
+        for j in self.remaining_jobs:
+            slack = self.job_deadlines[j] - self.time - self.job_durations[j]
+            urgency = 1.0 / (max(slack, 0.0) + 1.0)
+            potential -= urgency
+        return potential
     
     def is_feasible(self, j:int, m:int, t:int) -> bool:
         """Check if job index j can start on machine m at time t.
@@ -165,6 +229,13 @@ class SchedulingEnv:
         # Advance time
         self.time += 1
 
+        # Solution 3: optional potential-based shaping term, added on top of
+        # (not instead of) the reward computed above -- see _compute_potential().
+        if self.use_potential_shaping:
+            new_potential = self._compute_potential()
+            reward += self.shaping_gamma * new_potential - self.prev_potential
+            self.prev_potential = new_potential
+
         # Check for termination at end of horizon or this was the last job
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
 
@@ -218,6 +289,16 @@ class SchedulingEnv:
         self.time += 1
 
         reward = -self.idling_penalty
+
+        # Solution 3: same shaping term as step(). Idling while urgent jobs remain
+        # makes their slack shrink without progress, so Phi(s') is more negative
+        # than Phi(s) here more often than not -- this is what gives the shaping
+        # term its "idling near a deadline crunch is worse than idling with slack
+        # to spare" property, on top of the flat idle_penalty above.
+        if self.use_potential_shaping:
+            new_potential = self._compute_potential()
+            reward += self.shaping_gamma * new_potential - self.prev_potential
+            self.prev_potential = new_potential
 
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
 

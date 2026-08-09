@@ -23,7 +23,9 @@ def mask_fn(env: GymSchedulingEnv):
     """Action mask function for ActionMasker"""
     return env.get_action_mask()
 
-def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_jobs=None):
+def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_jobs=None,
+             restrict_idle: bool = False, idle_penalty: float = 0.5,
+             use_potential_shaping: bool = False):
     """Environment creation using centralised env_config.py and allowing for curriculum learning.
 
     num_jobs: actual/logical number of jobs generated for this env instance -- may
@@ -33,6 +35,9 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_
     stage of a curriculum sharing the same model, regardless of num_jobs, since
     model.set_env() requires matching obs/action spaces. Defaults to num_jobs (no
     padding) when not given.
+    restrict_idle: forwarded to GymSchedulingEnv -- Solution 1a of the 2026-08-09
+    idle-collapse experiments (see Future/research/).
+    idle_penalty: forwarded to SchedulingEnv -- Solution 1b of the same experiments.
     """
 
     # Load environment configuration
@@ -75,10 +80,12 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_
         lambda_2=1.0,
         lambda_3=1.0,
         invalid_penalty=5.0,
+        idle_penalty=idle_penalty,
+        use_potential_shaping=use_potential_shaping,
     )
 
     # Wrap in Gym + Masking
-    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs, restrict_idle=restrict_idle)
     masked_env = ActionMasker(gym_env, mask_fn)
 
     # Monitor records per-episode reward/length into info["episode"], which
@@ -110,13 +117,26 @@ def main():
     # -----------------------------
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
+    parser.add_argument("--restrict-idle", action="store_true",
+                         help="Solution 1a: mask idle out whenever a non-idle action is feasible.")
+    parser.add_argument("--idle-penalty", type=float, default=0.5,
+                         help="Solution 1b: idle_penalty magnitude passed to SchedulingEnv.")
+    parser.add_argument("--run-tag", type=str, default=None,
+                         help="Optional suffix for the training-plot run directory, to tell experiments apart.")
+    parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
+                         help="A2C only: 'pointer' (PointerActorCritic, default) or 'flat' (MaskableActorCritic baseline).")
+    parser.add_argument("--no-reward-norm", action="store_true",
+                         help="A2C only: disable running-std reward normalisation (on by default).")
+    parser.add_argument("--use-shaping", action="store_true",
+                         help="Solution 3: enable potential-based reward shaping in SchedulingEnv (off by default).")
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
 
     # Live + saved reward plot for this training run (one instance reused across
     # every curriculum stage below so the curve stays continuous).
-    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", args.algo)
+    plot_prefix = args.algo if not args.run_tag else f"{args.algo}_{args.run_tag}"
+    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", plot_prefix)
     plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
 
     # -----------------------------
@@ -152,6 +172,9 @@ def main():
             horizon=curriculum[0]["horizon"],
             num_jobs=curriculum[0]["num_jobs"],
             max_jobs=MAX_JOBS,
+            restrict_idle=args.restrict_idle,
+            idle_penalty=args.idle_penalty,
+            use_potential_shaping=args.use_shaping,
         )
 
         # Create PPO model WITH FIRST ENV
@@ -193,6 +216,9 @@ def main():
                 horizon=stage["horizon"],
                 num_jobs=stage["num_jobs"],
                 max_jobs=MAX_JOBS,
+                restrict_idle=args.restrict_idle,
+                idle_penalty=args.idle_penalty,
+                use_potential_shaping=args.use_shaping,
             )
 
             model.set_env(env)
@@ -223,9 +249,17 @@ def main():
             horizon=curriculum[0]["horizon"],
             num_jobs=curriculum[0]["num_jobs"],
             max_jobs=MAX_JOBS,
+            restrict_idle=args.restrict_idle,
+            idle_penalty=args.idle_penalty,
+            use_potential_shaping=args.use_shaping,
         )
 
-        model = make_maskable_a2c(first_env, device="cpu")
+        model = make_maskable_a2c(
+            first_env,
+            device="cpu",
+            policy_type=args.policy_type,
+            normalize_rewards=not args.no_reward_norm,
+        )
 
         # Curriculum training loop
         for stage in curriculum:
@@ -234,6 +268,9 @@ def main():
                 horizon=stage["horizon"],
                 num_jobs=stage["num_jobs"],
                 max_jobs=MAX_JOBS,
+                restrict_idle=args.restrict_idle,
+                idle_penalty=args.idle_penalty,
+                use_potential_shaping=args.use_shaping,
             )
             model.env = env
             train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)

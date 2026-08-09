@@ -17,7 +17,7 @@ class GymSchedulingEnv(gym.Env):
 
     metadata = {"render_modes": []} # for gymnasium
 
-    def __init__(self, env: SchedulingEnv, max_jobs: int = None):
+    def __init__(self, env: SchedulingEnv, max_jobs: int = None, restrict_idle: bool = False):
         """Initialisation of gym warpper for scheduling environment. Expects passed import
         is class SchedulingEnv from scheduling_env.py.
 
@@ -30,6 +30,15 @@ class GymSchedulingEnv(gym.Env):
         network, both of which fix their layer sizes from the first env they see).
         Job slots beyond env.num_jobs are zero-padded in the observation and
         always masked out as infeasible actions.
+
+        restrict_idle: if True, the idle action is masked out of get_action_mask()
+        whenever at least one non-idle action is currently feasible -- idle stays
+        legal only when nothing can be scheduled this step. Solution 1a of the
+        2026-08-09 idle-collapse experiments (see Future/research/): idle is
+        otherwise always legal and requires no multi-step credit assignment to
+        discover, which is why policies collapse onto it early regardless of its
+        reward. Defaults to False (existing always-legal-idle behaviour), so this
+        is opt-in and A/B-able against the baseline.
         """
         super().__init__()
 
@@ -39,6 +48,7 @@ class GymSchedulingEnv(gym.Env):
         self.num_machines = env.num_machines
         self.num_resources = env.num_resources
         self.horizon = env.horizon
+        self.restrict_idle = restrict_idle
 
         # For normalisation later on
         self.initial_capacity = env.capacity[:, :, 0].copy()
@@ -124,9 +134,13 @@ class GymSchedulingEnv(gym.Env):
                 if self.env.is_feasible(j, m, t):
                     mask[action_id] = 1
 
-        # Idle action is ALWAYS allowed
+        # Idle action: allowed by default, unless restrict_idle is set and at
+        # least one non-idle action is feasible this step (Solution 1a).
         idle_action = self.max_jobs * self.num_machines
-        mask[idle_action] = 1
+        if self.restrict_idle and mask[:idle_action].any():
+            mask[idle_action] = 0
+        else:
+            mask[idle_action] = 1
 
         return mask
 
