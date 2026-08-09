@@ -10,12 +10,13 @@ from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO # native action masking to help reduce our massive action space (num_jobs * num_machines) by removing invalid actions
 from sb3_contrib.common.wrappers import ActionMasker #
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
-from Policies.a2c_policy import make_maskable_a2c, train_a2c
-from Policies.ppo_policy import make_maskable_ppo, train_ppo
-from plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
+from Code.policies.ppo_policy import make_maskable_ppo, train_ppo
+from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.utils.paths import RL_TRAINING_DIR, LOG_DIR, MODELS_DIR, PLOTS_DIR, ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, ensure_rl_training_dirs
 
 
 
@@ -64,7 +65,8 @@ def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_
 
 
     # Save config for evaluation
-    np.savez("rl_training/models/env_config.npz", **config)
+    ensure_rl_training_dirs()
+    np.savez(ENV_CONFIG_PATH, **config)
 
 
     # Create the base environment
@@ -103,14 +105,7 @@ def main():
     # Training configuration
     # -----------------------------
     TOTAL_TIMESTEPS = 300_000
-    RL_DIR = "./rl_training"
-    LOG_DIR = f"{RL_DIR}/logs"
-    MODEL_DIR = f"{RL_DIR}/models"
-    PPO_MODEL_PATH = os.path.join(MODEL_DIR, "ppo_scheduling")
-    A2C_MODEL_PATH = os.path.join(MODEL_DIR, "a2c_scheduling.pt")
-
-    os.makedirs(LOG_DIR, exist_ok=True)
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    ensure_rl_training_dirs()
 
     # -----------------------------
     # Choose which RL algorithm to train
@@ -136,7 +131,7 @@ def main():
     # Live + saved reward plot for this training run (one instance reused across
     # every curriculum stage below so the curve stays continuous).
     plot_prefix = args.algo if not args.run_tag else f"{args.algo}_{args.run_tag}"
-    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", plot_prefix)
+    plot_run_dir = make_run_dir(str(PLOTS_DIR / "training"), plot_prefix)
     plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
 
     # -----------------------------
@@ -182,7 +177,7 @@ def main():
             "MlpPolicy",
             first_env,
             verbose=1,
-            tensorboard_log=LOG_DIR,
+            tensorboard_log=str(LOG_DIR),
             n_steps=2048,
             batch_size=256,
             learning_rate=3e-4,
@@ -240,7 +235,7 @@ def main():
     # A2C TRAINING
     # -----------------------------
     else:
-        from Policies.a2c_policy import make_maskable_a2c, train_a2c
+        from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
         import torch
 
         # Create FIRST curriculum environment

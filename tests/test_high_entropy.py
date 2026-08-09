@@ -5,9 +5,9 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 import torch.nn as nn
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
 
 
 def mask_fn(env):

@@ -18,9 +18,10 @@ from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.utils.paths import OPTUNA_RESULTS_DIR, OPTUNA_DB_PATH
 
 
 def mask_fn(env: GymSchedulingEnv):
@@ -261,7 +262,7 @@ def objective_a2c(trial: optuna.Trial):
     "pointer") and call its own .train(), so there is exactly one A2C training loop
     in the codebase.
     """
-    from Policies.a2c_policy import MaskableA2C
+    from Code.policies.a2c_policy import MaskableA2C
 
     # ==================== SEARCH SPACE ====================
 
@@ -415,8 +416,8 @@ def run_optimization(
         print(f"  {key}: {value}")
 
     # Save results
-    results_dir = "./rl_training/optuna_results"
-    os.makedirs(results_dir, exist_ok=True)
+    results_dir = OPTUNA_RESULTS_DIR
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     # Save best parameters
     import json
@@ -464,7 +465,7 @@ if __name__ == "__main__":
                         help="Number of trials to run")
     parser.add_argument("--jobs", type=int, default=1,
                         help="Number of parallel jobs")
-    parser.add_argument("--storage", type=str, default="sqlite:///rl_training/optuna.db",
+    parser.add_argument("--storage", type=str, default=f"sqlite:///{OPTUNA_DB_PATH.as_posix()}",
                         help="Database URL for persistent storage")
 
     args = parser.parse_args()

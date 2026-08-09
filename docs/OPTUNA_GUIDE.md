@@ -26,12 +26,12 @@ Optuna automatically searches for the best combination of hyperparameters by:
 For PPO (recommended):
 ```bash
 cd Neural-Knapsack-Research-Project/Code
-python optuna_tune.py --algo ppo --trials 50
+python -m Code.training.optuna_tune --algo ppo --trials 50
 ```
 
 For A2C:
 ```bash
-python optuna_tune.py --algo a2c --trials 50
+python -m Code.training.optuna_tune --algo a2c --trials 50
 ```
 
 **Options:**
@@ -41,7 +41,7 @@ python optuna_tune.py --algo a2c --trials 50
 
 **Example with parallel trials:**
 ```bash
-python optuna_tune.py --algo ppo --trials 100 --jobs 4
+python -m Code.training.optuna_tune --algo ppo --trials 100 --jobs 4
 ```
 
 ### 2. Monitor Progress
@@ -79,7 +79,7 @@ open rl_training/optuna_results/ppo_optimization_history.html
 Once optimization is complete, train a full model:
 
 ```bash
-python train_optimized.py --algo ppo
+python -m Code.training.train_optimized --algo ppo
 ```
 
 This will:
@@ -89,7 +89,7 @@ This will:
 
 **For single-stage training (no curriculum):**
 ```bash
-python train_optimized.py --algo ppo --no-curriculum
+python -m Code.training.train_optimized --algo ppo --no-curriculum
 ```
 
 ## What Gets Optimized
@@ -154,7 +154,7 @@ Check `ppo_param_importances.html` to see which parameters have the biggest impa
 ### 2. Resume Interrupted Optimization
 Optuna saves progress to a database. If optimization stops, just run the same command again:
 ```bash
-python optuna_tune.py --algo ppo --trials 100
+python -m Code.training.optuna_tune --algo ppo --trials 100
 ```
 It will continue from where it left off.
 
@@ -179,7 +179,7 @@ Use Optuna results as a starting point, then manually fine-tune:
 The optimized hyperparameters are tuned on small problems (20 jobs).
 For full-scale training (100 jobs), curriculum learning is recommended:
 ```bash
-python train_optimized.py --algo ppo  # Uses curriculum by default
+python -m Code.training.train_optimized --algo ppo  # Uses curriculum by default
 ```
 
 ## Troubleshooting
@@ -251,9 +251,9 @@ If the best trial still shows idle collapse, you may need to:
 
 ## Next Steps
 
-1. **Run optimization**: `python optuna_tune.py --algo ppo --trials 50`
+1. **Run optimization**: `python -m Code.training.optuna_tune --algo ppo --trials 50`
 2. **Analyze results**: Check visualizations and best parameters
-3. **Train full model**: `python train_optimized.py --algo ppo`
+3. **Train full model**: `python -m Code.training.train_optimized --algo ppo`
 4. **Evaluate**: Use `eval_rl_agent.py` to compare against heuristics
 5. **Iterate**: If results aren't good enough, run more trials or adjust search space
 

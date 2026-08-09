@@ -1,5 +1,9 @@
 __pycache__/
 *.pyc
 
-# Generated training/evaluation artifacts
-rl_training/plots/
+# Generated training/evaluation artifacts -- single canonical location, see
+# Code/utils/paths.py. Previously only rl_training/plots/ was ignored here, which
+# is why model checkpoints and TensorBoard logs ended up accidentally committed
+# under Code/rl_training/ -- see Future/research/2026-08-09-pointer-network-
+# action-head.md.
+rl_training/

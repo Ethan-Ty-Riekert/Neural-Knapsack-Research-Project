@@ -5,7 +5,7 @@ https://gymnasium.farama.org/
 import numpy as np 
 import gymnasium as gym
 from typing import List
-from scheduling_env import SchedulingEnv
+from .scheduling_env import SchedulingEnv
 
 
 class GymSchedulingEnv(gym.Env):

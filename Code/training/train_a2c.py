@@ -9,11 +9,12 @@ import numpy as np
 import argparse
 import torch
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
-from Policies.a2c_policy import make_maskable_a2c, train_a2c
-from plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
+from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.utils.paths import PLOTS_DIR, ENV_CONFIG_A2C_PATH, A2C_MODEL_PATH, ensure_rl_training_dirs
 from stable_baselines3.common.monitor import Monitor
 from sb3_contrib.common.wrappers import ActionMasker
 
@@ -57,7 +58,8 @@ def make_env(
         config["max_jobs"] = max_jobs
 
     # Save config
-    np.savez("rl_training/models/env_config_a2c.npz", **config)
+    ensure_rl_training_dirs()
+    np.savez(ENV_CONFIG_A2C_PATH, **config)
 
     # Create environment
     base_env = SchedulingEnv(
@@ -85,16 +87,10 @@ def make_env(
 def main():
     # Configuration
     TOTAL_TIMESTEPS = 500_000
-    RL_DIR = "./rl_training"
-    LOG_DIR = f"{RL_DIR}/logs"
-    MODEL_DIR = f"{RL_DIR}/models"
-    A2C_MODEL_PATH = os.path.join(MODEL_DIR, "a2c_scheduling.pt")
-
-    os.makedirs(LOG_DIR, exist_ok=True)
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    ensure_rl_training_dirs()
 
     # Live plotter
-    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", "a2c")
+    plot_run_dir = make_run_dir(str(PLOTS_DIR / "training"), "a2c")
     plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
 
     # Curriculum learning stages

@@ -28,33 +28,37 @@ The repository currently implements the simplest static version of the bin-packi
 This forms the foundation for later extensions into dynamic cloud resource allocation.
 
 ## Repository Structure
+```
 Neural-Knapsack-Research-Project/
 │
 ├── Code/
-│   ├── scheduling_env.py       # Core resource-constrained scheduling environment
-│   ├── gym_scheduling_wrapper.py # Gymnasium wrapper (flattened actions, obs, masking)
-│   ├── env_config.py           # Centralised, seeded environment configuration
-│   ├── train_rl_agent.py       # Curriculum training entry point (PPO / A2C)
-│   ├── train_optimized.py      # Training with Optuna-optimized hyperparameters
-│   ├── optuna_tune.py          # Hyperparameter optimization using Optuna
-│   ├── eval_rl_agent.py        # Evaluation of a trained agent against heuristics
-│   ├── plotting_utils.py       # Shared live + saved plotting for training/evaluation
-│   ├── OPTUNA_GUIDE.md         # Comprehensive guide for hyperparameter tuning
-│   ├── Policies/                # PPO (sb3_contrib) and hand-rolled maskable A2C
-│   └── Testing/
-│       └── test_env.py         # Test script and visualisation
+│   ├── env/                    # scheduling_env.py, gym_scheduling_wrapper.py, env_config.py
+│   ├── policies/                # ppo_policy.py, a2c_policy.py, pointer_policy.py
+│   ├── training/                 # train_rl_agent.py, train_a2c.py, train_optimized.py, optuna_tune.py
+│   ├── evaluation/                # eval_rl_agent.py
+│   └── utils/                      # plotting_utils.py, paths.py (canonical rl_training/ locations)
 │
-├── rl_training/
+├── tests/                      # test_env.py, test_diagnostic.py, test_high_entropy.py
+├── docs/                       # OPTUNA_GUIDE.md, QUICK_START.md, and dated session reports
+├── Future/                     # planned extensions + Future/research/ (training-log.md,
+│                                # dated investigation write-ups -- check here first for
+│                                # "what have we tried and what happened")
+│
+├── rl_training/                 # generated, gitignored -- single canonical output location
 │   ├── models/                 # Saved model checkpoints + env config snapshots
 │   ├── logs/                   # TensorBoard logs
 │   ├── optuna_results/         # Optuna optimization results and visualizations
 │   └── plots/                  # Live-plotting output: training/<run>/ and eval/<run>/
-│       └── ...                 # PNG snapshots + CSV reward logs per run (see plotting_utils.py)
 │
-├── README.md                  # Project documentation
-└── requirements.txt           # Python dependencies
+├── README.md
+└── requirements.txt
+```
 
-
+**Running any script**: invoke as a module from the repo root, e.g.
+`python -m Code.training.train_rl_agent --algo a2c` -- not
+`python Code/training/train_rl_agent.py`. Script mode puts the script's own
+directory on `sys.path[0]` rather than the repo root, which breaks the `Code.*`
+absolute imports used throughout (`from Code.env.scheduling_env import ...`, etc.).
 
 ## Components
 
@@ -81,7 +85,12 @@ Includes:
 The project includes comprehensive hyperparameter optimization using Optuna to address common RL challenges:
 
 ### Current Challenges
-- **Policy collapse to idling**: Agent learns to always idle instead of scheduling jobs
+- **Policy collapse to idling**: historically the agent learned to always idle instead
+  of scheduling jobs. Largely traced to a since-fixed environment bug (capacity never
+  properly reset between episodes) plus missing exploration/reward-normalisation in
+  the hand-rolled A2C -- see `Future/research/training-log.md` and
+  `Future/research/2026-08-09-pointer-network-action-head.md` for the current
+  understanding and what's still open.
 - **Large action space**: ~1000 discrete actions (jobs × machines) makes exploration difficult
 - **PPO gradient clipping**: Can trap policies in suboptimal regions for large action spaces
 - **Reward imbalance**: Idling penalty must be carefully balanced against other penalties
@@ -89,15 +98,13 @@ The project includes comprehensive hyperparameter optimization using Optuna to a
 ### Solution
 Use Optuna to automatically find optimal hyperparameters:
 
-**Quick Start:**
+**Quick Start** (run from the repo root):
 ```bash
-cd Code
-
 # 1. Run hyperparameter optimization (50-100 trials recommended)
-python optuna_tune.py --algo ppo --trials 50
+python -m Code.training.optuna_tune --algo ppo --trials 50
 
 # 2. Train with optimized parameters
-python train_optimized.py --algo ppo
+python -m Code.training.train_optimized --algo ppo
 ```
 
 **What Gets Optimized:**
@@ -116,7 +123,7 @@ Optimization results are saved to `rl_training/optuna_results/`:
 - Parameter importance analysis
 
 **Documentation:**
-See `Code/OPTUNA_GUIDE.md` for detailed instructions, troubleshooting, and advanced usage.
+See `docs/OPTUNA_GUIDE.md` for detailed instructions, troubleshooting, and advanced usage.
 
 ## Planned Extensions
 

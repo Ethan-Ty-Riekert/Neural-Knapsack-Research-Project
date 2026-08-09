@@ -19,13 +19,13 @@ Your RL agent is stuck learning to always idle, resulting in:
 ### Step 1: Install Optuna
 ```bash
 cd Neural-Knapsack-Research-Project
-pip install -r requirements_optuna.txt
+pip install -r requirements.txt
 ```
 
 ### Step 2: Run Hyperparameter Optimization
 ```bash
-cd Code
-python optuna_tune.py --algo ppo --trials 50
+
+python -m Code.training.optuna_tune --algo ppo --trials 50
 ```
 
 **What this does:**
@@ -42,7 +42,7 @@ python optuna_tune.py --algo ppo --trials 50
 
 ### Step 3: Train with Optimized Parameters
 ```bash
-python train_optimized.py --algo ppo
+python -m Code.training.train_optimized --algo ppo
 ```
 
 **What this does:**
@@ -99,13 +99,13 @@ idle_penalty = trial.suggest_float("idle_penalty", 1.0, 5.0)  # Higher range
 ### Optimization too slow
 ```bash
 # Use parallel trials (requires multiple cores)
-python optuna_tune.py --algo ppo --trials 50 --jobs 4
+python -m Code.training.optuna_tune --algo ppo --trials 50 --jobs 4
 ```
 
 ### Want to continue interrupted optimization
 Just run the same command again - Optuna resumes from database:
 ```bash
-python optuna_tune.py --algo ppo --trials 100  # Adds 50 more to existing 50
+python -m Code.training.optuna_tune --algo ppo --trials 100  # Adds 50 more to existing 50
 ```
 
 ## Analyzing Results
@@ -138,10 +138,10 @@ Open in browser:
 A2C doesn't have PPO's gradient clipping issues:
 ```bash
 # Optimize A2C
-python optuna_tune.py --algo a2c --trials 50
+python -m Code.training.optuna_tune --algo a2c --trials 50
 
 # Train with optimized A2C
-python train_optimized.py --algo a2c
+python -m Code.training.train_optimized --algo a2c
 ```
 
 ## Full Documentation
@@ -157,7 +157,7 @@ See `OPTUNA_GUIDE.md` for:
 
 1. **Evaluate performance:**
    ```bash
-   python eval_rl_agent.py --model rl_training/models/ppo_scheduling_optimized.zip
+   python -m Code.evaluation.eval_rl_agent --model rl_training/models/ppo_scheduling_optimized.zip
    ```
 
 2. **Compare to heuristics:**

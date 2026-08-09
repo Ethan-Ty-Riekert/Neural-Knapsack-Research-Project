@@ -14,10 +14,11 @@ from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
-from plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.utils.paths import LOG_DIR, MODELS_DIR, PLOTS_DIR, OPTUNA_RESULTS_DIR, ENV_CONFIG_PATH, ensure_rl_training_dirs
 
 
 def mask_fn(env: GymSchedulingEnv):
@@ -60,7 +61,8 @@ def make_env(
         config["max_jobs"] = max_jobs
 
     # Save config for evaluation
-    np.savez("rl_training/models/env_config.npz", **config)
+    ensure_rl_training_dirs()
+    np.savez(ENV_CONFIG_PATH, **config)
 
     # Create the base environment with tunable penalties
     base_env = SchedulingEnv(
@@ -88,8 +90,7 @@ def make_env(
 
 def load_best_params(algorithm: str = "ppo"):
     """Load best hyperparameters from Optuna optimization."""
-    results_dir = "./rl_training/optuna_results"
-    best_params_file = os.path.join(results_dir, f"{algorithm}_best_params.json")
+    best_params_file = OPTUNA_RESULTS_DIR / f"{algorithm}_best_params.json"
 
     if not os.path.exists(best_params_file):
         raise FileNotFoundError(
@@ -122,17 +123,13 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
 
     # Setup directories
     TOTAL_TIMESTEPS = 500_000 if use_curriculum else 300_000
-    RL_DIR = "./rl_training"
-    LOG_DIR = f"{RL_DIR}/logs"
-    MODEL_DIR = f"{RL_DIR}/models"
-    PPO_MODEL_PATH = os.path.join(MODEL_DIR, "ppo_scheduling_optimized")
-    A2C_MODEL_PATH = os.path.join(MODEL_DIR, "a2c_scheduling_optimized.pt")
+    PPO_MODEL_PATH = MODELS_DIR / "ppo_scheduling_optimized"
+    A2C_MODEL_PATH = MODELS_DIR / "a2c_scheduling_optimized.pt"
 
-    os.makedirs(LOG_DIR, exist_ok=True)
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    ensure_rl_training_dirs()
 
     # Live plotter
-    plot_run_dir = make_run_dir(f"{RL_DIR}/plots/training", f"{algorithm}_optimized")
+    plot_run_dir = make_run_dir(str(PLOTS_DIR / "training"), f"{algorithm}_optimized")
     plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
 
     # Extract reward penalties from params
@@ -204,7 +201,7 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
             "MlpPolicy",
             first_env,
             verbose=1,
-            tensorboard_log=LOG_DIR,
+            tensorboard_log=str(LOG_DIR),
             learning_rate=params.get("learning_rate", 3e-4),
             n_steps=params.get("n_steps", 2048),
             batch_size=params.get("batch_size", 256),
@@ -258,7 +255,7 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
 
     # ==================== A2C TRAINING ====================
     else:
-        from Policies.a2c_policy import MaskableA2C
+        from Code.policies.a2c_policy import MaskableA2C
 
         # For A2C, we need to modify the class to accept hyperparameters
         # This is similar to what we did in optuna_tune.py

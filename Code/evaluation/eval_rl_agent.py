@@ -12,11 +12,12 @@ from tqdm import tqdm
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from scheduling_env import SchedulingEnv
-from gym_scheduling_wrapper import GymSchedulingEnv
-from env_config import generate_env_config
-from Policies.a2c_policy import make_maskable_a2c
-from plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.policies.a2c_policy import make_maskable_a2c
+from Code.utils.plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter
+from Code.utils.paths import ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, PLOTS_DIR
 import torch
 
 
@@ -29,7 +30,7 @@ def mask_fn(env: GymSchedulingEnv):
 # Environment factory
 # ============================================================
 def make_env():
-    data = np.load("rl_training/models/env_config.npz")
+    data = np.load(ENV_CONFIG_PATH)
     config = {k: data[k] for k in data.files}
 
     base_env = SchedulingEnv(
@@ -206,9 +207,16 @@ def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None):
 # Plot clean, informative graphs
 # ============================================================
 def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
-    # Convert to arrays
-    ppo_util = np.stack([r["utilisation_over_time"] for r in ppo_runs])
-    heur_util = np.stack([r["utilisation_over_time"] for r in heur_runs])
+    # Episodes can terminate at different timesteps (depending on how many jobs get
+    # scheduled before the horizon is reached), so utilisation_over_time isn't
+    # uniform-length across runs. Truncate to the shortest common length across
+    # BOTH sets before stacking, since they're plotted on one shared time axis.
+    min_len = min(
+        min(len(r["utilisation_over_time"]) for r in ppo_runs),
+        min(len(r["utilisation_over_time"]) for r in heur_runs),
+    )
+    ppo_util = np.stack([r["utilisation_over_time"][:min_len] for r in ppo_runs])
+    heur_util = np.stack([r["utilisation_over_time"][:min_len] for r in heur_runs])
 
     # Compute mean curves
     ppo_mean = ppo_util.mean(axis=0).mean(axis=1)
@@ -289,6 +297,8 @@ def main():
     # -----------------------------------------
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
+    parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
+                         help="A2C only: must match the policy_type the checkpoint was trained with.")
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
@@ -297,18 +307,16 @@ def main():
     # Load model depending on algorithm
     # -----------------------------------------
     if USE_PPO:
-        MODEL_PATH = "./rl_training/models/ppo_scheduling"
-        model = MaskablePPO.load(MODEL_PATH)
+        model = MaskablePPO.load(PPO_MODEL_PATH)
     else:
-        MODEL_PATH = "./rl_training/models/a2c_scheduling.pt"
         env = make_env()
-        model = make_maskable_a2c(env)
-        model.model.load_state_dict(torch.load(MODEL_PATH))
+        model = make_maskable_a2c(env, policy_type=args.policy_type)
+        model.model.load_state_dict(torch.load(A2C_MODEL_PATH))
 
     # -----------------------------------------
     # Evaluate
     # -----------------------------------------
-    run_dir = make_run_dir("rl_training/plots/eval", args.algo)
+    run_dir = make_run_dir(str(PLOTS_DIR / "eval"), args.algo)
     ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=50, run_dir=run_dir)
     plot_results(ppo_runs, heur_runs, "EDF", run_dir)
     print(f"\nEvaluation plots saved to: {run_dir}\n")

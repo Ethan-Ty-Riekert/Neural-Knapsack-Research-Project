@@ -1,11 +1,11 @@
 """Testing file made entirely with AI.
-To run, go to parent directory Code/ and run python3 -m Testing.test_env"""
+To run, go to the repo root and run: python -m tests.test_env"""
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from scheduling_env import SchedulingEnv
+from Code.env.scheduling_env import SchedulingEnv
 
 
 # ============================================================
