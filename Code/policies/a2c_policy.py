@@ -73,9 +73,19 @@ def masked_softmax(logits: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     probs = torch.softmax(masked_logits, dim=-1)
     return probs
 
-def select_action(model, obs, mask, device):
+def select_action(model, obs, mask, device, deterministic: bool = False):
     """Select an action using masked softmax.
     This is used both during training and evaluation.
+
+    deterministic: if True, take the argmax action instead of sampling from the
+    masked Categorical distribution. BUG FIX (this session): this previously had
+    no deterministic/greedy mode at all, so `MaskableA2C.act()` always sampled --
+    even during evaluation -- while PPO's evaluation uses
+    `model.predict(..., deterministic=True)`. That asymmetry made any A2C-vs-PPO
+    or A2C-vs-EDF comparison noisier/unfair for A2C specifically, since a
+    partially-converged stochastic policy can select a materially worse action
+    than its own argmax on any given step. log_prob/value are still computed from
+    the same masked distribution either way, for callers that need them.
     """
 
     # Convert obs + mask to tensors
@@ -91,8 +101,8 @@ def select_action(model, obs, mask, device):
     # Create categorical distribution over valid actions
     dist = torch.distributions.Categorical(probs)
 
-    # Sample an action
-    action = dist.sample()
+    # Sample (training / stochastic eval) or take the argmax (greedy eval)
+    action = probs.argmax(dim=-1) if deterministic else dist.sample()
 
     # Log-probability of chosen action
     log_prob = dist.log_prob(action)
@@ -279,13 +289,17 @@ class MaskableA2C:
         # Rollout buffer
         self.buffer = RolloutBuffer(self.n_steps)
 
-    def act(self, obs, mask):
+    def act(self, obs, mask, deterministic: bool = False):
         """
         Action selection for evaluation (no gradients).
+
+        deterministic: passed straight through to select_action() -- set True for
+        a fair, greedy comparison against PPO's model.predict(deterministic=True)
+        and against heuristics like EDF (see select_action()'s docstring).
         """
         self.model.eval()
         with torch.no_grad():
-            action, _, _ = select_action(self.model, obs, mask, self.device)
+            action, _, _ = select_action(self.model, obs, mask, self.device, deterministic=deterministic)
         return action
 
     def train(self, total_timesteps=200_000, plotter=None):

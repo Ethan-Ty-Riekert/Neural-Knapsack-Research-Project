@@ -56,6 +56,17 @@ class GymSchedulingEnv(gym.Env):
         ### Action Space ###
         self.action_space = gym.spaces.Discrete(self.max_jobs * self.num_machines + 1) # +1 to allow for the idling action
 
+        # Belt-and-suspenders safety net (this session): invalid actions never
+        # advance SchedulingEnv.time and the env has no other truncation signal,
+        # so a bug that lets a policy repeatedly select an action the mask
+        # (wrongly) reports as valid -- as the horizon-boundary mask/step
+        # mismatch fixed above did -- could previously hang an episode forever.
+        # This is independent of that specific fix: it guards the general class
+        # of bug (invalid action -> no state change -> no other way to end the
+        # episode), not just the one instance of it found this session.
+        self._invalid_action_count = 0
+        self._max_invalid_actions = 2 * self.max_jobs * self.num_machines
+
         ### Observation Space ###
         obs_dim = self._compute_obs_dim() # gymnasium method
         self.observation_space = gym.spaces.Box(
@@ -125,7 +136,22 @@ class GymSchedulingEnv(gym.Env):
         total_actions = self.max_jobs * self.num_machines + 1
         mask = np.zeros(total_actions, dtype=np.int8)
 
-        t = min(self.env.time, self.horizon - 1)
+        # BUG FIX (this session): this used to clamp t to horizon-1, which
+        # disagreed with SchedulingEnv.step()/is_feasible()'s own uncapped
+        # self.time. At env.time == horizon (reachable -- episode only ends once
+        # time > horizon), a duration-1 job could read as feasible here
+        # ((horizon-1)+1 == horizon, not > horizon) but then fail the real check
+        # inside step() (horizon+1 > horizon), landing in the invalid-action
+        # branch -- which does not advance time, so a policy trusting this mask
+        # could get stuck repeating the same invalid action forever. Using the
+        # uncapped self.time here instead matches step() exactly, and is safe
+        # because is_feasible() short-circuits on t+duration > horizon before any
+        # array indexing, and every job has duration >= 1, so no out-of-bounds
+        # read is possible for t >= horizon. NOTE: _get_obs()'s separate
+        # t_idx = min(self.env.time, self.horizon - 1) (above) must stay clamped
+        # -- that one directly indexes self.env.capacity[m, r, t_idx] and a real
+        # out-of-bounds read there.
+        t = self.env.time
 
         # Normal feasible scheduling actions
         for j in self.env.remaining_jobs:
@@ -150,6 +176,8 @@ class GymSchedulingEnv(gym.Env):
         super().reset(seed=seed)
         self.env.reset()
 
+        self._invalid_action_count = 0
+
         # Recompute initial capacity (in case reset changed it)
         self.initial_capacity = self.env.capacity[:, :, 0].copy()
 
@@ -169,13 +197,22 @@ class GymSchedulingEnv(gym.Env):
             # Padding job slots (job >= self.num_jobs) are never in
             # self.env.remaining_jobs, so SchedulingEnv.step() already treats them
             # as an ordinary invalid action -- no special-casing needed here.
+            time_before = self.env.time
             _, reward, done = self.env.step((job, machine))
+            # SchedulingEnv.step()'s invalid-action branches (job already
+            # scheduled / infeasible placement) never advance self.env.time, so
+            # an unchanged time is a cheap, exact proxy for "that was an invalid
+            # action" without needing step() to return an extra flag.
+            if self.env.time == time_before:
+                self._invalid_action_count += 1
+            else:
+                self._invalid_action_count = 0
 
         obs = self._get_obs()
         info = {"action_mask": self.get_action_mask()}
 
         terminated = done
-        truncated = False
+        truncated = self._invalid_action_count >= self._max_invalid_actions
 
         return obs, float(reward), terminated, truncated, info
 

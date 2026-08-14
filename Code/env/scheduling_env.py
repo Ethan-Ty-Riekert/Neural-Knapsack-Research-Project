@@ -1,7 +1,16 @@
-"""scheduling.py: Revised environment to fit new mathematical formulation 
+"""scheduling.py: Revised environment to fit new mathematical formulation
 as of 10/05/2026. Resource constrained scheduling environment for cloud resource
-allocation. Jobs are deterministic and static. It is assumed that the job requirements 
-can fit on at least an empty machine"""
+allocation. Jobs are deterministic and static. It is assumed that the job requirements
+can fit on at least an empty machine
+
+Closest directly domain-comparable related work: Zhang et al., "SPANE: A
+Symmetry-Preserving Architecture for Multi-NUMA Environments -- A Deep
+Reinforcement Learning Approach for Dynamic VM Scheduling" (arXiv:2504.14946,
+2025) -- unlike the generic job-shop/routing literature cited in
+Code/policies/pointer_policy.py (which justifies the pointer-network
+*architecture*), SPANE targets DRL for cloud VM scheduling specifically, i.e.
+the same problem *domain* this environment models. See
+Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md."""
 import numpy as np
 from typing import Tuple, List, Dict, Union
 
@@ -181,17 +190,24 @@ class SchedulingEnv:
         # Invalid if job already scheduled
         if job not in self.remaining_jobs:
             return (self.get_state(), -self.invalidPenalty, False)
-        
-        # Machine activation
-        machine_was_inactive = self.machine_active[machine] == 0
-        if machine_was_inactive:
-            self.machine_active[machine] = 1
 
         # Feasibility check
         if not self.is_feasible(job, machine, self.time):
             return (self.get_state(), -self.invalidPenalty, False)
-        
+
         ## If made it up to this case the placement is valid ##
+        # Machine activation.
+        # BUG FIX (this session): this used to flip machine_active[machine] to 1
+        # BEFORE the feasibility check above, and never rolled it back if that
+        # same action then failed feasibility -- so an infeasible attempt on a
+        # never-used machine permanently marked it "active" without the -lambda1
+        # activation penalty ever being charged on the real first successful use.
+        # Moved here, after feasibility is confirmed, so machine_was_inactive only
+        # ever reflects an actual placement.
+        machine_was_inactive = self.machine_active[machine] == 0
+        if machine_was_inactive:
+            self.machine_active[machine] = 1
+
         # Apply resource usage
         duration = self.job_durations[job]
         for tau in range(self.time, self.time + duration):
@@ -245,12 +261,33 @@ class SchedulingEnv:
         """Reward function"""
         reward = 0.0
 
-        # Machine activation penalty
-        if ym is True:
+        # Machine activation penalty.
+        # BUG FIX (this session): this was `if ym is True:` -- but every caller
+        # passes a numpy bool_ (from `self.machine_active[machine] == 0`), and
+        # `np.bool_(True) is True` is False (identity check against a different
+        # object than Python's True singleton, not an equality check). So this
+        # branch has never actually fired, in the project's entire history,
+        # independent of Issue A above: the -lambda1 activation penalty has been
+        # silent dead code. Truthiness (`if ym:`) is correct for both a Python
+        # bool and a numpy bool_.
+        if ym:
             reward -= self.lambda1
 
-        # Tardiness penalty 1.0 is linear
-        reward -= self.lambda2 * self.job_weights[j] * self.tardiness[j]
+        # Tardiness penalty, normalised by horizon.
+        # BUG FIX (this session): raw tardiness T_j = max(0, t+P_j-d_j) is
+        # unbounded and scales with horizon H (bounded by H-10 given
+        # deadline_range=(10,110)), while every other reward term here is a fixed
+        # O(1) constant regardless of curriculum stage. Across horizon in
+        # {20,40,60,100}, that let this single term's magnitude grow ~5x from the
+        # first to the last curriculum stage while the value function/model is
+        # reused across all stages with no reset -- badly miscalibrating the value
+        # target right at the stage transitions where it matters most (see
+        # Future/research/training-log.md). Dividing by self.horizon keeps
+        # T_j/H < 1 for any job that is ever actually scheduled (is_feasible
+        # guarantees t+P_j <= H, and d_j >= 10), so this term stays on the same
+        # O(1) footing as the others at every stage. See
+        # Future/research/<dated>-fixed-instance-bugfix-and-reward-rescale.md.
+        reward -= self.lambda2 * self.job_weights[j] * (self.tardiness[j] / self.horizon)
 
         # Hotspot penalty
         reward -= self.lambda3 * delta_theta

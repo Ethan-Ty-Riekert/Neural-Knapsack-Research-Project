@@ -80,7 +80,13 @@ def run_ppo(model):
         if hasattr(model, "predict"):
             action, _ = model.predict(obs, action_masks=action_mask, deterministic=True)
         else:
-            action = model.act(obs, action_mask)
+            # BUG FIX (this session): model.act() previously had no
+            # deterministic/greedy mode, so A2C evaluation always sampled from the
+            # masked Categorical distribution while PPO's evaluation (above) is
+            # already greedy via deterministic=True -- an eval-protocol asymmetry
+            # that made A2C's reported numbers noisier/less representative of its
+            # best behaviour. See a2c_policy.py::select_action()'s docstring.
+            action = model.act(obs, action_mask, deterministic=True)
 
         obs, reward, done, truncated, info = env.step(action)
 
@@ -206,7 +212,13 @@ def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None):
 # ============================================================
 # Plot clean, informative graphs
 # ============================================================
-def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
+def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir, model_label="PPO"):
+    # BUG FIX (this session): every plot below used to hardcode the literal
+    # string "PPO" for the model's legend/bar label regardless of which
+    # algorithm/policy_type was actually evaluated -- so an A2C (flat or
+    # pointer) eval run produced plots indistinguishable from a real PPO run
+    # by anything except the output directory name. `model_label` now carries
+    # the real identity through from main() (e.g. "A2C (flat)").
     # Episodes can terminate at different timesteps (depending on how many jobs get
     # scheduled before the horizon is reached), so utilisation_over_time isn't
     # uniform-length across runs. Truncate to the shortest common length across
@@ -241,7 +253,7 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
     fig1 = plt.figure(figsize=(12, 5))
     steps = np.arange(len(ppo_mean))
 
-    plt.plot(steps, ppo_mean, label="PPO", color="tab:blue")
+    plt.plot(steps, ppo_mean, label=model_label, color="tab:blue")
     plt.fill_between(steps, ppo_mean - ppo_std, ppo_mean + ppo_std, alpha=0.2)
 
     plt.plot(steps, heur_mean, label="Fixed Heuristic", color="tab:orange")
@@ -258,7 +270,7 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
     # 2. Total tardiness (bar chart)
     # ---------------------------------------------------------
     fig2 = plt.figure(figsize=(6, 5))
-    plt.bar(["PPO", heuristic_name], [ppo_tard.mean(), heur_tard.mean()],
+    plt.bar([model_label, heuristic_name], [ppo_tard.mean(), heur_tard.mean()],
             yerr=[ppo_tard.std(), heur_tard.std()],
             color=["tab:blue", "tab:orange"])
     plt.title("Total Tardiness (mean ± std over 50 runs)")
@@ -269,7 +281,7 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
     # 3. Late jobs
     # ---------------------------------------------------------
     fig3 = plt.figure(figsize=(6, 5))
-    plt.bar(["PPO", heuristic_name], [ppo_late.mean(), heur_late.mean()],
+    plt.bar([model_label, heuristic_name], [ppo_late.mean(), heur_late.mean()],
             yerr=[ppo_late.std(), heur_late.std()],
             color=["tab:blue", "tab:orange"])
     plt.title("Number of Late Jobs (mean ± std)")
@@ -280,7 +292,7 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir):
     # 4. Total reward
     # ---------------------------------------------------------
     fig4 = plt.figure(figsize=(6, 5))
-    plt.bar(["PPO", heuristic_name], [ppo_reward.mean(), heur_reward.mean()],
+    plt.bar([model_label, heuristic_name], [ppo_reward.mean(), heur_reward.mean()],
             yerr=[ppo_reward.std(), heur_reward.std()],
             color=["tab:blue", "tab:orange"])
     plt.title("Total Reward (mean ± std)")
@@ -299,6 +311,20 @@ def main():
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
     parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
                          help="A2C only: must match the policy_type the checkpoint was trained with.")
+    parser.add_argument("--model-path", type=str, default=None,
+                         help="Override the checkpoint path (default: the fixed PPO_MODEL_PATH/A2C_MODEL_PATH "
+                              "from Code/utils/paths.py). Needed e.g. to evaluate a "
+                              "train_optimized.py checkpoint, which is saved under a "
+                              "differently-named path (a2c_{policy_type}_scheduling_optimized.pt).")
+    parser.add_argument("--run-tag", type=str, default=None,
+                         help="Optional suffix for the eval-plot run directory, to tell runs apart.")
+    parser.add_argument("--embed-dim", type=int, default=None,
+                         help="Pointer policy only: must match the embed_dim the checkpoint was trained "
+                              "with (e.g. a train_optimized.py run using Optuna-found params). Defaults to "
+                              "PointerActorCritic's own default (128) if not given.")
+    parser.add_argument("--hidden", type=int, default=None,
+                         help="Pointer policy only: must match the hidden size the checkpoint was trained "
+                              "with. Defaults to PointerActorCritic's own default (64) if not given.")
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
@@ -307,18 +333,32 @@ def main():
     # Load model depending on algorithm
     # -----------------------------------------
     if USE_PPO:
-        model = MaskablePPO.load(PPO_MODEL_PATH)
+        model = MaskablePPO.load(args.model_path or PPO_MODEL_PATH)
     else:
         env = make_env()
-        model = make_maskable_a2c(env, policy_type=args.policy_type)
-        model.model.load_state_dict(torch.load(A2C_MODEL_PATH))
+        # BUG FIX (this session): building the pointer network with its bare
+        # defaults (embed_dim=128, hidden=64) crashes load_state_dict with a
+        # shape mismatch against any checkpoint trained with different
+        # architecture params (e.g. Optuna-tuned hidden=32) -- there was
+        # previously no way to tell eval which architecture size to build.
+        policy_kwargs = None
+        if args.policy_type == "pointer" and (args.embed_dim is not None or args.hidden is not None):
+            policy_kwargs = {}
+            if args.embed_dim is not None:
+                policy_kwargs["embed_dim"] = args.embed_dim
+            if args.hidden is not None:
+                policy_kwargs["hidden"] = args.hidden
+        model = make_maskable_a2c(env, policy_type=args.policy_type, policy_kwargs=policy_kwargs)
+        model.model.load_state_dict(torch.load(args.model_path or A2C_MODEL_PATH))
 
     # -----------------------------------------
     # Evaluate
     # -----------------------------------------
-    run_dir = make_run_dir(str(PLOTS_DIR / "eval"), args.algo)
+    run_tag = args.algo if not args.run_tag else f"{args.algo}_{args.run_tag}"
+    run_dir = make_run_dir(str(PLOTS_DIR / "eval"), run_tag)
+    model_label = "PPO" if USE_PPO else f"A2C ({args.policy_type})"
     ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=50, run_dir=run_dir)
-    plot_results(ppo_runs, heur_runs, "EDF", run_dir)
+    plot_results(ppo_runs, heur_runs, "EDF", run_dir, model_label=model_label)
     print(f"\nEvaluation plots saved to: {run_dir}\n")
 
 

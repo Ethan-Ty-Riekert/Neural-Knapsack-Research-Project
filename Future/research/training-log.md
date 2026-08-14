@@ -29,6 +29,198 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-10 -- Fresh Optuna + full-curriculum reruns post-bugfix: RL closes the gap to EDF
+
+**Config:** A2C, both `flat` (`MaskableActorCritic`) and `pointer`
+(`PointerActorCritic`) architectures, full `train_optimized.py` curriculum
+(50k/100k/150k/200k = 500k timesteps), using fresh Optuna-tuned hyperparameters
+(independent 50-trial studies per architecture, tuning env `horizon=30,
+num_jobs=20, num_machines=5`) -- built on top of the bug fixes and reward
+rescale in the entry immediately below and detailed in
+`Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md`.
+Notably: `lambda_2` (tardiness weight) converged to 5.85 (flat) / 3.85
+(pointer) in both studies, well above the old `[0.5, 2.0]` search range's
+ceiling -- expected, since tardiness is now `T_j/H` (O(1)) instead of raw `T_j`
+and needed more relative weight to matter. Pointer's tuned architecture:
+`embed_dim=128, hidden=32` (hidden below the untuned default of 64).
+
+**Stats:**
+```
+Training, first200->last200 mean episode reward per stage:
+                       stage1(15j/h20)     stage2(30j/h40)     stage3(60j/h60)     stage4(100j/h100)
+a2c_flat_optimized     57.75  -> 88.16     129.40 -> 135.10    133.21 -> 132.75    187.53 -> 180.85
+a2c_pointer_optimized  52.83 -> 39.27      132.46 -> 129.65    137.85 -> 136.67    212.21 -> 227.66
+
+Deterministic eval, 50 episodes, stage-4 instance (horizon=100, num_jobs=100, seed=0),
+rescaled reward, freshly-measured EDF baseline (std=0.00 throughout -- both sides
+deterministic on this one fixed, repeated instance):
+                       total_reward   total_tardiness   late_jobs (/100)
+EDF (fresh)            289.38         16.00              10.00
+a2c_flat_optimized     231.84         866.00             27.00
+a2c_pointer_optimized  270.23         1227.00            32.00
+```
+
+**Observation:** RL reward at stage 4 is now within **7% (pointer) / 20%
+(flat)** of EDF -- compare against every prior fixed-instance entry in this
+log, where stage 4 was deeply negative (e.g. `-21.8 -> 50.7` for the best prior
+result, `flat_fixed_full`, itself against a *differently-scaled, not directly
+comparable* EDF reference of `+275.5`). This is the first entry in this log
+where RL is reward-competitive with EDF rather than losing by an order of
+magnitude or landing on the wrong sign. However, RL's tardiness (866-1227) and
+late-jobs (27-32) remain far worse than EDF's (16.0 / 10) -- the now-O(1)
+tardiness term is small relative to the flat `+3.0` placement / `+50`
+completion bonuses, so a policy can score well on reward while still routinely
+scheduling jobs late. Pointer beat flat here (270.23 vs. 231.84, and still
+improving at the end of stage 4 training: 212.21->227.66 vs. flat's plateaued
+187.53->180.85) -- a reversal of the previous pointer-vs-flat comparison two
+entries below, plausibly because this run gave each architecture its own
+properly-tuned hyperparameters instead of reusing the flat head's incidental
+defaults for the pointer network.
+
+**Also discovered (documented, not fixed this session):** the saved
+`training_rewards.csv`'s `timestep` column resets to ~0 at every curriculum
+stage boundary (`MaskableA2C.train()`'s step counter `t` is local per call, not
+cumulative across the curriculum loop's repeated `agent.train()` calls) -- the
+stage table above was built using episode-index segments split at the reset
+points, not by filtering on `timestep` directly, after that filtering
+approach silently produced an empty "stage 4" bucket. The saved
+`training_rewards.png` plots for these runs visibly wrap on the x-axis as a
+result; this is a logging/plotting issue, not a training-correctness issue.
+Also hit and fixed in passing: `train_optimized.py` crashed immediately on
+Windows when its output was piped/redirected, due to Greek-subscript
+characters in a print statement that cp1252 (the default Windows console
+codepage) can't encode -- replaced with plain ASCII (`lambda_1` etc.); and
+`eval_rl_agent.py` had no way to evaluate a checkpoint saved under a
+non-default path or a pointer network built with non-default `embed_dim`/
+`hidden` -- added `--model-path`/`--embed-dim`/`--hidden` overrides, needed to
+evaluate these `train_optimized.py` checkpoints at all.
+
+**Conclusion / next step:** The session's opening hypothesis -- that RL losing
+badly to EDF on an instance it trains on repeatedly was primarily an
+optimization/implementation-bug problem, not a capability or generalization
+gap -- is well supported by this result. Two follow-ups, both explicitly
+separate from what this session's scope covered: (1) if tardiness/late-jobs
+specifically (not just total reward) matters for the paper's claims, that
+needs its own deliberate retuning (e.g. `lambda_2` higher still, or reweighting
+the placement/completion bonuses) rather than assuming today's reward parity
+already implies it; (2) the real test of the pointer network's actual design
+claim (generalizing across job identity, not memorizing one fixed instance)
+is still the deferred randomized-per-episode-instance experiment -- see
+`Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md`
+Section 7.
+
+---
+
+## 2026-08-09 -- Three more bugs found and fixed (machine-activation ordering, numpy-bool dead code, mask/step time mismatch), tardiness term normalised
+
+**Config:** N/A (bug fixes + reward-formula change, not a training-hyperparameter
+change). Full detail and derivations:
+`Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md`.
+
+**Bugs found and fixed (all in `Code/env/scheduling_env.py` /
+`Code/env/gym_scheduling_wrapper.py`):**
+
+1. **`machine_active` flipped before the feasibility check, never rolled back.**
+   `SchedulingEnv.step()` used to set `machine_active[machine] = 1` before
+   checking `is_feasible()`, and didn't undo it if that same action then failed
+   feasibility -- so an infeasible attempt on a never-used machine permanently
+   marked it "active" without the `-lambda1` activation penalty ever being
+   charged on the real first successful use. Fixed by moving the mutation to
+   after the feasibility check passes.
+2. **`if ym is True:` never actually fires -- numpy bool identity bug.** While
+   writing the regression test for fix #1, found that `reward()`'s activation
+   penalty branch checks `if ym is True:`, but every caller passes a numpy
+   `bool_` (from `self.machine_active[machine] == 0`), and
+   `np.bool_(True) is True` is `False` (an identity check against a different
+   object, not an equality check). **This means the `-lambda1` activation
+   penalty has never actually fired, in the project's entire history**,
+   independent of bug #1 -- confirmed by a direct regression test
+   (`tests/test_bugfixes.py`) before vs. after: reward for a real first
+   placement read `3.0` (bug present) vs. the mathematically correct `2.0`
+   (`-lambda1 + 3.0` flat bonus) after the fix. Fixed by using plain truthiness
+   (`if ym:`), which is correct for both a Python bool and a numpy bool_.
+3. **Mask/execution time-index mismatch at `t == horizon`.**
+   `GymSchedulingEnv.get_action_mask()` used a clamped
+   `t = min(env.time, horizon-1)`, but the real check inside
+   `SchedulingEnv.step()`/`is_feasible()` used the uncapped `env.time`. At
+   `env.time == horizon` (reachable -- episodes only end once `time > horizon`),
+   a duration-1 job could read as feasible in the mask but fail the real check,
+   landing in the invalid-action branch -- which does not advance time, so a
+   policy trusting the mask could get stuck repeating the same invalid action
+   forever with no way for the episode to end on its own. Fixed by uncapping the
+   mask's `t` to match `step()` exactly (safe: `is_feasible()` short-circuits on
+   `t+duration > horizon` before any array indexing, and every job has
+   `duration >= 1`, so no out-of-bounds read is possible). `_get_obs()`'s
+   *separate* clamp (a real array index into `capacity[m, r, t_idx]`) was left
+   untouched. Added a belt-and-suspenders per-episode invalid-action counter to
+   `GymSchedulingEnv` that sets `truncated=True` past a fixed cap, as a general
+   safety net against this *class* of bug independent of this specific
+   instance.
+
+**Reward-formula change:** tardiness is now normalised by the episode's own
+horizon (`T_j/H` instead of raw `T_j`) in `SchedulingEnv.reward()`. Raw
+tardiness is unbounded and scales with `horizon` (`T_j <= H-10` given
+`deadline_range=(10,110)`), while every other reward term is a fixed O(1)
+constant regardless of curriculum stage -- across `horizon in {20,40,60,100}`,
+this let the tardiness term's achievable magnitude grow ~5x from the first to
+the last curriculum stage while one A2C model/value-head is reused across all 4
+stages with no reset. `T_j/H < 1` provably for any job that is ever actually
+scheduled, putting tardiness on the same O(1) footing as everything else. **Old
+reward numbers throughout this log (everything above this entry) are NOT
+directly comparable to anything measured after this point** -- both RL and EDF
+go through the same `reward()`, so *relative* RL-vs-EDF comparisons stay valid,
+but absolute magnitudes shifted (e.g. the `+275.5` EDF stage-4 reference two
+entries below was measured pre-fix and needs re-measuring, not reuse).
+
+**Also fixed (not a bug, but a fairness/diagnosability gap):** A2C's
+`select_action()`/`act()` previously had no deterministic/greedy mode -- always
+sampled, even during evaluation -- while PPO's eval already used
+`model.predict(..., deterministic=True)`. Added a `deterministic` flag
+(argmax when `True`), threaded through to `eval_rl_agent.py` and
+`optuna_tune.py`'s A2C eval loops. Also added per-stage model checkpointing to
+`train_rl_agent.py`/`train_optimized.py` (previously only a single save after
+the entire curriculum), so a stage-3/4 regression can be diagnosed without
+rerunning from scratch.
+
+**Stats:**
+```
+Regression test (tests/test_bugfixes.py), all 4 checks PASS:
+  Issue A: infeasible attempt -> machine_active stays 0 (was silently flipping to 1)
+  Issue A + numpy-bool bug: real first placement reward == 2.0 (was 3.0, activation
+    penalty silently never charged)
+  Issue C: t=horizon-1 mask=1 (correct); t=horizon mask=0 AND step() agrees (both were
+    previously divergent: mask said feasible, step() said invalid)
+  Issue D: tardiness term at H=20 -> 0.90 (was raw 18.0); at H=100 -> 0.98 (was raw 98.0)
+    -- both now O(1) as proven, vs. a previous ~5x spread across curriculum stages
+
+Smoke runs (--smoke-test, 300 timesteps/stage, full 4-stage curriculum):
+  A2C flat: completes end-to-end, 4/4 stage checkpoints saved, no crash
+  A2C pointer: completes end-to-end, 4/4 stage checkpoints saved, no crash
+  Eval plumbing (A2C deterministic + EDF): both run cleanly against the rescaled
+    reward, e.g. one post-smoke-training eval episode: A2C=193.6, EDF=289.4
+    (undertrained model from a 300-step/stage smoke run -- not a real comparison,
+    plumbing check only)
+```
+
+**Observation:** The numpy-bool `is True` bug (#2) is the most significant
+finding here: it means the activation-cost term of the reward function has been
+dead code for the project's entire history, so every prior training-log entry's
+`lambda_1` was effectively `0` in practice regardless of its configured value.
+This does not bias RL-vs-EDF comparisons specifically (both share the same
+`reward()`), but it does mean `lambda_1` was never actually doing anything in
+any run logged above, including every Optuna trial that "tuned" it.
+
+**Conclusion / next step:** All three bugs and the reward rescale are
+prerequisites for every experiment from this point forward, same as the
+2026-08-09 capacity-leak/dict.get() entry below was for its generation of
+experiments. Next: rerun Optuna against this fixed, rescaled environment
+(separately for the flat and pointer A2C architectures -- see
+`Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md`), then
+full-curriculum reruns and a freshly-measured EDF baseline for an apples-to-apples
+comparison. Results to be logged in a follow-up entry once those complete.
+
+---
+
 ## 2026-08-09 -- Pointer network vs. flat baseline, both with ent_coef/reward-norm/masked-entropy fixes
 
 **Config:** A2C, full `train_rl_agent.py` curriculum (375k timesteps), both runs on

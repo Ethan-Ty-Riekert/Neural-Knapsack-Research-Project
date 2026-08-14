@@ -135,13 +135,17 @@ Open in browser:
 
 ## Alternative: Try A2C
 
-A2C doesn't have PPO's gradient clipping issues:
+A2C doesn't have PPO's gradient clipping issues. It supports two policy
+architectures (`pointer`, the default, or `flat`), each tuned as an
+independent Optuna study with its own output files
+(`a2c_pointer_best_params.json` / `a2c_flat_best_params.json` -- see
+`OPTUNA_GUIDE.md`):
 ```bash
-# Optimize A2C
-python -m Code.training.optuna_tune --algo a2c --trials 50
+# Optimize A2C (pick one architecture)
+python -m Code.training.optuna_tune --algo a2c --policy-type pointer --trials 50
 
-# Train with optimized A2C
-python -m Code.training.train_optimized --algo a2c
+# Train with optimized A2C (--policy-type must match)
+python -m Code.training.train_optimized --algo a2c --policy-type pointer
 ```
 
 ## Full Documentation

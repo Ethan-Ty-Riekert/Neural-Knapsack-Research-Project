@@ -38,11 +38,16 @@ Neural-Knapsack-Research-Project/
 │   ├── evaluation/                # eval_rl_agent.py
 │   └── utils/                      # plotting_utils.py, paths.py (canonical rl_training/ locations)
 │
-├── tests/                      # test_env.py, test_diagnostic.py, test_high_entropy.py
+├── tests/                      # test_env.py, test_diagnostic.py, test_high_entropy.py,
+│                                # test_bugfixes.py (regression checks for env/reward bug fixes)
 ├── docs/                       # OPTUNA_GUIDE.md, QUICK_START.md, and dated session reports
 ├── Future/                     # planned extensions + Future/research/ (training-log.md,
 │                                # dated investigation write-ups -- check here first for
 │                                # "what have we tried and what happened")
+│
+├── PROGRESS.md                 # narrative story of the project so far (what was tried,
+│                                # what broke, how it was diagnosed) -- links back to
+│                                # Future/research/ for the detailed run-by-run record
 │
 ├── rl_training/                 # generated, gitignored -- single canonical output location
 │   ├── models/                 # Saved model checkpoints + env config snapshots

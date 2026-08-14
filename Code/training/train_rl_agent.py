@@ -124,6 +124,9 @@ def main():
                          help="A2C only: disable running-std reward normalisation (on by default).")
     parser.add_argument("--use-shaping", action="store_true",
                          help="Solution 3: enable potential-based reward shaping in SchedulingEnv (off by default).")
+    parser.add_argument("--smoke-test", action="store_true",
+                         help="Shrink every curriculum stage to a tiny timestep budget, to catch integration "
+                              "crashes end-to-end before committing to a full multi-hundred-thousand-step run.")
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
@@ -155,6 +158,9 @@ def main():
         {"horizon": 60,  "num_jobs": 60,  "timesteps": 100_000},
         {"horizon": 100, "num_jobs": 100, "timesteps": 150_000},
     ]
+    if args.smoke_test:
+        for stage in curriculum:
+            stage["timesteps"] = 300
 
     # -----------------------------
     # PPO TRAINING
@@ -205,7 +211,7 @@ def main():
         )
 
         # Curriculum training loop
-        for stage in curriculum:
+        for i, stage in enumerate(curriculum):
             env = make_env(
                 seed=0,
                 horizon=stage["horizon"],
@@ -226,6 +232,14 @@ def main():
                 callback=plotter,
                 reset_num_timesteps=False,
             )
+
+            # Per-stage checkpoint (this session): the curriculum previously only
+            # saved a single final model after all 4 stages, so a stage-3/4
+            # regression could only be diagnosed by rerunning the entire 375k-step
+            # curriculum from scratch. Purely additive -- doesn't change training.
+            stage_ckpt = MODELS_DIR / f"ppo_stage{i}_h{stage['horizon']}"
+            model.save(stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
 
         # Save PPO model
         model.save(PPO_MODEL_PATH)
@@ -257,7 +271,7 @@ def main():
         )
 
         # Curriculum training loop
-        for stage in curriculum:
+        for i, stage in enumerate(curriculum):
             env = make_env(
                 seed=0,
                 horizon=stage["horizon"],
@@ -269,6 +283,13 @@ def main():
             )
             model.env = env
             train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)
+
+            # Per-stage checkpoint (this session) -- see the matching PPO comment
+            # above for rationale. Tagged with policy_type since flat/pointer
+            # checkpoints are not interchangeable (different state_dict shapes).
+            stage_ckpt = MODELS_DIR / f"a2c_{args.policy_type}_stage{i}_h{stage['horizon']}.pt"
+            torch.save(model.model.state_dict(), stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
 
         # Save A2C model
         torch.save(model.model.state_dict(), A2C_MODEL_PATH)

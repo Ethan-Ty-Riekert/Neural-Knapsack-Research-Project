@@ -121,7 +121,14 @@ def objective_ppo(trial: optuna.Trial):
 
     # Reward penalties (critical for balancing objectives)
     lambda_1 = trial.suggest_float("lambda_1", 0.5, 2.0)  # machine activation
-    lambda_2 = trial.suggest_float("lambda_2", 0.5, 2.0)  # tardiness
+    # Widened from [0.5, 2.0] (this session): the tardiness term is now
+    # T_j/horizon (see SchedulingEnv.reward(), "Issue D" fix), not raw T_j, so
+    # it's O(1) like every other term instead of reaching ~90 at horizon=100.
+    # The old range was calibrated against that unbounded term; post-fix the
+    # useful order of magnitude for lambda_2 relative to the other O(1) terms
+    # (flat +3.0 placement bonus, -1 activation, etc.) is genuinely uncertain
+    # and worth searching multiplicatively, not just additively.
+    lambda_2 = trial.suggest_float("lambda_2", 0.5, 20.0, log=True)  # tardiness
     lambda_3 = trial.suggest_float("lambda_3", 0.5, 2.0)  # hotspot
 
     # CRITICAL: Idle penalty must be significant enough to discourage idling
@@ -245,7 +252,7 @@ def objective_ppo(trial: optuna.Trial):
         env.close()
 
 
-def objective_a2c(trial: optuna.Trial):
+def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
     """Optuna objective function for A2C hyperparameter optimization.
 
     A2C doesn't have the same gradient clipping issues as PPO, so it may
@@ -259,16 +266,30 @@ def objective_a2c(trial: optuna.Trial):
     (MaskableA2C now defaults to PointerActorCritic; see pointer_policy.py and
     Future/research/2026-08-09-pointer-network-action-head.md) and would need the
     same fixes applied twice. Rebuilt to construct a real MaskableA2C(policy_type=
-    "pointer") and call its own .train(), so there is exactly one A2C training loop
+    ...) and call its own .train(), so there is exactly one A2C training loop
     in the codebase.
+
+    policy_type: "pointer" (default, PointerActorCritic -- searches embed_dim/
+    hidden) or "flat" (MaskableActorCritic -- fixed 256,256 trunk, no
+    architecture search added in this pass, kept as the A/B baseline). Bind via
+    functools.partial when registering with Optuna so each architecture gets its
+    own independent study (see run_optimization()) rather than one shared search
+    space trading off architecture choice against hyperparameters.
     """
     from Code.policies.a2c_policy import MaskableA2C
 
     # ==================== SEARCH SPACE ====================
 
-    # Pointer-network architecture (see pointer_policy.PointerActorCritic)
-    embed_dim = trial.suggest_categorical("embed_dim", [64, 128, 256])
-    hidden = trial.suggest_categorical("hidden", [32, 64, 128])
+    if policy_type == "pointer":
+        # Pointer-network architecture (see pointer_policy.PointerActorCritic)
+        embed_dim = trial.suggest_categorical("embed_dim", [64, 128, 256])
+        hidden = trial.suggest_categorical("hidden", [32, 64, 128])
+        policy_kwargs = dict(embed_dim=embed_dim, hidden=hidden)
+    else:
+        # Flat MaskableActorCritic has no configurable width/depth in the
+        # current code (fixed 256,256 shared trunk) -- no architecture search
+        # plumbing added for it in this pass, to keep scope contained.
+        policy_kwargs = None
 
     # A2C hyperparameters
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
@@ -287,7 +308,9 @@ def objective_a2c(trial: optuna.Trial):
 
     # Reward penalties
     lambda_1 = trial.suggest_float("lambda_1", 0.5, 2.0)
-    lambda_2 = trial.suggest_float("lambda_2", 0.5, 2.0)
+    # See the matching comment in objective_ppo: widened for the same reason
+    # (tardiness term is now O(1), not O(horizon)).
+    lambda_2 = trial.suggest_float("lambda_2", 0.5, 20.0, log=True)
     lambda_3 = trial.suggest_float("lambda_3", 0.5, 2.0)
     idle_penalty = trial.suggest_float("idle_penalty", 0.5, 3.0)
     invalid_penalty = trial.suggest_float("invalid_penalty", 3.0, 10.0)
@@ -307,8 +330,8 @@ def objective_a2c(trial: optuna.Trial):
         agent = MaskableA2C(
             env,
             device="cpu",
-            policy_type="pointer",
-            policy_kwargs=dict(embed_dim=embed_dim, hidden=hidden),
+            policy_type=policy_type,
+            policy_kwargs=policy_kwargs,
         )
 
         # Override hyperparameters sampled above (constructor sets sensible
@@ -334,7 +357,11 @@ def objective_a2c(trial: optuna.Trial):
             ep_reward = 0.0
             while not done:
                 mask = info["action_mask"]
-                action = agent.act(obs, mask)
+                # deterministic=True: consistent with the eval-fairness fix in
+                # eval_rl_agent.py -- greedy eval gives a less noisy trial-reward
+                # signal for Optuna to compare across trials than a stochastic
+                # rollout would.
+                action = agent.act(obs, mask, deterministic=True)
                 obs, reward, terminated, truncated, info = env.step(action)
                 ep_reward += reward
                 done = terminated or truncated
@@ -357,6 +384,7 @@ def objective_a2c(trial: optuna.Trial):
 
 def run_optimization(
     algorithm: str = "ppo",
+    policy_type: str = "pointer",
     n_trials: int = 50,
     n_jobs: int = 1,
     study_name: str = None,
@@ -366,6 +394,11 @@ def run_optimization(
 
     Args:
         algorithm: "ppo" or "a2c"
+        policy_type: "pointer" or "flat" -- A2C only, ignored for PPO (which only
+            supports the flat MaskablePPO MlpPolicy). Each policy_type gets its
+            own independent study/output-file set (see study_name/results below),
+            since architecture choice and hyperparameters shouldn't trade off
+            against each other inside one shared search.
         n_trials: Number of trials to run
         n_jobs: Number of parallel jobs (1 = sequential)
         study_name: Name for the study (for persistent storage)
@@ -375,8 +408,21 @@ def run_optimization(
         study: Optuna study object with results
     """
 
+    # result_tag identifies both the study name and the output-file prefix.
+    # BUG FIX (this session): both the search space (lambda_2 range, and for A2C
+    # the flat/pointer split above) and the reward function's numeric meaning
+    # (SchedulingEnv's tardiness-normalisation fix) changed. The "_v2" suffix
+    # guarantees these runs get a fresh study under `storage` rather than
+    # resuming (load_if_exists=True, below) any pre-fix study history that would
+    # otherwise bias the TPE sampler's posterior with results measured against a
+    # now-nonexistent objective landscape.
+    if algorithm == "a2c":
+        result_tag = f"a2c_{policy_type}_v2"
+    else:
+        result_tag = f"{algorithm}_v2"
+
     if study_name is None:
-        study_name = f"{algorithm}_scheduling_optimization"
+        study_name = f"{result_tag}_scheduling_optimization"
 
     # Create study
     sampler = TPESampler(seed=42)
@@ -392,10 +438,15 @@ def run_optimization(
     )
 
     # Select objective function
-    objective = objective_ppo if algorithm == "ppo" else objective_a2c
+    if algorithm == "ppo":
+        objective = objective_ppo
+    else:
+        import functools
+        objective = functools.partial(objective_a2c, policy_type=policy_type)
 
     print(f"\n{'='*80}")
-    print(f"Starting Optuna optimization for {algorithm.upper()}")
+    print(f"Starting Optuna optimization for {algorithm.upper()}"
+          + (f" ({policy_type})" if algorithm == "a2c" else ""))
     print(f"Number of trials: {n_trials}")
     print(f"Parallel jobs: {n_jobs}")
     print(f"Study name: {study_name}")
@@ -415,20 +466,25 @@ def run_optimization(
     for key, value in study.best_params.items():
         print(f"  {key}: {value}")
 
-    # Save results
+    # Save results. File prefix is the architecture-identifying tag (e.g.
+    # "a2c_pointer", "a2c_flat", "ppo") -- NOT result_tag's "_v2" suffix, which
+    # only exists to keep the Optuna *study* fresh in storage. train_optimized.py
+    # loads "a2c_{policy_type}_best_params.json" (see Code/training/
+    # train_optimized.py), so the two names are deliberately different.
+    file_tag = f"{algorithm}_{policy_type}" if algorithm == "a2c" else algorithm
     results_dir = OPTUNA_RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # Save best parameters
     import json
-    best_params_file = os.path.join(results_dir, f"{algorithm}_best_params.json")
+    best_params_file = os.path.join(results_dir, f"{file_tag}_best_params.json")
     with open(best_params_file, "w") as f:
         json.dump(study.best_params, f, indent=2)
     print(f"\nBest parameters saved to: {best_params_file}")
 
     # Save study dataframe
     df = study.trials_dataframe()
-    df_file = os.path.join(results_dir, f"{algorithm}_trials.csv")
+    df_file = os.path.join(results_dir, f"{file_tag}_trials.csv")
     df.to_csv(df_file, index=False)
     print(f"All trials saved to: {df_file}")
 
@@ -438,15 +494,15 @@ def run_optimization(
 
         # Optimization history
         fig = vis.plot_optimization_history(study)
-        fig.write_html(os.path.join(results_dir, f"{algorithm}_optimization_history.html"))
+        fig.write_html(os.path.join(results_dir, f"{file_tag}_optimization_history.html"))
 
         # Parameter importances
         fig = vis.plot_param_importances(study)
-        fig.write_html(os.path.join(results_dir, f"{algorithm}_param_importances.html"))
+        fig.write_html(os.path.join(results_dir, f"{file_tag}_param_importances.html"))
 
         # Parallel coordinate plot
         fig = vis.plot_parallel_coordinate(study)
-        fig.write_html(os.path.join(results_dir, f"{algorithm}_parallel_coordinate.html"))
+        fig.write_html(os.path.join(results_dir, f"{file_tag}_parallel_coordinate.html"))
 
         print(f"Visualizations saved to: {results_dir}")
     except Exception as e:
@@ -461,6 +517,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hyperparameter optimization for RL scheduling")
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"],
                         help="Algorithm to optimize")
+    parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
+                        help="A2C only: 'pointer' (PointerActorCritic) or 'flat' (MaskableActorCritic). "
+                             "Each gets its own independent study and output files.")
     parser.add_argument("--trials", type=int, default=50,
                         help="Number of trials to run")
     parser.add_argument("--jobs", type=int, default=1,
@@ -472,6 +531,7 @@ if __name__ == "__main__":
 
     study = run_optimization(
         algorithm=args.algo,
+        policy_type=args.policy_type,
         n_trials=args.trials,
         n_jobs=args.jobs,
         storage=args.storage,

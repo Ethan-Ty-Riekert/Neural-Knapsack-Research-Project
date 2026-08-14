@@ -29,9 +29,12 @@ cd Neural-Knapsack-Research-Project/Code
 python -m Code.training.optuna_tune --algo ppo --trials 50
 ```
 
-For A2C:
+For A2C (each policy architecture gets its own independent study/output files --
+`--policy-type` defaults to `pointer`, so pass `flat` explicitly to tune the
+other architecture):
 ```bash
-python -m Code.training.optuna_tune --algo a2c --trials 50
+python -m Code.training.optuna_tune --algo a2c --policy-type pointer --trials 50
+python -m Code.training.optuna_tune --algo a2c --policy-type flat --trials 50
 ```
 
 **Options:**
@@ -60,10 +63,16 @@ Best reward: 25.3
 
 After optimization completes, results are saved to `rl_training/optuna_results/`:
 
-- `ppo_best_params.json`: Best hyperparameters found
-- `ppo_trials.csv`: All trials with their parameters and rewards
-- `ppo_optimization_history.html`: Interactive plot of optimization progress
-- `ppo_param_importances.html`: Which parameters matter most
+- `ppo_best_params.json`: Best hyperparameters found (PPO)
+- `a2c_pointer_best_params.json` / `a2c_flat_best_params.json`: Best hyperparameters
+  found for A2C, one file per policy architecture (they are tuned as fully
+  independent studies, not one shared search space -- see
+  `Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md`)
+- `{prefix}_trials.csv`: All trials with their parameters and rewards
+- `{prefix}_optimization_history.html`: Interactive plot of optimization progress
+- `{prefix}_param_importances.html`: Which parameters matter most
+
+(`{prefix}` is `ppo`, `a2c_pointer`, or `a2c_flat` depending on which study you ran.)
 
 **Open visualizations:**
 ```bash
@@ -80,12 +89,15 @@ Once optimization is complete, train a full model:
 
 ```bash
 python -m Code.training.train_optimized --algo ppo
+# A2C: --policy-type must match the study you ran (defaults to "pointer")
+python -m Code.training.train_optimized --algo a2c --policy-type pointer
 ```
 
 This will:
-- Load the best hyperparameters from Optuna
+- Load the best hyperparameters from Optuna (the file matching `--algo`/`--policy-type`)
 - Train using curriculum learning (20 → 40 → 60 → 100 jobs)
 - Save the final model to `rl_training/models/ppo_scheduling_optimized.zip`
+  (PPO) or `rl_training/models/a2c_{policy_type}_scheduling_optimized.pt` (A2C)
 
 **For single-stage training (no curriculum):**
 ```bash
@@ -113,7 +125,11 @@ python -m Code.training.train_optimized --algo ppo --no-curriculum
 
 ### Reward Penalties
 - **lambda_1**: 0.5 to 2.0 (machine activation penalty)
-- **lambda_2**: 0.5 to 2.0 (tardiness penalty)
+- **lambda_2**: 0.5 to 20.0, log scale (tardiness penalty -- widened this
+  session: `SchedulingEnv.reward()` now normalises tardiness by horizon
+  (`T_j/H` instead of raw `T_j`), so the old `[0.5, 2.0]` range, calibrated
+  against a term that used to reach ~90 at horizon=100, is too narrow to find a
+  meaningfully-weighted lambda_2 against the now-O(1) term)
 - **lambda_3**: 0.5 to 2.0 (hotspot penalty)
 - **idle_penalty**: 0.5 to 3.0 - **CRITICAL**
 - **invalid_penalty**: 3.0 to 10.0

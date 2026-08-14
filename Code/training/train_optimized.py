@@ -88,9 +88,15 @@ def make_env(
     return monitored_env
 
 
-def load_best_params(algorithm: str = "ppo"):
-    """Load best hyperparameters from Optuna optimization."""
-    best_params_file = OPTUNA_RESULTS_DIR / f"{algorithm}_best_params.json"
+def load_best_params(algorithm: str = "ppo", policy_type: str = "pointer"):
+    """Load best hyperparameters from Optuna optimization.
+
+    file_tag mirrors optuna_tune.py::run_optimization()'s output naming: A2C
+    saves per-architecture files ("a2c_pointer_best_params.json",
+    "a2c_flat_best_params.json"); PPO only has one architecture ("ppo_best_params.json").
+    """
+    file_tag = f"{algorithm}_{policy_type}" if algorithm == "a2c" else algorithm
+    best_params_file = OPTUNA_RESULTS_DIR / f"{file_tag}_best_params.json"
 
     if not os.path.exists(best_params_file):
         raise FileNotFoundError(
@@ -110,21 +116,26 @@ def load_best_params(algorithm: str = "ppo"):
     return params
 
 
-def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = True):
+def train_with_optimized_params(algorithm: str = "ppo", policy_type: str = "pointer", use_curriculum: bool = True):
     """Train agent using optimized hyperparameters from Optuna.
 
     Args:
         algorithm: "ppo" or "a2c"
+        policy_type: "pointer" or "flat" -- A2C only, ignored for PPO. Must match
+            which architecture's best-params file to load AND which architecture
+            to actually build (see the BUG FIX comment in the A2C branch below).
         use_curriculum: Whether to use curriculum learning
     """
 
     # Load best hyperparameters
-    params = load_best_params(algorithm)
+    params = load_best_params(algorithm, policy_type=policy_type)
 
-    # Setup directories
+    # Setup directories. A2C paths are tagged with policy_type -- flat and
+    # pointer checkpoints have different state_dict shapes and are not
+    # interchangeable, so they must not overwrite each other.
     TOTAL_TIMESTEPS = 500_000 if use_curriculum else 300_000
     PPO_MODEL_PATH = MODELS_DIR / "ppo_scheduling_optimized"
-    A2C_MODEL_PATH = MODELS_DIR / "a2c_scheduling_optimized.pt"
+    A2C_MODEL_PATH = MODELS_DIR / f"a2c_{policy_type}_scheduling_optimized.pt"
 
     ensure_rl_training_dirs()
 
@@ -139,10 +150,14 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
     idle_penalty = params.get("idle_penalty", 0.5)
     invalid_penalty = params.get("invalid_penalty", 5.0)
 
+    # BUG FIX (this session): the Greek-subscript characters here crash with
+    # UnicodeEncodeError whenever stdout isn't a UTF-8-capable console --
+    # notably when piped/redirected on Windows, where the default codepage is
+    # cp1252. Plain ASCII avoids depending on the caller's console encoding.
     print(f"\nReward penalties:")
-    print(f"  Machine activation (λ₁): {lambda_1}")
-    print(f"  Tardiness (λ₂): {lambda_2}")
-    print(f"  Hotspot (λ₃): {lambda_3}")
+    print(f"  Machine activation (lambda_1): {lambda_1}")
+    print(f"  Tardiness (lambda_2): {lambda_2}")
+    print(f"  Hotspot (lambda_3): {lambda_3}")
     print(f"  Idle penalty: {idle_penalty}")
     print(f"  Invalid penalty: {invalid_penalty}\n")
 
@@ -249,6 +264,13 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
                 reset_num_timesteps=False,
             )
 
+            # Per-stage checkpoint -- see the matching comment in
+            # train_rl_agent.py for rationale (diagnosability without rerunning
+            # the whole curriculum).
+            stage_ckpt = MODELS_DIR / f"ppo_optimized_stage{i}_h{stage['horizon']}"
+            model.save(stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
+
         # Save PPO model
         model.save(PPO_MODEL_PATH)
         print(f"\nPPO training complete. Model saved to: {PPO_MODEL_PATH}\n")
@@ -287,8 +309,18 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
             invalid_penalty=invalid_penalty,
         )
 
-        # Create A2C agent
-        agent = MaskableA2C(first_env, device="cpu")
+        # Create A2C agent.
+        # BUG FIX (this session): this used to always call
+        # MaskableA2C(first_env, device="cpu") with no policy_type/policy_kwargs,
+        # so it silently ignored policy_type entirely (always built the default
+        # "pointer" architecture with PointerActorCritic's hardcoded
+        # embed_dim=128/hidden=64) and any embed_dim/hidden Optuna actually found
+        # were never applied. Now explicitly threads both through.
+        policy_kwargs = (
+            dict(embed_dim=params.get("embed_dim", 128), hidden=params.get("hidden", 64))
+            if policy_type == "pointer" else None
+        )
+        agent = MaskableA2C(first_env, device="cpu", policy_type=policy_type, policy_kwargs=policy_kwargs)
 
         # Override hyperparameters
         agent.n_steps = params.get("n_steps", 5)
@@ -328,6 +360,12 @@ def train_with_optimized_params(algorithm: str = "ppo", use_curriculum: bool = T
             agent.env = env
             agent.train(total_timesteps=stage["timesteps"], plotter=plotter)
 
+            # Per-stage checkpoint -- see the matching comment in
+            # train_rl_agent.py for rationale.
+            stage_ckpt = MODELS_DIR / f"a2c_{policy_type}_optimized_stage{i}_h{stage['horizon']}.pt"
+            torch.save(agent.model.state_dict(), stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
+
         # Save A2C model
         torch.save(agent.model.state_dict(), A2C_MODEL_PATH)
         print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
@@ -348,6 +386,13 @@ if __name__ == "__main__":
         help="Algorithm to train"
     )
     parser.add_argument(
+        "--policy-type",
+        type=str,
+        default="pointer",
+        choices=["pointer", "flat"],
+        help="A2C only: which architecture's best-params file to load and build.",
+    )
+    parser.add_argument(
         "--no-curriculum",
         action="store_true",
         help="Disable curriculum learning (single-stage training)"
@@ -357,5 +402,6 @@ if __name__ == "__main__":
 
     train_with_optimized_params(
         algorithm=args.algo,
+        policy_type=args.policy_type,
         use_curriculum=not args.no_curriculum
     )
