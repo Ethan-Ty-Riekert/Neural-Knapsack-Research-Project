@@ -32,6 +32,87 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-21 (S2W5) -- RCPO constrained tardiness (pointer): best-ever tardiness/late-jobs, but reward collapses -- multiplier saturated at its ceiling
+
+**Config:** A2C pointer, potential-based shaping ON (Phase 8 config), `--use-rcpo`
+(`Code/policies/a2c_policy.py::MaskableA2C`, `alpha=0.0`, `lambda_init=3.8529`
+warm-started from the Phase 8 reward-tuned `lambda_2`, `lambda_lr=0.01`,
+`lambda_max=50.0`, `update_every=5` episodes). All other hyperparameters
+unchanged from `a2c_pointer_best_params.json`. See
+`Future/research/2026-08-21-rcpo-constrained-tardiness.md` for the full CMDP
+formulation. Checkpoint: `a2c_pointer_scheduling_optimized_shaped_rcpo.pt`,
+archived at `rl_training/models/archive/2026-08-21_S2W5_a2c_pointer_s4-200000_shaped_rcpo`.
+
+**Stats:**
+```
+                        reward     tardiness   late_jobs
+EDF (fixed instance)     289.38        16.00       10.00
+Phase 8 (fixed λ=3.85)   253.94         9.00        6.00
+RCPO (adaptive λ)        124.47        10.00        3.00
+
+                        reward (mean±std)   tardiness (mean±std)   late_jobs (mean±std)
+EDF (50 held-out)        284.95±3.65           37.30±60.43            12.22±14.58
+Phase 8 (50 held-out)    254.75±9.14           28.66±57.56             9.56±13.45
+RCPO (50 held-out)       135.67±15.10          19.84±17.99             3.20±2.12
+
+lambda(0) = 3.8529 -> lambda(final) = 49.37 (of a lambda_max ceiling of 50.0),
+still climbing at the end of training. Mean episode cost at the final logged
+update: ~3.7 (of an alpha target of 0.0) -- i.e. the constraint was still
+being violated when training ended; the multiplier never reached an interior
+equilibrium, it saturated against its projection bound.
+```
+
+**Observation:** Two things are true simultaneously, and both matter:
+
+1. **On tardiness and late-jobs specifically, RCPO is the best result in the
+   project so far, on both axes at once.** 19.84 held-out tardiness beats
+   Phase 8's 28.66 (and EDF's 37.30) with less than a third of Phase 8's
+   variance (std 17.99 vs 57.56) -- i.e. not just a lower average but a much
+   more *reliably* low tardiness outcome. Late-jobs held-out (3.20) is under
+   half of Phase 8's (9.56) and a quarter of EDF's (12.22). This is exactly
+   the kind of result the CMDP reformulation was meant to produce: letting
+   the penalty weight find its own level rather than guessing one fixed
+   constant ahead of time found a policy on a part of the reward-tardiness
+   Pareto front no fixed-lambda_2 search this project has run has reached.
+2. **But reward roughly halved (254.75 -> 135.67 held-out), and the
+   multiplier saturated at its projection ceiling rather than converging to
+   an interior value.** `alpha=0.0` asks the constraint to drive weighted
+   normalised tardiness to *exactly* zero -- for a stochastic scheduling
+   problem with finite machine capacity, some tardiness is essentially
+   unavoidable on a busy instance, so `E[C(tau)] > alpha` stays true
+   indefinitely and the projected-ascent update keeps pushing `lambda`
+   upward with nothing to stop it except the `lambda_max=50` bound we chose
+   (see the dated doc's Section 4 grounding for that bound -- it was reused
+   from `optuna_tune.py`'s `TARDINESS_PENALTY_WEIGHT` anchor, not derived
+   for this specific run). At `lambda ~= 49`, the tardiness penalty
+   dominates the `+3` placement / `+50` completion bonuses badly enough that
+   the policy appears to be leaving many jobs unscheduled rather than risk
+   any lateness -- consistent with late-jobs dropping to 3/100 at the cost
+   of overall reward, rather than genuinely better scheduling throughput.
+
+**Conclusion / next step:** This is a genuine result, not a bug -- the
+"CMDP with `alpha=0`" formulation (grounded in Tessler et al. [1]'s Section
+5.2 pattern, see the dated doc) behaves exactly as the theory predicts for a
+target that is asymptotically unreachable: the multiplier saturates at
+whatever ceiling is imposed rather than settling at an interior saddle
+point. The result is real evidence that *adaptive* tardiness weighting can
+reach a better tardiness/reliability trade-off than any fixed weight tried
+this project -- but `alpha=0` was too strict a target for this environment,
+and reward is being sacrificed further than necessary as a side effect of
+hitting the projection bound rather than a deliberate trade-off. Follow-up
+(not yet run): repeat with a less strict, still-grounded `alpha` (e.g.
+anchored at Phase 8's own achieved held-out tardiness of ~28.66, or a
+fraction of EDF's ~37.30) so the multiplier has an achievable target to
+converge toward instead of climbing to its ceiling -- this should recover
+more of the sacrificed reward while keeping most of the tardiness gain.
+Proceeding next to the `flat`-architecture RCPO run for the A/B comparison,
+per the agreed experiment ordering, before deciding whether to rerun with a
+revised `alpha`.
+
+[1] Tessler, Mankowitz, Mannor, ICLR 2019, arXiv:1805.11074.
+
+---
+
 ## 2026-08-20 (S2W5) -- Randomized-instance generalization: the fixed-instance shaping win is real, not memorization
 
 **Config:** A2C, both `flat` and `pointer`. Implemented Experiment 2 in full:

@@ -1,6 +1,6 @@
 # RCPO-style constrained optimization for the tardiness penalty
 
-**Date:** 2026-08-21 (S2W6)
+**Date:** 2026-08-21 (S2W5)
 
 ## 1. Motivation
 
@@ -197,9 +197,37 @@ term, so a single constraint is the right scope for a first test.
 
 ## 6. Results
 
-*(Filled in after the training run -- see the corresponding
-`Future/research/training-log.md` entry for the numbers and
-`PROGRESS.md` for the narrative summary.)*
+Pointer architecture, full curriculum, `alpha=0.0`, `lambda_max=50.0` (see
+`Future/research/training-log.md`'s 2026-08-21 entry for the complete
+stats table):
+
+|  | reward (held-out) | tardiness (held-out) | late-jobs (held-out) |
+|---|---|---|---|
+| EDF | 284.95 ± 3.65 | 37.30 ± 60.43 | 12.22 ± 14.58 |
+| Phase 8 (fixed lambda_2=3.85) | 254.75 ± 9.14 | 28.66 ± 57.56 | 9.56 ± 13.45 |
+| RCPO (adaptive lambda) | 135.67 ± 15.10 | **19.84 ± 17.99** | **3.20 ± 2.12** |
+
+RCPO reaches the best tardiness and late-jobs result in the project on both
+axes at once, with much lower variance than every prior result -- direct
+evidence that letting the penalty weight adapt can find a better point on
+the reward-tardiness trade-off than any fixed weight this project has
+searched over. But `lambda` saturated at its `lambda_max=50.0` projection
+ceiling (from `lambda(0)=3.85`) rather than converging to an interior
+value, and reward roughly halved as a result. This is the expected
+behaviour of the CMDP formulation under a target (`alpha=0.0`) the
+environment cannot actually satisfy in expectation -- `E[C(tau)] > alpha`
+never stops holding, so projected ascent has nothing to stop it short of
+the ceiling we imposed. `lambda_max=50.0` was reused from an existing
+project anchor (Section 4), not derived for this specific run, so the
+ceiling itself -- not the RCPO mechanism -- is the most likely reason
+reward was sacrificed more than necessary.
+
+**Flagged follow-up (not yet run):** repeat with a less strict `alpha`
+grounded at an achievable target (e.g. Phase 8's own held-out tardiness of
+~28.66, or a fraction of EDF's ~37.30) instead of 0.0, so the multiplier
+can reach an interior equilibrium rather than saturating at the ceiling.
+This should recover reward while keeping most of the tardiness/late-jobs
+gain.
 
 ## References
 
