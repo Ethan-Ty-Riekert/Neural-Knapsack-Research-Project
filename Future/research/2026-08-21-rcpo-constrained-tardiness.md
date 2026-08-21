@@ -229,6 +229,42 @@ can reach an interior equilibrium rather than saturating at the ceiling.
 This should recover reward while keeping most of the tardiness/late-jobs
 gain.
 
+**Flat architecture, same RCPO config (`lambda_init=5.85`, `alpha=0.0`,
+`lambda_max=50.0`):**
+
+|  | reward (fixed) | tardiness (fixed) | late-jobs (fixed) | tardiness (held-out) | late-jobs (held-out) |
+|---|---|---|---|---|---|
+| EDF | 289.38 | 16.00 | 10.00 | 37.30 ± 60.43 | 12.22 ± 14.58 |
+| Phase 8 flat (fixed lambda_2) | 262.98 | 1252.00 | 26.00 | -- | -- |
+| RCPO flat (adaptive lambda) | 198.50 | **0.00** | **0.00** | **570.62 ± 89.14** | **24.02 ± 3.34** |
+
+The flat architecture's fixed-instance result looks perfect (zero
+tardiness) but is the worst held-out result recorded in this project --
+worse than EDF, worse than every prior flat-architecture number. Unlike
+the pointer run, `lambda` here did *not* saturate at `lambda_max` (final
+value 20.59, still rising slowly but clearly converging, not stuck at the
+ceiling) -- so this is not the same "target unreachable, multiplier maxed
+out" failure mode as the pointer run. It is a straightforward severe
+overfitting case: `MaskableActorCritic` parameterizes one weight row per
+`(job-slot, machine)` action index, giving it a direct route to
+memorizing this one instance's optimal schedule rather than learning
+transferable job-feature-based placement rules (the pointer architecture's
+shared job/machine encoders structurally cannot do this the same way).
+RCPO's adaptive, harder-driving penalty appears to have let the flat
+network fully exploit that route. This is consistent with -- and sharpens
+-- the architecture-level generalization gap already found in the
+2026-08-20 randomized-instance generalization experiment.
+
+**Conclusion:** RCPO's benefit is real for the pointer architecture but
+does not transfer to flat. Generalization quality in this project appears
+to be primarily determined by architecture (shared-encoder pointer vs.
+per-index-weight flat), not by the reward/constraint formulation -- no
+technique tried so far (shaping, tardiness-focused tuning, RCPO) has made
+the flat architecture generalize. Pointer + potential-based shaping (with,
+pending the alpha follow-up above, RCPO) remains the only configuration
+recommended for further work; flat is retained only as the fixed-instance
+A/B baseline.
+
 ## References
 
 [1] Tessler, C., Mankowitz, D. J., & Mannor, S. (2019). *Reward Constrained

@@ -113,6 +113,72 @@ revised `alpha`.
 
 ---
 
+## 2026-08-21 (S2W5) -- RCPO constrained tardiness (flat): perfect on the fixed instance, catastrophic held-out -- confirms flat is the architecture that memorizes
+
+**Config:** Identical RCPO setup to the pointer run above, but `policy_type="flat"`
+(`MaskableActorCritic`, one weight row per action index), warm-started at
+`lambda_init=5.8464` (this architecture's own reward-tuned `lambda_2` from
+`a2c_flat_best_params.json`). Checkpoint:
+`a2c_flat_scheduling_optimized_shaped_rcpo.pt`, archived at
+`rl_training/models/archive/2026-08-21_S2W5_a2c_flat_s4-200000_shaped_rcpo`.
+
+**Stats:**
+```
+                        reward     tardiness   late_jobs      (fixed instance)
+EDF                      289.38        16.00       10.00
+Phase 8 flat (fixed λ)   262.98      1252.00       26.00
+RCPO flat (adaptive λ)   198.50         0.00        0.00    <- perfect
+
+                        reward (mean±std)   tardiness (mean±std)   late_jobs (mean±std)   (50 held-out)
+EDF                      284.95±3.65           37.30±60.43            12.22±14.58
+RCPO flat (adaptive λ)   192.92±1.02          570.62±89.14            24.02±3.34    <- worse than EDF, worse than every prior flat result
+
+lambda(0) = 5.8464 -> lambda(final) = 20.59, still slowly climbing but NOT
+saturated against the lambda_max=50.0 ceiling the way pointer's run was --
+mean episode cost per update near the end was ~1.2-2.2, above the alpha=0.0
+target but converging, not stuck at the projection bound.
+```
+
+**Observation:** The fixed-instance number looks like the best result this
+project has ever produced -- literally zero tardiness, zero late jobs. It
+is not. Evaluated on 50 held-out instances, the same checkpoint scores
+570.62 mean tardiness and 24.02 late-jobs -- worse than EDF, worse than
+every other flat-architecture result logged this session (including Phase
+8 flat's already-bad 1252/26 *fixed*-instance numbers). This is the
+starkest fixed-vs-held-out generalization gap recorded in this project to
+date, and it lands on exactly the architecture already flagged as
+overfitting-prone: `MaskableActorCritic` assigns one weight row per
+`(job-slot, machine)` action index (see `a2c_policy.py`), so it has a
+direct parametric route to memorizing "this specific job slot always goes
+to this specific machine at this specific time" rather than learning
+transferable job-feature-based placement rules, unlike the pointer
+architecture's shared job/machine encoders. The 2026-08-20 randomized-
+instance generalization entry already found the pointer/flat asymmetry in
+generalization quality; RCPO's harder-driving adaptive penalty (pushed by
+`alpha=0.0`, same as the pointer run) appears to have pushed the flat
+network to fully exploit that memorization route rather than learn
+anything transferable, making the asymmetry far more visible than the
+Phase 8 fixed-lambda comparison did.
+
+**Conclusion / next step:** RCPO's benefit found in the pointer run above
+does **not** transfer to the flat architecture -- for flat, it produced the
+project's worst-ever held-out result behind a perfect-looking but
+meaningless fixed-instance number. Combined with the pointer result, this
+is now a second, independent piece of evidence (on top of 2026-08-20's
+entry) that generalization quality is primarily an *architecture* property
+(pointer's shared encoders vs. flat's per-index weights), not a reward-
+formulation property -- no reward-shaping or constraint mechanism tried
+this project (potential-based shaping, tardiness-focused Optuna, RCPO) has
+made the flat architecture generalize. Recommendation going forward:
+treat pointer + potential-based shaping as the only architecture worth
+further reward-side experimentation on; flat should only be kept as the
+fixed-instance-only A/B baseline it already serves as. Next step for RCPO
+specifically (pointer only): rerun with a less strict `alpha` per the
+follow-up flagged in the pointer entry above, to test whether recovering
+reward also affects the held-out generalization gap.
+
+---
+
 ## 2026-08-20 (S2W5) -- Randomized-instance generalization: the fixed-instance shaping win is real, not memorization
 
 **Config:** A2C, both `flat` and `pointer`. Implemented Experiment 2 in full:

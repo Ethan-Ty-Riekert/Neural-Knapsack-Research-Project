@@ -231,6 +231,51 @@ on tardiness/late-jobs both on its training instance and on 50 unseen ones.
 Proceeding next to Experiment 5 (RCPO-style constrained optimization) on a dedicated git
 branch, per the user's explicit instruction given how structurally different it is.
 
+## Phase 10 — RCPO: best-ever tardiness for pointer, worst-ever generalization gap for flat (2026-08-21, S2W5)
+
+Set up the `rcpo-constrained-optimization` git branch (per the user's explicit instruction)
+and replaced the fixed `lambda_2` tardiness weight with a Lagrange multiplier that adapts
+during training toward a constraint `E[tardiness cost] <= alpha`, following Tessler,
+Mankowitz, Mannor (ICLR 2019). Full formalization, grounding, and results in
+`Future/research/2026-08-21-rcpo-constrained-tardiness.md`; run-by-run stats in
+`Future/research/training-log.md`'s two 2026-08-21 entries.
+
+Motivation: every fixed-`lambda_2` search this project ran (Optuna reward-tuned, Optuna
+tardiness-tuned) hit the same wall — a single weight picked before training can't reliably
+target a specific tardiness level. RCPO lets the weight find its own level during training
+instead, using the same tardiness term already in the reward, now tracked separately as a
+constraint cost the multiplier reacts to.
+
+Two very different results depending on architecture, both instructive:
+
+- **Pointer:** best tardiness/late-jobs result in the project's history, on both metrics at
+  once, with much lower variance than any prior result (held-out tardiness 19.84 vs. Phase
+  8's 28.66 and EDF's 37.30; late-jobs 3.20 vs. 9.56 vs. 12.22). But reward roughly halved
+  (254.75 → 135.67 held-out), because the constraint target (`alpha=0`, "drive tardiness to
+  zero") isn't actually achievable in this environment, so the multiplier climbed to its
+  ceiling (49.37 of 50.0) instead of settling at a stable value — a textbook case of an
+  overly strict constraint target, not a flaw in the mechanism itself.
+- **Flat:** looked like the best result ever on the fixed training instance — literally
+  zero tardiness, zero late jobs. Evaluated on 50 held-out instances, the same checkpoint
+  scored 570.62 tardiness / 24.02 late-jobs — worse than EDF, worse than every other flat
+  result this project has produced. This is the sharpest fixed-vs-held-out generalization
+  gap seen yet, and it lands on the architecture already flagged (Phase 9, and the pointer-
+  vs-flat comparisons since Phase 2) as prone to memorizing rather than generalizing —
+  `MaskableActorCritic`'s one-weight-row-per-action-index parameterization gives it a direct
+  route to memorize "this job slot goes to this machine," which RCPO's harder-driving
+  adaptive penalty seems to have let it fully exploit.
+
+Taken together with Phase 9, this is now two independent pieces of evidence that
+generalization quality in this project is an *architecture* property (pointer's shared
+encoders vs. flat's per-index weights), not something any reward-shaping or constraint
+technique tried so far can fix. Flat is no longer being carried forward as a candidate for
+further reward-side experiments — only as the fixed-instance A/B baseline it already is.
+
+Flagged, not-yet-run follow-up: rerun RCPO on the pointer architecture with a less strict
+`alpha` (grounded at an achievable target, e.g. Phase 8's own ~28.66 held-out tardiness)
+instead of 0, to test whether the multiplier can reach an interior equilibrium and recover
+reward while keeping most of the tardiness gain.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,
