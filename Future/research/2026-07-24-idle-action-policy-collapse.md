@@ -1,6 +1,6 @@
 # Investigation: Policy Collapse onto the Idle Action in MaskablePPO Training
 
-**Date:** 2026-07-24
+**Date:** 2026-07-24 (S2W1)
 **Environment:** `Code/scheduling_env.py` (static, offline resource-constrained scheduling),
 `Code/gym_scheduling_wrapper.py`, trained via `sb3_contrib.MaskablePPO` in `Code/train_rl_agent.py`.
 **Status:** Two of three candidate causes addressed (Section 4). Third cause (Section 5) deferred pending

@@ -1,6 +1,6 @@
 # Design & Comparison: Action-Space and Reward Interventions for Idle-Collapse
 
-**Date:** 2026-08-09
+**Date:** 2026-08-09 (S2W3)
 **Environment:** `Code/scheduling_env.py`, `Code/gym_scheduling_wrapper.py`,
 `Code/Policies/{a2c_policy.py, pointer_policy.py, ppo_policy.py}`
 **Status:** Solutions 1 and 3 implemented and tested to full curriculum length.

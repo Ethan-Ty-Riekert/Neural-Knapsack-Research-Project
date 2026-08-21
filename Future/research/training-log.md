@@ -11,8 +11,11 @@ history.
 
 ## Template for new entries
 
+Week label is `S2W<n>` (Monday-Sunday weeks, `S2W1` = 2026-07-20 -- see CLAUDE.md
+for the formula). Put it in the header next to the date.
+
 ```
-## YYYY-MM-DD -- <short description>
+## YYYY-MM-DD (S2WN) -- <short description>
 
 **Config:** algo, curriculum/stage, key hyperparameters (only what changed since the
 previous entry, or "unchanged" if nothing did)
@@ -29,7 +32,356 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
-## 2026-08-10 -- Fresh Optuna + full-curriculum reruns post-bugfix: RL closes the gap to EDF
+## 2026-08-20 (S2W5) -- Randomized-instance generalization: the fixed-instance shaping win is real, not memorization
+
+**Config:** A2C, both `flat` and `pointer`. Implemented Experiment 2 in full:
+`SchedulingEnv.set_jobs()` + `GymSchedulingEnv`'s new `job_resampler` let a gym
+env draw a fresh random job set every episode
+(`Code/training/train_optimized.py::make_random_instance_resampler()`,
+`--randomize-instances`); `eval_rl_agent.py --randomized-eval` builds 50
+held-out instances at seeds >= 500,000 (disjoint from any training seed by
+construction) so both the model and EDF get evaluated on genuinely unseen
+instances, not the single fixed one every prior entry used. Two things tested:
+(A) train fresh under `--randomize-instances --use-potential-shaping` with a
+newly re-tuned Optuna search on that distribution (50 trials/architecture,
+`--randomize-instances --use-potential-shaping`); (B) evaluate the *existing*
+2026-08-19 fixed-instance-trained+shaped pointer checkpoint (the one that beat
+EDF, tardiness=9.0) on the same 50 held-out instances, to directly test
+whether that win was genuine or fixed-instance memorization.
+
+**Stats:**
+```
+                                          reward            tardiness          late_jobs
+EDF, held-out (50 instances)             284.95 (3.65)     37.30 (60.43)      12.22 (14.58)
+
+pointer, fixed-inst-trained+shaped,
+  on the ONE fixed instance (2026-08-19) 253.94            9.00               6
+pointer, fixed-inst-trained+shaped,
+  on 50 HELD-OUT instances (new)         254.75 (9.14)     28.66 (57.56)      9.56 (13.45)
+
+pointer, RANDINST-trained+shaped+retuned,
+  on the fixed instance                  338.67            733.00             38
+pointer, RANDINST-trained+shaped+retuned,
+  on 50 held-out instances               334.995 (14.43)   732.50 (125.04)    39.44 (4.30)
+
+flat, RANDINST-trained+shaped+retuned,
+  on the fixed instance                  264.11            1396.00            43
+flat, RANDINST-trained+shaped+retuned,
+  on 50 held-out instances               264.41 (3.02)     1311.32 (148.70)   42.22 (3.66)
+(figures in parens are std across the 50 episodes/instances; 0.0/blank for the
+single fixed instance, since a deterministic model on one fixed instance has
+no variance to measure)
+```
+
+**Observation, part 1 -- the real answer to the open question:** The
+2026-08-19 fixed-instance-trained pointer+shaping model **generalizes**: on 50
+instances it never saw during training, tardiness only rises from 9.00 to
+28.66 (not collapsing), and it *still beats EDF's own held-out tardiness*
+(28.66 vs. 37.30) and late-jobs (9.56 vs. 12.22). This directly answers the
+question flagged in the 2026-08-19 entry and, further back, in
+`2026-08-09-pointer-network-action-head.md` Section 9/10: the tardiness win
+was not fixed-instance memorization. Plausible reason: potential-based
+shaping's urgency signal (`Φ(s) = -Σ urgency_j(t)`) is a function of job
+*features* (slack relative to deadline), not job *identity* -- so even
+training on one fixed instance, the gradient signal it provides is inherently
+general, and the pointer network's shared encoders (designed exactly to
+generalize from features, per the original 2026-08-09 design doc) picked that
+up rather than only memorizing per-slot lookups.
+
+**Observation, part 2 -- deliberately training for generalization did worse,
+not better:** Training fresh with `--randomize-instances` (jobs re-sampled
+every episode, forcing generalization by construction, with hyperparameters
+re-tuned on that same distribution) produced a *dramatically worse* result:
+tardiness 732-733 on both the fixed instance and the held-out set -- roughly
+25x worse than the fixed-instance-trained model's held-out tardiness (28.66).
+This is a genuinely counter-intuitive negative result: the "textbook correct"
+way to force generalization did worse than a model that happened to
+generalize well despite fixed-instance training. Leading hypothesis, not yet
+verified: every episode presenting a *different* job set the whole way through
+training makes the learning problem itself much higher-variance within the
+same finite timestep budget (each curriculum stage never gets to consolidate
+around consistent job identities), and/or the fresh Optuna search's own
+30k-timestep-per-trial budget was too short to properly assess hyperparameter
+quality under this harder, higher-variance distribution (an instance of the
+same tuning/testing mismatch risk Eimer et al. (2023) warn about, just
+manifesting differently here). Both `flat` and `pointer` randinst-trained
+models show the same pattern (fixed-instance and held-out performance track
+each other closely -- i.e. *these* models generalize consistently too, just to
+a worse policy), which supports "harder optimization problem," not "failed to
+generalize," as the explanation.
+
+**Conclusion / next step:** The best configuration found in this project to
+date, across every experiment this session, is **pointer + potential-based
+shaping + fixed-instance training + the original reward-tuned hyperparameters**
+(2026-08-19's checkpoint) -- it beats EDF on tardiness/late-jobs on both the
+instance it trained on AND 50 unseen ones. Not recommending
+`--randomize-instances` for future runs based on this evidence; the
+`--randomize-instances`/`--randomized-eval` infrastructure stays in the
+codebase as a permanent, reusable capability (useful for the generalization
+*test*, which is how this entry's key finding was actually established) even
+though the *training* variant underperformed here. Per the user's agreed
+ordering, proceeding next to Experiment 5 (RCPO-style constrained
+optimization), on a dedicated git branch given how structurally different it
+is from everything built so far.
+
+---
+
+## 2026-08-19 (S2W5) -- Potential-based shaping ablation: pointer beats EDF on tardiness
+
+**Config:** A2C, both `flat` and `pointer`. Added `--use-potential-shaping` to
+`Code/training/train_optimized.py`, threading `use_potential_shaping=True` and
+`shaping_gamma=params["gamma"]` (this run's own tuned discount factor, not a
+separate default) into every `make_env()` call. Everything else identical to
+the S2W4 baseline: same reward-tuned Optuna params (`params_tag=None`, *not*
+the S2W5 tardiness-tuned ones), same 200k stage-4 budget -- shaping is the
+only changed variable, isolating it cleanly against the S2W4 baseline table.
+Shaping itself (`Code/env/scheduling_env.py::_compute_potential()`) was
+already implemented and sign-checked before this session; this is the first
+time it has been run through the full 4-stage curriculum. Per Ng, Harada &
+Russell (1999), this shaping is provably policy-invariant -- it changes
+*training dynamics* (credit assignment), not which policy is optimal at
+convergence.
+
+**Stats:**
+```
+Deterministic eval, 50 episodes, stage-4 instance (horizon=100, num_jobs=100, seed=0):
+                              total_reward   total_tardiness   late_jobs (/100)
+EDF (fresh)                    289.38          16.00              10.00
+a2c_pointer (S2W4 baseline)    270.23        1227.00             32.00
+a2c_pointer (shaped)           253.94           9.00              6.00
+a2c_flat (S2W4 baseline)       231.84         866.00             27.00
+a2c_flat (shaped)              262.98        1252.00             26.00
+```
+
+**Observation:** Pointer + shaping is the best tardiness/late-jobs result in
+this project's history by a wide margin, and the first RL result to actually
+**beat EDF** on both (9.00 vs. EDF's 16.00 tardiness; 6 vs. 10 late jobs) --
+at a reward cost of only 16.3 points (270.23->253.94, still well above every
+non-tardiness-tuned flat result). Flat's result is mixed: reward improved
+(231.84->262.98) but tardiness got worse (866->1252), late-jobs roughly flat
+(27->26) -- shaping helped pointer far more than flat. Plausible reason:
+pointer's shared job/machine encoders let the same per-step urgency signal
+generalise across every job slot at once, where flat's per-index weights only
+get that signal for the specific slots sampled in a given rollout -- consistent
+with the architectural argument in
+`2026-08-09-pointer-network-action-head.md` for why parameter sharing should
+matter more once the learning *signal* itself (not just the objective) is
+improved. Not yet verified against the trials/training curves in detail.
+
+**Conclusion / next step:** This is the strongest positive result of the
+project so far and the first genuine candidate for "RL beats the heuristic."
+Per the user's prioritised order (literature review Section 7 + discussion),
+proceeding next to Experiment 2 (randomized-instance generalization) to test
+whether pointer+shaping's advantage survives when the job set isn't the same
+fixed, memorized instance -- that is still the real test of the pointer
+network's design claim, and now also the real test of whether this tardiness
+win is genuine scheduling skill or another form of fixed-instance
+overfitting. RCPO-style constrained optimization (Experiment 5, on a separate
+git branch) queued after that.
+
+---
+
+## 2026-08-17 (S2W5) -- Doubling stage-4 training time: mixed, not a clean win
+
+**Config:** A2C, both `flat` and `pointer`, same Optuna-tuned hyperparameters and
+seed=0 fixed instance as the 2026-08-10 (S2W4) entry below -- only change is stage
+4's timestep budget, doubled from 200k to 400k (added as `--stage4-timesteps` on
+`Code/training/train_optimized.py`). Motivation: the S2W4 entry noted pointer's
+stage-4 reward was still climbing (212.21->227.66), not plateaued, at 200k --
+this tests whether that trend continues with more budget. Checkpoints archived to
+`rl_training/models/archive/2026-08-17_S2W5_a2c_{pointer,flat}_s4-400000/` (see
+`Code/utils/results_log.py`, added this session so runs stop overwriting each
+other's checkpoints); eval summaries now also appended to
+`rl_training/results/eval_results.csv`.
+
+**Stats:**
+```
+Deterministic eval, 50 episodes, stage-4 instance (horizon=100, num_jobs=100, seed=0),
+fresh EDF baseline (identical to S2W4's, as expected -- EDF and the instance are both
+deterministic):
+                         total_reward   total_tardiness   late_jobs (/100)
+EDF (fresh)              289.38         16.00              10.00
+
+                         S2W4 (200k stage4)      S2W5 (400k stage4)        delta
+a2c_flat_optimized       231.84 / 866 / 27       259.17 / 1546 / 30        reward +27.3, tardiness +680, late +3
+a2c_pointer_optimized    270.23 / 1227 / 32      249.47 / 1103 / 34        reward -20.8, tardiness -124, late +2
+(columns: total_reward / total_tardiness / late_jobs)
+```
+
+**Observation:** Doubling stage-4 training time did **not** reliably help, and in
+one case made things worse. Flat's reward improved (+27.3) but its tardiness
+nearly doubled (866->1546) and late-jobs also rose -- more training time let it
+find a *higher-reward* policy that is *more* tardy, consistent with the
+already-documented reward/tardiness misalignment (the O(1) tardiness term is
+small relative to the flat +3 placement / +50 completion bonuses) simply
+getting more room to express itself with more optimization steps. Pointer's
+result contradicts the motivating hypothesis outright: reward *fell*
+(270.23->249.47) despite more training, though its tardiness improved modestly
+(1227->1103). Neither architecture moved meaningfully closer to EDF on the
+metric that matters most (tardiness/late-jobs); if anything flat moved further
+away.
+
+**Why EDF wins by so much on tardiness (user question, worth recording):** EDF
+directly sorts by deadline at every decision -- it *is* a deadline-minimization
+rule by construction, with the classical result that earliest-deadline-first is
+optimal for minimizing maximum lateness on a single machine (J.R. Jackson,
+"Scheduling a Production Line to Minimize Maximum Tardiness," Management
+Science Research Project, UCLA, 1955); our setting is multi-machine and
+resource-constrained so that exact optimality guarantee doesn't transfer, but
+it explains why EDF is such a strong, tightly-targeted baseline in general.
+This is training-log context, not a formal claim for this environment -- if
+it becomes load-bearing for a written-up conclusion, it belongs in a dated
+doc's numbered References instead. The RL agents, by contrast, are optimizing
+a *reward* that only weakly encodes tardiness (`lambda_2 * T_j/H`, capped well
+below 1 per job) relative to the dominant placement/completion bonuses -- so
+"maximize reward" and "minimize tardiness" are related but not the same
+objective here, and this entry's flat result is a direct demonstration of that
+gap widening, not narrowing, under more optimization.
+
+**Also fixed (unrelated bug, found while reading eval output with the user):**
+`Code/evaluation/eval_rl_agent.py`'s per-episode eval function was named
+`run_ppo()` and unconditionally printed "Running PPO episode..." even when
+evaluating A2C (flat or pointer) -- a leftover from when it was PPO-only. This
+caused a real mix-up mid-session (an A2C flat eval run's console output was
+mistaken for a PPO run). Renamed to `run_model()`, print now generic. No PPO
+run has actually happened this session; PPO+pointer integration remains
+explicitly deferred (`Future/research/2026-08-09-pointer-network-action-head.md`
+Section 9).
+
+**Conclusion / next step:** Training-time alone is not the lever that closes
+the tardiness gap -- this result argues *for* prioritizing Experiment 3
+(tardiness-focused reward retuning: re-search `lambda_2` and the placement/
+completion bonus weights specifically against tardiness/late-jobs) over further
+training-time increases. Proceeding to Experiment 2 (randomized-instance
+generalization) next per the already-agreed order, with Experiment 3 next after
+that.
+
+---
+
+## 2026-08-17 (S2W5) -- Tardiness-focused Optuna retuning: helped at tuning scale, hurt at full scale
+
+**Config:** A2C, both `flat` and `pointer`. Added `--optimize-for tardiness` to
+`Code/training/optuna_tune.py`: Optuna's fitness metric for ranking trials
+becomes `mean_reward - 50 * mean_tardiness_normalised` (was: `mean_reward`
+alone) -- training still uses the same env reward as before (agent still has
+to actually complete jobs to score well), only the *trial-selection* criterion
+changed, the same way a model can be trained on one loss but selected on a
+different validation metric. Weight of 50 chosen to match the environment's
+own +50 completion bonus (documented as a calibration point, not a derived
+optimum, in the code). 50-trial search per architecture on the existing small
+tuning env (20 jobs, 5 machines, horizon 30, unchanged from prior studies),
+then full 4-stage curriculum training (200k stage-4 budget, matching S2W4's
+original, not S2W5's stage4-bump entry above) using each architecture's new
+`*_tardiness_best_params.json`, then deterministic eval on the stage-4 fixed
+instance exactly as previous entries.
+
+**Stats:**
+```
+Optuna search (tuning env, 20 jobs/horizon 30, best trial of 50):
+                    lambda_1   lambda_2   idle_pen   invalid_pen   other notable
+pointer (reward)    0.66       3.85       1.78       7.84          hidden=32,  lr=1.47e-05
+pointer (tardiness) 1.52       2.99       1.68       3.04          hidden=128, lr=6.84e-05
+flat (reward)       0.59       5.85       1.26       4.06          lr=1.37e-04
+flat (tardiness)    0.67       1.55       1.49       8.85          lr=9.85e-05
+Both tardiness-tuned best trials: mean_tardiness=0.0, mean_late_jobs=0.0 on the
+tuning env (10 eval episodes) -- a clean result at that scale.
+
+Deterministic eval, 50 episodes, stage-4 instance (horizon=100, num_jobs=100, seed=0):
+                              total_reward   total_tardiness   late_jobs (/100)
+EDF (fresh)                   289.38          16.00              10.00
+a2c_flat (S2W4 baseline)       231.84         866.00             27.00
+a2c_pointer (S2W4 baseline)    270.23        1227.00             32.00
+a2c_flat (tardiness-tuned)     270.39         998.00             31.00
+a2c_pointer (tardiness-tuned)  328.21        1699.00             44.00
+```
+
+**Observation:** Both search's best trials achieved *zero* tardiness on the
+small tuning env, but neither transferred to the full 100-job curriculum --
+if anything both got worse on the metric this experiment specifically targeted.
+Flat: reward improved (231.84->270.39) but tardiness rose (866->998) and so did
+late-jobs (27->31). Pointer: reward hit the best score seen in this project's
+history (328.21, beating even S2W5's stage4-bump result), but tardiness also
+hit its worst-ever value (1699, vs. 1227 at baseline) and late-jobs rose to 44 --
+the worst of every RL variant measured so far. Verified this isn't a params-file
+mismatch: both training runs' logged "Loaded best hyperparameters from:
+...tardiness_best_params.json" and printed penalty values match the Optuna
+output exactly, and eval used matching `--embed-dim 128 --hidden 128` for
+pointer.
+
+**Why the tuning-env result didn't transfer (hypothesis, not yet verified):**
+the tuning env (20 jobs, 5 machines, horizon 30) is a comparatively easy
+packing problem -- reaching zero tardiness there may not require genuinely
+tardiness-robust hyperparameters, just "any reasonably competent policy," since
+there's little resource contention at that scale. Consistent with this: for
+*both* architectures, the tardiness-optimized search actually picked a *lower*
+`lambda_2` than the reward-optimized search did (pointer 3.85->2.99, flat
+5.85->1.55) -- if the small env rewarded raising lambda_2 to fight tardiness,
+we'd expect the opposite. Instead the search reached for other levers (pointer:
+4x larger hidden layer, ~5x higher learning rate, much lower invalid_penalty;
+flat: much lower lambda_2, higher invalid_penalty) that happened to work at 20
+jobs but apparently don't scale to a 4-stage curriculum ending at 100 jobs --
+plausibly because a much bigger, faster-learning pointer network is more prone
+to overfitting/instability across curriculum-stage transitions (per the
+architectural argument in `2026-08-09-pointer-network-action-head.md`), and a
+much lower flat lambda_2 simply under-penalises tardiness once the problem gets
+harder and slack is scarcer. Not yet verified against the trials data in
+detail -- if this becomes load-bearing for a written conclusion it needs a
+proper dated write-up, not just this log entry.
+
+**Conclusion / next step:** Reward-penalty tuning targeting tardiness, as
+implemented here, is a **negative result at deployment scale** -- worth
+recording clearly rather than quietly dropping, per this project's rule about
+reporting negative results honestly. The likely fix is not to abandon the
+approach but to fix *what's being tuned against*: evaluate Optuna trials'
+composite score on a harder/larger instance (closer to stage-4 scale) instead
+of the current small 20-job tuning env, even though that makes each trial
+slower. Flagging as a follow-up rather than doing it in this same session, so
+it can be scoped and run deliberately. Also notable across this entry and the
+one above it: the two highest-ever reward scores in this project's history
+(259-328) have now both come paired with the two worst-ever tardiness scores
+(1546, 1699) -- reward and tardiness are not just weakly correlated at this
+point, they may be actively trading off against each other as either training
+time or reward-side hyperparameters are pushed harder, which is worth keeping
+in mind for Experiment 2 (randomized-instance generalization) as well.
+
+---
+
+## 2026-08-17 (S2W5) -- Literature review: reward hacking / HPO generalization explain this session's results
+
+**Config:** N/A (literature review, not a training run). Full write-up:
+`Future/research/2026-08-17-literature-review-improving-rl-agent.md`.
+
+**Observation:** The two entries directly above this one (stage-4 timestep bump;
+tardiness-focused Optuna retuning) both showed the same shape: pushing
+optimization harder raised reward while also raising tardiness, sometimes to
+record-worst levels in the same run. Literature search found this is a named,
+studied phenomenon, not specific to this codebase: Skalse et al. (2022) define
+reward hacking formally and show non-trivial proxy/true-reward pairs are
+essentially always hackable; Pan, Bhatia & Steinhardt (ICLR 2022) empirically
+show hacking *increases* with agent capability (model size, training duration)
+via sharp phase transitions -- a close match to this session's data. Separately,
+Eimer, Lindauer & Raileanu (2023) explain *why* the tardiness-focused Optuna
+search didn't transfer: hyperparameter landscapes can overfit to the tuning
+seed/environment, and recommend testing on a held-out environment before
+trusting a tuned result -- this project's 20-job tuning env vs. 100-job
+deployment scale is exactly that mismatch.
+
+**Conclusion / next step:** Five concrete follow-ups identified, in priority
+order (full reasoning in the dated doc, Section 7): (1) finally run Experiment
+4 (potential-based shaping, already implemented, never run full-curriculum) --
+raised in priority since related literature independently corroborates dense
+per-step tardiness signals; (2) redesign the tardiness Optuna search to
+evaluate trials on a larger/harder instance, not the small tuning env; (3) add
+a tardiness sanity check to trial/checkpoint selection, not just reward; (4)
+try a genuine multi-objective Optuna study instead of a hand-weighted scalar;
+(5) prototype constrained RL (Tessler et al.'s RCPO) as a structurally
+different alternative to hand-tuning `lambda_2` at all. None implemented yet
+this session -- this entry is the research basis for a follow-up
+implementation pass.
+
+---
+
+## 2026-08-10 (S2W4) -- Fresh Optuna + full-curriculum reruns post-bugfix: RL closes the gap to EDF
 
 **Config:** A2C, both `flat` (`MaskableActorCritic`) and `pointer`
 (`PointerActorCritic`) architectures, full `train_optimized.py` curriculum
@@ -111,7 +463,7 @@ Section 7.
 
 ---
 
-## 2026-08-09 -- Three more bugs found and fixed (machine-activation ordering, numpy-bool dead code, mask/step time mismatch), tardiness term normalised
+## 2026-08-09 (S2W3) -- Three more bugs found and fixed (machine-activation ordering, numpy-bool dead code, mask/step time mismatch), tardiness term normalised
 
 **Config:** N/A (bug fixes + reward-formula change, not a training-hyperparameter
 change). Full detail and derivations:
@@ -221,7 +573,7 @@ comparison. Results to be logged in a follow-up entry once those complete.
 
 ---
 
-## 2026-08-09 -- Pointer network vs. flat baseline, both with ent_coef/reward-norm/masked-entropy fixes
+## 2026-08-09 (S2W3) -- Pointer network vs. flat baseline, both with ent_coef/reward-norm/masked-entropy fixes
 
 **Config:** A2C, full `train_rl_agent.py` curriculum (375k timesteps), both runs on
 top of the capacity-leak and eager-`dict.get()` fixes (previous entries) AND the
@@ -287,7 +639,7 @@ run. See `Future/research/2026-08-09-pointer-network-action-head.md` Section 8/1
 
 ---
 
-## 2026-08-09 -- A2C full curriculum, capacity-leak fixed: stages 1-2 solved, stages 3-4 regress hard
+## 2026-08-09 (S2W3) -- A2C full curriculum, capacity-leak fixed: stages 1-2 solved, stages 3-4 regress hard
 
 **Config:** A2C (`Policies/a2c_policy.py`, `policy_type` not yet added -- still the flat
 `MaskableActorCritic`). Full `train_rl_agent.py` curriculum (15/30/60/100 jobs,
@@ -355,7 +707,7 @@ stages) and `ent_coef > 0` for this A2C implementation (currently always exactly
 
 ---
 
-## 2026-08-09 -- Two pre-existing bugs found and fixed before the above run
+## 2026-08-09 (S2W3) -- Two pre-existing bugs found and fixed before the above run
 
 **Config:** N/A (bug fixes, not a training-hyperparameter change).
 
@@ -400,7 +752,7 @@ action-head.md`) and are already included in the run logged above.
 
 ---
 
-## 2026-07-24 -- Bigger network + fewer PPO epochs (result pending)
+## 2026-07-24 (S2W1) -- Bigger network + fewer PPO epochs (result pending)
 
 **Config:** PPO. Curriculum: `num_jobs` now varies per stage (15/30/60/100, all
 `<= horizon`), `max_jobs=100` fixed via job-slot padding. `ent_coef=0.05` (from 0.01).
@@ -424,7 +776,7 @@ hyperparameter tuning.
 
 ---
 
-## 2026-07-24 -- Reward reweighting + higher ent_coef (still collapsed)
+## 2026-07-24 (S2W1) -- Reward reweighting + higher ent_coef (still collapsed)
 
 **Config:** PPO. `ent_coef=0.05` (from `0.01`). Hotspot penalty double-count removed.
 Placement bonus `+1` (from `+0.1`). `idle_penalty=0.5` (from `1.0`). Curriculum
@@ -457,7 +809,7 @@ objective) than a reward-magnitude problem. Led to the literature review in
 
 ---
 
-## 2026-07-24 -- Initial run (collapsed onto idle)
+## 2026-07-24 (S2W1) -- Initial run (collapsed onto idle)
 
 **Config:** PPO. `ent_coef=0.01`. `idle_penalty=1.0`. Hotspot penalty double-counted
 (bug, since fixed). Placement bonus `+0.1`. Curriculum `num_jobs` fixed at

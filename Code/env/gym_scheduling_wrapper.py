@@ -17,9 +17,18 @@ class GymSchedulingEnv(gym.Env):
 
     metadata = {"render_modes": []} # for gymnasium
 
-    def __init__(self, env: SchedulingEnv, max_jobs: int = None, restrict_idle: bool = False):
+    def __init__(self, env: SchedulingEnv, max_jobs: int = None, restrict_idle: bool = False, job_resampler=None):
         """Initialisation of gym warpper for scheduling environment. Expects passed import
         is class SchedulingEnv from scheduling_env.py.
+
+        job_resampler: optional zero-arg callable returning a dict with keys
+        job_durations/job_resources/job_deadlines/job_weights (same shapes/
+        num_jobs as `env`). If given, reset() draws a fresh job set from it every
+        episode via SchedulingEnv.set_jobs(), instead of reusing the same job set
+        `env` was constructed with -- Experiment 2 (randomized-instance
+        generalization), see Code/training/train_optimized.py's
+        make_random_instance_resampler(). None (default) preserves the previous
+        fixed-instance behaviour exactly.
 
         max_jobs: fixed job-slot capacity used to size the observation and action
         spaces, decoupled from env.num_jobs (the actual/logical number of jobs in
@@ -49,6 +58,7 @@ class GymSchedulingEnv(gym.Env):
         self.num_resources = env.num_resources
         self.horizon = env.horizon
         self.restrict_idle = restrict_idle
+        self.job_resampler = job_resampler
 
         # For normalisation later on
         self.initial_capacity = env.capacity[:, :, 0].copy()
@@ -174,7 +184,16 @@ class GymSchedulingEnv(gym.Env):
     def reset(self, *, seed=None, options=None):
         """GYM API"""
         super().reset(seed=seed)
-        self.env.reset()
+        if self.job_resampler is not None:
+            fresh = self.job_resampler()
+            self.env.set_jobs(
+                fresh["job_durations"],
+                fresh["job_resources"],
+                fresh["job_deadlines"],
+                fresh["job_weights"],
+            )
+        else:
+            self.env.reset()
 
         self._invalid_action_count = 0
 

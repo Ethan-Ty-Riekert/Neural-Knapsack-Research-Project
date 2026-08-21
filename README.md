@@ -50,7 +50,13 @@ Neural-Knapsack-Research-Project/
 │                                # Future/research/ for the detailed run-by-run record
 │
 ├── rl_training/                 # generated, gitignored -- single canonical output location
-│   ├── models/                 # Saved model checkpoints + env config snapshots
+│   ├── models/                 # Saved model checkpoints + env config snapshots (latest
+│   │   └── archive/            # run only -- overwritten each run). archive/ keeps a
+│   │                            # dated/tagged copy per run so past runs aren't lost;
+│   │                            # see Code/utils/results_log.py::archive_checkpoint_files
+│   ├── results/                 # eval_results.csv -- one row per eval run (reward/
+│   │                            # tardiness/late-jobs, model vs heuristic), appended
+│   │                            # across the whole project's history, never overwritten
 │   ├── logs/                   # TensorBoard logs
 │   ├── optuna_results/         # Optuna optimization results and visualizations
 │   └── plots/                  # Live-plotting output: training/<run>/ and eval/<run>/

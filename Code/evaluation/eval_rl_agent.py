@@ -17,7 +17,8 @@ from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
 from Code.env.env_config import generate_env_config
 from Code.policies.a2c_policy import make_maskable_a2c
 from Code.utils.plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter
-from Code.utils.paths import ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, PLOTS_DIR
+from Code.utils.paths import ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, PLOTS_DIR, EVAL_RESULTS_CSV
+from Code.utils.results_log import append_eval_result
 import torch
 
 
@@ -29,9 +30,16 @@ def mask_fn(env: GymSchedulingEnv):
 # ============================================================
 # Environment factory
 # ============================================================
-def make_env():
-    data = np.load(ENV_CONFIG_PATH)
-    config = {k: data[k] for k in data.files}
+def make_env(config=None):
+    """config=None (default): load the single saved instance from
+    ENV_CONFIG_PATH, matching every prior eval in this project (fixed
+    seed=0 instance). Pass an explicit config dict (from generate_env_config())
+    to evaluate on a different instance instead -- used by --randomized-eval
+    below to build N distinct held-out instances rather than reusing one.
+    """
+    if config is None:
+        data = np.load(ENV_CONFIG_PATH)
+        config = {k: data[k] for k in data.files}
 
     base_env = SchedulingEnv(
         job_durations=config["job_durations"],
@@ -57,11 +65,16 @@ def make_env():
 
 
 # ============================================================
-# Run one PPO evaluation episode
+# Run one model evaluation episode (PPO or A2C, flat or pointer)
 # ============================================================
-def run_ppo(model):
-    print("Running PPO episode...")
-    env = make_env()
+def run_model(model, config=None):
+    # BUG FIX (this session): this was named run_ppo() and unconditionally
+    # printed "Running PPO episode..." even when evaluating A2C (flat or
+    # pointer) -- the function has always handled both via the
+    # hasattr(model, "predict") branch below, so the name/print were
+    # misleading leftovers from when it was PPO-only. Caused user confusion
+    # (mistook an A2C flat eval run for a PPO run with bad tardiness).
+    env = make_env(config)
     obs, info = env.reset()
 
     done = False
@@ -111,9 +124,9 @@ def run_ppo(model):
 # ============================================================
 # Run heuristic
 # ============================================================
-def run_heuristic(name):
+def run_heuristic(name, config=None):
 
-    env = make_env()
+    env = make_env(config)
     base_env = env.env.env
 
     obs, info = env.reset()
@@ -183,21 +196,29 @@ def run_heuristic(name):
 # ============================================================
 # Aggregate over N runs
 # ============================================================
-def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None):
+def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None, configs=None):
+    """configs=None (default): every episode re-evaluates the single fixed
+    ENV_CONFIG_PATH instance (previous behaviour -- reward_std is always
+    exactly 0.0 as a result, since a deterministic model on a fixed instance
+    is fully deterministic). Pass a list of `runs` distinct config dicts
+    (from generate_env_config()) to evaluate one held-out instance per
+    episode instead -- --randomized-eval below, where std reflects genuine
+    cross-instance performance variance rather than being zero by construction.
+    """
     ppo_metrics = []
     heur_metrics = []
 
     progress_plotter = EvalProgressPlotter(heuristic_name)
 
-    print("Evaluating PPO...")
-    for _ in tqdm(range(runs)):
-        result = run_ppo(model)
+    print("Evaluating model...")
+    for i in tqdm(range(runs)):
+        result = run_model(model, config=configs[i] if configs is not None else None)
         ppo_metrics.append(result)
         progress_plotter.update(ppo_reward=result["total_reward"])
 
     print("Evaluating heuristic...")
-    for _ in tqdm(range(runs)):
-        result = run_heuristic(heuristic_name)
+    for i in tqdm(range(runs)):
+        result = run_heuristic(heuristic_name, config=configs[i] if configs is not None else None)
         heur_metrics.append(result)
         progress_plotter.update(heur_reward=result["total_reward"])
 
@@ -325,6 +346,15 @@ def main():
     parser.add_argument("--hidden", type=int, default=None,
                          help="Pointer policy only: must match the hidden size the checkpoint was trained "
                               "with. Defaults to PointerActorCritic's own default (64) if not given.")
+    parser.add_argument("--randomized-eval", action="store_true",
+                         help="Experiment 2: evaluate on N distinct held-out random instances (seeds "
+                              ">= RANDOM_INSTANCE_SEED_CEILING, disjoint from any training seed) instead "
+                              "of the single fixed ENV_CONFIG_PATH instance every prior eval used. "
+                              "Instance dimensions (num_jobs/num_machines/horizon/max_jobs) are still "
+                              "read from ENV_CONFIG_PATH -- only which specific job set is used changes.")
+    parser.add_argument("--eval-seeds", type=int, default=50,
+                         help="Number of held-out instances for --randomized-eval (default 50, matching "
+                              "the default n_episodes of the fixed-instance eval).")
     args = parser.parse_args()
 
     USE_PPO = (args.algo == "ppo")
@@ -357,9 +387,62 @@ def main():
     run_tag = args.algo if not args.run_tag else f"{args.algo}_{args.run_tag}"
     run_dir = make_run_dir(str(PLOTS_DIR / "eval"), run_tag)
     model_label = "PPO" if USE_PPO else f"A2C ({args.policy_type})"
-    ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=50, run_dir=run_dir)
+
+    configs = None
+    if args.randomized_eval:
+        # Experiment 2: build N held-out instances at the same dimensions as
+        # the (last-trained) fixed instance, but with seeds >= the ceiling
+        # training draws from (Code/training/train_optimized.py::
+        # RANDOM_INSTANCE_SEED_CEILING = 500_000) -- guarantees no overlap with
+        # any seed the model could have trained on, by construction.
+        from Code.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
+        dims = np.load(ENV_CONFIG_PATH)
+        num_jobs = int(dims["num_jobs"])
+        num_machines = int(dims["num_machines"])
+        horizon = int(dims["horizon"])
+        max_jobs = int(dims["max_jobs"]) if "max_jobs" in dims else None
+        configs = []
+        for i in range(args.eval_seeds):
+            cfg = generate_env_config(
+                seed=RANDOM_INSTANCE_SEED_CEILING + i,
+                num_jobs=num_jobs, num_machines=num_machines, horizon=horizon,
+            )
+            if max_jobs is not None:
+                cfg["max_jobs"] = max_jobs
+            configs.append(cfg)
+        print(f"\n--randomized-eval: evaluating on {len(configs)} held-out instances "
+              f"(seeds {RANDOM_INSTANCE_SEED_CEILING}..{RANDOM_INSTANCE_SEED_CEILING + len(configs) - 1})\n")
+
+    n_episodes = len(configs) if configs is not None else 50
+    ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=n_episodes, run_dir=run_dir, configs=configs)
     plot_results(ppo_runs, heur_runs, "EDF", run_dir, model_label=model_label)
     print(f"\nEvaluation plots saved to: {run_dir}\n")
+
+    # Persist the summary stats to a running CSV (rl_training/results/eval_results.csv)
+    # so they accumulate across runs instead of only living in stdout/PNGs -- see
+    # Code/utils/results_log.py.
+    model_rewards = np.array([r["total_reward"] for r in ppo_runs])
+    model_tardiness = np.array([r["tardiness"].sum() for r in ppo_runs])
+    model_late = np.array([r["late_jobs"] for r in ppo_runs])
+    heur_rewards = np.array([r["total_reward"] for r in heur_runs])
+    heur_tardiness = np.array([r["tardiness"].sum() for r in heur_runs])
+    heur_late = np.array([r["late_jobs"] for r in heur_runs])
+
+    append_eval_result({
+        "algo": args.algo,
+        "policy_type": args.policy_type if not USE_PPO else "",
+        "tag": (args.run_tag or "") + ("_randomized_eval" if args.randomized_eval else ""),
+        "model_path": str(args.model_path or (PPO_MODEL_PATH if USE_PPO else A2C_MODEL_PATH)),
+        "reward_mean": model_rewards.mean(), "reward_std": model_rewards.std(),
+        "tardiness_mean": model_tardiness.mean(), "tardiness_std": model_tardiness.std(),
+        "late_jobs_mean": model_late.mean(), "late_jobs_std": model_late.std(),
+        "heuristic_name": "EDF",
+        "heuristic_reward_mean": heur_rewards.mean(), "heuristic_reward_std": heur_rewards.std(),
+        "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
+        "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
+        "n_episodes": n_episodes,
+    })
+    print(f"Eval summary appended to: {EVAL_RESULTS_CSV}\n")
 
 
 

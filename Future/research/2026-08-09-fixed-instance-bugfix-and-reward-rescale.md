@@ -1,6 +1,6 @@
 # Fixed-Instance Bug Fixes, Reward Rescale, Eval Fairness, and Fresh Optuna Search
 
-**Date:** 2026-08-09
+**Date:** 2026-08-09 (S2W3)
 **Environment:** `Code/env/scheduling_env.py`, `Code/env/gym_scheduling_wrapper.py`,
 `Code/policies/a2c_policy.py`, `Code/training/{optuna_tune.py, train_optimized.py,
 train_rl_agent.py}`, `Code/evaluation/eval_rl_agent.py`

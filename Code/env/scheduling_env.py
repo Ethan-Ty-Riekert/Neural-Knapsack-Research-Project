@@ -94,6 +94,36 @@ class SchedulingEnv:
 
 
 
+    def set_jobs(
+        self,
+        job_durations: np.ndarray,
+        job_resources: np.ndarray,
+        job_deadlines: np.ndarray,
+        job_weights: np.ndarray,
+    ):
+        """Swap in a new job set (same num_jobs/num_machines/horizon/capacity/
+        reward config) and reset. Used by GymSchedulingEnv's optional
+        job_resampler (Experiment 2, randomized-instance generalization) to draw
+        a fresh instance every episode instead of reusing the one fixed at
+        construction time -- see Future/research/training-log.md's S2W5 entries
+        for why this matters (a flat per-index head can memorize a single fixed
+        instance; this is the test that actually rules that out). Does not
+        support changing num_jobs (would invalidate GymSchedulingEnv's num_jobs-
+        derived observation/action space sizing) -- callers must generate the
+        replacement job set with the same num_jobs as this instance.
+        """
+        if len(job_durations) != self.num_jobs:
+            raise ValueError(
+                f"set_jobs() requires the same num_jobs ({self.num_jobs}); got {len(job_durations)}. "
+                "Changing num_jobs mid-curriculum-stage would invalidate the observation/action space "
+                "sizing GymSchedulingEnv already fixed from the first env it saw."
+            )
+        self.job_durations = job_durations
+        self.job_resources = job_resources
+        self.job_deadlines = job_deadlines
+        self.job_weights = job_weights
+        self.reset()
+
     def reset(self):
         """Reset the environment to the initial state.
 

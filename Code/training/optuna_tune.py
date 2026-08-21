@@ -39,15 +39,36 @@ def make_tuning_env(
     lambda_3: float = 1.0,
     invalid_penalty: float = 5.0,
     idle_penalty: float = 0.5,
+    use_potential_shaping: bool = False,
+    shaping_gamma: float = 0.99,
+    randomize_instances: bool = False,
 ):
     """Create environment for hyperparameter tuning.
 
     Uses smaller problem size for faster evaluation during optimization.
     max_jobs is fixed to allow consistent obs/action space across trials.
-    """
-    config = generate_env_config(seed=seed)
 
-    # Use smaller problem for tuning (faster evaluation)
+    randomize_instances: Experiment 2 -- if True, every episode reset() draws a
+    fresh random job set (same num_jobs/num_machines/horizon) instead of
+    reusing the single `seed`-derived instance for the whole trial. See
+    Code/training/train_optimized.py::make_random_instance_resampler() (same
+    mechanism, reused here so the tuning distribution matches what
+    train_optimized.py --randomize-instances actually trains on -- Eimer,
+    Lindauer & Raileanu (2023, arXiv:2306.01324) warn that hyperparameters
+    tuned on a mismatched tuning environment can overfit to it and not
+    transfer, which is exactly what happened in the S2W5 tardiness-retuning
+    experiment; this keeps tuning and deployment distributions aligned instead
+    of repeating that mismatch for this experiment too).
+    """
+    # NOTE: kept as generate-100-then-truncate (not a direct num_jobs=num_jobs
+    # call) to preserve the exact job data every prior Optuna run (reward and
+    # tardiness modes) has used for a given seed -- changing this would silently
+    # change tuning-env content for those modes too, not just this new
+    # randomize_instances path. make_random_instance_resampler() (used below,
+    # and for actual training) generates directly at the target size instead,
+    # which is fine there since every episode is already a brand-new draw with
+    # no prior "same seed -> same jobs" expectation to preserve.
+    config = generate_env_config(seed=seed)
     config["job_durations"] = config["job_durations"][:num_jobs]
     config["job_resources"] = config["job_resources"][:num_jobs, :]
     config["job_deadlines"] = config["job_deadlines"][:num_jobs]
@@ -70,11 +91,17 @@ def make_tuning_env(
         lambda_3=lambda_3,
         invalid_penalty=invalid_penalty,
         idle_penalty=idle_penalty,
+        use_potential_shaping=use_potential_shaping,
+        shaping_gamma=shaping_gamma,
     )
 
     # Wrap with fixed max_jobs for consistent action space
     max_jobs = 30  # Fixed padding capacity
-    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
+    job_resampler = None
+    if randomize_instances:
+        from Code.training.train_optimized import make_random_instance_resampler
+        job_resampler = make_random_instance_resampler(num_jobs, num_machines, horizon)
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs, job_resampler=job_resampler)
     masked_env = ActionMasker(gym_env, mask_fn)
     monitored_env = Monitor(masked_env)
 
@@ -252,7 +279,27 @@ def objective_ppo(trial: optuna.Trial):
         env.close()
 
 
-def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
+TARDINESS_PENALTY_WEIGHT = 50.0
+"""Weight applied to mean horizon-normalised tardiness (T_j/H, same convention as
+SchedulingEnv.reward()) when optimize_for="tardiness" below. Chosen to be the same
+order of magnitude as the environment's own +50 completion bonus (Code/env/
+scheduling_env.py::step()) -- i.e. a policy that averages one full horizon-unit of
+tardiness per job (T_j/H = 1, as late as a job already scheduled can be) is treated
+as costing roughly one whole completion bonus. This is a chosen calibration point,
+not a derived optimum -- flagged explicitly per CLAUDE.md's rule that untested
+weightings must say so rather than imply they're proven. See
+Future/research/training-log.md's S2W5 tardiness-retuning entry for the
+before/after this produces.
+"""
+
+
+def objective_a2c(
+    trial: optuna.Trial,
+    policy_type: str = "pointer",
+    optimize_for: str = "reward",
+    use_potential_shaping: bool = False,
+    randomize_instances: bool = False,
+):
     """Optuna objective function for A2C hyperparameter optimization.
 
     A2C doesn't have the same gradient clipping issues as PPO, so it may
@@ -275,6 +322,33 @@ def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
     functools.partial when registering with Optuna so each architecture gets its
     own independent study (see run_optimization()) rather than one shared search
     space trading off architecture choice against hyperparameters.
+
+    optimize_for: "reward" (default, unchanged behaviour -- Optuna's fitness
+    metric is mean_reward) or "tardiness". Both modes train the agent against
+    the *same* env reward (lambda_2 included) -- optimize_for only changes which
+    metric Optuna uses to rank/select trials against each other, the same way a
+    model can be trained on one loss but selected on a different validation
+    metric. This exists because "reward" mode has -- repeatedly, per
+    Future/research/training-log.md's S2W4/S2W5 entries -- picked hyperparameters
+    that are reward-competitive with EDF but far worse on tardiness/late-jobs;
+    the two objectives are only loosely correlated given the current reward
+    formula's O(1) tardiness term vs. its larger placement/completion bonuses.
+    "tardiness" mode instead ranks trials by `mean_reward - TARDINESS_PENALTY_WEIGHT
+    * mean_tardiness_normalised`, so a trial only looks good if it both completes
+    jobs (mean_reward requires that, same anti-idle-collapse pressure as before)
+    AND keeps them on time.
+
+    use_potential_shaping: carries forward Experiment 4's result (see
+    Future/research/training-log.md's 2026-08-19 entry -- pointer+shaping beat
+    EDF on tardiness) into this search, rather than re-deriving it from
+    scratch. shaping_gamma is set to this trial's own sampled `gamma` below.
+
+    randomize_instances: Experiment 2 -- if True, every episode within a trial
+    draws a fresh random job set (Code/training/train_optimized.py::
+    make_random_instance_resampler()) instead of the fixed `seed=trial.number`
+    instance. Kept aligned with train_optimized.py --randomize-instances so the
+    tuning and deployment distributions match -- see make_tuning_env()'s
+    docstring for why that alignment matters (Eimer et al. 2023).
     """
     from Code.policies.a2c_policy import MaskableA2C
 
@@ -324,6 +398,9 @@ def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
         lambda_3=lambda_3,
         idle_penalty=idle_penalty,
         invalid_penalty=invalid_penalty,
+        use_potential_shaping=use_potential_shaping,
+        shaping_gamma=gamma,
+        randomize_instances=randomize_instances,
     )
 
     try:
@@ -348,9 +425,14 @@ def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
         eval_timesteps = 30_000
         agent.train(total_timesteps=eval_timesteps)
 
-        # Evaluate deterministically over a handful of fresh episodes
+        # Evaluate deterministically over a handful of fresh episodes.
+        # base_env unwraps Monitor(ActionMasker(GymSchedulingEnv(SchedulingEnv))) --
+        # needed to read .tardiness, which the reward/obs alone don't expose.
+        base_env = env.env.env.env
         n_eval_episodes = 10
         episode_rewards = []
+        episode_tardiness = []
+        episode_late_jobs = []
         for _ in range(n_eval_episodes):
             obs, info = env.reset()
             done = False
@@ -366,13 +448,25 @@ def objective_a2c(trial: optuna.Trial, policy_type: str = "pointer"):
                 ep_reward += reward
                 done = terminated or truncated
             episode_rewards.append(ep_reward)
+            episode_tardiness.append(float(base_env.tardiness.sum()))
+            episode_late_jobs.append(int((base_env.tardiness > 0).sum()))
 
         mean_reward = float(np.mean(episode_rewards))
+        mean_tardiness = float(np.mean(episode_tardiness))
+        mean_late_jobs = float(np.mean(episode_late_jobs))
+        # Same T_j/H normalisation convention as SchedulingEnv.reward()'s tardiness
+        # term, so TARDINESS_PENALTY_WEIGHT is calibrated against a comparable,
+        # O(1)-per-job quantity rather than a horizon-dependent raw sum.
+        mean_tardiness_norm = mean_tardiness / base_env.horizon
+        composite_score = mean_reward - TARDINESS_PENALTY_WEIGHT * mean_tardiness_norm
 
         trial.set_user_attr("mean_reward", mean_reward)
+        trial.set_user_attr("mean_tardiness", mean_tardiness)
+        trial.set_user_attr("mean_late_jobs", mean_late_jobs)
+        trial.set_user_attr("composite_score", composite_score)
         trial.set_user_attr("n_episodes", n_eval_episodes)
 
-        return mean_reward
+        return composite_score if optimize_for == "tardiness" else mean_reward
 
     except Exception as e:
         print(f"Trial {trial.number} failed: {e}")
@@ -389,6 +483,9 @@ def run_optimization(
     n_jobs: int = 1,
     study_name: str = None,
     storage: str = None,
+    optimize_for: str = "reward",
+    use_potential_shaping: bool = False,
+    randomize_instances: bool = False,
 ):
     """Run Optuna hyperparameter optimization.
 
@@ -403,21 +500,41 @@ def run_optimization(
         n_jobs: Number of parallel jobs (1 = sequential)
         study_name: Name for the study (for persistent storage)
         storage: Database URL for persistent storage (e.g., "sqlite:///optuna.db")
+        optimize_for: "reward" (default) or "tardiness" -- A2C only, see
+            objective_a2c's docstring. Ignored for PPO (objective_ppo unchanged;
+            PPO+pointer integration is separately deferred, see
+            Future/research/2026-08-09-pointer-network-action-head.md Section 9).
+            Given its own result_tag/output-file suffix so it produces a
+            comparable *alternative* best-params file rather than overwriting
+            the existing reward-tuned one train_optimized.py already loads by
+            default.
+        use_potential_shaping / randomize_instances: A2C only, see
+            objective_a2c's docstring. Both False by default (unchanged
+            behaviour); randomize_instances=True gets its own result_tag/
+            output-file suffix ("_randinst") for the same reason optimize_for
+            does -- a different fitness landscape needs a fresh study and a
+            separate best-params file, not to silently overwrite or resume
+            over the fixed-instance one.
 
     Returns:
         study: Optuna study object with results
     """
 
     # result_tag identifies both the study name and the output-file prefix.
-    # BUG FIX (this session): both the search space (lambda_2 range, and for A2C
-    # the flat/pointer split above) and the reward function's numeric meaning
+    # BUG FIX (earlier session): both the search space (lambda_2 range, and for
+    # A2C the flat/pointer split above) and the reward function's numeric meaning
     # (SchedulingEnv's tardiness-normalisation fix) changed. The "_v2" suffix
     # guarantees these runs get a fresh study under `storage` rather than
     # resuming (load_if_exists=True, below) any pre-fix study history that would
     # otherwise bias the TPE sampler's posterior with results measured against a
-    # now-nonexistent objective landscape.
+    # now-nonexistent objective landscape. Same reasoning applies to
+    # optimize_for="tardiness": the *fitness metric* Optuna ranks trials by has
+    # changed (composite_score, not mean_reward), so it also needs a fresh study
+    # rather than resuming "_v2"'s reward-ranked trial history.
+    tardiness_suffix = "_tardiness" if (algorithm == "a2c" and optimize_for == "tardiness") else ""
+    randinst_suffix = "_randinst" if (algorithm == "a2c" and randomize_instances) else ""
     if algorithm == "a2c":
-        result_tag = f"a2c_{policy_type}_v2"
+        result_tag = f"a2c_{policy_type}_v2{tardiness_suffix}{randinst_suffix}"
     else:
         result_tag = f"{algorithm}_v2"
 
@@ -442,11 +559,19 @@ def run_optimization(
         objective = objective_ppo
     else:
         import functools
-        objective = functools.partial(objective_a2c, policy_type=policy_type)
+        objective = functools.partial(
+            objective_a2c,
+            policy_type=policy_type,
+            optimize_for=optimize_for,
+            use_potential_shaping=use_potential_shaping,
+            randomize_instances=randomize_instances,
+        )
 
     print(f"\n{'='*80}")
     print(f"Starting Optuna optimization for {algorithm.upper()}"
-          + (f" ({policy_type})" if algorithm == "a2c" else ""))
+          + (f" ({policy_type})" if algorithm == "a2c" else "")
+          + (f" [optimize_for={optimize_for}]" if algorithm == "a2c" else "")
+          + (f" [shaping={use_potential_shaping}, randinst={randomize_instances}]" if algorithm == "a2c" else ""))
     print(f"Number of trials: {n_trials}")
     print(f"Parallel jobs: {n_jobs}")
     print(f"Study name: {study_name}")
@@ -467,11 +592,13 @@ def run_optimization(
         print(f"  {key}: {value}")
 
     # Save results. File prefix is the architecture-identifying tag (e.g.
-    # "a2c_pointer", "a2c_flat", "ppo") -- NOT result_tag's "_v2" suffix, which
-    # only exists to keep the Optuna *study* fresh in storage. train_optimized.py
-    # loads "a2c_{policy_type}_best_params.json" (see Code/training/
-    # train_optimized.py), so the two names are deliberately different.
-    file_tag = f"{algorithm}_{policy_type}" if algorithm == "a2c" else algorithm
+    # "a2c_pointer", "a2c_flat", "ppo") plus "_tardiness" when optimize_for=
+    # "tardiness" -- NOT result_tag's "_v2" suffix, which only exists to keep the
+    # Optuna *study* fresh in storage. train_optimized.py loads
+    # "a2c_{policy_type}_best_params.json" by default (see Code/training/
+    # train_optimized.py's --params-tag), so the reward-tuned file stays
+    # untouched and this produces a separate, comparable alternative.
+    file_tag = f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}" if algorithm == "a2c" else algorithm
     results_dir = OPTUNA_RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -526,6 +653,22 @@ if __name__ == "__main__":
                         help="Number of parallel jobs")
     parser.add_argument("--storage", type=str, default=f"sqlite:///{OPTUNA_DB_PATH.as_posix()}",
                         help="Database URL for persistent storage")
+    parser.add_argument("--optimize-for", type=str, default="reward", choices=["reward", "tardiness"],
+                        help="A2C only: 'reward' (default, unchanged) ranks trials by mean episode "
+                             "reward. 'tardiness' ranks by mean_reward - 50*mean_tardiness_normalised "
+                             "instead, to search for hyperparameters that are actually tardiness-"
+                             "competitive, not just reward-competitive -- see objective_a2c's docstring. "
+                             "Writes to a separate *_tardiness_best_params.json, not overwriting the "
+                             "default reward-tuned file.")
+    parser.add_argument("--use-potential-shaping", action="store_true",
+                        help="A2C only: carry forward Experiment 4's shaping win (see "
+                             "objective_a2c's docstring) into this search.")
+    parser.add_argument("--randomize-instances", action="store_true",
+                        help="A2C only, Experiment 2: tune against randomized per-episode job sets "
+                             "instead of a fixed instance, matching train_optimized.py "
+                             "--randomize-instances -- see make_tuning_env's docstring for why the "
+                             "tuning and deployment distributions should match. Writes to a separate "
+                             "*_randinst_best_params.json.")
 
     args = parser.parse_args()
 
@@ -535,4 +678,7 @@ if __name__ == "__main__":
         n_trials=args.trials,
         n_jobs=args.jobs,
         storage=args.storage,
+        optimize_for=args.optimize_for,
+        use_potential_shaping=args.use_potential_shaping,
+        randomize_instances=args.randomize_instances,
     )

@@ -20,9 +20,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RL_TRAINING_DIR = REPO_ROOT / "rl_training"
 LOG_DIR = RL_TRAINING_DIR / "logs"
 MODELS_DIR = RL_TRAINING_DIR / "models"
+MODELS_ARCHIVE_DIR = MODELS_DIR / "archive"
 PLOTS_DIR = RL_TRAINING_DIR / "plots"
 OPTUNA_RESULTS_DIR = RL_TRAINING_DIR / "optuna_results"
 OPTUNA_DB_PATH = RL_TRAINING_DIR / "optuna.db"
+RESULTS_DIR = RL_TRAINING_DIR / "results"
+EVAL_RESULTS_CSV = RESULTS_DIR / "eval_results.csv"
 
 ENV_CONFIG_PATH = MODELS_DIR / "env_config.npz"
 ENV_CONFIG_A2C_PATH = MODELS_DIR / "env_config_a2c.npz"
@@ -34,5 +37,5 @@ DOCS_DIR = REPO_ROOT / "docs"
 
 def ensure_rl_training_dirs() -> None:
     """Create the rl_training/ output subdirectories if they don't exist yet."""
-    for d in (LOG_DIR, MODELS_DIR, PLOTS_DIR, OPTUNA_RESULTS_DIR):
+    for d in (LOG_DIR, MODELS_DIR, MODELS_ARCHIVE_DIR, PLOTS_DIR, OPTUNA_RESULTS_DIR, RESULTS_DIR):
         d.mkdir(parents=True, exist_ok=True)

@@ -47,6 +47,16 @@ This project is held to a research standard, not a "ship it" standard.
   of the existing docs in that folder.
 - Link the training log entry for a run to its corresponding deep-dive doc
   when one exists, and vice versa.
+- **Week labels (`S2W<n>`).** Every training-log entry, dated doc, and
+  `PROGRESS.md` phase is tagged with the project week it happened in, so age
+  can be read off at a glance without parsing dates. Weeks run Monday-Sunday;
+  `S2W1` = Monday 2026-07-20. Compute any date's label as
+  `n = ((date - 2026-07-20).days // 7) + 1` → `S2W{n}`. Current week: `S2W5`
+  (started Monday 2026-08-17). When appending a training-log entry, put the
+  label in the header next to the date: `## YYYY-MM-DD (S2WN) -- <description>`.
+  When starting a dated deep-dive doc, put it next to the `**Date:**` line.
+  Do not renumber past weeks if this file goes stale — recompute from the
+  anchor date above, or ask the user to confirm before guessing.
 
 ## Practical quirks
 
