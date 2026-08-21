@@ -224,6 +224,12 @@ class MaskableA2C:
         policy_type: str = "pointer",
         policy_kwargs: dict = None,
         normalize_rewards: bool = True,
+        use_rcpo: bool = False,
+        rcpo_alpha: float = 0.0,
+        rcpo_lambda_init: float = 1.0,
+        rcpo_lambda_lr: float = 0.01,
+        rcpo_lambda_max: float = 50.0,
+        rcpo_update_every_episodes: int = 5,
     ):
         """
         policy_type: "pointer" (default) uses PointerActorCritic -- shared job/machine
@@ -235,9 +241,47 @@ class MaskableA2C:
         computation are divided by a running estimate of their std (see
         RunningMeanStd above) before being stored in the buffer. Episode-reward
         logging/plotting still uses the raw, un-normalised reward.
+
+        use_rcpo: if True, replace the environment's fixed lambda_2 (tardiness
+        weight) with a Lagrange multiplier updated on a slower timescale than
+        the policy, per Tessler, Mankowitz, Mannor (ICLR 2019, arXiv:1805.11074)
+        -- see Future/research/2026-08-21-rcpo-constrained-tardiness.md for the
+        full CMDP formulation and grounding of the defaults below. Off by
+        default (lambda_2 stays whatever the caller set on env construction).
+
+        rcpo_alpha: constraint threshold on the per-episode cost
+        C(tau) = sum w_j*(T_j/H); the multiplier increases while the sampled
+        mean cost exceeds this and decays back toward 0 while below it.
+
+        rcpo_lambda_init/rcpo_lambda_lr/rcpo_lambda_max: multiplier starting
+        value, step size, and projection upper bound (lower bound is always 0,
+        since lambda is a dual variable for an inequality constraint).
+
+        rcpo_update_every_episodes: number of completed episodes averaged into
+        one multiplier update (variance reduction on the cost estimate) -- see
+        the dated doc's Section 3/4 for why this, combined with the small
+        constant rcpo_lambda_lr, gives the required timescale separation from
+        the policy's per-rollout (n_steps) update.
         """
         self.env = env
         self.device = torch.device(device)
+
+        self.use_rcpo = use_rcpo
+        if use_rcpo:
+            self.rcpo_alpha = rcpo_alpha
+            self.rcpo_lambda_lr = rcpo_lambda_lr
+            self.rcpo_lambda_max = rcpo_lambda_max
+            self.rcpo_update_every_episodes = rcpo_update_every_episodes
+            # Held on the agent (not just the env) because train_optimized.py's
+            # curriculum loop reassigns self.env to a freshly-constructed
+            # SchedulingEnv every stage -- the adapted multiplier must survive
+            # that swap instead of resetting to rcpo_lambda_init each stage.
+            # _resolve_sched_env() re-derives the raw-env reference and pushes
+            # this value into it at the start of every train() call.
+            self._lambda_value = float(rcpo_lambda_init)
+            self._rcpo_episode_costs = []
+            self.lambda_history = [(0, float(rcpo_lambda_init), None)]
+            self._resolve_sched_env()  # validates env shape early, at construction time
 
         # Extract dimensions from environment
         self.obs_dim = env.observation_space.shape[0]
@@ -289,6 +333,23 @@ class MaskableA2C:
         # Rollout buffer
         self.buffer = RolloutBuffer(self.n_steps)
 
+    def _resolve_sched_env(self):
+        """Reach the raw SchedulingEnv through self.env's wrapper stack
+        (Monitor/ActionMasker/GymSchedulingEnv/...) and push the agent's
+        current RCPO multiplier value into it. Called at __init__ (to validate
+        early) and again at the top of every train() call, since
+        train_optimized.py's curriculum loop reassigns self.env to a new env
+        per stage -- see the comment on self._lambda_value above."""
+        base_env = getattr(self.env, "unwrapped", self.env)
+        sched_env = getattr(base_env, "env", None)
+        if sched_env is None or not hasattr(sched_env, "lambda2") or not hasattr(sched_env, "episode_cost"):
+            raise ValueError(
+                "use_rcpo=True requires self.env.unwrapped.env to be a SchedulingEnv "
+                "instance exposing lambda2/episode_cost (see GymSchedulingEnv)."
+            )
+        sched_env.lambda2 = self._lambda_value
+        return sched_env
+
     def act(self, obs, mask, deterministic: bool = False):
         """
         Action selection for evaluation (no gradients).
@@ -310,6 +371,8 @@ class MaskableA2C:
         notify_episode(episode_reward, timestep) is called each time an episode ends,
         which live-plots and periodically saves the reward curve.
         """
+
+        sched_env = self._resolve_sched_env() if self.use_rcpo else None
 
         obs, info = self.env.reset()
         done = False
@@ -363,6 +426,24 @@ class MaskableA2C:
                     if plotter is not None:
                         plotter.notify_episode(episode_reward, t)
                     episode_reward = 0.0
+
+                    # RCPO slow-timescale multiplier update -- must read
+                    # episode_cost from `info` (this step's return value)
+                    # BEFORE env.reset() zeroes it out. See
+                    # Future/research/2026-08-21-rcpo-constrained-tardiness.md
+                    # Section 3 for the projected-ascent update rule and why it
+                    # only fires every rcpo_update_every_episodes episodes.
+                    if self.use_rcpo:
+                        self._rcpo_episode_costs.append(info.get("episode_cost", 0.0))
+                        if len(self._rcpo_episode_costs) >= self.rcpo_update_every_episodes:
+                            mean_cost = float(np.mean(self._rcpo_episode_costs))
+                            new_lambda = self._lambda_value + self.rcpo_lambda_lr * (mean_cost - self.rcpo_alpha)
+                            new_lambda = float(np.clip(new_lambda, 0.0, self.rcpo_lambda_max))
+                            self._lambda_value = new_lambda
+                            sched_env.lambda2 = new_lambda
+                            self.lambda_history.append((t, new_lambda, mean_cost))
+                            self._rcpo_episode_costs = []
+
                     obs, info = self.env.reset()
                     done = False
                     truncated = False
@@ -426,12 +507,17 @@ def make_maskable_a2c(
     policy_type: str = "pointer",
     policy_kwargs: dict = None,
     normalize_rewards: bool = True,
+    **rcpo_kwargs,
 ):
     """
     Create a true maskable A2C agent.
 
     policy_type: "pointer" (default, PointerActorCritic) or "flat"
     (MaskableActorCritic, the original A/B baseline).
+
+    rcpo_kwargs: forwarded to MaskableA2C (use_rcpo, rcpo_alpha,
+    rcpo_lambda_init, rcpo_lambda_lr, rcpo_lambda_max,
+    rcpo_update_every_episodes) -- see its docstring.
     """
     return MaskableA2C(
         env,
@@ -439,6 +525,7 @@ def make_maskable_a2c(
         policy_type=policy_type,
         policy_kwargs=policy_kwargs,
         normalize_rewards=normalize_rewards,
+        **rcpo_kwargs,
     )
 
 

@@ -92,6 +92,14 @@ class SchedulingEnv:
         self.shaping_gamma = shaping_gamma
         self.prev_potential = self._compute_potential()
 
+        # RCPO constraint cost signal C(tau) = sum w_j*(T_j/H), accumulated
+        # independently of lambda_2 -- see reward() and
+        # Future/research/2026-08-21-rcpo-constrained-tardiness.md. lambda_2
+        # itself stays a plain mutable attribute; whether it is fixed or
+        # adapted by a Lagrange-multiplier update rule is entirely the
+        # trainer's concern, not the environment's.
+        self.episode_cost = 0.0
+
 
 
     def set_jobs(
@@ -154,6 +162,7 @@ class SchedulingEnv:
         self.time = 0
         self.prev_theta = 0.0
         self.prev_potential = self._compute_potential()
+        self.episode_cost = 0.0
 
         return self.get_state()
 
@@ -317,7 +326,11 @@ class SchedulingEnv:
         # guarantees t+P_j <= H, and d_j >= 10), so this term stays on the same
         # O(1) footing as the others at every stage. See
         # Future/research/<dated>-fixed-instance-bugfix-and-reward-rescale.md.
-        reward -= self.lambda2 * self.job_weights[j] * (self.tardiness[j] / self.horizon)
+        tardiness_cost = self.job_weights[j] * (self.tardiness[j] / self.horizon)
+        reward -= self.lambda2 * tardiness_cost
+        # RCPO constraint cost C(tau) -- the pure (un-weighted-by-lambda2) term,
+        # see episode_cost's docstring in __init__.
+        self.episode_cost += tardiness_cost
 
         # Hotspot penalty
         reward -= self.lambda3 * delta_theta

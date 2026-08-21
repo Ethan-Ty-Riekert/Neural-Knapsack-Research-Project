@@ -228,7 +228,12 @@ class GymSchedulingEnv(gym.Env):
                 self._invalid_action_count = 0
 
         obs = self._get_obs()
-        info = {"action_mask": self.get_action_mask()}
+        # episode_cost: running RCPO constraint cost C(tau) for this episode --
+        # see SchedulingEnv.episode_cost and
+        # Future/research/2026-08-21-rcpo-constrained-tardiness.md. Exposed every
+        # step (cheap float read) so a trainer can read the final value once
+        # `terminated` fires without reaching past this wrapper by hand.
+        info = {"action_mask": self.get_action_mask(), "episode_cost": self.env.episode_cost}
 
         terminated = done
         truncated = self._invalid_action_count >= self._max_invalid_actions

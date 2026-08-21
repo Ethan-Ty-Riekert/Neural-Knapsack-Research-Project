@@ -183,6 +183,11 @@ def train_with_optimized_params(
     params_tag: str = None,
     use_potential_shaping: bool = False,
     randomize_instances: bool = False,
+    use_rcpo: bool = False,
+    rcpo_alpha: float = 0.0,
+    rcpo_lambda_lr: float = 0.01,
+    rcpo_lambda_max: float = 50.0,
+    rcpo_update_every: int = 5,
 ):
     """Train agent using optimized hyperparameters from Optuna.
 
@@ -221,6 +226,15 @@ def train_with_optimized_params(
             Optuna hyperparameters loaded here were NOT re-tuned for this
             distribution (that re-tuning is a flagged follow-up, not done in
             this pass) -- results should be read with that caveat.
+        use_rcpo: Experiment 5 (RCPO-style constrained optimization, A2C
+            only -- see Code/policies/a2c_policy.py and
+            Future/research/2026-08-21-rcpo-constrained-tardiness.md).
+            Replaces the fixed lambda_2 tardiness weight with a Lagrange
+            multiplier that adapts during training toward the constraint
+            `E[C(tau)] <= rcpo_alpha`. Warm-started from this run's loaded
+            `lambda_2` (params["lambda_2"]) rather than an arbitrary value.
+        rcpo_alpha/rcpo_lambda_lr/rcpo_lambda_max/rcpo_update_every: see
+            MaskableA2C's docstring for the grounding of each default.
     """
     if run_tag is None:
         run_tag = (
@@ -228,6 +242,14 @@ def train_with_optimized_params(
             + (f"_{params_tag}" if params_tag else "")
             + ("_shaped" if use_potential_shaping else "")
             + ("_randinst" if randomize_instances else "")
+            + ("_rcpo" if use_rcpo else "")
+        )
+
+    if use_rcpo and algorithm != "a2c":
+        raise ValueError(
+            "use_rcpo=True is only supported for algorithm='a2c' -- RCPO+PPO "
+            "integration is out of scope for Experiment 5, see "
+            "Future/research/2026-08-21-rcpo-constrained-tardiness.md Section 5."
         )
 
     # Load best hyperparameters
@@ -243,6 +265,7 @@ def train_with_optimized_params(
         (f"_{params_tag}" if params_tag else "")
         + ("_shaped" if use_potential_shaping else "")
         + ("_randinst" if randomize_instances else "")
+        + ("_rcpo" if use_rcpo else "")
     )
     PPO_MODEL_PATH = MODELS_DIR / f"ppo_scheduling_optimized{path_suffix}"
     A2C_MODEL_PATH = MODELS_DIR / f"a2c_{policy_type}_scheduling_optimized{path_suffix}.pt"
@@ -453,7 +476,26 @@ def train_with_optimized_params(
             dict(embed_dim=params.get("embed_dim", 128), hidden=params.get("hidden", 64))
             if policy_type == "pointer" else None
         )
-        agent = MaskableA2C(first_env, device="cpu", policy_type=policy_type, policy_kwargs=policy_kwargs)
+        rcpo_kwargs = (
+            dict(
+                use_rcpo=True,
+                rcpo_alpha=rcpo_alpha,
+                rcpo_lambda_init=lambda_2,
+                rcpo_lambda_lr=rcpo_lambda_lr,
+                rcpo_lambda_max=rcpo_lambda_max,
+                rcpo_update_every_episodes=rcpo_update_every,
+            )
+            if use_rcpo else {}
+        )
+        agent = MaskableA2C(
+            first_env, device="cpu", policy_type=policy_type, policy_kwargs=policy_kwargs, **rcpo_kwargs
+        )
+        if use_rcpo:
+            print(
+                f"RCPO enabled: lambda_2 warm-started at {lambda_2} (this run's tuned "
+                f"value), alpha={rcpo_alpha}, lambda_lr={rcpo_lambda_lr}, "
+                f"lambda_max={rcpo_lambda_max}, update_every={rcpo_update_every} episodes\n"
+            )
 
         # Override hyperparameters
         agent.n_steps = params.get("n_steps", 5)
@@ -508,11 +550,24 @@ def train_with_optimized_params(
         torch.save(agent.model.state_dict(), A2C_MODEL_PATH)
         print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
 
+        extra_archive_files = []
+        if use_rcpo:
+            # lambda_history: (timestep, lambda_value, mean_episode_cost) tuples
+            # logged at every slow-timescale multiplier update -- see
+            # MaskableA2C.train() -- kept alongside the checkpoint so the
+            # multiplier's convergence trajectory can be inspected/plotted
+            # without rerunning training.
+            lambda_history_path = MODELS_DIR / f"a2c_{policy_type}_lambda_history{path_suffix}.json"
+            with open(lambda_history_path, "w") as f:
+                json.dump(agent.lambda_history, f, indent=2)
+            print(f"  Saved RCPO lambda history: {lambda_history_path}")
+            extra_archive_files.append(lambda_history_path)
+
         # Archive this run's checkpoints under a dated/tagged folder so the
         # next run overwriting A2C_MODEL_PATH doesn't destroy this one -- see
         # Code/utils/results_log.py.
         archive_dir = archive_checkpoint_files(
-            [A2C_MODEL_PATH, *stage_ckpts, ENV_CONFIG_PATH],
+            [A2C_MODEL_PATH, *stage_ckpts, ENV_CONFIG_PATH, *extra_archive_files],
             tag=run_tag,
         )
         print(f"Archived checkpoints to: {archive_dir}\n")
@@ -582,6 +637,40 @@ if __name__ == "__main__":
              "make_random_instance_resampler(). Optuna hyperparameters are NOT re-tuned "
              "for this distribution by this flag alone."
     )
+    parser.add_argument(
+        "--use-rcpo",
+        action="store_true",
+        help="Experiment 5: replace the fixed lambda_2 tardiness weight with a Lagrange "
+             "multiplier adapted during training toward a tardiness constraint (Tessler, "
+             "Mankowitz, Mannor, ICLR 2019, arXiv:1805.11074). A2C only. See "
+             "Future/research/2026-08-21-rcpo-constrained-tardiness.md."
+    )
+    parser.add_argument(
+        "--rcpo-alpha",
+        type=float,
+        default=0.0,
+        help="RCPO constraint threshold on E[C(tau)] (weighted normalised tardiness "
+             "per episode). Default 0.0 -- see the dated doc's Section 2 for why this "
+             "doesn't require literally-zero tardiness to be achieved."
+    )
+    parser.add_argument(
+        "--rcpo-lambda-lr",
+        type=float,
+        default=0.01,
+        help="Step size for the multiplier's projected-ascent update."
+    )
+    parser.add_argument(
+        "--rcpo-lambda-max",
+        type=float,
+        default=50.0,
+        help="Upper projection bound for the multiplier (lower bound is always 0)."
+    )
+    parser.add_argument(
+        "--rcpo-update-every",
+        type=int,
+        default=5,
+        help="Number of completed episodes averaged into one multiplier update."
+    )
 
     args = parser.parse_args()
 
@@ -594,4 +683,9 @@ if __name__ == "__main__":
         params_tag=args.params_tag,
         use_potential_shaping=args.use_potential_shaping,
         randomize_instances=args.randomize_instances,
+        use_rcpo=args.use_rcpo,
+        rcpo_alpha=args.rcpo_alpha,
+        rcpo_lambda_lr=args.rcpo_lambda_lr,
+        rcpo_lambda_max=args.rcpo_lambda_max,
+        rcpo_update_every=args.rcpo_update_every,
     )
