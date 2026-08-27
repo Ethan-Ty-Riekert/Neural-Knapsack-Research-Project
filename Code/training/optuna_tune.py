@@ -95,8 +95,18 @@ def make_tuning_env(
         shaping_gamma=shaping_gamma,
     )
 
-    # Wrap with fixed max_jobs for consistent action space
-    max_jobs = 30  # Fixed padding capacity
+    # Wrap with fixed max_jobs for consistent action space.
+    # BUG FIX (2026-08-28): this was a hardcoded `max_jobs = 30` regardless of
+    # `num_jobs` -- GymSchedulingEnv assumes num_jobs <= max_jobs (job slots
+    # beyond num_jobs are padding), so any call with num_jobs > 30 (e.g. the
+    # 2026-08-28 deployment-scale Pareto rerun's num_jobs=60) indexed past the
+    # padded observation/action space and crashed deep inside
+    # PointerActorCritic's obs-splitting logic ("index N is out of bounds"),
+    # not with a clear error at the actual boundary. max(30, num_jobs)
+    # preserves the exact previous behaviour for every call at num_jobs<=30
+    # (every study before tonight) while making a larger requested scale
+    # actually work instead of crashing cryptically.
+    max_jobs = max(30, num_jobs)
     job_resampler = None
     if randomize_instances:
         from Code.training.train_optimized import make_random_instance_resampler
@@ -299,6 +309,9 @@ def objective_a2c(
     optimize_for: str = "reward",
     use_potential_shaping: bool = False,
     randomize_instances: bool = False,
+    tuning_num_jobs: int = 20,
+    tuning_num_machines: int = 5,
+    tuning_horizon: int = 30,
 ):
     """Optuna objective function for A2C hyperparameter optimization.
 
@@ -359,6 +372,20 @@ def objective_a2c(
     instance. Kept aligned with train_optimized.py --randomize-instances so the
     tuning and deployment distributions match -- see make_tuning_env()'s
     docstring for why that alignment matters (Eimer et al. 2023).
+
+    tuning_num_jobs/tuning_num_machines/tuning_horizon (2026-08-28): instance
+    scale for this search, forwarded to make_tuning_env(). Default (20, 5, 30)
+    is the scale every Optuna study before tonight used. Added after the
+    optimize_for="pareto" mode's first run found a degenerate, single-point
+    Pareto front at that default scale (see
+    Future/research/2026-08-28-multi-objective-optuna-pareto.md Section 4) --
+    to test whether the reward/tardiness trade-off this project keeps finding
+    at deployment scale (100 jobs) actually appears once the *tuning* scale is
+    pushed closer to it. `eval_timesteps` below is deliberately NOT scaled up
+    alongside this -- isolating instance scale as the one changed variable,
+    consistent with this project's "change one thing at a time" convention --
+    so a larger-scale trial is not automatically a fairer trial, only a
+    same-training-budget one at a harder distribution.
     """
     from Code.policies.a2c_policy import MaskableA2C
 
@@ -403,6 +430,9 @@ def objective_a2c(
 
     env = make_tuning_env(
         seed=trial.number,
+        num_jobs=tuning_num_jobs,
+        num_machines=tuning_num_machines,
+        horizon=tuning_horizon,
         lambda_1=lambda_1,
         lambda_2=lambda_2,
         lambda_3=lambda_3,
@@ -506,6 +536,9 @@ def run_optimization(
     optimize_for: str = "reward",
     use_potential_shaping: bool = False,
     randomize_instances: bool = False,
+    tuning_num_jobs: int = 20,
+    tuning_num_machines: int = 5,
+    tuning_horizon: int = 30,
 ):
     """Run Optuna hyperparameter optimization.
 
@@ -554,8 +587,14 @@ def run_optimization(
     tardiness_suffix = "_tardiness" if (algorithm == "a2c" and optimize_for == "tardiness") else ""
     tardiness_suffix = "_pareto" if (algorithm == "a2c" and optimize_for == "pareto") else tardiness_suffix
     randinst_suffix = "_randinst" if (algorithm == "a2c" and randomize_instances) else ""
+    # Distinguishes a non-default tuning scale (see objective_a2c's
+    # tuning_num_jobs/etc. docstring) so it gets its own study/output files
+    # instead of colliding with the default (20, 5, 30) scale's.
+    scale_suffix = (f"_scale{tuning_num_jobs}x{tuning_num_machines}x{tuning_horizon}"
+                     if (algorithm == "a2c" and (tuning_num_jobs, tuning_num_machines, tuning_horizon) != (20, 5, 30))
+                     else "")
     if algorithm == "a2c":
-        result_tag = f"a2c_{policy_type}_v2{tardiness_suffix}{randinst_suffix}"
+        result_tag = f"a2c_{policy_type}_v2{tardiness_suffix}{randinst_suffix}{scale_suffix}"
     else:
         result_tag = f"{algorithm}_v2"
 
@@ -600,6 +639,9 @@ def run_optimization(
             optimize_for=optimize_for,
             use_potential_shaping=use_potential_shaping,
             randomize_instances=randomize_instances,
+            tuning_num_jobs=tuning_num_jobs,
+            tuning_num_machines=tuning_num_machines,
+            tuning_horizon=tuning_horizon,
         )
 
     print(f"\n{'='*80}")
@@ -620,7 +662,7 @@ def run_optimization(
     print("Optimization completed!")
     print(f"{'='*80}\n")
 
-    file_tag = f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}" if algorithm == "a2c" else algorithm
+    file_tag = f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}{scale_suffix}" if algorithm == "a2c" else algorithm
     results_dir = OPTUNA_RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
     import json
@@ -738,6 +780,15 @@ if __name__ == "__main__":
                              "--randomize-instances -- see make_tuning_env's docstring for why the "
                              "tuning and deployment distributions should match. Writes to a separate "
                              "*_randinst_best_params.json.")
+    parser.add_argument("--tuning-num-jobs", type=int, default=20,
+                        help="A2C only (2026-08-28): instance scale for the tuning env (default 20, "
+                             "every study before tonight's used this). See objective_a2c's "
+                             "tuning_num_jobs docstring for why this was added -- non-default values "
+                             "get their own study/output files via a _scaleNxMxH suffix.")
+    parser.add_argument("--tuning-num-machines", type=int, default=5,
+                        help="A2C only: paired with --tuning-num-jobs/--tuning-horizon.")
+    parser.add_argument("--tuning-horizon", type=int, default=30,
+                        help="A2C only: paired with --tuning-num-jobs/--tuning-num-machines.")
 
     args = parser.parse_args()
 
@@ -750,4 +801,7 @@ if __name__ == "__main__":
         optimize_for=args.optimize_for,
         use_potential_shaping=args.use_potential_shaping,
         randomize_instances=args.randomize_instances,
+        tuning_num_jobs=args.tuning_num_jobs,
+        tuning_num_machines=args.tuning_num_machines,
+        tuning_horizon=args.tuning_horizon,
     )
