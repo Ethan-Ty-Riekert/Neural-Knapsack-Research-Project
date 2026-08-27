@@ -32,6 +32,27 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Stage C: CP-SAT exact solver confirms EDF/LST are tardiness-optimal but leave jobs unscheduled
+
+**Config:** OR-Tools CP-SAT (`Code/baselines/exact_solver.py`), 5 small held-out instances (`num_jobs=10, num_machines=3, horizon=15`, seeds 500000-500004), 60s time limit, compared against `EDF`/`LST` on the same instances. See `Future/research/2026-08-28-exact-solver-baseline.md` for the full formulation, a structural finding about the environment (single global decision clock, derived and verified while building this), and scope/limitations.
+
+**Stats:**
+```
+seed     CP-SAT reward   CP-SAT tard   EDF reward   EDF tard   LST reward   LST tard
+500000   75.13           0.00          20.50        0.00       20.50        0.00
+500001   74.03           0.00          20.57        0.00       20.74        0.00
+500002   74.77           0.00          77.00        0.00       77.22        0.00
+500003   74.00           0.00          77.00        0.00       77.00        0.00
+500004   73.63           0.00          21.86        0.00       21.86        0.00
+```
+All solves OPTIMAL in ~0.05s; CP-SAT's objective matched an independently-computed env replay on every instance.
+
+**Observation:** Every method gets zero tardiness on every instance, yet CP-SAT beats both heuristics on reward by ~3.5x on 3 of 5 seeds. Checked directly on seed 500000: EDF schedules only 9 of 10 jobs -- greedy resource-packing gets it stuck even though a fully-completing, still-on-time schedule exists (CP-SAT requires every job scheduled, so it always finds one). This is a different failure mode from RCPO's job abandonment (2026-08-28 entry above): here the heuristics *fail* to complete every job through no-lookahead myopia, rather than *choosing* to skip jobs to game a constraint.
+
+**Conclusion / next step:** Confirms EDF/LST are already tardiness-optimal on small instances -- their remaining gap to CP-SAT is entirely a completion-rate gap. Recommend tracking jobs-scheduled alongside reward/tardiness/late-jobs by default in future evals (this is now the second time this session a hidden completion-rate gap explained a reward discrepancy that looked like something else at first glance). Not done tonight: running the RL checkpoints on these same small instances (padding `max_jobs` to match their trained size) to see where they land between the heuristics and the CP-SAT oracle.
+
+---
+
 ## 2026-08-28 (S2W6) -- Discovered hazard: training silently corrupts the shared eval instance file if run concurrently with eval/baseline work
 
 **Config:** N/A (infrastructure finding, not an experiment). Discovered while smoke-testing the new PSO baseline (`Code/baselines/pso.py`) against `EDF` on "the fixed instance" while the Priority-1 RCPO retrain (with the fixed `episode_cost`, see the entry below) was running concurrently in the background.
