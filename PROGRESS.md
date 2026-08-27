@@ -362,6 +362,17 @@ appeared to catastrophically fail on a 10x-smaller instance scale, traced to
 out-of-distribution normalised observations) -- once controlled for, the policy actually
 holds up fine at that smaller scale.
 
+**One more result from the same night:** implemented genuine multi-objective Optuna
+tuning (`optimize_for="pareto"`, NSGA-II via Optuna) to directly act on Roijers et al.
+(2013)'s linear-scalarization critique instead of just citing it. The resulting 40-trial
+Pareto front collapsed to a single point -- 17 of 40 trials reached zero tardiness, and the
+single best-reward trial in the whole population was one of them, so nothing had to be
+traded away. This is an informative null result: the reward/tardiness misalignment found
+elsewhere tonight (PSO) and in Phase 6 doesn't show up at this small tuning scale, only at
+deployment scale -- corroborating Eimer et al. (2023)'s tuning/deployment mismatch warning
+at the level of the Pareto front's shape itself. Next step: rerun at a tuning scale closer
+to deployment (not attempted tonight, cost-prohibitive at this session's remaining budget).
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

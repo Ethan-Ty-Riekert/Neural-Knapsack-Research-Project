@@ -32,6 +32,23 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Multi-objective Optuna Pareto front collapses to one point at tuning scale -- an informative null result
+
+**Config:** New `optimize_for="pareto"` mode (`Code/training/optuna_tune.py`), 40 trials, A2C pointer, standard small tuning env (20 jobs, 5 machines, horizon=30). See `Future/research/2026-08-28-multi-objective-optuna-pareto.md`.
+
+**Stats:**
+```
+17 of 40 trials reached exactly zero mean tardiness
+Best reward among zero-tardiness trials:     107.65  <- the sole Pareto-front point
+Best reward among nonzero-tardiness trials:  106.10  <- strictly worse
+```
+
+**Observation:** The front collapsed to a single non-dominated trial because nothing had to be traded away -- the highest-reward trial in the entire population also happens to have zero tardiness. No reward/tardiness trade-off exists to characterize at this scale.
+
+**Conclusion / next step:** This means the reward/tardiness misalignment this project keeps finding (Phase 6, PSO earlier tonight) is absent or far weaker at small tuning scale, and only emerges at deployment scale (100 jobs) where throughput bonuses accumulate over many more placements per episode. Corroborates Eimer et al. (2023)'s tuning/deployment mismatch warning at the level of the Pareto front's shape, not just which point gets picked. Next step (not attempted tonight, cost-prohibitive at deployment-scale per-trial timesteps): rerun `optimize_for="pareto"` at a tuning scale closer to deployment (e.g. 60-100 jobs).
+
+---
+
 ## 2026-08-28 (S2W6) -- Stage B: PSO independently rediscovers reward hacking via a non-gradient search method
 
 **Config:** SPV-encoded PSO (`Code/baselines/pso.py`), `swarm_size=15, iterations=30`, fitness = total episode reward, fixed instance + 15 held-out instances (seeds 500000-500014). See `Future/research/2026-08-28-pso-metaheuristic-baseline.md` for full grounding/methodology.

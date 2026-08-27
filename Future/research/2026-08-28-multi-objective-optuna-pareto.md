@@ -61,9 +61,45 @@ existing single-objective studies' budget for comparability.
 
 ## 4. Results
 
-_Filled in after the 40-trial run completes._
+**The Pareto front collapsed to a single point** (`trial 20: mean_reward=
+107.65, mean_tardiness_norm=0.0`) -- every one of the other 39 trials was
+dominated by it. This is not a search failure: 17 of 40 trials (42.5%)
+reached exactly zero mean tardiness at this tuning scale, and the single
+best reward among all 40 trials (107.65) belongs to one of those
+zero-tardiness trials -- the best *non*-zero-tardiness trial only reached
+106.10 reward, strictly less. **There is no trade-off to characterize
+here**: nothing had to be given up on reward to also reach zero tardiness,
+so a single point legitimately dominates the entire 40-trial population.
 
-<!-- PARETO_RESULTS_PLACEHOLDER -->
+### Honest reading
+
+This is a genuine, informative null result, not a wasted run. It means the
+reward/tardiness misalignment this project has repeatedly found (Phase 6,
+PSO tonight) **is not present, or is far weaker, at this small tuning
+scale** (20 jobs, 5 machines, horizon=30) -- the same scale every prior
+Optuna study in this project has searched at. The misalignment that
+matters shows up at deployment scale (100 jobs, horizon=100), where the
+`+3`/`+50` throughput bonuses accumulate over many more placements per
+episode relative to the `O(1)`-per-job tardiness penalty. This directly
+corroborates Eimer, Lindauer, & Raileanu (2023)'s HPO tuning/deployment
+mismatch warning -- already cited in this project's Phase 7 literature
+review for a different symptom (tardiness didn't transfer from tuning
+scale to deployment scale) -- now showing the same root cause applies to
+the *shape of the Pareto front itself*, not just to which point on it gets
+picked.
+
+## 5. Conclusion / next step
+
+Multi-objective tuning at small scale can't reveal the trade-off that
+actually matters, because the trade-off barely exists there. The natural
+follow-up -- already on this project's survey list independently, now
+doubly motivated -- is rerunning this exact `optimize_for="pareto"` mode
+against a tuning environment closer to deployment scale (e.g. `num_jobs=
+60-100, horizon=60-100`, at proportionally higher per-trial timestep cost).
+Not attempted tonight: a single deployment-scale trial already costs
+minutes at `eval_timesteps=30_000`, and 40 of them would cost substantially
+more wall-clock than tonight's other priorities left room for. Flagged as
+the next concrete, well-motivated experiment for a future session.
 
 ## References
 
