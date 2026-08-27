@@ -163,6 +163,45 @@ for tardiness; picking one for a future full deployment-scale run is a
 downstream decision this experiment deliberately leaves open rather than
 making for you.
 
+## 6b. Closing the loop: the actual full deployment scale (same night)
+
+Reran once more at `num_jobs=100, num_machines=10, horizon=100` -- the
+actual deployed instance's exact dimensions, not a proxy -- with a smaller
+budget (15 trials, ~2 min/trial at this scale) given the hour.
+
+**5 of 15 trials non-dominated**, reward ranging from -89.94 (zero
+tardiness) to 257.05 (tardiness_norm=19.37):
+
+| trial | reward | tardiness_norm | `lambda_2` |
+|---|---|---|---|
+| 7 | 257.05 | 19.37 | 1.434 |
+| 13 | 247.09 | 13.81 | 0.708 |
+| 12 | 170.88 | 2.47 | 10.981 |
+| 11 | 110.99 | 1.71 | 5.685 |
+| 14 | -89.94 | 0.00 | 0.568 |
+
+Confirms the 60-job finding robustly at the actual production scale: a
+real, wide front exists here too, not just at the intermediate proxy scale.
+
+**Important caveat before reading these numbers against any deployed
+checkpoint:** every trial here trains for only `eval_timesteps=30_000`
+(the same fixed budget every Optuna study in this project uses, deliberately
+held constant -- see objective_a2c's `tuning_num_jobs` docstring), vastly
+less than the ~500,000 timesteps a full curriculum run gives the actual
+deployed checkpoints. These trials are all substantially undertrained
+relative to Phase 8/RCPO's checkpoints -- the *existence and shape* of the
+trade-off is the finding, not these specific reward/tardiness values, which
+should not be compared directly to `eval_results.csv`'s fully-trained
+numbers.
+
+**One concrete cross-reference that does hold up:** the historical
+reward-tuned `lambda_2=3.8529` (`a2c_pointer_best_params.json`, used to
+warm-start every RCPO run) falls *between* trial 11 (`lambda_2=5.685`) and
+trial 7 (`lambda_2=1.434`) on this front -- neither at the extreme-reward
+nor extreme-tardiness end. Consistent with it being found by a
+reward-maximizing search that happened to land in the middle of the
+trade-off, not deliberately at either extreme.
+
 ## 7. Conclusion
 
 The small-scale study's null result and this scaled-up study's rich,

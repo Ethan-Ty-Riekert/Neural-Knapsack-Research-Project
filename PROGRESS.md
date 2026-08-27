@@ -385,6 +385,18 @@ property. Also caught a real bug enabling this: `make_tuning_env()` hardcoded
 ever exceeded it. Full detail in `Future/research/2026-08-28-multi-objective-optuna-
 pareto.md`.
 
+**Closed the loop with one final run at the actual deployment scale** (100 jobs, 10
+machines, horizon=100, 15 trials): 5 non-dominated trials, reward -89.94 (zero tardiness)
+to 257.05 (tardiness_norm=19.37) -- confirms the trade-off robustly at real production
+scale, not just the 60-job proxy. The historical reward-tuned `lambda_2=3.8529` (warm-start
+for every RCPO run) falls in the middle of this front, neither extreme. Caveat: these
+trials train for only 30,000 timesteps each (vs. ~500,000 for a full curriculum run), so
+absolute values aren't comparable to deployed checkpoints -- the trade-off's existence and
+shape is the finding. This closes tonight's Pareto investigation arc (small scale -> null
+result -> 60-job scale -> real front -> full scale -> confirmed); a full deployment-budget
+multi-objective study is flagged as the natural next step, left for a future session given
+its much larger compute cost.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

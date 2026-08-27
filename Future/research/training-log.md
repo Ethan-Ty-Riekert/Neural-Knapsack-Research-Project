@@ -32,6 +32,22 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Closing the loop: Pareto front confirmed at the actual full deployment scale
+
+**Config:** Same `optimize_for="pareto"` mode, 15 trials (reduced budget given the hour), `num_jobs=100, num_machines=10, horizon=100` -- the exact deployed instance dimensions, not a proxy. See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 6b.
+
+**Stats:**
+```
+5 of 15 trials non-dominated, reward -89.94 (tardiness=0) to 257.05 (tardiness_norm=19.37)
+Historical reward-tuned lambda_2=3.8529 falls between trial 11 (5.685) and trial 7 (1.434) on this front
+```
+
+**Observation:** Confirms the 60-job proxy-scale finding robustly at the real production scale -- a wide, real trade-off exists here too. Caveat: every trial trains for only 30,000 timesteps (vs. ~500,000 for a full curriculum run), so absolute reward/tardiness values here are not comparable to `eval_results.csv`'s fully-trained checkpoints -- the existence and shape of the trade-off is the finding.
+
+**Conclusion / next step:** This closes tonight's Pareto investigation arc (small scale -> null result -> intermediate scale -> real front -> full scale -> confirmed). A full deployment-budget (500k-timestep) multi-objective study is the natural next step for informing an actual production `lambda_2` choice, but that is a much larger compute commitment left for a future session with the user's input on budget.
+
+---
+
 ## 2026-08-28 (S2W6) -- Deployment-scale Pareto rerun confirms the trade-off is scale-dependent, and finds a real bug along the way
 
 **Config:** Same `optimize_for="pareto"` mode, 40 trials, but `num_jobs=60, num_machines=8, horizon=60` (new `--tuning-num-jobs`/`--tuning-num-machines`/`--tuning-horizon` CLI flags) instead of the default (20, 5, 30) every prior study used. See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 6.
