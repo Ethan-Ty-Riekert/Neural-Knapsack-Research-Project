@@ -76,10 +76,65 @@ a reference point.
 
 ## 4. Results
 
-_Filled in after `python -m Code.baselines.pso` completes (fixed instance +
-held-out sample)._
+Ran on the fixed instance plus 15 held-out instances (seeds 500000-500014),
+`swarm_size=15, iterations=30`, compared against `EDF` on the same
+instances:
 
-<!-- PSO_RESULTS_PLACEHOLDER -->
+| | reward | tardiness | late jobs | wall-clock/instance |
+|---|---|---|---|---|
+| PSO (fixed instance) | 337.37 | 963.00 | 39 | 208.5s |
+| PSO (15 held-out, mean) | 329.68 | 1012.40 | 40.93 | 182.9s |
+| EDF (same 15 held-out, mean) | 286.00 | 50.33 | 14.20 | ~0.4s |
+
+### Honest reading
+
+**PSO beats EDF on reward by ~15% on every instance tested, but with
+20x the tardiness and 3x the late-jobs rate.** This is not PSO failing to
+optimize -- `fitness_curve` (tracked per run) is monotonically improving by
+construction, and 450 episode evaluations comfortably finds a
+high-reward solution. It is PSO succeeding at exactly what it was told to
+optimize: total episode reward under this environment's actual reward
+function, unconstrained by any hand-picked priority heuristic's implicit
+biases.
+
+**This independently reproduces Phase 6/7's reward-hacking finding
+(`Future/research/2026-08-17-literature-review-improving-rl-agent.md`,
+grounded in Skalse et al. 2022's formal definition) via a completely
+different, gradient-free search method.** Phase 6 found Optuna-tuned RL
+policies could achieve high reward with poor tardiness; that was always
+possible to attribute (even if unlikely) to some RL-training-specific
+artifact -- a bad value-function estimate, an exploration quirk, a
+curriculum-transfer issue. PSO has none of those: it directly searches the
+space of (job-priority, machine-priority) encodings and evaluates each one
+by literally replaying it through the unmodified reward function. Finding
+the same high-reward/high-tardiness exploit here is much stronger evidence
+that **the misalignment is a property of the reward function's own
+weighting** (the `+3` per-placement and `+50` completion bonuses
+outweighing `lambda_2=1.0`'s tardiness penalty at this scale), not an
+artifact specific to how RL happens to be trained.
+
+**Search cost is real and non-trivial** -- ~185s/instance here, versus
+EDF's sub-second, sub-millisecond-per-episode cost. This is the expected,
+stated trade-off (Section 3): PSO trades wall-clock for solution quality
+against whatever fitness it's given, and given *this* fitness (raw
+reward), what it finds is a demonstration of a reward-design problem, not
+a genuinely useful scheduling policy by this project's actual goals
+(low tardiness).
+
+## 5. Conclusion / next step
+
+PSO is confirmed as a working metaheuristic baseline (correct SPV
+decoding, correct env-replay fitness, sensible convergence), and in the
+process independently corroborates that this project's reward function
+rewards throughput over promptness more than intended -- the third
+distinct method (Optuna-tuned RL, this PSO run) and the third distinct
+angle (Phase 6, Phase 7's literature grounding, now a non-gradient search)
+converging on the same conclusion. A natural, not-yet-tried follow-up:
+rerun PSO with fitness = *negative total tardiness* (or a reward variant
+with a much larger `lambda_2`) instead of raw reward, to see what the best
+achievable tardiness actually is at this instance scale when that's the
+explicit target -- a useful complement to CP-SAT's small-instance-only
+optimum (Stage C), since PSO doesn't have CP-SAT's scaling limit.
 
 ## References
 

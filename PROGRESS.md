@@ -339,17 +339,28 @@ Writeup: `Future/research/2026-08-28-exact-solver-baseline.md`.
 **Stage B (PSO metaheuristic) independently rediscovers Phase 6/7's reward-hacking
 finding.** Optimizing PSO's particles directly against total episode reward (the same
 reward every RL policy is trained on) finds solutions with much higher reward than EDF
-(~337 vs. ~285) but enormous tardiness (800-1200 vs. near-zero) -- the same
-reward-tardiness misalignment Phase 6 found via Optuna and Phase 7 grounded in Skalse et
-al. (2022)'s formal definition of reward hacking, now confirmed by a completely different,
-gradient-free search method arriving at the same exploit. This is stronger evidence the
-misalignment is a property of the reward function itself, not an RL-training artifact.
+(329.68 vs. 286.00, mean over 15 held-out instances) but ~20x the tardiness (1012.40 vs.
+50.33) -- the same reward-tardiness misalignment Phase 6 found via Optuna and Phase 7
+grounded in Skalse et al. (2022)'s formal definition of reward hacking, now confirmed by a
+completely different, gradient-free search method arriving at the same exploit. This is
+stronger evidence the misalignment is a property of the reward function itself, not an
+RL-training artifact.
 
 Also discovered and fixed an infrastructure hazard along the way: `train_optimized.py`
 overwrites the shared `ENV_CONFIG_PATH` file on every curriculum stage transition, so any
 eval/baseline script reading it while a training run is concurrently active can silently
 read the wrong (smaller-scale) instance. Now a hard operational rule: never run eval-side
 scripts against that file while training is active.
+
+Two more small findings from the same night: added `jobs_scheduled` tracking to the
+standard eval pipeline by default (prompted by the RCPO and CP-SAT completion-rate gaps
+above -- re-checking Stage A's own numbers with it found even EDF/LST don't fully complete
+the fixed instance, 98/100 and 99/100, invisible in every prior report of those exact
+numbers); and caught-and-corrected a self-inflicted test confound where the RL checkpoint
+appeared to catastrophically fail on a 10x-smaller instance scale, traced to
+`generate_env_config`'s `deadline_range` not scaling with `horizon` (producing wildly
+out-of-distribution normalised observations) -- once controlled for, the policy actually
+holds up fine at that smaller scale.
 
 ## Recurring lesson
 

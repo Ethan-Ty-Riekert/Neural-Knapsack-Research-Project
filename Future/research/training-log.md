@@ -32,6 +32,24 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Stage B: PSO independently rediscovers reward hacking via a non-gradient search method
+
+**Config:** SPV-encoded PSO (`Code/baselines/pso.py`), `swarm_size=15, iterations=30`, fitness = total episode reward, fixed instance + 15 held-out instances (seeds 500000-500014). See `Future/research/2026-08-28-pso-metaheuristic-baseline.md` for full grounding/methodology.
+
+**Stats:**
+```
+                       reward   tardiness  late_jobs  wall_clock/instance
+PSO (fixed instance)   337.37   963.00     39         208.5s
+PSO (15 held-out mean) 329.68   1012.40    40.93      182.9s
+EDF (same held-out)    286.00   50.33      14.20      ~0.4s
+```
+
+**Observation:** PSO beats EDF on reward by ~15% on every instance, with ~20x the tardiness. Fitness curve is monotonically improving by construction and converges well -- this is PSO succeeding at optimizing exactly what it was told to (raw episode reward), not failing to search. Since PSO evaluates candidates by directly replaying them through the unmodified reward function (no RL training dynamics involved at all), finding the same reward/tardiness misalignment Phase 6 found via Optuna-tuned RL, and Phase 7 grounded in Skalse et al. (2022)'s formal reward-hacking definition, is much stronger evidence the misalignment is a property of the reward function's own weighting (throughput bonuses outweighing the tardiness penalty at lambda_2=1.0) than an RL-specific training artifact.
+
+**Conclusion / next step:** Confirms PSO works correctly as a baseline and adds a third, independent line of evidence for the reward-hacking finding. Not yet tried: rerunning PSO with fitness = negative tardiness directly, to get an achievable-tardiness reference point at full instance scale (complementing CP-SAT's small-instance-only exact optimum from Stage C).
+
+---
+
 ## 2026-08-28 (S2W6) -- Apparent RL scale-generalization failure was a self-inflicted test confound, not a real finding
 
 **Config:** N/A (methodology correction). Following up on `2026-08-28-exact-solver-baseline.md`'s open question ("does the RL policy generalize to a much smaller instance scale"), ran the RCPO-refixed pointer checkpoint on `num_jobs=10, horizon=15` instances (padding `max_jobs=100` to match the trained obs/action space).
