@@ -324,19 +324,29 @@ def objective_a2c(
     space trading off architecture choice against hyperparameters.
 
     optimize_for: "reward" (default, unchanged behaviour -- Optuna's fitness
-    metric is mean_reward) or "tardiness". Both modes train the agent against
-    the *same* env reward (lambda_2 included) -- optimize_for only changes which
-    metric Optuna uses to rank/select trials against each other, the same way a
-    model can be trained on one loss but selected on a different validation
-    metric. This exists because "reward" mode has -- repeatedly, per
-    Future/research/training-log.md's S2W4/S2W5 entries -- picked hyperparameters
-    that are reward-competitive with EDF but far worse on tardiness/late-jobs;
-    the two objectives are only loosely correlated given the current reward
-    formula's O(1) tardiness term vs. its larger placement/completion bonuses.
-    "tardiness" mode instead ranks trials by `mean_reward - TARDINESS_PENALTY_WEIGHT
-    * mean_tardiness_normalised`, so a trial only looks good if it both completes
-    jobs (mean_reward requires that, same anti-idle-collapse pressure as before)
-    AND keeps them on time.
+    metric is mean_reward), "tardiness", or "pareto". All three modes train the
+    agent against the *same* env reward (lambda_2 included) -- optimize_for only
+    changes which metric(s) Optuna uses to rank/select trials against each
+    other, the same way a model can be trained on one loss but selected on a
+    different validation metric. This exists because "reward" mode has --
+    repeatedly, per Future/research/training-log.md's S2W4/S2W5 entries --
+    picked hyperparameters that are reward-competitive with EDF but far worse
+    on tardiness/late-jobs; the two objectives are only loosely correlated
+    given the current reward formula's O(1) tardiness term vs. its larger
+    placement/completion bonuses. "tardiness" mode instead ranks trials by
+    `mean_reward - TARDINESS_PENALTY_WEIGHT * mean_tardiness_normalised`, so a
+    trial only looks good if it both completes jobs (mean_reward requires
+    that, same anti-idle-collapse pressure as before) AND keeps them on time --
+    but this is still a single scalarization with one hand-picked weight
+    (TARDINESS_PENALTY_WEIGHT), the exact practice Roijers et al. (2013)
+    critique for only ever reaching one point on the reward-tardiness Pareto
+    front (see Future/research/2026-08-21-rcpo-constrained-tardiness.md
+    Section 1, which cites the same critique). "pareto" mode (2026-08-28,
+    S2W6) returns the raw (mean_reward, mean_tardiness_normalised) pair
+    instead of collapsing them into one number -- see run_optimization()'s
+    multi-objective study branch -- so Optuna's own NSGA-II-based multi-
+    objective sampler (Deb et al., 2002) finds a genuine non-dominated front
+    instead of one arbitrarily-weighted point on it.
 
     use_potential_shaping: carries forward Experiment 4's result (see
     Future/research/training-log.md's 2026-08-19 entry -- pointer+shaping beat
@@ -466,10 +476,20 @@ def objective_a2c(
         trial.set_user_attr("composite_score", composite_score)
         trial.set_user_attr("n_episodes", n_eval_episodes)
 
+        if optimize_for == "pareto":
+            # Two raw objectives, no scalarization -- see this function's
+            # optimize_for docstring. run_optimization() creates the study
+            # with directions=["maximize", "minimize"] to match this order.
+            return mean_reward, mean_tardiness_norm
         return composite_score if optimize_for == "tardiness" else mean_reward
 
     except Exception as e:
         print(f"Trial {trial.number} failed: {e}")
+        if optimize_for == "pareto":
+            # Worst-possible point on both axes, consistent with the
+            # single-objective failure sentinel (-1000.0) below -- a failed
+            # trial must never look good on either objective.
+            return -1000.0, 1000.0
         return -1000.0
 
     finally:
@@ -532,6 +552,7 @@ def run_optimization(
     # changed (composite_score, not mean_reward), so it also needs a fresh study
     # rather than resuming "_v2"'s reward-ranked trial history.
     tardiness_suffix = "_tardiness" if (algorithm == "a2c" and optimize_for == "tardiness") else ""
+    tardiness_suffix = "_pareto" if (algorithm == "a2c" and optimize_for == "pareto") else tardiness_suffix
     randinst_suffix = "_randinst" if (algorithm == "a2c" and randomize_instances) else ""
     if algorithm == "a2c":
         result_tag = f"a2c_{policy_type}_v2{tardiness_suffix}{randinst_suffix}"
@@ -542,17 +563,31 @@ def run_optimization(
         study_name = f"{result_tag}_scheduling_optimization"
 
     # Create study
-    sampler = TPESampler(seed=42)
+    is_pareto = (algorithm == "a2c" and optimize_for == "pareto")
     pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=0)
 
-    study = optuna.create_study(
-        study_name=study_name,
-        storage=storage,
-        sampler=sampler,
-        pruner=pruner,
-        direction="maximize",  # Maximize reward
-        load_if_exists=True,
-    )
+    if is_pareto:
+        # No sampler= override here: Optuna auto-selects NSGA-II (Deb et al.,
+        # 2002) as the default multi-objective sampler once directions is a
+        # list rather than a single direction= string -- TPESampler (used
+        # below for single-objective) does not support multiple objectives.
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=storage,
+            pruner=pruner,
+            directions=["maximize", "minimize"],  # (mean_reward, mean_tardiness_norm)
+            load_if_exists=True,
+        )
+    else:
+        sampler = TPESampler(seed=42)
+        study = optuna.create_study(
+            study_name=study_name,
+            storage=storage,
+            sampler=sampler,
+            pruner=pruner,
+            direction="maximize",  # Maximize reward
+            load_if_exists=True,
+        )
 
     # Select objective function
     if algorithm == "ppo":
@@ -585,29 +620,51 @@ def run_optimization(
     print("Optimization completed!")
     print(f"{'='*80}\n")
 
-    print(f"Best trial: {study.best_trial.number}")
-    print(f"Best reward: {study.best_value:.2f}")
-    print("\nBest hyperparameters:")
-    for key, value in study.best_params.items():
-        print(f"  {key}: {value}")
-
-    # Save results. File prefix is the architecture-identifying tag (e.g.
-    # "a2c_pointer", "a2c_flat", "ppo") plus "_tardiness" when optimize_for=
-    # "tardiness" -- NOT result_tag's "_v2" suffix, which only exists to keep the
-    # Optuna *study* fresh in storage. train_optimized.py loads
-    # "a2c_{policy_type}_best_params.json" by default (see Code/training/
-    # train_optimized.py's --params-tag), so the reward-tuned file stays
-    # untouched and this produces a separate, comparable alternative.
     file_tag = f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}" if algorithm == "a2c" else algorithm
     results_dir = OPTUNA_RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save best parameters
     import json
-    best_params_file = os.path.join(results_dir, f"{file_tag}_best_params.json")
-    with open(best_params_file, "w") as f:
-        json.dump(study.best_params, f, indent=2)
-    print(f"\nBest parameters saved to: {best_params_file}")
+
+    if is_pareto:
+        # study.best_trial/.best_value/.best_params don't exist for a
+        # multi-objective study (there is no single "best" -- that's the
+        # point). study.best_trials is the set of non-dominated trials, i.e.
+        # the Pareto front itself.
+        pareto_trials = study.best_trials
+        print(f"Pareto front: {len(pareto_trials)} non-dominated trials (of {len(study.trials)} total)")
+        pareto_sorted = sorted(pareto_trials, key=lambda t: t.values[0], reverse=True)
+        for t in pareto_sorted:
+            print(f"  trial {t.number}: reward={t.values[0]:.2f}  tardiness_norm={t.values[1]:.4f}")
+
+        pareto_file = os.path.join(results_dir, f"{file_tag}_pareto_front.json")
+        with open(pareto_file, "w") as f:
+            json.dump([
+                {"trial": t.number, "mean_reward": t.values[0], "mean_tardiness_norm": t.values[1],
+                 "mean_tardiness": t.user_attrs.get("mean_tardiness"),
+                 "mean_late_jobs": t.user_attrs.get("mean_late_jobs"),
+                 "params": t.params}
+                for t in pareto_sorted
+            ], f, indent=2)
+        print(f"\nPareto front saved to: {pareto_file}")
+    else:
+        print(f"Best trial: {study.best_trial.number}")
+        print(f"Best reward: {study.best_value:.2f}")
+        print("\nBest hyperparameters:")
+        for key, value in study.best_params.items():
+            print(f"  {key}: {value}")
+
+        # Save best parameters. File prefix is the architecture-identifying
+        # tag (e.g. "a2c_pointer", "a2c_flat", "ppo") plus "_tardiness" when
+        # optimize_for="tardiness" -- NOT result_tag's "_v2" suffix, which
+        # only exists to keep the Optuna *study* fresh in storage.
+        # train_optimized.py loads "a2c_{policy_type}_best_params.json" by
+        # default (see Code/training/train_optimized.py's --params-tag), so
+        # the reward-tuned file stays untouched and this produces a
+        # separate, comparable alternative.
+        best_params_file = os.path.join(results_dir, f"{file_tag}_best_params.json")
+        with open(best_params_file, "w") as f:
+            json.dump(study.best_params, f, indent=2)
+        print(f"\nBest parameters saved to: {best_params_file}")
 
     # Save study dataframe
     df = study.trials_dataframe()
@@ -619,17 +676,25 @@ def run_optimization(
     try:
         import optuna.visualization as vis
 
-        # Optimization history
-        fig = vis.plot_optimization_history(study)
-        fig.write_html(os.path.join(results_dir, f"{file_tag}_optimization_history.html"))
+        if is_pareto:
+            # plot_optimization_history/plot_param_importances assume a
+            # single objective -- plot_pareto_front is the multi-objective
+            # equivalent, showing the actual reward/tardiness trade-off
+            # surface this mode exists to find.
+            fig = vis.plot_pareto_front(study, target_names=["mean_reward", "mean_tardiness_norm"])
+            fig.write_html(os.path.join(results_dir, f"{file_tag}_pareto_front.html"))
+        else:
+            # Optimization history
+            fig = vis.plot_optimization_history(study)
+            fig.write_html(os.path.join(results_dir, f"{file_tag}_optimization_history.html"))
 
-        # Parameter importances
-        fig = vis.plot_param_importances(study)
-        fig.write_html(os.path.join(results_dir, f"{file_tag}_param_importances.html"))
+            # Parameter importances
+            fig = vis.plot_param_importances(study)
+            fig.write_html(os.path.join(results_dir, f"{file_tag}_param_importances.html"))
 
-        # Parallel coordinate plot
-        fig = vis.plot_parallel_coordinate(study)
-        fig.write_html(os.path.join(results_dir, f"{file_tag}_parallel_coordinate.html"))
+            # Parallel coordinate plot
+            fig = vis.plot_parallel_coordinate(study)
+            fig.write_html(os.path.join(results_dir, f"{file_tag}_parallel_coordinate.html"))
 
         print(f"Visualizations saved to: {results_dir}")
     except Exception as e:
@@ -653,13 +718,17 @@ if __name__ == "__main__":
                         help="Number of parallel jobs")
     parser.add_argument("--storage", type=str, default=f"sqlite:///{OPTUNA_DB_PATH.as_posix()}",
                         help="Database URL for persistent storage")
-    parser.add_argument("--optimize-for", type=str, default="reward", choices=["reward", "tardiness"],
+    parser.add_argument("--optimize-for", type=str, default="reward", choices=["reward", "tardiness", "pareto"],
                         help="A2C only: 'reward' (default, unchanged) ranks trials by mean episode "
                              "reward. 'tardiness' ranks by mean_reward - 50*mean_tardiness_normalised "
                              "instead, to search for hyperparameters that are actually tardiness-"
                              "competitive, not just reward-competitive -- see objective_a2c's docstring. "
-                             "Writes to a separate *_tardiness_best_params.json, not overwriting the "
-                             "default reward-tuned file.")
+                             "'pareto' (2026-08-28) runs a genuine multi-objective study over the raw "
+                             "(mean_reward, mean_tardiness_normalised) pair via Optuna's NSGA-II sampler, "
+                             "instead of collapsing them into one hand-weighted score -- saves a "
+                             "*_pareto_front.json of the non-dominated trial set. Each mode writes to "
+                             "separate *_{tardiness,pareto}_best_params.json / _pareto_front.json files, "
+                             "not overwriting the default reward-tuned file.")
     parser.add_argument("--use-potential-shaping", action="store_true",
                         help="A2C only: carry forward Experiment 4's shaping win (see "
                              "objective_a2c's docstring) into this search.")
