@@ -32,6 +32,24 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Apparent RL scale-generalization failure was a self-inflicted test confound, not a real finding
+
+**Config:** N/A (methodology correction). Following up on `2026-08-28-exact-solver-baseline.md`'s open question ("does the RL policy generalize to a much smaller instance scale"), ran the RCPO-refixed pointer checkpoint on `num_jobs=10, horizon=15` instances (padding `max_jobs=100` to match the trained obs/action space).
+
+**Stats:**
+```
+First attempt (default deadline_range=(10,110), unscaled for horizon=15):
+  RL reward=-2 to -8, jobs_scheduled=0-2/10   <- looked catastrophic
+Controlled retest (deadline_range=(2, horizon), proportionally scaled):
+  RL matches or beats EDF on all 5 seeds tested, jobs_scheduled=9-10/10
+```
+
+**Observation:** `Code/env/env_config.py::generate_env_config`'s `deadline_range` defaults to `(10, 110)` regardless of the `horizon` argument -- at `horizon=15` this produces deadlines like 99, drastically exceeding the horizon. The RL policy consumes *normalised* deadlines (`deadline/horizon`); heuristics compare raw deadlines directly. So the same malformed instance pushed the RL policy's observations far outside its training distribution while leaving EDF/LST completely unaffected -- the "catastrophic failure" was a property of the test instance, not the policy.
+
+**Conclusion / next step:** No scale-generalization failure found once properly controlled -- the policy holds up reasonably at 10x smaller scale than training. Recording the failed-then-corrected attempt in full (not just the clean final numbers) because the artifact itself is the useful finding: **`generate_env_config`'s `deadline_range` not scaling with `horizon` is a footgun for any future cross-scale evaluation.** Worth fixing generate_env_config itself eventually (e.g. default `deadline_range` proportional to `horizon`) -- not done tonight, flagged for a future session.
+
+---
+
 ## 2026-08-28 (S2W6) -- RCPO rerun with the fixed constraint + achievable alpha: a real, modest win
 
 **Config:** A2C pointer, potential-based shaping ON, `--use-rcpo --rcpo-alpha 0.2866` (achievable, anchored to Phase 8's held-out tardiness converted into `C(tau)` units) with the fixed `episode_cost` (this session's earlier entry) instead of `alpha=0.0` on the buggy constraint (Phase 10). `lambda_init=3.8529`, `lambda_max=50.0`, `lambda_lr=0.01`, `update_every=5` -- unchanged from Phase 10. See `Future/research/2026-08-21-rcpo-constrained-tardiness.md` Section 7 for the full writeup.

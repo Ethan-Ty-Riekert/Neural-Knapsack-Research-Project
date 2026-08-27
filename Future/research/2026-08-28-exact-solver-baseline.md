@@ -163,6 +163,57 @@ whether the pointer network's learned policy also leaves jobs unscheduled
 here, or whether it's closer to CP-SAT's full-completion behaviour than
 either classical heuristic is.
 
+## 8. Follow-up: does the RL policy generalize to a much smaller instance scale? (same night, Priority 6)
+
+Section 7 flagged running the RL checkpoint on these same small instances
+as a cheap follow-up. Did so -- and it initially looked like a striking
+negative result that turned out to be a self-inflicted confound, worth
+recording in full since catching it is the point.
+
+**First attempt (num_jobs=10, num_machines=10, horizon=15, `max_jobs=100`
+padding to match the trained obs/action space):** the RCPO-refixed
+checkpoint collapsed completely -- reward -2 to -8, scheduling 0-2 of 10
+jobs, versus CP-SAT's optimal ~69 reward / 10-of-10 and EDF's ~20-77 reward
+/ 9-10-of-10. This looked like a severe scale-generalization failure (never
+tested at any scale this far below the 100-job training scale before).
+
+**Confound found before trusting it:** `generate_env_config`'s
+`deadline_range` defaults to `(10, 110)` *regardless of the `horizon`
+passed in* -- at `horizon=15` this drew deadlines like 99, 79, 91 (see the
+printed instance), each wildly beyond the horizon. The RL policy consumes
+*normalised* deadlines (`deadline / horizon`, `Code/env/
+gym_scheduling_wrapper.py::_get_obs()`), so at this horizon that
+normalisation produced values like 99/15 = 6.6 -- nothing resembling
+anything seen during training (where horizon=100 keeps this ratio roughly
+in `[0.1, 1.1]`). Heuristics (EDF/LST) are unaffected by this, since they
+compare raw deadlines directly rather than consuming a normalised
+observation vector -- which is exactly why they didn't also collapse.
+
+**Controlled retest** with `deadline_range=(2, horizon)` (proportionally
+scaled, matching the shape of the full-scale generator's own range):
+
+```
+seed      RL(rcpo-refixed)              EDF
+500000    reward=17.90 sched=9/10       reward=18.50 sched=9/10
+500001    reward=19.87 sched=9/10       reward=20.44 sched=9/10
+500002    reward=75.27 sched=10/10      reward=75.67 sched=10/10
+500003    reward=75.13 sched=10/10      reward=75.60 sched=10/10
+500004    reward=76.03 sched=10/10      reward=20.61 sched=9/10  <- RL wins here
+```
+
+**Corrected conclusion:** there is no scale-generalization failure here --
+the policy performs on par with EDF (matching on 4/5 seeds, beating it on
+the 5th by completing all 10 jobs where EDF left one unscheduled) once the
+test instance is actually in-distribution for what "10x smaller than
+training" should look like. The apparent collapse was entirely an artifact
+of an unscaled `deadline_range` in this session's own ad hoc test script,
+not a property of the trained policy. Recorded here in full (not quietly
+fixed and re-run) because the failure-then-correction is itself the useful
+data point: **`generate_env_config`'s `deadline_range` not scaling with
+`horizon` is a real footgun** for any future cross-scale evaluation script,
+and this is now documented so the next person (or session) doesn't have to
+rediscover it the hard way.
+
 ## References
 
 1. Perron, L., & Furnon, V. *OR-Tools*. Google.
