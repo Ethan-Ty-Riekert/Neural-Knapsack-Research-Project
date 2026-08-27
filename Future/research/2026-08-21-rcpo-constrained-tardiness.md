@@ -331,9 +331,55 @@ not read from the top-line numbers alone, so a recurrence of the
 abandonment strategy (or a new failure mode) would be caught rather than
 mistaken for a genuine win again.
 
-**Results:** _filled in after the rerun completes._
+**Results:**
 
-<!-- RCPO_REFIX_RESULTS_PLACEHOLDER -->
+Diagnosed jobs-scheduled/idle-steps first, as promised above, before trusting the top-line numbers:
+
+```
+                      jobs_scheduled   idle_steps
+Phase 10 (buggy, alpha=0)     49.8/100      61.2   (from the 2026-08-28 correction above)
+This rerun (fixed, alpha=0.2866)  93.1/100    7.9   (50 held-out, horizon=100)
+```
+
+Full completion is not fully restored (93.1/100, not 100/100), but the
+abandonment magnitude dropped by ~85% (from ~50 unscheduled jobs down to
+~7). No new failure mode was found in its place -- the remaining gap looks
+like ordinary imperfect scheduling, not a second constraint-gaming
+strategy.
+
+Official 50-held-out-instance comparison (`eval_results.csv`, tags
+`pointer_rcpo_refixed_S2W6*`):
+
+| Method | reward | tardiness | late jobs |
+|---|---|---|---|
+| **This rerun (fixed C(tau), alpha=0.2866)** | **268.77** | **28.16** | 9.74 |
+| Phase 8 (shaped, no RCPO) | 254.75 | 28.66 | 9.56 |
+| EDF | 284.95 | 37.30 | 12.22 |
+| LST (Stage A's strongest heuristic) | 288.28 | 23.94 | 8.26 |
+| Phase 10 (buggy RCPO, alpha=0) | 135.67 | 19.84 | 3.20 |
+
+**Honest reading:** this is a genuine, if modest, win for the RCPO
+mechanism once both fixes are applied together. Reward improved over
+Phase 8's shaped checkpoint (+5.5%) while tardiness stayed essentially flat
+(28.16 vs. 28.66) -- the multiplier reached something closer to an interior
+equilibrium instead of either doing nothing (Phase 8 had no RCPO at all) or
+saturating destructively (Phase 10). It still does **not** beat EDF on
+reward, and does not beat LST on any of the three metrics -- Stage A's
+finding that LST is the actual bar to clear, not EDF, still stands. The
+comparison against Phase 10's raw numbers (better tardiness/late-jobs,
+worse reward) is no longer meaningful now that Phase 10 is known to have
+achieved those numbers via abandonment -- this rerun is the first RCPO
+result on this environment that can be read at face value.
+
+**Conclusion:** fixing the constraint definition (Section 2) and choosing
+an achievable `alpha` were both necessary; Section 6's original framing of
+Phase 10 as "reward vs. constraint trade-off" was incomplete without also
+fixing the free-abandonment loophole. RCPO with both fixes is now a
+legitimate, marginal improvement over unconstrained reward-shaped training
+for this environment -- worth keeping as the project's best pointer
+configuration, but not a result that changes the standing conclusion
+(Stage A) that classical LST remains the strongest method overall on this
+problem.
 
 ## References
 

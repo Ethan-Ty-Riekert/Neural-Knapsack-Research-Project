@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- RCPO rerun with the fixed constraint + achievable alpha: a real, modest win
+
+**Config:** A2C pointer, potential-based shaping ON, `--use-rcpo --rcpo-alpha 0.2866` (achievable, anchored to Phase 8's held-out tardiness converted into `C(tau)` units) with the fixed `episode_cost` (this session's earlier entry) instead of `alpha=0.0` on the buggy constraint (Phase 10). `lambda_init=3.8529`, `lambda_max=50.0`, `lambda_lr=0.01`, `update_every=5` -- unchanged from Phase 10. See `Future/research/2026-08-21-rcpo-constrained-tardiness.md` Section 7 for the full writeup.
+
+**Stats:**
+```
+                                  reward   tardiness  late_jobs  jobs_scheduled  idle_steps
+This rerun (fixed, alpha=0.2866)  268.77   28.16      9.74       93.1/100        7.9   (50 held-out)
+Phase 8 (shaped, no RCPO)         254.75   28.66      9.56       98.5/100       11.6   (50 held-out, from earlier diagnostic)
+Phase 10 (buggy, alpha=0)         135.67   19.84      3.20       49.8/100       61.2   (50 held-out)
+EDF                                284.95   37.30      12.22      --              --
+LST                                288.28   23.94       8.26      --              --
+```
+
+**Observation:** Job abandonment dropped by ~85% (49.8->93.1 jobs scheduled) with no new failure mode taking its place -- confirms the constraint fix worked as intended. Reward beat Phase 8 by 5.5% with essentially flat tardiness, a genuine (if modest) win for the RCPO mechanism once both fixes are applied together. Still does not beat EDF on reward, or LST on anything -- Stage A's finding that LST is the real bar to beat still stands.
+
+**Conclusion / next step:** This is the first RCPO result on this environment that can be read at face value without a hidden gaming strategy. Keep this checkpoint as the project's best pointer configuration going forward. The remaining ~7% unscheduled-job gap is not further investigated tonight -- plausible next step is checking whether a stricter (lower) achievable alpha pushes jobs_scheduled closer to 100/100 without reward collapsing again, now that the free-abandonment loophole is closed.
+
+---
+
 ## 2026-08-28 (S2W6) -- Stage C: CP-SAT exact solver confirms EDF/LST are tardiness-optimal but leave jobs unscheduled
 
 **Config:** OR-Tools CP-SAT (`Code/baselines/exact_solver.py`), 5 small held-out instances (`num_jobs=10, num_machines=3, horizon=15`, seeds 500000-500004), 60s time limit, compared against `EDF`/`LST` on the same instances. See `Future/research/2026-08-28-exact-solver-baseline.md` for the full formulation, a structural finding about the environment (single global decision clock, derived and verified while building this), and scope/limitations.

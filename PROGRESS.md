@@ -310,6 +310,47 @@ per-heuristic comparison into ~2 minutes — `MPLBACKEND=Agg` fixes it (see
 `Code/utils/plotting_utils.py::save_and_show()`), and is now a standing rule for every
 unattended/automated run in this project, training included.
 
+## Phase 12 — Autonomous overnight session: RCPO fix confirmed working, exact-solver baseline reveals a completion-rate gap, PSO independently rediscovers reward hacking (2026-08-28, S2W6)
+
+Overnight autonomous work on the `autonomous-overnight-2026-08-28` branch (Phase 11's
+classical-heuristic work landed on `rcpo-constrained-optimization` first and was pushed
+before branching). Three results:
+
+**RCPO fix confirmed.** Fixed `episode_cost` so an unscheduled job is charged its
+worst-case cost instead of 0 (closing the abandonment loophole from Phase 11), then
+reran RCPO with an achievable `alpha=0.2866` instead of Phase 10's unreachable `alpha=0`.
+Job abandonment dropped ~85% (49.8→93.1/100 jobs scheduled) with no new failure mode, and
+the result is a genuine, if modest, win: reward beat the non-RCPO shaped checkpoint by
+5.5% (268.77 vs. 254.75) with essentially flat tardiness. Still doesn't beat EDF on
+reward or LST on anything. Full writeup: `Future/research/2026-08-21-rcpo-constrained-
+tardiness.md` Section 7.
+
+**Stage C (CP-SAT exact solver) built and run on small instances**, revealing a second,
+independent completion-rate gap: EDF/LST both reach zero tardiness matching CP-SAT's
+optimum, but leave jobs unscheduled through greedy resource-packing myopia (9/10 on one
+checked instance) where CP-SAT's full-completion constraint always finds a way to fit
+everyone in. A different mechanism from RCPO's deliberate abandonment, but the same
+lesson twice in one night: reward/tardiness alone hides completion rate. Also derived and
+verified a structural property of the environment while building this -- `SchedulingEnv`
+has a single global decision clock (one job start per tick, system-wide, not per-machine),
+capping any episode to at most `horizon` scheduled jobs regardless of `num_machines`.
+Writeup: `Future/research/2026-08-28-exact-solver-baseline.md`.
+
+**Stage B (PSO metaheuristic) independently rediscovers Phase 6/7's reward-hacking
+finding.** Optimizing PSO's particles directly against total episode reward (the same
+reward every RL policy is trained on) finds solutions with much higher reward than EDF
+(~337 vs. ~285) but enormous tardiness (800-1200 vs. near-zero) -- the same
+reward-tardiness misalignment Phase 6 found via Optuna and Phase 7 grounded in Skalse et
+al. (2022)'s formal definition of reward hacking, now confirmed by a completely different,
+gradient-free search method arriving at the same exploit. This is stronger evidence the
+misalignment is a property of the reward function itself, not an RL-training artifact.
+
+Also discovered and fixed an infrastructure hazard along the way: `train_optimized.py`
+overwrites the shared `ENV_CONFIG_PATH` file on every curriculum stage transition, so any
+eval/baseline script reading it while a training run is concurrently active can silently
+read the wrong (smaller-scale) instance. Now a hard operational rule: never run eval-side
+scripts against that file while training is active.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,
