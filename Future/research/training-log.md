@@ -32,6 +32,24 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Discovered hazard: training silently corrupts the shared eval instance file if run concurrently with eval/baseline work
+
+**Config:** N/A (infrastructure finding, not an experiment). Discovered while smoke-testing the new PSO baseline (`Code/baselines/pso.py`) against `EDF` on "the fixed instance" while the Priority-1 RCPO retrain (with the fixed `episode_cost`, see the entry below) was running concurrently in the background.
+
+**Stats:**
+```
+EDF on "the fixed instance" (rl_training/models/env_config.npz):
+  earlier this session (no training running): reward=289.38 tardiness=16.00 late_jobs=10
+  mid-way through this session's background RCPO retrain: reward=137.00 tardiness=0.00 late_jobs=0
+  env_config.npz contents at that point: num_jobs=30, horizon=40 (a curriculum stage's instance, not the deployed 100-job/horizon=100 one)
+```
+
+**Observation:** `Code/training/train_optimized.py`'s per-stage env-construction helper calls `np.savez(ENV_CONFIG_PATH, **config)` (around line 109) on *every* curriculum stage transition, unconditionally overwriting the same shared file every eval/heuristic/PSO script reads as "the fixed instance." Every prior eval this project has run assumed this file always holds the final, full-scale (100 jobs, horizon=100, seed=0) deployment instance -- true whenever no training is concurrently running, but silently false while a curriculum training run is in progress: the file transiently holds whatever stage the training loop is currently on (20/40/60/100 jobs across horizons 20/40/60/100), with no error or warning to any process reading it at the wrong moment. This produced a fully plausible-looking but wrong `EDF` result (137.00/0.00/0) that would have been logged as genuine if I hadn't cross-checked against this session's earlier, known-correct EDF numbers.
+
+**Conclusion / next step:** Treating this as a hard operational rule for the rest of this project, not just tonight: **never run an eval/heuristic/PSO/exact-solver script that reads `ENV_CONFIG_PATH` concurrently with an active `train_optimized.py` (or any script that calls its env-construction helper) run.** Archived `env_config.npz` copies under `rl_training/models/archive/*/` are unaffected (copied once, at the end of a completed run) and remain a reliable source to restore from if the live file is caught mid-corruption. Not fixing the underlying `train_optimized.py` behavior tonight (would need to distinguish "save for later eval" from "save for this stage's own env construction," e.g. only writing `ENV_CONFIG_PATH` after the final curriculum stage) -- flagging it as a real fix worth making, but out of scope for tonight's priority list, which already serializes training and eval so the bug can't bite again.
+
+---
+
 ## 2026-08-28 (S2W6) -- RCPO's "best-ever tardiness" (2026-08-21 entry below) was bought by abandoning jobs, not scheduling them better
 
 **Config:** No new training. Diagnostic re-run of the existing checkpoints from
