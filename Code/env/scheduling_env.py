@@ -99,6 +99,16 @@ class SchedulingEnv:
         # adapted by a Lagrange-multiplier update rule is entirely the
         # trainer's concern, not the environment's.
         self.episode_cost = 0.0
+        # BUG FIX (2026-08-28, see Future/research/training-log.md's
+        # 2026-08-28 entry): episode_cost above only ever accrued when a job
+        # was actually placed (inside reward()), so a job left unscheduled
+        # for the whole episode contributed exactly 0 -- a free way for a
+        # policy to satisfy an aggressive tardiness constraint by abandoning
+        # jobs instead of scheduling them better, which is exactly what the
+        # Phase 10 RCPO pointer checkpoint was found to be doing. Guards
+        # _finalize_unscheduled_job_cost() from double-adding if step()/
+        # step_idle() is ever called again after done=True.
+        self._episode_terminal_cost_added = False
 
 
 
@@ -163,8 +173,39 @@ class SchedulingEnv:
         self.prev_theta = 0.0
         self.prev_potential = self._compute_potential()
         self.episode_cost = 0.0
+        self._episode_terminal_cost_added = False
 
         return self.get_state()
+
+    def _finalize_unscheduled_job_cost(self):
+        """RCPO constraint-cost finalization (2026-08-28 fix): charge every
+        job still unscheduled at episode end its worst-case, deadline-
+        relative cost, using the environment's own horizon H as the
+        completion time. H is a principled choice, not an arbitrary large
+        constant: is_feasible() already forbids any job from ever starting
+        if t + duration > H, so H is the tightest universal upper bound on
+        any job's completion time this environment could ever produce --
+        the natural "as late as this environment allows" worst case for a
+        job that was never scheduled at all. Using H (rather than e.g. +inf
+        or a hand-picked penalty) also keeps this term on the same O(1),
+        horizon-normalised footing as every other reward/cost term here
+        (see reward()'s tardiness_cost comment) -- max(0, H - d_j) / H < 1
+        for every job, exactly like a scheduled job's T_j/H.
+
+        Without this, a job that is never scheduled contributes exactly 0 to
+        C(tau) forever, which is what let the Phase 10 RCPO pointer
+        checkpoint "satisfy" an aggressive tardiness constraint by
+        abandoning ~half its jobs instead of scheduling them better -- see
+        Future/research/training-log.md's 2026-08-28 entry and the
+        correction in Future/research/2026-08-21-rcpo-constrained-
+        tardiness.md.
+        """
+        if self._episode_terminal_cost_added:
+            return
+        for j in self.remaining_jobs:
+            worst_case_cost = self.job_weights[j] * max(0.0, self.horizon - self.job_deadlines[j]) / self.horizon
+            self.episode_cost += worst_case_cost
+        self._episode_terminal_cost_added = True
 
     def _compute_potential(self) -> float:
         """Potential function for optional potential-based reward shaping (Ng,
@@ -294,6 +335,9 @@ class SchedulingEnv:
         # Check for termination at end of horizon or this was the last job
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
 
+        if done:
+            self._finalize_unscheduled_job_cost()
+
         return (self.get_state(), reward, done)
     
     def reward(self, j:int, m:int, ym:bool, delta_theta: float, idle: bool = False) -> float:
@@ -381,6 +425,9 @@ class SchedulingEnv:
             self.prev_potential = new_potential
 
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
+
+        if done:
+            self._finalize_unscheduled_job_cost()
 
         return self.get_state(), reward, done
 

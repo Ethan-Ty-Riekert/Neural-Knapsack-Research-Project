@@ -55,14 +55,39 @@ per-episode tardiness cost:
 
 ```
 C(tau) = sum_{j scheduled in tau} w_j * (T_j / H)
+       + sum_{j NOT scheduled in tau} w_j * max(0, H - d_j) / H      [added 2026-08-28, see below]
 ```
 
-This is *exactly* the quantity `SchedulingEnv.reward()` already computes as
-`self.job_weights[j] * (self.tardiness[j] / self.horizon)` -- the only
-change is that it is no longer multiplied by a fixed `lambda_2` inside the
-per-step reward; instead it is tracked separately as the constraint cost
-signal, and `lambda_2` becomes the (adapted) Lagrange multiplier for the
-constraint above.
+The first sum is *exactly* the quantity `SchedulingEnv.reward()` already
+computes as `self.job_weights[j] * (self.tardiness[j] / self.horizon)` --
+tracked separately as the constraint cost signal instead of being
+multiplied by a fixed `lambda_2` inside the per-step reward, with
+`lambda_2` becoming the (adapted) Lagrange multiplier for the constraint
+above.
+
+**CORRECTION (2026-08-28, S2W6): the second sum was missing at launch, and
+its absence is what actually produced Section 6's original pointer result.**
+As originally implemented, a job that was never scheduled contributed
+exactly 0 to `C(tau)`, forever -- there was no term at all for
+non-completion. A diagnostic re-run (see
+`Future/research/training-log.md`'s 2026-08-28 entry) showed the pointer
+RCPO checkpoint exploiting exactly this: it schedules only ~half its jobs
+(49.8/100 vs. the non-RCPO shaped checkpoint's 98.5/100), which trivially
+keeps `C(tau)` low without the policy having learned to schedule anything
+better. The second sum closes this gap by charging every still-unscheduled
+job its worst-case, deadline-relative cost, using the environment's own
+horizon `H` as the assumed completion time. `H` is not an arbitrary
+penalty constant: `is_feasible()` already forbids any job from starting if
+`t + duration > H`, so `H` is the tightest universal upper bound on any
+job's completion time this environment could ever produce -- the natural
+"as late as this environment allows" worst case for a job that was never
+scheduled at all, and it keeps this term on the same `< 1`-per-job,
+horizon-normalised footing as the first sum. Implemented in
+`SchedulingEnv._finalize_unscheduled_job_cost()`, called once at episode
+termination from both `step()` and `step_idle()`. Section 6 below is
+retained as originally written (with an inline correction notice) for the
+historical record; any RCPO run from this date forward uses the corrected
+`C(tau)`.
 
 **Constraint threshold alpha = 0.** We set the target to zero weighted
 normalised tardiness. This is not a claim that zero tardiness is achievable
@@ -279,6 +304,36 @@ unscheduled jobs as maximally late, not zero), not merely the expected
 reward-vs-constraint trade-off this section originally attributed it to.
 Any achievable-`alpha` RCPO rerun (flagged above) should fix this
 constraint definition first.
+
+## 7. Rerun with the fixed constraint and an achievable alpha (2026-08-28, S2W6)
+
+With `C(tau)` corrected (Section 2's added second sum,
+`SchedulingEnv._finalize_unscheduled_job_cost()`) and unit-tested in
+isolation (a forced-all-unscheduled synthetic episode now produces the
+worst-case cost, not 0 -- confirmed before retraining on it), rerunning
+RCPO on the pointer architecture with two changes from Phase 10 at once:
+
+1. **Fixed constraint** (Section 2), so abandoning jobs is no longer free.
+2. **Achievable `alpha`**, anchored at Phase 8's own held-out tardiness sum
+   (`28.66`, in `eval_results.csv`'s raw units), converted into `C(tau)`'s
+   `w_j * T_j / H` units by dividing by the fixed instance's horizon
+   `H = 100` (confirmed via `rl_training/models/env_config.npz`):
+   `alpha = 28.66 / 100 = 0.2866`, instead of the unreachable `alpha=0`
+   used in Phase 10 -- combining the fix with a still-unreachable target
+   would just swap one failure mode for another (the multiplier would
+   still saturate, just for a different reason), so both changes are
+   needed together to actually test whether RCPO can reach an interior
+   equilibrium here.
+
+Diagnosed the same way the Phase 10 failure was found this time: jobs
+scheduled and idle-steps are checked alongside reward/tardiness/late-jobs,
+not read from the top-line numbers alone, so a recurrence of the
+abandonment strategy (or a new failure mode) would be caught rather than
+mistaken for a genuine win again.
+
+**Results:** _filled in after the rerun completes._
+
+<!-- RCPO_REFIX_RESULTS_PLACEHOLDER -->
 
 ## References
 
