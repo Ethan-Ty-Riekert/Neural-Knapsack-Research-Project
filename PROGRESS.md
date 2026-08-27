@@ -276,6 +276,40 @@ Flagged, not-yet-run follow-up: rerun RCPO on the pointer architecture with a le
 instead of 0, to test whether the multiplier can reach an interior equilibrium and recover
 reward while keeping most of the tardiness gain.
 
+## Phase 11 — Classical heuristic baseline suite; RCPO's "best-ever tardiness" was job abandonment, not better scheduling (2026-08-28, S2W6)
+
+Ten phases in, the comparison baseline had stayed thin: EDF/SPT/LST, each just taking the
+first feasible machine by action-index order (not a real machine-selection rule). Built
+`Code/baselines/` — 6 job-priority rules (EDF, SPT, LST, plus newly added FCFS, LPT, WSPT)
+composed with 3 machine-placement rules (First-Fit, Best-Fit, Worst-Fit), plus Tetris's
+joint multi-resource dot-product scorer (Grandl et al., SIGCOMM 2014) — 23 named baselines
+total, all grounded in citations (see `Future/research/2026-08-28-classical-heuristic-
+baselines.md`). `eval_rl_agent.py` now compares a checkpoint against any list of these in
+one run instead of a hardcoded "EDF".
+
+Headline finding: **LST, not EDF, is the strongest classical heuristic** on every metric,
+fixed instance and held-out — something no prior phase had actually checked, since LST was
+in the codebase but never treated as the reference point. Neither RL checkpoint currently
+beats LST on reward.
+
+Second, more important finding: re-examined Phase 10's RCPO pointer result and found the
+"best-ever tardiness" claim was misleading read in isolation. A diagnostic re-run instrumenting
+jobs-scheduled and idle-steps (not just reward/tardiness/late-jobs) showed the RCPO checkpoint
+schedules only ~50/100 jobs per episode (vs. the non-RCPO shaped checkpoint's ~98.5/100) —
+its low tardiness comes from refusing to schedule risky-looking jobs at all, not from
+scheduling them better. This is possible because `SchedulingEnv`'s tardiness/constraint-cost
+signal only ever accrues for a job that actually gets placed; an unscheduled job costs the
+constraint nothing. Logged as a correction in `training-log.md` (2026-08-28 entry) and in the
+RCPO doc itself — this is a real gap in the constraint's specification, not the expected
+reward-vs-constraint trade-off it was first attributed to, and must be fixed before any future
+RCPO result is compared against anything else on reward terms.
+
+Also discovered and worked around this session: the default interactive matplotlib backend
+blocks on `plt.show()` per plot with no display attached, turning what should be an ~18s
+per-heuristic comparison into ~2 minutes — `MPLBACKEND=Agg` fixes it (see
+`Code/utils/plotting_utils.py::save_and_show()`), and is now a standing rule for every
+unattended/automated run in this project, training included.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

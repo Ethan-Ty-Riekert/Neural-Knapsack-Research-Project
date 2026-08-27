@@ -32,6 +32,58 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- RCPO's "best-ever tardiness" (2026-08-21 entry below) was bought by abandoning jobs, not scheduling them better
+
+**Config:** No new training. Diagnostic re-run of the existing checkpoints from
+the 2026-08-21 RCPO entry (`a2c_pointer_scheduling_optimized_shaped.pt` vs.
+`a2c_pointer_scheduling_optimized_shaped_rcpo.pt`) on 10 held-out instances
+(seeds >= `RANDOM_INSTANCE_SEED_CEILING`), instrumented to also record jobs
+actually scheduled, idle steps taken, and machines activated per episode --
+not just the top-line reward/tardiness/late-jobs numbers every prior eval
+reported.
+
+**Stats:**
+```
+              reward   tardiness  late_jobs  jobs_scheduled  idle_steps  machines_active
+shaped        286.70   14.00      7.60       98.5 / 100      11.6        7.0
+rcpo          113.04    0.70      0.20       49.8 / 100      61.2        4.8
+```
+
+**Observation:** The 2026-08-21 entry below reported RCPO as achieving the
+project's best-ever tardiness/late-jobs. That is numerically true but was
+read in isolation, without checking *how* it was achieved. `SchedulingEnv`
+only ever writes `tardiness[j]` inside `step()` when job `j` is actually
+placed (`Code/env/scheduling_env.py`) -- a job that is never scheduled
+contributes exactly 0 to both the tardiness metric and RCPO's constraint
+cost `C(tau)`, forever. Once the Lagrange multiplier climbed toward its
+`lambda_max=50` ceiling chasing an unreachable `alpha=0` target (as already
+diagnosed on 08-21), refusing to schedule a job that might end up late
+became cheaper under that inflated penalty than scheduling it -- the RCPO
+policy schedules only half the jobs (49.8/100 vs. shaped's 98.5/100) and
+idles for the majority of the episode (61.2 vs. 11.6 steps) instead.
+Eval always scores every method under a fixed, shared `lambda_1=lambda_2=
+lambda_3=1.0` rubric (`Code/evaluation/eval_rl_agent.py::make_env()`,
+hardcoded regardless of training-time lambda values), so the ~2.5x reward
+gap is not a scoring artefact -- most of this reward function's magnitude
+comes from the throughput shaping terms (`+3.0` per valid placement, `+50`
+for finishing all jobs; `SchedulingEnv.step()`), and a policy that abandons
+half the jobs forfeits nearly all of that regardless of how clean its
+tardiness looks on the jobs it does commit to.
+
+**Conclusion / next step:** This is not "the reward function is wrong" --
+it is the RCPO *constraint* being incompletely specified: `C(tau)` should
+charge something for a job still unscheduled at episode end (e.g. treat it
+as maximally late, deadline-relative) rather than letting non-completion be
+a free way to satisfy the constraint. Any future RCPO rerun (including the
+already-flagged achievable-`alpha` rerun below) should fix this constraint
+definition first -- otherwise a less strict `alpha` may just produce a
+milder version of the same abandonment strategy rather than genuinely
+better-scheduled jobs. Flagging this as a required fix, not an optional
+refinement, before RCPO results are compared against anything else on
+reward terms again.
+
+---
+
 ## 2026-08-21 (S2W5) -- RCPO constrained tardiness (pointer): best-ever tardiness/late-jobs, but reward collapses -- multiplier saturated at its ceiling
 
 **Config:** A2C pointer, potential-based shaping ON (Phase 8 config), `--use-rcpo`

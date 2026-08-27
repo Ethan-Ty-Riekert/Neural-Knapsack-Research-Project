@@ -19,6 +19,7 @@ from Code.policies.a2c_policy import make_maskable_a2c
 from Code.utils.plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter
 from Code.utils.paths import ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, PLOTS_DIR, EVAL_RESULTS_CSV
 from Code.utils.results_log import append_eval_result
+from Code.baselines.registry import HEURISTICS, DEFAULT_HEURISTICS, ALL_HEURISTICS
 import torch
 
 
@@ -158,16 +159,13 @@ def run_heuristic(name, config=None):
         if not job_actions:
             return idle_action
 
-        if name == "EDF":
-            return min(job_actions, key=lambda a: base_env.job_deadlines[decode(a)[0]])
-        if name == "SPT":
-            return min(job_actions, key=lambda a: base_env.job_durations[decode(a)[0]])
-        if name == "LST":
-            return min(job_actions, key=lambda a:
-                       base_env.job_deadlines[decode(a)[0]]
-                       - base_env.job_durations[decode(a)[0]]
-                       - base_env.time)
-        return np.random.choice(job_actions)
+        # Heuristic dispatch delegated to Code.baselines.registry -- see
+        # Future/research/2026-08-28-classical-heuristic-baselines.md. Unknown
+        # names fall back to Random, matching this function's original
+        # behaviour (any name other than EDF/SPT/LST used to fall through to
+        # np.random.choice(job_actions)).
+        heuristic_fn = HEURISTICS.get(name, HEURISTICS["Random"])
+        return heuristic_fn(base_env, job_actions, decode)
 
     while not (done or truncated):
         action = choose_action()
@@ -196,7 +194,7 @@ def run_heuristic(name, config=None):
 # ============================================================
 # Aggregate over N runs
 # ============================================================
-def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None, configs=None):
+def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None, configs=None, model_runs=None):
     """configs=None (default): every episode re-evaluates the single fixed
     ENV_CONFIG_PATH instance (previous behaviour -- reward_std is always
     exactly 0.0 as a result, since a deterministic model on a fixed instance
@@ -204,19 +202,30 @@ def evaluate_multiple(model, heuristic_name, runs=50, run_dir=None, configs=None
     (from generate_env_config()) to evaluate one held-out instance per
     episode instead -- --randomized-eval below, where std reflects genuine
     cross-instance performance variance rather than being zero by construction.
+
+    model_runs=None (default): evaluate the model fresh (previous behaviour).
+    Pass a precomputed list of run_model() results (same configs) to skip
+    re-running the model -- main() below now compares one model against
+    several heuristics per invocation, and the model's own performance on a
+    fixed set of configs doesn't change between heuristics, so recomputing
+    it once per heuristic would be a pure waste of episodes.
     """
-    ppo_metrics = []
     heur_metrics = []
 
+    if model_runs is not None:
+        ppo_metrics = model_runs
+    else:
+        ppo_metrics = []
+        print("Evaluating model...")
+        for i in tqdm(range(runs)):
+            result = run_model(model, config=configs[i] if configs is not None else None)
+            ppo_metrics.append(result)
+
     progress_plotter = EvalProgressPlotter(heuristic_name)
+    for r in ppo_metrics:
+        progress_plotter.update(ppo_reward=r["total_reward"])
 
-    print("Evaluating model...")
-    for i in tqdm(range(runs)):
-        result = run_model(model, config=configs[i] if configs is not None else None)
-        ppo_metrics.append(result)
-        progress_plotter.update(ppo_reward=result["total_reward"])
-
-    print("Evaluating heuristic...")
+    print(f"Evaluating heuristic ({heuristic_name})...")
     for i in tqdm(range(runs)):
         result = run_heuristic(heuristic_name, config=configs[i] if configs is not None else None)
         heur_metrics.append(result)
@@ -355,7 +364,23 @@ def main():
     parser.add_argument("--eval-seeds", type=int, default=50,
                          help="Number of held-out instances for --randomized-eval (default 50, matching "
                               "the default n_episodes of the fixed-instance eval).")
+    parser.add_argument("--heuristics", type=str, nargs="+", default=None,
+                         help="Named baselines (Code.baselines.registry.HEURISTICS) to compare the model "
+                              "against, one full evaluate_multiple()+plot_results()+append_eval_result() "
+                              "pass per name. Defaults to DEFAULT_HEURISTICS (a curated subset covering "
+                              "every priority and placement rule). Pass 'all' to run every registered "
+                              "combo instead.")
     args = parser.parse_args()
+
+    if args.heuristics is None:
+        heuristic_names = DEFAULT_HEURISTICS
+    elif args.heuristics == ["all"]:
+        heuristic_names = ALL_HEURISTICS
+    else:
+        unknown = [n for n in args.heuristics if n not in HEURISTICS]
+        if unknown:
+            raise ValueError(f"Unknown heuristic name(s) {unknown}; registered names: {ALL_HEURISTICS}")
+        heuristic_names = args.heuristics
 
     USE_PPO = (args.algo == "ppo")
 
@@ -414,34 +439,48 @@ def main():
               f"(seeds {RANDOM_INSTANCE_SEED_CEILING}..{RANDOM_INSTANCE_SEED_CEILING + len(configs) - 1})\n")
 
     n_episodes = len(configs) if configs is not None else 50
-    ppo_runs, heur_runs = evaluate_multiple(model, "EDF", runs=n_episodes, run_dir=run_dir, configs=configs)
-    plot_results(ppo_runs, heur_runs, "EDF", run_dir, model_label=model_label)
+
+    # The model's own performance on this fixed set of configs is identical
+    # across every heuristic comparison below -- evaluate it once and reuse,
+    # rather than re-running n_episodes model rollouts per heuristic name.
+    model_runs = None
+
+    for heuristic_name in heuristic_names:
+        print(f"\n=== Comparing against: {heuristic_name} ===")
+        ppo_runs, heur_runs = evaluate_multiple(
+            model, heuristic_name, runs=n_episodes, run_dir=run_dir,
+            configs=configs, model_runs=model_runs,
+        )
+        model_runs = ppo_runs  # reuse for every subsequent heuristic this run
+
+        plot_results(ppo_runs, heur_runs, heuristic_name, run_dir, model_label=model_label)
+
+        # Persist the summary stats to a running CSV (rl_training/results/eval_results.csv)
+        # so they accumulate across runs instead of only living in stdout/PNGs -- see
+        # Code/utils/results_log.py. One row per heuristic name.
+        model_rewards = np.array([r["total_reward"] for r in ppo_runs])
+        model_tardiness = np.array([r["tardiness"].sum() for r in ppo_runs])
+        model_late = np.array([r["late_jobs"] for r in ppo_runs])
+        heur_rewards = np.array([r["total_reward"] for r in heur_runs])
+        heur_tardiness = np.array([r["tardiness"].sum() for r in heur_runs])
+        heur_late = np.array([r["late_jobs"] for r in heur_runs])
+
+        append_eval_result({
+            "algo": args.algo,
+            "policy_type": args.policy_type if not USE_PPO else "",
+            "tag": (args.run_tag or "") + ("_randomized_eval" if args.randomized_eval else ""),
+            "model_path": str(args.model_path or (PPO_MODEL_PATH if USE_PPO else A2C_MODEL_PATH)),
+            "reward_mean": model_rewards.mean(), "reward_std": model_rewards.std(),
+            "tardiness_mean": model_tardiness.mean(), "tardiness_std": model_tardiness.std(),
+            "late_jobs_mean": model_late.mean(), "late_jobs_std": model_late.std(),
+            "heuristic_name": heuristic_name,
+            "heuristic_reward_mean": heur_rewards.mean(), "heuristic_reward_std": heur_rewards.std(),
+            "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
+            "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
+            "n_episodes": n_episodes,
+        })
+
     print(f"\nEvaluation plots saved to: {run_dir}\n")
-
-    # Persist the summary stats to a running CSV (rl_training/results/eval_results.csv)
-    # so they accumulate across runs instead of only living in stdout/PNGs -- see
-    # Code/utils/results_log.py.
-    model_rewards = np.array([r["total_reward"] for r in ppo_runs])
-    model_tardiness = np.array([r["tardiness"].sum() for r in ppo_runs])
-    model_late = np.array([r["late_jobs"] for r in ppo_runs])
-    heur_rewards = np.array([r["total_reward"] for r in heur_runs])
-    heur_tardiness = np.array([r["tardiness"].sum() for r in heur_runs])
-    heur_late = np.array([r["late_jobs"] for r in heur_runs])
-
-    append_eval_result({
-        "algo": args.algo,
-        "policy_type": args.policy_type if not USE_PPO else "",
-        "tag": (args.run_tag or "") + ("_randomized_eval" if args.randomized_eval else ""),
-        "model_path": str(args.model_path or (PPO_MODEL_PATH if USE_PPO else A2C_MODEL_PATH)),
-        "reward_mean": model_rewards.mean(), "reward_std": model_rewards.std(),
-        "tardiness_mean": model_tardiness.mean(), "tardiness_std": model_tardiness.std(),
-        "late_jobs_mean": model_late.mean(), "late_jobs_std": model_late.std(),
-        "heuristic_name": "EDF",
-        "heuristic_reward_mean": heur_rewards.mean(), "heuristic_reward_std": heur_rewards.std(),
-        "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
-        "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
-        "n_episodes": n_episodes,
-    })
     print(f"Eval summary appended to: {EVAL_RESULTS_CSV}\n")
 
 

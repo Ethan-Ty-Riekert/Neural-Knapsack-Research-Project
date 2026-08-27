@@ -265,6 +265,21 @@ pending the alpha follow-up above, RCPO) remains the only configuration
 recommended for further work; flat is retained only as the fixed-instance
 A/B baseline.
 
+**IMPORTANT CORRECTION (2026-08-28, S2W6):** the "best-ever tardiness/
+late-jobs" framing above was read in isolation and is misleading. A
+diagnostic re-run (see `Future/research/training-log.md`'s 2026-08-28
+entry) shows the RCPO pointer checkpoint achieves its low tardiness by
+scheduling only ~half the jobs (49.8/100 vs. the shaped checkpoint's
+98.5/100), not by scheduling jobs more carefully -- `C(tau)` as defined in
+Section 2 charges nothing for a job that is never scheduled, so once the
+multiplier saturated at `lambda_max`, abandoning risky-looking jobs became
+the cheapest way to satisfy an unreachable `alpha=0`. This is a genuine gap
+in the constraint's specification (Section 2 should be revised to charge
+unscheduled jobs as maximally late, not zero), not merely the expected
+reward-vs-constraint trade-off this section originally attributed it to.
+Any achievable-`alpha` RCPO rerun (flagged above) should fix this
+constraint definition first.
+
 ## References
 
 [1] Tessler, C., Mankowitz, D. J., & Mannor, S. (2019). *Reward Constrained
