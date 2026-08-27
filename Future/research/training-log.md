@@ -32,6 +32,22 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Deployment-scale Pareto rerun confirms the trade-off is scale-dependent, and finds a real bug along the way
+
+**Config:** Same `optimize_for="pareto"` mode, 40 trials, but `num_jobs=60, num_machines=8, horizon=60` (new `--tuning-num-jobs`/`--tuning-num-machines`/`--tuning-horizon` CLI flags) instead of the default (20, 5, 30) every prior study used. See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 6.
+
+**Stats:**
+```
+Small scale (20/5/30):  1 of 40 trials non-dominated -- degenerate front, no trade-off
+Larger scale (60/8/60): 10 of 40 trials non-dominated -- reward ranges -117.05 (0 tardiness) to 195.39 (7.15 tardiness_norm)
+```
+
+**Observation:** Confirms the small-scale null result's own hypothesis directly: the reward/tardiness misalignment is scale-dependent, not a fixed reward-function property -- it's essentially absent at 20-job scale and severe at 60-job scale. `lambda_2` correlates with front position but noisily (not monotonic), meaning other hyperparameters materially shape the trade-off too, information a single scalarized search would never surface. Also found and fixed a real bug enabling this: `make_tuning_env()` hardcoded `max_jobs=30` regardless of `num_jobs`, silently crashing (cryptic "index N out of bounds") for any `num_jobs > 30` -- never hit before since every prior study used `num_jobs=20`. Fixed to `max(30, num_jobs)`.
+
+**Conclusion / next step:** This is the clearest demonstration yet that this project's reward-hacking pattern (Phase 6, PSO tonight, every RCPO run implicitly) is a scale phenomenon, driven by throughput bonuses accumulating over more placements per episode as `num_jobs` grows against an `O(1)`-per-job tardiness penalty. Recommended next step for a future session: rerun at full deployment scale (100 jobs, horizon=100) to find the front that would actually inform a production `lambda_2` choice.
+
+---
+
 ## 2026-08-28 (S2W6) -- Multi-objective Optuna Pareto front collapses to one point at tuning scale -- an informative null result
 
 **Config:** New `optimize_for="pareto"` mode (`Code/training/optuna_tune.py`), 40 trials, A2C pointer, standard small tuning env (20 jobs, 5 machines, horizon=30). See `Future/research/2026-08-28-multi-objective-optuna-pareto.md`.

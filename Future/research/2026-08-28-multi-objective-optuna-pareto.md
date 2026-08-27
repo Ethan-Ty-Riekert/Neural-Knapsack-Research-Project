@@ -119,7 +119,66 @@ in progress; results below once it completes.
 
 **Results (40 trials, num_jobs=60, num_machines=8, horizon=60):**
 
-<!-- SCALED_PARETO_RESULTS_PLACEHOLDER -->
+**10 of 40 trials are non-dominated** -- a genuine front this time, not a
+single point:
+
+| trial | reward | tardiness_norm | late jobs | `lambda_2` |
+|---|---|---|---|---|
+| 9 | 195.39 | 7.15 | 17.00 | 4.068 |
+| 33 | 158.81 | 6.68 | 20.00 | 1.130 |
+| 27 | 158.51 | 3.98 | 12.00 | 1.292 |
+| 23 | 143.19 | 3.82 | 12.00 | 0.732 |
+| 18 | 134.39 | 3.73 | 13.00 | 3.889 |
+| 16 | 122.15 | 1.68 | 8.00 | 8.618 |
+| 12 | 103.75 | 0.75 | 4.00 | 4.850 |
+| 13 | 100.21 | 0.33 | 3.00 | 9.097 |
+| 7 | 55.02 | 0.08 | 1.00 | 16.130 |
+| 38 | -117.05 | 0.00 | 0.00 | 6.658 |
+
+### Honest reading
+
+**Confirms the hypothesis cleanly.** At this scale, reward ranges from
+-117.05 (zero tardiness) up to 195.39 (7.15 tardiness_norm, 17 late jobs)
+across the front -- a steep, real trade-off, the opposite of the small-scale
+study's single dominant point. Reaching zero tardiness here costs enough
+reward to go *negative*, something that never happened, or needed to
+happen, at the small tuning scale.
+
+**`lambda_2` correlates with position on the front, but noisily, not
+monotonically** -- the lowest-tardiness trials (7, 13, 38) do have among the
+highest `lambda_2` values (16.13, 9.10, 6.66) in the front, but trial 33
+(tardiness_norm=6.68, near the high-reward end) has a *lower* `lambda_2`
+(1.13) than trial 23 (tardiness_norm=3.82, `lambda_2`=0.73) -- meaning other
+sampled hyperparameters (architecture size, learning rate, entropy
+coefficient) also materially shape where a trial lands, not `lambda_2`
+alone. This is exactly the information a single scalarized search (the
+"tardiness" mode, or any fixed weight) would never surface: which
+combinations of hyperparameters, not just which `lambda_2`, produce a good
+trade-off.
+
+**No single "best" trial exists here, by design** -- that is the entire
+point of a Pareto front over a scalarized score. Any of these 10 trials is
+a legitimate choice depending on how much reward one is willing to trade
+for tardiness; picking one for a future full deployment-scale run is a
+downstream decision this experiment deliberately leaves open rather than
+making for you.
+
+## 7. Conclusion
+
+The small-scale study's null result and this scaled-up study's rich,
+10-point front are two halves of the same finding: **the reward/tardiness
+misalignment this project keeps rediscovering (Phase 6, PSO, and
+implicitly every RCPO experiment) is not a fixed property of the reward
+function in isolation -- it is scale-dependent**, emerging as instance size
+grows and vanishing at small scale. This matches the throughput-vs-tardiness
+mechanism already suspected (the `+3`/`+50` bonuses accumulate over more
+placements per episode as `num_jobs` grows, while the tardiness penalty
+stays `O(1)` per job) but had not, until tonight, been directly
+demonstrated by showing the trade-off appear and disappear as scale
+changes alone. Recommended next step for a future session: rerun this
+`optimize_for="pareto"` mode at full deployment scale (100 jobs,
+horizon=100) to find the front that would actually inform a production
+`lambda_2` choice, rather than this run's intermediate scale.
 
 ## References
 

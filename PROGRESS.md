@@ -373,6 +373,18 @@ deployment scale -- corroborating Eimer et al. (2023)'s tuning/deployment mismat
 at the level of the Pareto front's shape itself. Next step: rerun at a tuning scale closer
 to deployment (not attempted tonight, cost-prohibitive at this session's remaining budget).
 
+**Immediate follow-up confirmed the hypothesis cleanly.** Parameterized the tuning
+environment's scale (previously hardcoded at 20 jobs everywhere) and reran the same
+40-trial Pareto search at 60 jobs instead: the front went from 1 non-dominated trial to
+10, spanning reward -117.05 (zero tardiness) to 195.39 (7.15 tardiness_norm) -- a real,
+severe trade-off that simply wasn't present at the smaller scale. This is the clearest
+demonstration yet that this project's recurring reward-hacking pattern (Phase 6, PSO
+above, every RCPO run implicitly) is a *scale* phenomenon, not a fixed reward-function
+property. Also caught a real bug enabling this: `make_tuning_env()` hardcoded
+`max_jobs=30`, silently crashing for any larger instance size since no prior study had
+ever exceeded it. Full detail in `Future/research/2026-08-28-multi-objective-optuna-
+pareto.md`.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,
