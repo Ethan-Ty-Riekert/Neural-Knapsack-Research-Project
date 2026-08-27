@@ -95,6 +95,7 @@ def _simulate(position, config, num_jobs, num_machines):
         "total_reward": float(np.sum(rewards)),
         "tardiness": base_env.tardiness.copy(),
         "late_jobs": int((base_env.tardiness > 0).sum()),
+        "jobs_scheduled": int((base_env.start_times != -1).sum()),
         "utilisation_over_time": np.array(utilisation_over_time),
     }
 
@@ -202,10 +203,12 @@ def _main():
             "reward_mean": result["total_reward"], "reward_std": 0.0,
             "tardiness_mean": result["tardiness"].sum(), "tardiness_std": 0.0,
             "late_jobs_mean": result["late_jobs"], "late_jobs_std": 0.0,
+            "jobs_scheduled_mean": result["jobs_scheduled"], "jobs_scheduled_std": 0.0,
             "heuristic_name": "EDF",
             "heuristic_reward_mean": edf["total_reward"], "heuristic_reward_std": 0.0,
             "heuristic_tardiness_mean": edf["tardiness"].sum(), "heuristic_tardiness_std": 0.0,
             "heuristic_late_jobs_mean": edf["late_jobs"], "heuristic_late_jobs_std": 0.0,
+            "heuristic_jobs_scheduled_mean": edf["jobs_scheduled"], "heuristic_jobs_scheduled_std": 0.0,
             "n_episodes": 1,
         })
         return result

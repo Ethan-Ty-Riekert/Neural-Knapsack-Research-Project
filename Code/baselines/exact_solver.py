@@ -189,6 +189,7 @@ def replay_schedule(config, schedule):
         "total_reward": float(np.sum(rewards)),
         "tardiness": base_env.tardiness.copy(),
         "late_jobs": int((base_env.tardiness > 0).sum()),
+        "jobs_scheduled": int((base_env.start_times != -1).sum()),
         "utilisation_over_time": np.array(utilisation_over_time),
     }
 

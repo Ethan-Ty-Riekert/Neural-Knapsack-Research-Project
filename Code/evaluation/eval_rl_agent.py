@@ -117,6 +117,11 @@ def run_model(model, config=None):
         "total_reward": np.sum(rewards),
         "tardiness": base_env.tardiness.copy(),
         "late_jobs": (base_env.tardiness > 0).sum(),
+        # jobs_scheduled: added 2026-08-28 -- see results_log.py's
+        # jobs_scheduled_* field comment for why this is tracked by default
+        # now (a hidden completion-rate gap explained two separate
+        # misleading-looking results this session).
+        "jobs_scheduled": int((base_env.start_times != -1).sum()),
         "utilisation_over_time": utilisation_over_time,
     }
 
@@ -187,6 +192,11 @@ def run_heuristic(name, config=None):
         "total_reward": np.sum(rewards),
         "tardiness": base_env.tardiness.copy(),
         "late_jobs": (base_env.tardiness > 0).sum(),
+        # jobs_scheduled: added 2026-08-28 -- see results_log.py's
+        # jobs_scheduled_* field comment for why this is tracked by default
+        # now (a hidden completion-rate gap explained two separate
+        # misleading-looking results this session).
+        "jobs_scheduled": int((base_env.start_times != -1).sum()),
         "utilisation_over_time": utilisation_over_time,
     }
 
@@ -461,9 +471,11 @@ def main():
         model_rewards = np.array([r["total_reward"] for r in ppo_runs])
         model_tardiness = np.array([r["tardiness"].sum() for r in ppo_runs])
         model_late = np.array([r["late_jobs"] for r in ppo_runs])
+        model_scheduled = np.array([r["jobs_scheduled"] for r in ppo_runs])
         heur_rewards = np.array([r["total_reward"] for r in heur_runs])
         heur_tardiness = np.array([r["tardiness"].sum() for r in heur_runs])
         heur_late = np.array([r["late_jobs"] for r in heur_runs])
+        heur_scheduled = np.array([r["jobs_scheduled"] for r in heur_runs])
 
         append_eval_result({
             "algo": args.algo,
@@ -473,10 +485,12 @@ def main():
             "reward_mean": model_rewards.mean(), "reward_std": model_rewards.std(),
             "tardiness_mean": model_tardiness.mean(), "tardiness_std": model_tardiness.std(),
             "late_jobs_mean": model_late.mean(), "late_jobs_std": model_late.std(),
+            "jobs_scheduled_mean": model_scheduled.mean(), "jobs_scheduled_std": model_scheduled.std(),
             "heuristic_name": heuristic_name,
             "heuristic_reward_mean": heur_rewards.mean(), "heuristic_reward_std": heur_rewards.std(),
             "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
             "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
+            "heuristic_jobs_scheduled_mean": heur_scheduled.mean(), "heuristic_jobs_scheduled_std": heur_scheduled.std(),
             "n_episodes": n_episodes,
         })
 

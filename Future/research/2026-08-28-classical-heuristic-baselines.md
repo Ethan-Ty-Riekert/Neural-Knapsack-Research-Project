@@ -172,6 +172,18 @@ current RL checkpoint clears that bar yet; closing the gap (or fixing RCPO
 so it can be judged fairly) is the natural next step, tracked in the
 overnight autonomous-work plan.
 
+**Addendum (2026-08-28, later same night):** after adding `jobs_scheduled`
+tracking to `eval_rl_agent.py` (see `training-log.md` and
+`Code/utils/results_log.py`'s field comment -- prompted by the Stage C
+exact-solver comparison finding the same gap independently), re-checked
+this Stage A result and found even **EDF and LST do not fully complete the
+fixed instance**: EDF schedules 98/100 jobs, LST 99/100 -- a fact that was
+invisible in every prior report of these exact numbers across this
+project's entire history, since completion rate was never tracked before
+tonight. Every "EDF: reward=289.38, tardiness=16.00, late_jobs=10" cited
+anywhere in this project's docs should be read with "on 98/100 jobs" now
+implicit alongside it.
+
 ## References
 
 1. Pinedo, M. L. *Scheduling: Theory, Algorithms, and Systems* (5th ed.),

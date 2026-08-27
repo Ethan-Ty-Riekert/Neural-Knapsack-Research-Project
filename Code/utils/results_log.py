@@ -28,10 +28,19 @@ EVAL_RESULT_FIELDS = [
     "reward_mean", "reward_std",
     "tardiness_mean", "tardiness_std",
     "late_jobs_mean", "late_jobs_std",
+    # jobs_scheduled_*: added 2026-08-28 after two independent findings this
+    # session (RCPO's job abandonment, training-log.md; classical heuristics'
+    # greedy-packing incompleteness vs. CP-SAT,
+    # 2026-08-28-exact-solver-baseline.md) where a hidden completion-rate gap
+    # explained a reward/tardiness result that looked like something else at
+    # first glance. Tracked by default now instead of needing a one-off
+    # diagnostic script each time. Blank for any row logged before this date.
+    "jobs_scheduled_mean", "jobs_scheduled_std",
     "heuristic_name",
     "heuristic_reward_mean", "heuristic_reward_std",
     "heuristic_tardiness_mean", "heuristic_tardiness_std",
     "heuristic_late_jobs_mean", "heuristic_late_jobs_std",
+    "heuristic_jobs_scheduled_mean", "heuristic_jobs_scheduled_std",
     "n_episodes",
 ]
 
