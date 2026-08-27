@@ -94,12 +94,32 @@ Multi-objective tuning at small scale can't reveal the trade-off that
 actually matters, because the trade-off barely exists there. The natural
 follow-up -- already on this project's survey list independently, now
 doubly motivated -- is rerunning this exact `optimize_for="pareto"` mode
-against a tuning environment closer to deployment scale (e.g. `num_jobs=
-60-100, horizon=60-100`, at proportionally higher per-trial timestep cost).
-Not attempted tonight: a single deployment-scale trial already costs
-minutes at `eval_timesteps=30_000`, and 40 of them would cost substantially
-more wall-clock than tonight's other priorities left room for. Flagged as
-the next concrete, well-motivated experiment for a future session.
+against a tuning environment closer to deployment scale.
+
+## 6. Follow-up: rerun at a larger tuning scale (same night)
+
+Added `tuning_num_jobs`/`tuning_num_machines`/`tuning_horizon` parameters
+to `objective_a2c`/`run_optimization`/the CLI (default `20, 5, 30`,
+identical to every prior study) so this could actually be attempted instead
+of only flagged. **Found and fixed a real bug while smoke-testing this at
+`num_jobs=60`:** `make_tuning_env()` hardcoded `max_jobs=30` regardless of
+`num_jobs` -- every study before tonight happened to use `num_jobs=20 <=
+30`, so `num_jobs > max_jobs` was never exercised, and it crashed deep
+inside `PointerActorCritic`'s observation-splitting logic with a cryptic
+"index N is out of bounds" rather than a clear error at the actual
+boundary. Fixed to `max(30, num_jobs)`.
+
+A 2-trial smoke test at `num_jobs=60, num_machines=8, horizon=60`
+immediately showed what the small-scale study couldn't: **both trials were
+non-dominated** -- trial 1 (reward=154.85, tardiness_norm=7.05) and trial 0
+(reward=109.24, tardiness_norm=1.37) each beat the other on one axis. A
+real trade-off, visible at n=2, where the small-scale study needed 40
+trials to confirm there wasn't one. A full 40-trial run at this scale is
+in progress; results below once it completes.
+
+**Results (40 trials, num_jobs=60, num_machines=8, horizon=60):**
+
+<!-- SCALED_PARETO_RESULTS_PLACEHOLDER -->
 
 ## References
 
