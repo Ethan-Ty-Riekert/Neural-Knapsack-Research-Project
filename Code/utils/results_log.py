@@ -59,6 +59,45 @@ def archive_checkpoint_files(files: list[Path], tag: str) -> Path:
     return dest
 
 
+def _migrate_eval_results_schema(path: Path) -> None:
+    """Rewrite an existing eval-results CSV in place if its on-disk header
+    doesn't match the current EVAL_RESULT_FIELDS order.
+
+    BUG FIX (2026-08-28): adding jobs_scheduled_mean/std (etc.) to
+    EVAL_RESULT_FIELDS changed the column order csv.DictWriter uses for new
+    rows, but the file's on-disk header (written once, on first-ever use)
+    was never updated to match -- csv.DictWriter writes values in
+    *fieldnames* order regardless of what the file's header row says, so
+    every row appended after that change had the right values in the wrong
+    header-labeled positions (e.g. `heuristic_name` silently held
+    `jobs_scheduled_mean`'s value instead). This went undetected until a
+    later read against column names produced garbage
+    ("heuristic_name": "100.0"). Rather than requiring a manual one-off
+    repair script every time a field is added, this generically re-reads
+    every row using the file's OWN on-disk header (whatever it currently
+    says, not a hardcoded old schema) and rewrites the file with the
+    current EVAL_RESULT_FIELDS header -- self-healing for any future field
+    addition, not just this one.
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return
+    on_disk_header, data_rows = rows[0], rows[1:]
+    if on_disk_header == EVAL_RESULT_FIELDS:
+        return  # already current, nothing to migrate
+
+    migrated = []
+    for r in data_rows:
+        d = dict(zip(on_disk_header, r))  # positional, per THIS row's own header
+        migrated.append([d.get(k, "") for k in EVAL_RESULT_FIELDS])
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(EVAL_RESULT_FIELDS)
+        writer.writerows(migrated)
+
+
 def append_eval_result(row: dict, path: Path = EVAL_RESULTS_CSV) -> None:
     """Append one row to the persistent eval-results CSV, auto-filling
     date/week. Creates the file (with header) on first use. Unrecognised
@@ -72,6 +111,9 @@ def append_eval_result(row: dict, path: Path = EVAL_RESULTS_CSV) -> None:
     full_row.update({k: v for k, v in row.items() if k in EVAL_RESULT_FIELDS})
 
     file_exists = path.exists()
+    if file_exists:
+        _migrate_eval_results_schema(path)
+
     with open(path, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=EVAL_RESULT_FIELDS)
         if not file_exists:
