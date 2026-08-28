@@ -381,6 +381,16 @@ configuration, but not a result that changes the standing conclusion
 (Stage A) that classical LST remains the strongest method overall on this
 problem.
 
+**Correction (2026-08-28, later same night):** the `49.8/100` and
+`98.5/100` job-completion figures quoted above (Section 6b's original
+diagnostic and this section) were measured with an ad hoc script that
+called `generate_env_config(..., horizon=110)` instead of the deployed
+instance's actual `horizon=100` -- see `training-log.md`'s "jobs_scheduled
+measured for the full baseline roster" entry. Remeasured at the correct
+`horizon=100`: the original buggy checkpoint schedules `55.24/100`, the
+non-RCPO shaped checkpoint `89.48/100`. The qualitative conclusion
+(abandons roughly half the jobs vs. nearly all of them) is unchanged.
+
 ## References
 
 [1] Tessler, C., Mankowitz, D. J., & Mannor, S. (2019). *Reward Constrained

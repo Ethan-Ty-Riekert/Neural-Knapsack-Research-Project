@@ -32,6 +32,31 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- jobs_scheduled measured for the full baseline roster; corrects two earlier ad hoc figures
+
+**Config:** N/A (measurement pass, prompted by a request to add jobs-scheduled to the results review tables). All numbers below use the official 50-held-out-instance protocol (`num_jobs=100, num_machines=10, horizon=100`, seeds 500000-500049) -- the same one `eval_results.csv` uses everywhere else.
+
+**Stats:**
+```
+Classical heuristics (never tracked before tonight):
+  EDF            96.84/100      LPT+FirstFit  100.00/100
+  LST            97.76/100      FCFS+FirstFit  96.86/100
+  SPT/WSPT       92.08/100      Tetris         96.80/100
+  Random         97.14/100
+
+RL checkpoints, corrected:
+  Pointer + shaping (Phase 8):        89.48/100   (previously reported 98.5/100)
+  Pointer + RCPO (original, buggy):   55.24/100   (previously reported 49.8/100)
+  Pointer + RCPO (fixed constraint):  93.12/100   (unchanged, already measured at horizon=100)
+  Pointer + Pareto-knee:              99.38/100   (unchanged, from the official eval_rl_agent.py run)
+```
+
+**Observation:** The two corrected RL figures came from an earlier same-night ad hoc diagnostic script that called `generate_env_config(..., horizon=110)` -- `generate_env_config`'s own default, not the deployed instance's actual `horizon=100` -- while every other number on this page uses `horizon=100`. The qualitative story is unchanged (shaped schedules almost everything, the original buggy RCPO checkpoint abandons roughly half), but the precise figures were measured under a slightly different instance distribution than everything else and are corrected here rather than left standing. `LPT+FirstFit` reaching exactly 100/100 while `SPT`/`WSPT` bottom out at 92.08/100 is a new data point, not previously measured for this roster -- consistent with the completion-rate-varies-by-priority-rule pattern CP-SAT's comparison (`2026-08-28-exact-solver-baseline.md`) already found on small instances.
+
+**Conclusion / next step:** No action needed -- this is a precision correction, not a new finding. Flagging per CLAUDE.md's rule that an error, once found, should be corrected in a new entry rather than silently left in place.
+
+---
+
 ## 2026-08-28 (S2W6) -- Pareto-knee point collapses into the same reward-hacking pattern once fully trained -- a negative result closing tonight's Pareto arc
 
 **Config:** Trained trial 12 from the full-scale Pareto front (`lambda_2=10.981`, the front's "knee": `reward=170.88, tardiness_norm=2.47` at 30k tuning timesteps) to full convergence (500k timesteps, standard curriculum, `--use-potential-shaping`) via `train_optimized.py --params-tag paretoknee`. Evaluated identically to every other checkpoint (fixed instance + 50 held-out). See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 8.

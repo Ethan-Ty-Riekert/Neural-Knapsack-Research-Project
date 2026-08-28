@@ -184,6 +184,26 @@ tonight. Every "EDF: reward=289.38, tardiness=16.00, late_jobs=10" cited
 anywhere in this project's docs should be read with "on 98/100 jobs" now
 implicit alongside it.
 
+**Second addendum (2026-08-28, same night, prompted by a request to add
+this column to the results review artifact):** measured the same field on
+the 50-held-out-instance protocol for the full curated roster:
+
+```
+EDF            96.84/100      LPT+FirstFit  100.00/100
+LST            97.76/100      FCFS+FirstFit  96.86/100
+SPT/WSPT       92.08/100      Tetris         96.80/100
+Random         97.14/100
+```
+
+`LPT+FirstFit` completes every instance perfectly; `SPT`/`WSPT` complete
+the fewest. Combined with Section 6's tardiness/late-jobs numbers, this
+means `LPT+FirstFit`'s apparently-bad tardiness (1392.46, worst of any
+heuristic here) is not from incomplete scheduling -- it schedules
+everything, just very late. The reverse is also worth noting: `SPT`/`WSPT`
+combine mediocre tardiness *and* the worst completion rate in the roster,
+making them the weakest heuristics on both axes at once, not just on
+tardiness as Section 5's table alone would suggest.
+
 ## References
 
 1. Pinedo, M. L. *Scheduling: Theory, Algorithms, and Systems* (5th ed.),
