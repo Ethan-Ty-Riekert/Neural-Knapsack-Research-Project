@@ -214,10 +214,15 @@ mechanism already suspected (the `+3`/`+50` bonuses accumulate over more
 placements per episode as `num_jobs` grows, while the tardiness penalty
 stays `O(1)` per job) but had not, until tonight, been directly
 demonstrated by showing the trade-off appear and disappear as scale
-changes alone. Recommended next step for a future session: rerun this
-`optimize_for="pareto"` mode at full deployment scale (100 jobs,
-horizon=100) to find the front that would actually inform a production
-`lambda_2` choice, rather than this run's intermediate scale.
+changes alone.
+
+**Update, same night (see Sections 6b and 8 below):** the recommended
+follow-up (rerun at full instance scale) was in fact attempted immediately
+after this was written, and *that* front's own knee point was then trained
+to full convergence to check whether it holds up -- it did not (Section 8).
+Matching instance scale alone is not sufficient; training budget matters
+too. The scale-dependence finding above stands; the practical recommendation
+that follows it does not, and Section 8 supersedes it.
 
 ## 8. Validating a front point under full training (same night)
 
@@ -244,9 +249,55 @@ Trained full curriculum, `--use-potential-shaping` (carrying forward Phase
 8's shaping win, matching every other checkpoint this project has trained
 since), tagged `a2c_pointer_s4-200000_shaped_paretoknee_S2W6`.
 
-**Results:** _filled in after training and evaluation complete._
+**Results** (50 held-out instances, same protocol as every other checkpoint in this project):
 
-<!-- PARETOKNEE_RESULTS_PLACEHOLDER -->
+| | reward | tardiness | late jobs | jobs scheduled |
+|---|---|---|---|---|
+| **Pareto-knee, fully trained** | **303.08** | **733.56** | 23.84 | 99.38/100 |
+| Trial 12 @ 30k timesteps (tuning proxy) | 170.88 | ~247 (tardiness_norm=2.47 x H=100) | -- | -- |
+| Phase 8 shaped (no RCPO) | 254.75 | 28.66 | 9.56 | 98.5/100 |
+| Pointer + RCPO (fixed constraint) | 268.77 | 28.16 | 9.74 | 93.1/100 |
+| EDF | 284.95 | 37.30 | 12.22 | 96.84/100 |
+| LST | 288.28 | 23.94 | 8.26 | 97.76/100 |
+
+### Honest reading: the trade-off did NOT survive full training
+
+**This is a negative result, and an important one.** Trial 12 looked like
+the front's "knee" -- a balanced, moderate-tardiness point -- at its
+30,000-timestep tuning budget. Trained to full convergence (500,000
+timesteps, the same budget every other deployed checkpoint in this project
+gets) with the *identical* hyperparameters, it does not land anywhere near
+that balance: reward climbs to 303.08 (the highest of any RL checkpoint
+this project has produced) while tardiness explodes to 733.56 -- roughly
+20-25x every other RL checkpoint's tardiness, and worse than PSO's
+already-bad 1012.40 mean is not quite reached, but the *pattern* is
+identical: high throughput (99.38/100 jobs actually scheduled -- this is
+not abandonment, jobs are being scheduled, just very late), reward-hacked
+tardiness.
+
+**This reveals a second confound tonight's earlier work did not control
+for.** Section 6b's full-scale Pareto study matched the *instance
+dimensions* to deployment (100 jobs, horizon=100) but deliberately held
+*training budget* at the shared 30,000-timestep tuning budget (stated
+explicitly as a controlled variable at the time). This result shows that
+was not sufficient: even a hyperparameter set that looks balanced under a
+short training budget, at the correct instance scale, can still fully
+collapse into the reward-hacking pattern once trained to convergence.
+`lambda_2=10.98` here is higher than the original reward-tuned
+`lambda_2=3.85` used throughout this project's history, yet still was not
+enough to prevent this at full convergence -- suggesting the fully-converged
+optimum for this reward function may genuinely prefer high throughput over
+promptness at this `lambda_2`, and the 30k-timestep policy was never
+close to that optimum, not that it found a genuinely different equilibrium.
+
+**Implication for any future full-scale Pareto attempt:** a Pareto front
+computed at a short training budget is not a reliable guide to a fully-
+trained checkpoint's actual trade-off position, even when instance scale is
+correctly matched. A trustworthy multi-objective search for a real
+deployment `lambda_2` choice would need trials trained at (or much closer
+to) the full ~500,000-timestep budget -- a substantially larger compute
+commitment than anything attempted tonight, and explicitly flagged rather
+than attempted here.
 
 ## References
 

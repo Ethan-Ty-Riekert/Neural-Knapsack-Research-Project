@@ -32,6 +32,25 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Pareto-knee point collapses into the same reward-hacking pattern once fully trained -- a negative result closing tonight's Pareto arc
+
+**Config:** Trained trial 12 from the full-scale Pareto front (`lambda_2=10.981`, the front's "knee": `reward=170.88, tardiness_norm=2.47` at 30k tuning timesteps) to full convergence (500k timesteps, standard curriculum, `--use-potential-shaping`) via `train_optimized.py --params-tag paretoknee`. Evaluated identically to every other checkpoint (fixed instance + 50 held-out). See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 8.
+
+**Stats:**
+```
+                              reward   tardiness  late_jobs  jobs_scheduled
+Pareto-knee, fully trained    303.08   733.56     23.84      99.38/100
+Trial 12 @ 30k timesteps      170.88   ~247 (tardiness_norm x H)   --       --
+Phase 8 shaped (no RCPO)      254.75   28.66      9.56       98.5/100
+Pointer + RCPO (fixed)        268.77   28.16      9.74       93.1/100
+```
+
+**Observation:** The "balanced" trade-off trial 12 showed at 30k timesteps did not survive full training -- at convergence it fully collapsed into the same reward-hacking pattern as everything else tonight (highest reward of any RL checkpoint this project has produced, 20-25x every other RL checkpoint's tardiness), via high throughput (99.38/100 scheduled, not abandonment) rather than lateness avoidance. `lambda_2=10.98` here is higher than the historical reward-tuned `3.85`, yet still insufficient at full convergence.
+
+**Conclusion / next step:** A second confound beyond instance scale: training budget also has to match deployment for a Pareto-selected point to mean anything. Section 6b's full-scale front matched instance dimensions but not training budget, and that was not sufficient. A trustworthy multi-objective search for a real deployment `lambda_2` would need trials trained at (or close to) the full ~500k-timestep budget -- a much larger compute commitment, explicitly flagged rather than attempted tonight. This closes tonight's Pareto investigation arc on an honest negative note: the technique works and reveals real structure (Sections 4-6b), but this project doesn't yet have a validated way to turn that structure into a better deployed checkpoint.
+
+---
+
 ## 2026-08-28 (S2W6) -- Silent CSV column-misalignment bug found and fixed in eval_results.csv
 
 **Config:** N/A (data-integrity bug, discovered while evaluating the Pareto-knee checkpoint). See `Code/utils/results_log.py`.

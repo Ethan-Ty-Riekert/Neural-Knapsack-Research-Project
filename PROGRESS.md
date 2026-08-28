@@ -397,6 +397,21 @@ result -> 60-job scale -> real front -> full scale -> confirmed); a full deploym
 multi-objective study is flagged as the natural next step, left for a future session given
 its much larger compute cost.
 
+**Closing negative result for the Pareto arc:** trained the full-scale front's "knee" point
+(trial 12, `lambda_2=10.98`) to full convergence to see if its balanced trade-off held up --
+it didn't. At 500k timesteps it fully collapsed into the same reward-hacking pattern as
+everything else tonight: highest reward of any RL checkpoint this project has produced
+(303.08) against 20-25x every other checkpoint's tardiness (733.56), via genuine high
+throughput (99.38/100 jobs scheduled) rather than abandonment. This reveals a second
+confound beyond instance scale: training budget must also match deployment for a
+Pareto-selected point to be trustworthy. Also caught and fixed a real data-integrity bug
+along the way -- a schema change to `eval_results.csv`'s columns had silently misaligned
+every row appended afterward, now self-healing in `append_eval_result()`. Honest summary of
+the whole Pareto arc: the technique works and reveals real structure, but this project
+doesn't yet have a validated way to turn that structure into a better deployed checkpoint --
+that needs a full-training-budget search, a substantially larger compute commitment left
+for a future session.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,
