@@ -219,6 +219,35 @@ changes alone. Recommended next step for a future session: rerun this
 horizon=100) to find the front that would actually inform a production
 `lambda_2` choice, rather than this run's intermediate scale.
 
+## 8. Validating a front point under full training (same night)
+
+Section 6b's front is only informative about *relative* trade-off shape --
+every trial there used the shared 30,000-timestep tuning budget, far short
+of the ~500,000 timesteps a real curriculum run gives a deployed
+checkpoint (Section 6b's caveat). The natural next step is to actually
+train one of the front's points to full convergence and see whether the
+trade-off it suggested survives, using the exact same pipeline
+(`train_optimized.py`) every other checkpoint in this project was produced
+by -- not a special-cased one-off script.
+
+**Point chosen: trial 12** (`reward=170.88, tardiness_norm=2.47,
+lambda_2=10.981`) -- the front's "knee": a large tardiness improvement over
+the high-reward end (13.81-19.37) for a moderate reward cost, without
+trial 14's reward collapse at the zero-tardiness end. Saved as
+`rl_training/optuna_results/a2c_pointer_paretoknee_best_params.json` (all
+14 fields from the trial, verbatim) so it loads through
+`train_optimized.py`'s existing `--params-tag` mechanism exactly like the
+project's other alternative-hyperparameter runs (e.g. `--params-tag
+tardiness`) -- no new loading code needed.
+
+Trained full curriculum, `--use-potential-shaping` (carrying forward Phase
+8's shaping win, matching every other checkpoint this project has trained
+since), tagged `a2c_pointer_s4-200000_shaped_paretoknee_S2W6`.
+
+**Results:** _filled in after training and evaluation complete._
+
+<!-- PARETOKNEE_RESULTS_PLACEHOLDER -->
+
 ## References
 
 1. Roijers, D. M., Vamplew, P., Whiteson, S., & Dazeley, R. (2013). "A
