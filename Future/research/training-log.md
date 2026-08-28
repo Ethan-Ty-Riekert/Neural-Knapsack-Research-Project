@@ -32,6 +32,18 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-08-28 (S2W6) -- Silent CSV column-misalignment bug found and fixed in eval_results.csv
+
+**Config:** N/A (data-integrity bug, discovered while evaluating the Pareto-knee checkpoint). See `Code/utils/results_log.py`.
+
+**Stats:** N/A -- this is a bug report, not an experiment result.
+
+**Observation:** Adding `jobs_scheduled_mean`/`heuristic_jobs_scheduled_mean` (etc.) to `EVAL_RESULT_FIELDS` earlier tonight changed the column order `csv.DictWriter` writes new rows in, but `eval_results.csv`'s on-disk header (written once, long before tonight) was never updated to match -- `DictWriter` writes values in *fieldnames* order regardless of the file's actual header row. Every row appended since that schema change had correct values sitting under the wrong column names (`heuristic_name` silently held `jobs_scheduled_mean`'s value, etc.). Caught when reading the pareto-knee eval results back by column name produced obvious garbage (`heuristic_name: "100.0"`).
+
+**Conclusion / next step:** Repaired the file by reconstructing every row from its own actual field count (20 = pre-tonight schema, 24 = post-tonight schema), verified against known-good historical numbers before replacing the corrupted file. Root-cause fixed in `append_eval_result()`: it now detects an on-disk header mismatch and self-heals by rewriting every row positionally against its own current header before appending -- generic protection against this exact class of bug recurring on any future field addition, verified with both the real file and a synthetic schema-drift test. Checked which rows were actually affected: exactly 4 of 142 (all from the pareto-knee eval, the run this bug was caught while reading) -- every other write-up finalized tonight (Stage A, RCPO refix, Stage B/C, all three Pareto studies) was read and finalized before the schema change even happened, so none of them are affected.
+
+---
+
 ## 2026-08-28 (S2W6) -- Closing the loop: Pareto front confirmed at the actual full deployment scale
 
 **Config:** Same `optimize_for="pareto"` mode, 15 trials (reduced budget given the hour), `num_jobs=100, num_machines=10, horizon=100` -- the exact deployed instance dimensions, not a proxy. See `Future/research/2026-08-28-multi-objective-optuna-pareto.md` Section 6b.
