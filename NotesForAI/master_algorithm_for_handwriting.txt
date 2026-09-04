@@ -1,0 +1,173 @@
+MASTER ALGORITHM STRUCTURE — for handwriting / supervisor brainstorm
+======================================================================
+
+How the pieces fit together (draw this as a tree/box diagram first):
+
+    Master: Train
+      |-- InitEnvironment        (env setup, once per episode)
+      |-- Policy                 (abstract — filled by PPO or A2C actor)
+      |-- Step                   (env transition, once per timestep)
+      |     |-- Reward           (called inside Step)
+      |-- AgentUpdate            (abstract — branches to one of:)
+            |-- PPO-Update
+            |-- A2C-Update
+
+Six boxes total. Write each on its own page/card so they can be
+rearranged and annotated separately during the brainstorm.
+
+======================================================================
+1) MASTER ALGORITHM — Train
+======================================================================
+
+Train(policy_type, N, K, J, M, R, H)
+
+  Input:
+    policy_type   -- PPO or A2C
+    N             -- number of training iterations
+    K             -- episodes collected per iteration
+    J, M, R, H    -- environment parameters (jobs, machines,
+                     resources, planning horizon)
+
+  1.  initialise policy parameters theta, value parameters phi
+  2.  for iteration = 1 to N:
+  3.      D <- empty set                (rollout buffer)
+  4.      for episode = 1 to K:
+  5.          s <- InitEnvironment(J, M, R, H)
+  6.          t <- 0
+  7.          done <- False
+  8.          while not done:
+  9.              a <- Policy(s | theta)
+ 10.              (s', r, done) <- Step(s, a)
+ 11.              store (s, a, r, done) in D
+ 12.              s <- s'
+ 13.              t <- t + 1
+ 14.      theta, phi <- AgentUpdate(D, theta, phi | policy_type)
+ 15.  return theta, phi
+
+Notes for supervisors:
+  - Policy() and AgentUpdate() are the only two calls that change
+    depending on which algorithm (PPO vs A2C) is being run.
+  - Everything else (env init, step, reward) is shared.
+
+
+======================================================================
+2) SUB-ALGORITHM — InitEnvironment
+======================================================================
+
+InitEnvironment(J, M, R, H)
+
+  1.  J0 <- J,  P0 <- empty set,  t <- 0
+  2.  for each job j in J:
+  3.      s_j <- +infinity          (sentinel: not yet scheduled)
+  4.  for each machine m in M, resource r in R:
+  5.      R_mr0 <- C_r              (full capacity available)
+  6.  y <- (0, 0, ..., 0)           (no machines active yet)
+  7.  return state s0 = (J0, P0, {F_j}, {R_mr0}, y, t=0)
+
+
+======================================================================
+3) SUB-ALGORITHM — Step   (transition function)
+======================================================================
+
+Step(state, action)
+
+  action = (j, m)     -- job j assigned to machine m
+
+  1.  reward <- 0
+  2.  if y_m = 0:  y_m <- 1                (activate machine)
+  3.  if not IsFeasible(j, m, t):
+  4.      reward <- -lambda_invalid
+  5.      return (state, reward, done=False)
+  6.  for each resource r in R:
+  7.      R_mrt <- R_mrt - a_jr             (consume capacity)
+  8.  s_j <- t
+  9.  T_j <- max(0, s_j + p_j - d_j)        (tardiness)
+ 10.  J_rem <- J_rem \ {j}                  (remove from unscheduled)
+ 11.  reward <- Reward(j, m, t, T_j)
+ 12.  t <- t + 1
+ 13.  if J_rem is empty:  done <- True
+ 14.  else:               done <- False
+ 15.  return (new_state, reward, done)
+
+
+======================================================================
+4) SUB-ALGORITHM — Reward
+======================================================================
+
+Reward(j, m, t, T_j)
+
+  1.  reward <- 0
+  2.  if machine m was activated at time t:
+  3.      reward <- reward - lambda_1
+  4.  reward <- reward - lambda_2 * w_j * T_j     (tardiness penalty)
+  5.  reward <- reward - lambda_4 * theta         (hotspot / utilisation penalty)
+  6.  return reward
+
+  (optional utilisation bonus, not yet added:
+     delta_u <- sum over r of (a_jr / C_r)
+     reward  <- reward + lambda_3 * delta_u )
+
+
+======================================================================
+5) SUB-ALGORITHM — PPO-Update
+======================================================================
+
+PPO-Update(D, theta, phi)
+
+  Input: clipping parameter epsilon, epochs E, minibatch size B
+
+  1.  compute returns R and advantages A over D   (GAE)
+  2.  for epoch = 1 to E:
+  3.      for each minibatch b of size B in D:
+  4.          r_t(theta) <- pi_theta(a|s) / pi_old(a|s)
+  5.          L_clip <- min( r_t(theta) * A,
+                             clip(r_t(theta), 1-epsilon, 1+epsilon) * A )
+  6.          L_V <- (R - V_phi(s))^2
+  7.          H   <- entropy bonus of pi_theta
+  8.          d_theta <- gradient of (L_clip + c1*L_V + c2*H) wrt theta
+  9.          d_phi   <- gradient of L_V wrt phi
+ 10.          update theta, phi using d_theta, d_phi
+ 11.  return theta, phi
+
+  Key trait: multiple epochs per batch, clipped update (prevents
+  large destructive policy changes).
+
+
+======================================================================
+6) SUB-ALGORITHM — A2C-Update
+======================================================================
+
+A2C-Update(D, theta, phi)
+
+  1.  compute returns R and advantages A over D   (n-step TD)
+  2.  L_pi <- - average over D of [ log(pi_theta(a|s)) * A ]
+  3.  L_V  <- average over D of [ (R - V_phi(s))^2 ]
+  4.  H    <- entropy bonus of pi_theta
+  5.  d_theta <- gradient of (L_pi + c1*L_V + c2*H) wrt theta
+  6.  d_phi   <- gradient of L_V wrt phi
+  7.  update theta, phi using a single gradient step
+  8.  return theta, phi
+
+  Key trait: single synchronous update per batch, no clipping,
+  no repeated epochs (contrast with PPO above).
+
+
+======================================================================
+OPEN QUESTIONS TO RAISE WITH SUPERVISORS
+======================================================================
+
+  - Should InitEnvironment be randomised per episode (job arrival
+    variation) even in the "simplest case" (static, offline)?
+  - Is IsFeasible() worth its own numbered box, or is it small
+    enough to stay inline inside Step?
+  - Where do baseline heuristics (First-Fit / Best-Fit) and
+    evolutionary methods (GA / PSO) sit? They don't fit this loop
+    cleanly:
+      * FF/BF could replace Policy() directly (no AgentUpdate call
+        needed — fixed rule, not learned).
+      * GA/PSO optimise a whole schedule at once (population-based),
+        not step-by-step — would need a completely separate master
+        loop, not a slot in this one.
+  - Does the idling action (see implementation log, pre-24/07/26)
+    need to be reflected explicitly in the Step algorithm above?
+    Currently not shown.
