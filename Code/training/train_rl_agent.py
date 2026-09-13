@@ -1,0 +1,309 @@
+"""train_rl_agent.py - Import the gym wrapper, create the environment, train, save and evaluate the model"""
+import os
+import numpy as np
+import argparse
+
+import gymnasium as gym
+import torch
+import torch.nn as nn
+from stable_baselines3.common.monitor import Monitor
+from sb3_contrib import MaskablePPO # native action masking to help reduce our massive action space (num_jobs * num_machines) by removing invalid actions
+from sb3_contrib.common.wrappers import ActionMasker #
+
+from Code.env.scheduling_env import SchedulingEnv
+from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.env.env_config import generate_env_config
+from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
+from Code.policies.ppo_policy import make_maskable_ppo, train_ppo
+from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
+from Code.utils.paths import RL_TRAINING_DIR, LOG_DIR, MODELS_DIR, PLOTS_DIR, ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, ensure_rl_training_dirs
+
+
+
+def mask_fn(env: GymSchedulingEnv):
+    """Action mask function for ActionMasker"""
+    return env.get_action_mask()
+
+def make_env(seed: int = 0, num_jobs=None, num_machines=None, horizon=None, max_jobs=None,
+             restrict_idle: bool = False, idle_penalty: float = 0.5,
+             use_potential_shaping: bool = False):
+    """Environment creation using centralised env_config.py and allowing for curriculum learning.
+
+    num_jobs: actual/logical number of jobs generated for this env instance -- may
+    vary freely between curriculum stages.
+    max_jobs: fixed job-slot capacity used to size GymSchedulingEnv's observation and
+    action spaces (see gym_scheduling_wrapper.py). Must stay constant across every
+    stage of a curriculum sharing the same model, regardless of num_jobs, since
+    model.set_env() requires matching obs/action spaces. Defaults to num_jobs (no
+    padding) when not given.
+    restrict_idle: forwarded to GymSchedulingEnv -- Solution 1a of the 2026-08-09
+    idle-collapse experiments (see Future/research/).
+    idle_penalty: forwarded to SchedulingEnv -- Solution 1b of the same experiments.
+    """
+
+    # Load environment configuration
+    config = generate_env_config(seed=seed)
+
+    # Curriculum overrides
+    if num_jobs is not None:
+        config["job_durations"] = config["job_durations"][:num_jobs]
+        config["job_resources"] = config["job_resources"][:num_jobs, :]
+        config["job_deadlines"] = config["job_deadlines"][:num_jobs]
+        config["job_weights"] = config["job_weights"][:num_jobs]
+        config["num_jobs"] = num_jobs
+
+    if num_machines is not None:
+        config["num_machines"] = num_machines
+        config["machine_capacity"] = config["machine_capacity"]
+
+
+    if horizon is not None:
+        config["horizon"] = horizon
+
+    if max_jobs is not None:
+        config["max_jobs"] = max_jobs
+
+
+    # Save config for evaluation
+    ensure_rl_training_dirs()
+    np.savez(ENV_CONFIG_PATH, **config)
+
+
+    # Create the base environment
+    base_env = SchedulingEnv(
+        job_durations=config["job_durations"],
+        job_resources=config["job_resources"],
+        job_deadlines=config["job_deadlines"],
+        job_weights=config["job_weights"],
+        num_machines=config["num_machines"],
+        machine_capacity=config["machine_capacity"],
+        horizon=config["horizon"],
+        lambda_1=1.0,
+        lambda_2=1.0,
+        lambda_3=1.0,
+        invalid_penalty=5.0,
+        idle_penalty=idle_penalty,
+        use_potential_shaping=use_potential_shaping,
+    )
+
+    # Wrap in Gym + Masking
+    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs, restrict_idle=restrict_idle)
+    masked_env = ActionMasker(gym_env, mask_fn)
+
+    # Monitor records per-episode reward/length into info["episode"], which
+    # LiveTrainingPlotter reads to build the live reward curve.
+    monitored_env = Monitor(masked_env)
+
+    return monitored_env
+
+
+
+############################## Generative AI Made ##############################
+# Make a training function for my RL agent given my code below: ... #
+def main():
+    # -----------------------------
+    # Training configuration
+    # -----------------------------
+    TOTAL_TIMESTEPS = 300_000
+    ensure_rl_training_dirs()
+
+    # -----------------------------
+    # Choose which RL algorithm to train
+    # -----------------------------
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"])
+    parser.add_argument("--restrict-idle", action="store_true",
+                         help="Solution 1a: mask idle out whenever a non-idle action is feasible.")
+    parser.add_argument("--idle-penalty", type=float, default=0.5,
+                         help="Solution 1b: idle_penalty magnitude passed to SchedulingEnv.")
+    parser.add_argument("--run-tag", type=str, default=None,
+                         help="Optional suffix for the training-plot run directory, to tell experiments apart.")
+    parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
+                         help="A2C only: 'pointer' (PointerActorCritic, default) or 'flat' (MaskableActorCritic baseline).")
+    parser.add_argument("--no-reward-norm", action="store_true",
+                         help="A2C only: disable running-std reward normalisation (on by default).")
+    parser.add_argument("--use-shaping", action="store_true",
+                         help="Solution 3: enable potential-based reward shaping in SchedulingEnv (off by default).")
+    parser.add_argument("--smoke-test", action="store_true",
+                         help="Shrink every curriculum stage to a tiny timestep budget, to catch integration "
+                              "crashes end-to-end before committing to a full multi-hundred-thousand-step run.")
+    args = parser.parse_args()
+
+    USE_PPO = (args.algo == "ppo")
+
+    # Live + saved reward plot for this training run (one instance reused across
+    # every curriculum stage below so the curve stays continuous).
+    plot_prefix = args.algo if not args.run_tag else f"{args.algo}_{args.run_tag}"
+    plot_run_dir = make_run_dir(str(PLOTS_DIR / "training"), plot_prefix)
+    plotter = LiveTrainingPlotter(save_dir=plot_run_dir)
+
+    # -----------------------------
+    # Curriculum definition
+    # num_jobs now varies per stage (kept <= horizon so completing every job --
+    # and therefore earning the +50 completion bonus in SchedulingEnv.step() -- is
+    # reachable at every stage, not just once horizon catches up to num_jobs).
+    #
+    # This only works because MAX_JOBS below is passed to every make_env() call as
+    # a fixed padding capacity: GymSchedulingEnv sizes its observation/action
+    # spaces off max_jobs, not the stage's actual num_jobs, and zero-pads/masks out
+    # the unused job slots (see gym_scheduling_wrapper.py). That keeps the obs/
+    # action space constant across every stage, which model.set_env() requires --
+    # without it, varying num_jobs directly changes those space sizes and
+    # set_env() raises "Observation spaces do not match".
+    # -----------------------------
+    MAX_JOBS = 100
+    curriculum = [
+        {"horizon": 20,  "num_jobs": 15,  "timesteps": 50_000},
+        {"horizon": 40,  "num_jobs": 30,  "timesteps": 75_000},
+        {"horizon": 60,  "num_jobs": 60,  "timesteps": 100_000},
+        {"horizon": 100, "num_jobs": 100, "timesteps": 150_000},
+    ]
+    if args.smoke_test:
+        for stage in curriculum:
+            stage["timesteps"] = 300
+
+    # -----------------------------
+    # PPO TRAINING
+    # -----------------------------
+    if USE_PPO:
+
+        # Create FIRST curriculum environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"],
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
+            restrict_idle=args.restrict_idle,
+            idle_penalty=args.idle_penalty,
+            use_potential_shaping=args.use_shaping,
+        )
+
+        # Create PPO model WITH FIRST ENV
+        model = MaskablePPO(
+            "MlpPolicy",
+            first_env,
+            verbose=1,
+            tensorboard_log=str(LOG_DIR),
+            n_steps=2048,
+            batch_size=256,
+            learning_rate=3e-4,
+            gamma=0.99,
+            gae_lambda=0.95,
+            # Raised from 0.01: the policy was collapsing onto "always idle"
+            # (entropy/approx_kl/policy_gradient_loss all underflowing to 0)
+            # well before it discovered the reward for actually placing jobs.
+            # A stronger entropy bonus keeps exploration alive for longer.
+            ent_coef=0.05,
+            clip_range=0.2,
+            # Lowered from 10: 10 gradient epochs over a single rollout risks
+            # overfitting to (and locking in on) whatever that rollout happened to
+            # contain, which compounds the collapse risk on a large action space.
+            n_epochs=4,
+            seed=0,
+            # Default MlpPolicy net_arch is only [64, 64] for both actor and critic,
+            # which is a severe bottleneck for an ~840-dim observation and a
+            # ~1000-way action space -- see Future/research/ for why this was
+            # suspected to contribute to the idle-collapse behaviour.
+            policy_kwargs=dict(
+                net_arch=dict(pi=[256, 256], vf=[256, 256]),
+                activation_fn=nn.Tanh,
+            ),
+        )
+
+        # Curriculum training loop
+        for i, stage in enumerate(curriculum):
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"],
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
+                restrict_idle=args.restrict_idle,
+                idle_penalty=args.idle_penalty,
+                use_potential_shaping=args.use_shaping,
+            )
+
+            model.set_env(env)
+
+            print(f"Training stage: {stage}")
+            model.learn(
+                total_timesteps=stage["timesteps"],
+                tb_log_name="ppo_scheduling",
+                progress_bar=True,
+                callback=plotter,
+                reset_num_timesteps=False,
+            )
+
+            # Per-stage checkpoint (this session): the curriculum previously only
+            # saved a single final model after all 4 stages, so a stage-3/4
+            # regression could only be diagnosed by rerunning the entire 375k-step
+            # curriculum from scratch. Purely additive -- doesn't change training.
+            stage_ckpt = MODELS_DIR / f"ppo_stage{i}_h{stage['horizon']}"
+            model.save(stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
+
+        # Save PPO model
+        model.save(PPO_MODEL_PATH)
+        print(f"\nPPO training complete. Model saved to: {PPO_MODEL_PATH}\n")
+
+    # -----------------------------
+    # A2C TRAINING
+    # -----------------------------
+    else:
+        from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
+        import torch
+
+        # Create FIRST curriculum environment
+        first_env = make_env(
+            seed=0,
+            horizon=curriculum[0]["horizon"],
+            num_jobs=curriculum[0]["num_jobs"],
+            max_jobs=MAX_JOBS,
+            restrict_idle=args.restrict_idle,
+            idle_penalty=args.idle_penalty,
+            use_potential_shaping=args.use_shaping,
+        )
+
+        model = make_maskable_a2c(
+            first_env,
+            device="cpu",
+            policy_type=args.policy_type,
+            normalize_rewards=not args.no_reward_norm,
+        )
+
+        # Curriculum training loop
+        for i, stage in enumerate(curriculum):
+            env = make_env(
+                seed=0,
+                horizon=stage["horizon"],
+                num_jobs=stage["num_jobs"],
+                max_jobs=MAX_JOBS,
+                restrict_idle=args.restrict_idle,
+                idle_penalty=args.idle_penalty,
+                use_potential_shaping=args.use_shaping,
+            )
+            model.env = env
+            train_a2c(model, total_timesteps=stage["timesteps"], plotter=plotter)
+
+            # Per-stage checkpoint (this session) -- see the matching PPO comment
+            # above for rationale. Tagged with policy_type since flat/pointer
+            # checkpoints are not interchangeable (different state_dict shapes).
+            stage_ckpt = MODELS_DIR / f"a2c_{args.policy_type}_stage{i}_h{stage['horizon']}.pt"
+            torch.save(model.model.state_dict(), stage_ckpt)
+            print(f"  Saved stage checkpoint: {stage_ckpt}")
+
+        # Save A2C model
+        torch.save(model.model.state_dict(), A2C_MODEL_PATH)
+        print(f"\nA2C training complete. Model saved to: {A2C_MODEL_PATH}\n")
+
+    plotter.close()
+    print(f"Training reward plot saved to: {plot_run_dir}\n")
+
+    print("View TensorBoard with:")
+    print("  tensorboard --logdir ./logs\n")
+
+
+############################## END AI Made ##############################
+
+
+if __name__ == "__main__":
+    main()
