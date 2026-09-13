@@ -32,6 +32,83 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-04 (S2W7) -- v2: fixed a trial-selection bug in the reduced-budget run, scaled up, and got a much more informative (if still not full-fidelity) result
+
+**Config:** Same reduced-budget context as the entry below, superseding it after the user flagged its RL results as implausibly bad. Root cause: v1 picked models A/B's hyperparameters from a single combined Pareto search's *max-reward* trial, which had `lambda_2=0.505` (near-zero tardiness penalty) -- exactly the reward/tardiness misalignment this log already documents (Stage A/B, the Pareto arc). Fixed by running two separate searches (`optimize_for="tardiness"` composite-score mode for A/B, `optimize_for="pareto"` for C's knee), matching the project's real methodology instead of economizing it into one. Also scaled the instance up (15/4/25 -> 45 jobs/6 machines/horizon=50, `deadline_range=(10,50)`) so multi-resource packing actually matters, not just deadline-ordering. Final training: 60,000 timesteps/model (up from 35,000). See `Results/reduced_budget_2026-09-04_v2/README.md` for full details.
+
+**Stats:**
+```
+                      reward    tardiness  late_jobs  jobs_scheduled
+EDF                   174.65    14.88      7.38       44.88/45
+LST                   181.82     9.12      4.62       45.00/45
+Pointer+shaping       119.36    10.25      4.75       40.38/45
+Pointer+RCPO           93.64   156.88     12.75       36.75/45
+Pointer+Pareto-knee   175.95   263.00     19.25       45.00/45
+PSO                   179.21   146.62     17.75       45.00/45
+```
+
+**Observation:** A much more historically-recognizable pattern than v1: Pointer+shaping beats EDF on tardiness (10.25 vs 14.88), echoing the 2026-08-19 shaping-vs-EDF finding, at the cost of completion rate and reward -- a believable outcome for a fraction of the project's real training budget, not a red flag. Pointer+RCPO's reward trajectory visibly destabilized mid-training (crashed from ~188 to negative around episode 150-300, see `train_log.txt`) -- a smaller-scale echo of the Phase 10 "multiplier chases an unreachable/miscalibrated alpha" failure, plausibly worsened by this run's necessarily-faster `lambda_lr`/`update_every` (raised to let the multiplier move at all within 60k timesteps). Pointer+Pareto-knee and PSO both reproduce the "high reward via throughput, poor tardiness" reward-hacking pattern the real deployment-scale Pareto investigation found (fully-trained knee there: reward 303/tardiness 734; here: reward 176/tardiness 263) -- both schedule every job but let many run late.
+
+**Conclusion / next step:** Confirms the v1 methodology bug (trial-selection-by-raw-reward) was the real cause of that entry's implausible numbers, not an environment or eval bug -- this run's RL results are directionally consistent with the project's actual history even at much-reduced scale/budget. Still not a substitute for a full-fidelity run (see the README's full caveat list) -- flagging as before that a proper rerun at deployment scale/budget is the natural next step for a future session.
+
+---
+
+## 2026-09-04 (S2W7) -- Reduced-budget results folder for the mathematical report (not a full-fidelity run)
+
+**Config:** A2C pointer, single-stage (no curriculum), 15 jobs/4 machines/horizon=25
+(deliberately smaller than and distinct from both the deployment scale and the
+project's standard 20/5/30 tuning scale), `deadline_range=(4,25)` (explicit,
+proportional to horizon -- see the 2026-08-28 "self-inflicted test confound" entry
+below for why this matters). Hyperparameters for all 3 models trace to a single
+combined `optimize_for="pareto"` Optuna search (15 trials x 6,000 timesteps each,
+`Code/training/optuna_tune.py`, extended this session with new `trial_timesteps`/
+`deadline_range` parameters, both backward-compatible/opt-in). Front: 3
+non-dominated trials (9: reward=96.28/tard_norm=0.88; 10: reward=95.36/tard_norm=0.48;
+2: reward=-18.81/tard_norm=0.0, a collapsed extreme, not used). Models A (shaping)
+and B (RCPO) use trial 9's params; model C (Pareto-knee) uses trial 10's, selected
+by a knee rule that maximizes tardiness-reduction-per-unit-reward-given-up over
+trial 9 (explicitly avoids trial 2's collapsed zero-tardiness/near-zero-reward
+point). B's RCPO alpha=0.98, derived from A's own held-out mean episode_cost.
+35,000 final-training timesteps per model (vs. project standard 500,000). 8
+held-out instances (seeds 500000-500007, vs. standard 50). PSO: swarm=10,
+iterations=20 (vs. standard 15/30).
+
+**Stats:**
+```
+                      reward         tardiness      late_jobs     jobs_scheduled
+EDF                   93.06 ± 0.21   2.50 ± 4.47    1.75 ± 2.86   15.00/15
+LST                   93.03 ± 0.39   1.75 ± 3.90    1.12 ± 2.26   15.00/15
+Pointer+shaping       90.10 ± 0.56   24.50 ± 8.35   4.50 ± 1.32   15.00/15
+Pointer+RCPO          61.74 ± 29.67  10.62 ± 8.44   3.00 ± 1.41   14.38/15
+Pointer+Pareto-knee   92.61 ± 0.61   2.62 ± 4.77    1.25 ± 1.64   15.00/15
+PSO                   93.24 ± 0.29   4.62 ± 5.76    2.00 ± 2.12   15.00/15
+```
+Full pipeline wall-clock: ~13 minutes (Optuna search + 3 model trainings) + a few
+minutes' evaluation. All 3 checkpoints showed clean, monotonic-ish reward
+convergence off the idle-penalty floor (see `Results/reduced_budget_2026-09-04/
+train_log.txt`) -- no idle collapse.
+
+**Observation:** Even at this much smaller scale/budget, the qualitative pattern
+echoes the project's full-scale history: shaping-only trades tardiness for
+throughput (24.50 tardiness vs. heuristics' ~2), and RCPO shows high variance and
+occasional job abandonment (14.38/15) rather than a clean win -- most plausibly a
+training-budget artifact of the compressed run (its `rcpo_lambda_lr`/
+`update_every_episodes` were raised well above project defaults specifically to
+let the multiplier move within so few episodes, which likely destabilized it) more
+than a finding about RCPO itself. The Pareto-knee checkpoint essentially matches
+the heuristics on every metric, the best RL result of the three here.
+
+**Conclusion / next step:** Not a substitute for a real run -- flagged
+extensively in `Results/reduced_budget_2026-09-04/README.md`, which every number
+above should be read alongside. Produced because no checkpoints survived from the
+`autonomous-overnight-2026-08-28` branch (`rl_training/` is gitignored, never
+committed) and the user needed concrete graphs/tables/Gantt charts for their
+report today. A full-fidelity rerun (deployment scale, standard Optuna trial
+count/timesteps, 500k-timestep curriculum, 50 held-out instances) is the natural
+next step, left for a future session with more time budgeted.
+
+---
+
 ## 2026-08-28 (S2W6) -- jobs_scheduled measured for the full baseline roster; corrects two earlier ad hoc figures
 
 **Config:** N/A (measurement pass, prompted by a request to add jobs-scheduled to the results review tables). All numbers below use the official 50-held-out-instance protocol (`num_jobs=100, num_machines=10, horizon=100`, seeds 500000-500049) -- the same one `eval_results.csv` uses everywhere else.

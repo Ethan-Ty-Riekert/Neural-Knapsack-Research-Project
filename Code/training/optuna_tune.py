@@ -42,6 +42,7 @@ def make_tuning_env(
     use_potential_shaping: bool = False,
     shaping_gamma: float = 0.99,
     randomize_instances: bool = False,
+    deadline_range: tuple = None,
 ):
     """Create environment for hyperparameter tuning.
 
@@ -59,6 +60,18 @@ def make_tuning_env(
     transfer, which is exactly what happened in the S2W5 tardiness-retuning
     experiment; this keeps tuning and deployment distributions aligned instead
     of repeating that mismatch for this experiment too).
+
+    deadline_range: optional passthrough to generate_env_config(). None
+    (default) preserves the previous behaviour exactly (generate_env_config's
+    own fixed (10,110) default, independent of `horizon`). Added rather than
+    changing that shared default because it's also used by the full
+    deployment-scale (horizon=100) env construction -- changing it there
+    would silently alter deployment-scale results too. Pass an explicit
+    (min, horizon)-proportional range when tuning at a horizon small enough
+    that (10,110) would make every deadline trivially satisfiable regardless
+    of policy quality -- see Future/research/training-log.md's 2026-08-28
+    "self-inflicted test confound" entry, which found exactly this failure
+    mode.
     """
     # NOTE: kept as generate-100-then-truncate (not a direct num_jobs=num_jobs
     # call) to preserve the exact job data every prior Optuna run (reward and
@@ -68,7 +81,10 @@ def make_tuning_env(
     # and for actual training) generates directly at the target size instead,
     # which is fine there since every episode is already a brand-new draw with
     # no prior "same seed -> same jobs" expectation to preserve.
-    config = generate_env_config(seed=seed)
+    gen_kwargs = {"seed": seed}
+    if deadline_range is not None:
+        gen_kwargs["deadline_range"] = deadline_range
+    config = generate_env_config(**gen_kwargs)
     config["job_durations"] = config["job_durations"][:num_jobs]
     config["job_resources"] = config["job_resources"][:num_jobs, :]
     config["job_deadlines"] = config["job_deadlines"][:num_jobs]
@@ -312,6 +328,8 @@ def objective_a2c(
     tuning_num_jobs: int = 20,
     tuning_num_machines: int = 5,
     tuning_horizon: int = 30,
+    trial_timesteps: int = 30_000,
+    deadline_range: tuple = None,
 ):
     """Optuna objective function for A2C hyperparameter optimization.
 
@@ -386,6 +404,15 @@ def objective_a2c(
     consistent with this project's "change one thing at a time" convention --
     so a larger-scale trial is not automatically a fairer trial, only a
     same-training-budget one at a harder distribution.
+
+    trial_timesteps (2026-09-04): per-trial training budget, replacing the
+    previously-hardcoded local `eval_timesteps = 30_000`. Default unchanged
+    (30_000) so every existing caller behaves identically; exposed so a
+    reduced-budget search (e.g. a time-boxed report-prep run) can shrink it
+    without editing this file again.
+
+    deadline_range (2026-09-04): forwarded to make_tuning_env() -- see its
+    own docstring. None (default) preserves previous behaviour exactly.
     """
     from Code.policies.a2c_policy import MaskableA2C
 
@@ -441,6 +468,7 @@ def objective_a2c(
         use_potential_shaping=use_potential_shaping,
         shaping_gamma=gamma,
         randomize_instances=randomize_instances,
+        deadline_range=deadline_range,
     )
 
     try:
@@ -462,7 +490,7 @@ def objective_a2c(
         agent.lr = learning_rate
         agent.optimizer = torch.optim.Adam(agent.model.parameters(), lr=learning_rate)
 
-        eval_timesteps = 30_000
+        eval_timesteps = trial_timesteps
         agent.train(total_timesteps=eval_timesteps)
 
         # Evaluate deterministically over a handful of fresh episodes.
@@ -539,6 +567,8 @@ def run_optimization(
     tuning_num_jobs: int = 20,
     tuning_num_machines: int = 5,
     tuning_horizon: int = 30,
+    trial_timesteps: int = 30_000,
+    deadline_range: tuple = None,
 ):
     """Run Optuna hyperparameter optimization.
 
@@ -642,6 +672,8 @@ def run_optimization(
             tuning_num_jobs=tuning_num_jobs,
             tuning_num_machines=tuning_num_machines,
             tuning_horizon=tuning_horizon,
+            trial_timesteps=trial_timesteps,
+            deadline_range=deadline_range,
         )
 
     print(f"\n{'='*80}")
@@ -789,6 +821,17 @@ if __name__ == "__main__":
                         help="A2C only: paired with --tuning-num-jobs/--tuning-horizon.")
     parser.add_argument("--tuning-horizon", type=int, default=30,
                         help="A2C only: paired with --tuning-num-jobs/--tuning-num-machines.")
+    parser.add_argument("--trial-timesteps", type=int, default=30_000,
+                        help="A2C only (2026-09-04): per-trial training budget, replacing the "
+                             "previously-hardcoded 30_000. Default unchanged; shrink for a "
+                             "time-boxed reduced-budget search.")
+    parser.add_argument("--deadline-range", type=int, nargs=2, default=None, metavar=("MIN", "MAX"),
+                        help="A2C only (2026-09-04): override generate_env_config's deadline_range "
+                             "for the tuning env, forwarded via make_tuning_env(). Default None keeps "
+                             "the previous (10,110) behaviour. Pass a range proportional to "
+                             "--tuning-horizon when tuning at a small horizon, or deadlines are "
+                             "trivially satisfiable regardless of policy quality -- see "
+                             "make_tuning_env's docstring.")
 
     args = parser.parse_args()
 
@@ -804,4 +847,6 @@ if __name__ == "__main__":
         tuning_num_jobs=args.tuning_num_jobs,
         tuning_num_machines=args.tuning_num_machines,
         tuning_horizon=args.tuning_horizon,
+        trial_timesteps=args.trial_timesteps,
+        deadline_range=tuple(args.deadline_range) if args.deadline_range else None,
     )

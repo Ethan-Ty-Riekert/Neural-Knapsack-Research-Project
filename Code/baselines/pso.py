@@ -156,6 +156,11 @@ def optimize_and_run(config, num_jobs, num_machines, swarm_size=15, iterations=3
     result["fitness_curve"] = fitness_curve
     result["swarm_size"] = swarm_size
     result["iterations"] = iterations
+    # gbest_position: the winning particle's raw continuous position (2026-09-04).
+    # Lets a caller replay/inspect the exact schedule this decodes to (via
+    # _decode_priorities + the same job/machine-picking logic _simulate uses)
+    # without re-running the whole search -- e.g. for a Gantt-chart capture.
+    result["gbest_position"] = gbest_pos.tolist()
     return result
 
 
