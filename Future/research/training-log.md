@@ -77,10 +77,27 @@ not a collapse (LPT's reappearance here, despite being the earlier collapse rule
 plausible as a deliberately-used minority choice rather than the sole strategy -- not
 investigated further).
 
-**Conclusion / next step:** Both randomized-instance priority items done. Remaining in
-queue: Option 1/Option 3 online (dense+weighted, not yet run), Option 2 (dense+weighted,
-lowest priority). Full-scale Option 1 validation (1.2M, dense+weighted, offline) running
-in parallel.
+**Follow-up: Option 1 online rho~0.75, dense+weighted -- the online breakthrough.**
+```
+Option 1 (dense+weighted): tardiness=136.00  late=16  scheduled=818/866
+EDF:          147.00  late=14  scheduled=822/866
+ATC:          167.00  late=16  scheduled=819/866
+SPT:          177.00  late=17  scheduled=816/866
+WSPT+BestFit: 178.00  late=18  scheduled=821/866
+```
+**First time Option 1 has beaten every heuristic online**, including ATC (previously the
+benchmark Option 1 couldn't reach: 163 vs 120 under legacy/dense-only). Rule-choice
+diagnostic: SPT ~84%, LST ~10%, forced-idle ~12% -- still SPT-dominant, but now
+genuinely mixing in LST rather than the complete single-rule collapse found earlier
+today (legacy AND dense-only-unweighted both gave 100% SPT, 0% anything else, exactly
+163.00 both times). The combination of dense_tardiness + real weights appears to be what
+was needed to unstick the online policy from its earlier local optimum, not either fix
+alone.
+
+**Conclusion / next step:** Both offline and online priority items now show real wins.
+Remaining in queue: Option 3 online (dense+weighted, launching next), Option 2
+(dense+weighted, lowest priority, not yet started). Full-scale Option 1 validation (1.2M,
+dense+weighted, offline) running in parallel.
 
 ---
 
