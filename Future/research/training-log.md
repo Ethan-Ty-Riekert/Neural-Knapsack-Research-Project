@@ -90,12 +90,31 @@ rather than fixed mid-integration.
 unchanged, verified). No training results yet from either -- this entry exists to record
 what was implemented, not what it produced.
 
-**Conclusion / next step:** Windowed action space awaits the user's review of its design
-choices before any training commits to it. Option 1's curriculum-integrated path is ready
-for the full-scale (1.9M, 4-stage curriculum) validation run once the accidental 300k
-smoke-test run (offline, legacy reward, unweighted) finishes and confirms the integration
-produces results consistent with the standalone trainer's own 300k legacy result (35.00)
-before scaling up further.
+**Follow-up: the curriculum-integration smoke test surfaced a real problem, not just the
+`--stage4-timesteps` rough edge.** Evaluated the resulting checkpoint (300k timesteps,
+legacy reward, unweighted, offline, via the curriculum-integrated path): **tardiness=
+1435.00, late=45** -- dramatically WORSE than the standalone trainer's matching 300k
+result (35.00), not equivalent as expected. Root cause: `train_optimized.py` loads
+`ppo_best_params.json` (Optuna-tuned hyperparameters) regardless of `action_mode` --
+those hyperparameters were tuned for the OLD, huge placement action space
+(`learning_rate=1.31e-5` in the log, genuinely tiny) and do not transfer to Option 1's
+completely different `Discrete(8)` rule-selection space, the same
+Eimer et al. (2023) "hyperparameters tuned at one scale/setting don't transfer to
+another" failure mode this project has now hit a third time (previously A2C, S2W5; PPO's
+tardiness-tuned search, S2W9). The curriculum-integration MECHANISM itself is not at
+fault (no crash, no wrong action-space size, no wrong checkpoint path) -- it faithfully
+reproduced whatever hyperparameters it was told to use, and those were wrong for this
+action space.
+
+**Conclusion / next step:** Do NOT launch the planned full-scale (1.9M) validation
+through the curriculum-integrated path with the existing Optuna params -- it would very
+likely reproduce this failure at 6x the cost. Re-running Optuna specifically for the
+`rule_selection` action space is real, separate work, out of scope to start unsupervised
+overnight. Instead, the full-scale validation uses the ALREADY-VALIDATED standalone
+trainer (SB3 default hyperparameters, which have now taken Option 1 from 35.00 -> 19.00
+-> 12.00 across three separate improvements tonight), extended to a longer timestep
+budget, on the current best-known config (dense_tardiness + weighted). Windowed action
+space (Section 1) still awaits the user's design-choice review separately.
 
 ---
 
