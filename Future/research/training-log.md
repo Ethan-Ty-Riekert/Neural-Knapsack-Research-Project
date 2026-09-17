@@ -53,7 +53,12 @@ EDF, and now dramatically ahead of ATC/WSPT (both of which get noticeably worse 
 weights are real, since a "good" unweighted job ordering can now be a bad weighted one).
 This is the best "real RL" (non-hyper-heuristic) result of the entire session.
 
-**Conclusion / next step:** Option 1 offline randomized-instance (dense+weighted)
+**Follow-up:** Option 1 offline, dense_tardiness + weighted: **tardiness=12.00, late=7,
+scheduled=100/100 -- BEATS EDF (16.00) outright**, closing in on LST (8.00). First time
+any RL-trained policy this session has beaten EDF. This is now the single best offline
+result of the entire session, RL or heuristic, other than LST/CP-SAT themselves.
+
+**Conclusion / next step:** Option 3 offline randomized-instance (dense+weighted)
 launched next in the priority queue. Full comparison table (Option 1 offline, Option 1
 online, etc.) to follow as each job completes.
 
