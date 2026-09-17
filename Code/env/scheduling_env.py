@@ -32,8 +32,39 @@ class SchedulingEnv:
         idle_penalty: float = 0.5,        # penalty for idling (doing nothing)
         use_potential_shaping: bool = False,  # Solution 3: optional potential-based reward shaping
         shaping_gamma: float = 0.99,      # discount factor used in the shaping term; should match the RL algorithm's gamma
+        reward_mode: str = "legacy",      # "legacy" (default, unchanged) or "dense_tardiness" (see reward()/docstring below)
     ):
-        """Initiate the scheduling environment"""
+        """Initiate the scheduling environment
+
+        reward_mode: "legacy" (default, unchanged behaviour) charges tardiness
+        once, as a lump sum bounded by T_j/horizon < 1, at the moment a job is
+        scheduled, plus flat completion bonuses (+3.0 per job, +50 for
+        finishing everything) independent of lateness. Proven this session
+        (see Future/research/2026-09-17-dense-tardiness-reward.md) that this
+        makes scheduling any job, however late, always reward-positive versus
+        abandoning it, for every lambda_2 value any Optuna search here has
+        ever found (~1.9, below the +3.0 bonus) -- a policy that faithfully
+        maximises this reward has no incentive to reason about urgency at all.
+
+        "dense_tardiness" replaces this with an exact per-tick decomposition,
+        modelled on DeepRM (Mao, Alizadeh, Menache, Kandula, 2016, HotNets)
+        and Decima (Mao et al., SIGCOMM 2019)'s shared design principle: pay
+        reward every tick, tied directly to the true objective, not a proxy
+        for it. T_j = C_j - d_j is, by definition, the number of ticks a job
+        is unfinished past its deadline -- charging -lambda_2*w_j/horizon at
+        every such tick (see _dense_tardiness_tick_charge()) reproduces
+        -lambda_2*sum_j(w_j*T_j/horizon) EXACTLY -- the same total the legacy
+        mode's tardiness_cost computes, just spread over time instead of paid
+        as one lump sum. The flat completion bonuses are dropped under
+        this mode (see step()) -- no longer needed, since finishing a job
+        (especially before its deadline) now directly stops the per-tick
+        charge before it can start; this also removes the exact mechanism
+        proven to make lateness not matter. Honest risk, not assumed away:
+        the +3.0 bonus's original purpose was countering an unrelated
+        idle-collapse failure mode (Future/research/2026-07-24-idle-action-
+        policy-collapse.md) -- removing it needs empirical validation (does
+        jobs-scheduled stay healthy?), not just a tardiness check.
+        """
 
         # We can use the mathematical symbols as per the latex document
 
@@ -74,6 +105,8 @@ class SchedulingEnv:
 
         # Time index
         self.time = 0
+
+        self.reward_mode = reward_mode
 
         # Reward coefficients
         self.lambda1 = lambda_1
@@ -202,6 +235,17 @@ class SchedulingEnv:
         """
         if self._episode_terminal_cost_added:
             return
+        # reward_mode="dense_tardiness": never-scheduled jobs already accrue
+        # their cost continuously every tick past their deadline via
+        # _dense_tardiness_tick_charge() (called every step()/step_idle()),
+        # right up to the terminal tick -- adding this lump-sum worst-case
+        # charge on top would double-count. Scheduled-but-still-running jobs
+        # are handled separately by _finalize_dense_tardiness_running_jobs()
+        # (called from step()/step_idle() directly, not here). No-op here
+        # under this mode either way.
+        if self.reward_mode != "legacy":
+            self._episode_terminal_cost_added = True
+            return
         for j in self.remaining_jobs:
             worst_case_cost = self.job_weights[j] * max(0.0, self.horizon - self.job_deadlines[j]) / self.horizon
             self.episode_cost += worst_case_cost
@@ -239,6 +283,89 @@ class SchedulingEnv:
             potential -= urgency
         return potential
     
+    def _dense_tardiness_tick_charge(self) -> float:
+        """reward_mode="dense_tardiness" only: the per-tick charge for the
+        tick about to elapse (self.time, BEFORE it is incremented by the
+        caller). Charges -lambda_2*w_j/horizon for every job j that is both
+        (a) not yet complete -- either still unscheduled (j in remaining_jobs)
+        or scheduled but its duration hasn't elapsed yet -- and (b) already
+        past its deadline (self.time >= job_deadlines[j]).
+
+        Called exactly once per actual tick advance (see step()/step_idle()
+        and OnlineSchedulingEnv's overrides) so that, summed over an episode,
+        this reproduces -lambda_2*sum_j(w_j*T_j/horizon) exactly: T_j is by
+        definition the number of ticks in [d_j, C_j-1] during which job j is
+        unfinished, and this method charges exactly one w_j/horizon-sized
+        slice of that job's tardiness cost each time it's called with
+        self.time in that range.
+
+        The /horizon here is not optional: it's the SAME normalisation
+        reward()'s legacy tardiness_cost already uses (see that comment) to
+        keep this term on an O(1) footing across curriculum stages with
+        different horizons, rather than growing unboundedly with H. Without
+        it, spreading the SAME total over more ticks (a longer horizon means
+        more possible ticks past deadline) would silently reintroduce exactly
+        the horizon-scaling miscalibration that normalisation was already
+        added to fix -- this redesign fixes the flat-bonus-domination defect,
+        it must not reopen the earlier one.
+
+        Also accumulates the pure (un-weighted-by-lambda_2) cost into
+        episode_cost, on the same running-total basis _finalize_unscheduled_
+        job_cost() used for reward_mode="legacy" -- see that method's guard
+        for why it becomes a no-op under this mode instead of double-charging.
+        """
+        t = self.time
+        total_w = 0.0
+        for j in range(self.num_jobs):
+            if t < self.job_deadlines[j]:
+                continue
+            if j in self.remaining_jobs:
+                not_complete = True
+            elif self.start_times[j] != -1:
+                not_complete = (self.start_times[j] + self.job_durations[j]) > t
+            else:
+                not_complete = False
+            if not_complete:
+                total_w += self.job_weights[j]
+        cost_slice = total_w / self.horizon
+        self.episode_cost += cost_slice
+        return -self.lambda2 * cost_slice
+
+    def _finalize_dense_tardiness_running_jobs(self) -> float:
+        """reward_mode="dense_tardiness" only: closes a real exactness gap
+        found by tests/test_dense_tardiness_reward.py. The offline case can
+        end an episode early, the instant remaining_jobs empties (every job
+        scheduled) -- but a job scheduled recently, with a multi-tick
+        duration, may still have ticks left to run past its own deadline
+        when that happens. Those ticks would never get charged by the normal
+        per-tick mechanism, since no further step()/step_idle() calls occur
+        once done=True. This charges exactly those remaining late-ticks in
+        one lump sum, called from step()/step_idle() whenever done becomes
+        True (self.time is already POST-increment there, i.e. the first
+        tick the per-tick mechanism never got to) -- so the total charged
+        across an episode stays exactly sum_j(w_j*T_j/horizon) regardless of
+        whether the episode ends early or exactly at the horizon.
+
+        Safe to call unconditionally whenever done is True: if the episode
+        instead ended because self.time > horizon, every scheduled job is
+        already complete by then (is_feasible() guarantees
+        start+duration <= horizon < self.time for any valid placement), so
+        every term here evaluates to 0 -- this is a no-op in that case, not
+        a special case to branch around.
+        """
+        total_w = 0.0
+        for j in range(self.num_jobs):
+            if self.start_times[j] == -1:
+                continue  # never scheduled -- handled by the ongoing
+                          # per-tick charge / _finalize_unscheduled_job_cost(),
+                          # not here.
+            completion = self.start_times[j] + self.job_durations[j]
+            remaining_late_ticks = max(0, completion - max(self.job_deadlines[j], self.time))
+            total_w += self.job_weights[j] * remaining_late_ticks
+        cost_slice = total_w / self.horizon
+        self.episode_cost += cost_slice
+        return -self.lambda2 * cost_slice
+
     def is_feasible(self, j:int, m:int, t:int) -> bool:
         """Check if job index j can start on machine m at time t.
         Returns False in two cases:
@@ -308,19 +435,25 @@ class SchedulingEnv:
         # Compute mathematical reward
         reward = self.reward(job, machine, machine_was_inactive, delta_theta)
 
-        ## Reward shaping to help with convergence of policy methods
-        # STRONG positive reward for any valid scheduling action
-        # This makes scheduling immediately attractive and helps prevent idle collapse
-        reward += 3.0  # Increased from 1.0 to make scheduling more rewarding than idling
+        if self.reward_mode == "legacy":
+            ## Reward shaping to help with convergence of policy methods
+            # STRONG positive reward for any valid scheduling action
+            # This makes scheduling immediately attractive and helps prevent idle collapse
+            reward += 3.0  # Increased from 1.0 to make scheduling more rewarding than idling
 
-        # NOTE: hotspot severity is already penalised by -lambda3 * delta_theta inside
-        # self.reward() above; there used to be a second "reward += 0.05 * (0-delta_theta)"
-        # term here that double-counted the same penalty on top of lambda3. Removed.
+            # NOTE: hotspot severity is already penalised by -lambda3 * delta_theta inside
+            # self.reward() above; there used to be a second "reward += 0.05 * (0-delta_theta)"
+            # term here that double-counted the same penalty on top of lambda3. Removed.
 
-        # Reward for finishing all jobs
-        if len(self.remaining_jobs) == 0:
-            reward += 50
-        ## End reward shaping
+            # Reward for finishing all jobs
+            if len(self.remaining_jobs) == 0:
+                reward += 50
+            ## End reward shaping
+        else:
+            # dense_tardiness: no flat completion bonuses (see __init__'s
+            # reward_mode docstring) -- charge this elapsing tick's dense
+            # tardiness accrual instead, using self.time BEFORE it advances.
+            reward += self._dense_tardiness_tick_charge()
 
         # Advance time
         self.time += 1
@@ -336,10 +469,12 @@ class SchedulingEnv:
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
 
         if done:
+            if self.reward_mode != "legacy":
+                reward += self._finalize_dense_tardiness_running_jobs()
             self._finalize_unscheduled_job_cost()
 
         return (self.get_state(), reward, done)
-    
+
     def reward(self, j:int, m:int, ym:bool, delta_theta: float, idle: bool = False) -> float:
         """Reward function"""
         reward = 0.0
@@ -370,11 +505,16 @@ class SchedulingEnv:
         # guarantees t+P_j <= H, and d_j >= 10), so this term stays on the same
         # O(1) footing as the others at every stage. See
         # Future/research/<dated>-fixed-instance-bugfix-and-reward-rescale.md.
-        tardiness_cost = self.job_weights[j] * (self.tardiness[j] / self.horizon)
-        reward -= self.lambda2 * tardiness_cost
-        # RCPO constraint cost C(tau) -- the pure (un-weighted-by-lambda2) term,
-        # see episode_cost's docstring in __init__.
-        self.episode_cost += tardiness_cost
+        # reward_mode="dense_tardiness": this lump-sum charge is replaced by
+        # the per-tick accrual in _dense_tardiness_tick_charge() (called from
+        # step()/step_idle() when the tick actually elapses) -- skipped here
+        # to avoid double-charging the same job's tardiness both ways.
+        if self.reward_mode == "legacy":
+            tardiness_cost = self.job_weights[j] * (self.tardiness[j] / self.horizon)
+            reward -= self.lambda2 * tardiness_cost
+            # RCPO constraint cost C(tau) -- the pure (un-weighted-by-lambda2) term,
+            # see episode_cost's docstring in __init__.
+            self.episode_cost += tardiness_cost
 
         # Hotspot penalty
         reward -= self.lambda3 * delta_theta
@@ -410,9 +550,13 @@ class SchedulingEnv:
 
     def step_idle(self):
         """Idle step: advance time without scheduling a job."""
-        self.time += 1
-
         reward = -self.idling_penalty
+        if self.reward_mode != "legacy":
+            # Charge the elapsing tick's dense tardiness accrual using
+            # self.time BEFORE it advances -- see _dense_tardiness_tick_charge().
+            reward += self._dense_tardiness_tick_charge()
+
+        self.time += 1
 
         # Solution 3: same shaping term as step(). Idling while urgent jobs remain
         # makes their slack shrink without progress, so Phi(s') is more negative
@@ -427,6 +571,8 @@ class SchedulingEnv:
         done = len(self.remaining_jobs) == 0 or self.time > self.horizon
 
         if done:
+            if self.reward_mode != "legacy":
+                reward += self._finalize_dense_tardiness_running_jobs()
             self._finalize_unscheduled_job_cost()
 
         return self.get_state(), reward, done

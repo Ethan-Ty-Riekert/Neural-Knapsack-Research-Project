@@ -30,6 +30,57 @@ def save_and_show(fig, run_dir: str, filename: str, show: bool = True):
         plt.show()
 
 
+def plot_machine_utilisation(runs, model_label: str, run_dir: str, filename: str, show: bool = True):
+    """Per-machine utilisation graph for one model: one colored line per
+    machine, plus a mean line, a min line, and an upper envelope at the 95th
+    percentile across machines, with a shaded fill between the min and the
+    95th-percentile line.
+
+    runs: list of run-result dicts (as produced by eval_rl_agent.py's
+    run_model()/run_heuristic()), each with "utilisation_over_time" of shape
+    (timesteps, num_machines), already truncated to a common length across
+    all runs by the caller (see eval_rl_agent.py::plot_results()) -- that
+    truncation stays there since it's shared with the other eval plots, not
+    duplicated here.
+
+    Per-machine series are obtained by averaging each machine's utilisation
+    across `runs` first (so 10 machines -> 10 samples per timestep for the
+    envelope, not 10*len(runs) pooled samples): with the project's default
+    non-randomized evaluation, PPO's utilisation is identical across all 50
+    runs anyway (deterministic policy on a fixed instance), so pooling would
+    just duplicate the same 10 values 50x without adding information -- see
+    Future/research/2026-09-13-machine-utilisation-envelope-method.md for the
+    full reasoning and the citations behind using a plain percentile here
+    (Hyndman & Fan 1996) rather than a Tukey (1977) IQR-fence definition.
+    """
+    util = np.stack([r["utilisation_over_time"] for r in runs])  # (n_runs, timesteps, n_machines)
+    per_machine = util.mean(axis=0)  # (timesteps, n_machines)
+    n_machines = per_machine.shape[1]
+    steps = np.arange(per_machine.shape[0])
+
+    avg_line = per_machine.mean(axis=1)
+    min_line = per_machine.min(axis=1)
+    top95_line = np.percentile(per_machine, 95, axis=1)
+
+    fig = plt.figure(figsize=(12, 5))
+    cmap = plt.get_cmap("tab20" if n_machines > 10 else "tab10")
+    for m in range(n_machines):
+        plt.plot(steps, per_machine[:, m], color=cmap(m % cmap.N), alpha=0.6, linewidth=1, label=f"Machine {m}")
+
+    plt.fill_between(steps, min_line, top95_line, color="gray", alpha=0.15, label="Min-P95 range")
+    plt.plot(steps, avg_line, color="black", linewidth=2, label="Average")
+    plt.plot(steps, min_line, color="black", linewidth=1, linestyle="--", label="Min")
+    plt.plot(steps, top95_line, color="black", linewidth=1, linestyle=":", label="95th percentile")
+
+    plt.title(f"Machine Utilisation Over Time -- {model_label}")
+    plt.xlabel("Step")
+    plt.ylabel("Utilisation")
+    plt.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize="small")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    save_and_show(fig, run_dir, filename, show=show)
+
+
 class LiveTrainingPlotter(BaseCallback):
     """SB3-compatible callback that live-plots episode reward during training and
     periodically saves a CSV log + PNG snapshot to save_dir.

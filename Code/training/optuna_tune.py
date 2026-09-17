@@ -118,22 +118,58 @@ def make_tuning_env(
     return monitored_env
 
 
-def objective_ppo(trial: optuna.Trial):
+def objective_ppo(trial: optuna.Trial, optimize_for: str = "reward", policy_type: str = "flat"):
     """Optuna objective function for PPO hyperparameter optimization.
 
     This function is called by Optuna for each trial. It:
     1. Samples hyperparameters from the search space
     2. Creates an environment with those hyperparameters
     3. Trains a PPO agent
-    4. Returns the mean episode reward (to be maximized)
+    4. Returns the mean episode reward (to be maximized) -- or, if
+       optimize_for != "reward", a tardiness-aware alternative (see below).
+
+    optimize_for (added 2026-09-15, S2W9 -- extends the mechanism
+    objective_a2c already had, per that function's own docstring, to PPO):
+    "reward" (default, unchanged), "tardiness", or "pareto". All three train
+    PPO against the *same* env reward -- optimize_for only changes which
+    metric(s) rank trials against each other, exactly as in objective_a2c.
+    Added directly in response to the 2026-09-14/15 finding
+    (2026-09-14-ppo-lagrangian-and-reward-structure.md) that PPO's own
+    reward-tuned lambda_2 (1.93) landed below the threshold needed for any
+    deadline-awareness, and that lambda_max tuning on a Lagrangian multiplier
+    could not fix this within the tried budgets -- this is the cheaper,
+    lower-risk alternative flagged there and in training-log.md's
+    2026-09-15 entry: search hyperparameters (lambda_2 included) FOR
+    tardiness directly, using the same TARDINESS_PENALTY_WEIGHT-scalarized
+    composite score objective_a2c already validated, rather than inventing a
+    new mechanism. See objective_a2c's docstring for the full grounding
+    (Roijers et al. 2013 critique of single-weight scalarization, "pareto"
+    mode as the un-scalarized alternative) -- identical reasoning applies to
+    PPO and isn't repeated here.
+
+    policy_type (added 2026-09-16, S2W9): "flat" (default, unchanged --
+    sb3_contrib's stock MlpPolicy) or "pointer" (PointerMaskableActorCriticPolicy,
+    Code/policies/pointer_ppo_policy.py -- the same PointerActorCritic
+    architecture A2C has used since 2026-08-09). See
+    Future/research/2026-09-16-pointer-network-ppo.md for why this is being
+    tried: every reward/hyperparameter mechanism tried for PPO's tardiness
+    converged on the same ~1290-1330 band while A2C (pointer architecture)
+    sits at ~28 -- architecture, not reward weighting, is the remaining
+    untested variable.
     """
 
     # ==================== SEARCH SPACE ====================
 
-    # Network architecture
-    layer_size = trial.suggest_categorical("layer_size", [128, 256, 512])
-    n_layers = trial.suggest_int("n_layers", 2, 3)
-    activation = trial.suggest_categorical("activation", ["tanh", "relu"])
+    # Network architecture. "pointer" searches embed_dim/hidden (mirroring
+    # objective_a2c's identical branch) instead of layer_size/n_layers/
+    # activation, which only apply to the flat MlpPolicy.
+    if policy_type == "pointer":
+        embed_dim = trial.suggest_categorical("embed_dim", [64, 128, 256])
+        hidden = trial.suggest_categorical("hidden", [32, 64, 128])
+    else:
+        layer_size = trial.suggest_categorical("layer_size", [128, 256, 512])
+        n_layers = trial.suggest_int("n_layers", 2, 3)
+        activation = trial.suggest_categorical("activation", ["tanh", "relu"])
 
     # PPO hyperparameters
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
@@ -175,21 +211,25 @@ def objective_ppo(trial: optuna.Trial):
 
     # ==================== BUILD NETWORK ARCHITECTURE ====================
 
-    # Create network architecture
-    if n_layers == 2:
-        net_arch = dict(pi=[layer_size, layer_size], vf=[layer_size, layer_size])
-    else:  # n_layers == 3
-        net_arch = dict(
-            pi=[layer_size, layer_size, layer_size],
-            vf=[layer_size, layer_size, layer_size]
+    if policy_type == "pointer":
+        policy_cls = None  # resolved below, after env exists (needs its dims)
+        policy_kwargs = dict(embed_dim=embed_dim, hidden=hidden)
+    else:
+        if n_layers == 2:
+            net_arch = dict(pi=[layer_size, layer_size], vf=[layer_size, layer_size])
+        else:  # n_layers == 3
+            net_arch = dict(
+                pi=[layer_size, layer_size, layer_size],
+                vf=[layer_size, layer_size, layer_size]
+            )
+
+        activation_fn = nn.Tanh if activation == "tanh" else nn.ReLU
+
+        policy_cls = "MlpPolicy"
+        policy_kwargs = dict(
+            net_arch=net_arch,
+            activation_fn=activation_fn,
         )
-
-    activation_fn = nn.Tanh if activation == "tanh" else nn.ReLU
-
-    policy_kwargs = dict(
-        net_arch=net_arch,
-        activation_fn=activation_fn,
-    )
 
     # ==================== CREATE ENVIRONMENT ====================
 
@@ -202,11 +242,24 @@ def objective_ppo(trial: optuna.Trial):
         invalid_penalty=invalid_penalty,
     )
 
+    if policy_type == "pointer":
+        from Code.policies.pointer_ppo_policy import PointerMaskableActorCriticPolicy
+
+        # env.env.env = Monitor -> ActionMasker -> GymSchedulingEnv (one hop
+        # less than `base_env` below, which reaches the composed SchedulingEnv
+        # -- max_jobs/num_machines/num_resources live on GymSchedulingEnv, see
+        # a2c_policy.py's MaskableA2C.__init__ for the identical derivation).
+        gym_env = env.env.env
+        policy_cls = PointerMaskableActorCriticPolicy
+        policy_kwargs["max_jobs"] = gym_env.max_jobs
+        policy_kwargs["num_machines"] = gym_env.num_machines
+        policy_kwargs["num_resources"] = gym_env.num_resources
+
     # ==================== CREATE AND TRAIN MODEL ====================
 
     try:
         model = MaskablePPO(
-            "MlpPolicy",
+            policy_cls,
             env,
             learning_rate=learning_rate,
             n_steps=n_steps,
@@ -235,6 +288,12 @@ def objective_ppo(trial: optuna.Trial):
         n_eval_episodes = 10
         episode_rewards = []
         episode_actions = []  # Track action distribution to detect idle-only behavior
+        episode_tardiness = []
+        episode_late_jobs = []
+        # base_env unwraps Monitor(ActionMasker(GymSchedulingEnv(SchedulingEnv)))
+        # -- same depth/pattern as objective_a2c's base_env, needed to read
+        # .tardiness, which the reward/obs alone don't expose.
+        base_env = env.env.env.env
 
         for _ in range(n_eval_episodes):
             obs, info = env.reset()
@@ -251,6 +310,8 @@ def objective_ppo(trial: optuna.Trial):
 
             episode_rewards.append(episode_reward)
             episode_actions.append(actions_taken)
+            episode_tardiness.append(float(base_env.tardiness.sum()))
+            episode_late_jobs.append(int((base_env.tardiness > 0).sum()))
 
         mean_reward = np.mean(episode_rewards)
 
@@ -267,22 +328,46 @@ def objective_ppo(trial: optuna.Trial):
             # This trial is useless - agent learned to always idle
             mean_reward -= 100.0  # Heavy penalty
 
-        # Report intermediate value for pruning
-        trial.report(mean_reward, step=0)
+        # Same T_j/H normalisation convention as SchedulingEnv.reward()'s
+        # tardiness term (see objective_a2c's matching comment) -- computed
+        # from the (possibly idle-collapse-penalized) mean_reward above, so a
+        # collapsed trial scores badly in tardiness/pareto mode too, not just
+        # reward mode.
+        mean_tardiness = float(np.mean(episode_tardiness))
+        mean_late_jobs = float(np.mean(episode_late_jobs))
+        mean_tardiness_norm = mean_tardiness / base_env.horizon
+        composite_score = mean_reward - TARDINESS_PENALTY_WEIGHT * mean_tardiness_norm
 
-        # Check if trial should be pruned
-        if trial.should_prune():
-            raise optuna.TrialPruned()
+        # Report intermediate value for pruning -- BUG FIX (2026-09-15, S2W9):
+        # this used to always report raw mean_reward regardless of
+        # optimize_for, which could prune a trial for looking bad on an axis
+        # this search isn't even selecting on. Report whichever scalar this
+        # trial is actually being ranked by (pareto mode has no single scalar
+        # to prune on, so it skips pruning entirely, same as objective_a2c).
+        if optimize_for != "pareto":
+            prune_metric = composite_score if optimize_for == "tardiness" else mean_reward
+            trial.report(prune_metric, step=0)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
 
-        # Store additional metrics for analysis
         trial.set_user_attr("idle_ratio", idle_ratio)
         trial.set_user_attr("mean_reward", mean_reward)
         trial.set_user_attr("std_reward", np.std(episode_rewards))
+        trial.set_user_attr("mean_tardiness", mean_tardiness)
+        trial.set_user_attr("mean_late_jobs", mean_late_jobs)
+        trial.set_user_attr("composite_score", composite_score)
 
-        return mean_reward
+        if optimize_for == "pareto":
+            # Two raw objectives, no scalarization -- see objective_a2c's
+            # optimize_for docstring. run_optimization() must create the
+            # study with directions=["maximize", "minimize"] to match.
+            return mean_reward, mean_tardiness_norm
+        return composite_score if optimize_for == "tardiness" else mean_reward
 
     except Exception as e:
         print(f"Trial {trial.number} failed: {e}")
+        if optimize_for == "pareto":
+            return -1000.0, 1000.0
         return -1000.0  # Return very poor score for failed trials
 
     finally:
@@ -544,22 +629,27 @@ def run_optimization(
 
     Args:
         algorithm: "ppo" or "a2c"
-        policy_type: "pointer" or "flat" -- A2C only, ignored for PPO (which only
-            supports the flat MaskablePPO MlpPolicy). Each policy_type gets its
-            own independent study/output-file set (see study_name/results below),
+        policy_type: "pointer" or "flat". For PPO, "flat" (sb3_contrib's stock
+            MlpPolicy) is the original, still-default behaviour; "pointer"
+            (added 2026-09-16, PointerMaskableActorCriticPolicy) is new -- see
+            objective_ppo's docstring. Each policy_type gets its own
+            independent study/output-file set (see study_name/results below),
             since architecture choice and hyperparameters shouldn't trade off
             against each other inside one shared search.
         n_trials: Number of trials to run
         n_jobs: Number of parallel jobs (1 = sequential)
         study_name: Name for the study (for persistent storage)
         storage: Database URL for persistent storage (e.g., "sqlite:///optuna.db")
-        optimize_for: "reward" (default) or "tardiness" -- A2C only, see
-            objective_a2c's docstring. Ignored for PPO (objective_ppo unchanged;
-            PPO+pointer integration is separately deferred, see
-            Future/research/2026-08-09-pointer-network-action-head.md Section 9).
-            Given its own result_tag/output-file suffix so it produces a
-            comparable *alternative* best-params file rather than overwriting
-            the existing reward-tuned one train_optimized.py already loads by
+        optimize_for: "reward" (default), "tardiness", or "pareto" -- see
+            objective_a2c's docstring for the full grounding (shared by both
+            algorithms). Supported for PPO too as of 2026-09-15, S2W9 (see
+            objective_ppo's docstring for why -- extends the same mechanism
+            objective_a2c already had, in direct response to PPO-Lagrangian's
+            lambda_max sweep failing to fix PPO's deadline-blindness within
+            this project's tried training budgets). Given its own
+            result_tag/output-file suffix so it produces a comparable
+            *alternative* best-params file rather than overwriting the
+            existing reward-tuned one train_optimized.py already loads by
             default.
         use_potential_shaping / randomize_instances: A2C only, see
             objective_a2c's docstring. Both False by default (unchanged
@@ -584,25 +674,34 @@ def run_optimization(
     # optimize_for="tardiness": the *fitness metric* Optuna ranks trials by has
     # changed (composite_score, not mean_reward), so it also needs a fresh study
     # rather than resuming "_v2"'s reward-ranked trial history.
-    tardiness_suffix = "_tardiness" if (algorithm == "a2c" and optimize_for == "tardiness") else ""
-    tardiness_suffix = "_pareto" if (algorithm == "a2c" and optimize_for == "pareto") else tardiness_suffix
+    # optimize_for's suffix applies to both algorithms as of 2026-09-15
+    # (S2W9) -- previously PPO-gated out entirely (see run_optimization's
+    # docstring on why PPO needed this too).
+    tardiness_suffix = "_tardiness" if optimize_for == "tardiness" else ""
+    tardiness_suffix = "_pareto" if optimize_for == "pareto" else tardiness_suffix
     randinst_suffix = "_randinst" if (algorithm == "a2c" and randomize_instances) else ""
     # Distinguishes a non-default tuning scale (see objective_a2c's
     # tuning_num_jobs/etc. docstring) so it gets its own study/output files
-    # instead of colliding with the default (20, 5, 30) scale's.
+    # instead of colliding with the default (20, 5, 30) scale's. A2C only --
+    # objective_ppo has no tuning-scale parameters (uses make_tuning_env's
+    # own defaults unconditionally).
     scale_suffix = (f"_scale{tuning_num_jobs}x{tuning_num_machines}x{tuning_horizon}"
                      if (algorithm == "a2c" and (tuning_num_jobs, tuning_num_machines, tuning_horizon) != (20, 5, 30))
                      else "")
-    if algorithm == "a2c":
-        result_tag = f"a2c_{policy_type}_v2{tardiness_suffix}{randinst_suffix}{scale_suffix}"
+    # ppo+flat is the original, pre-architecture-suffix convention -- keep it
+    # unsuffixed so every existing reference to "ppo_v2..." studies/files
+    # keeps working. Every other combination (a2c+pointer, a2c+flat, and the
+    # new ppo+pointer) includes policy_type in the tag.
+    if algorithm == "ppo" and policy_type == "flat":
+        result_tag = f"{algorithm}_v2{tardiness_suffix}"
     else:
-        result_tag = f"{algorithm}_v2"
+        result_tag = f"{algorithm}_{policy_type}_v2{tardiness_suffix}{randinst_suffix}{scale_suffix}"
 
     if study_name is None:
         study_name = f"{result_tag}_scheduling_optimization"
 
     # Create study
-    is_pareto = (algorithm == "a2c" and optimize_for == "pareto")
+    is_pareto = (optimize_for == "pareto")
     pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=0)
 
     if is_pareto:
@@ -629,10 +728,10 @@ def run_optimization(
         )
 
     # Select objective function
+    import functools
     if algorithm == "ppo":
-        objective = objective_ppo
+        objective = functools.partial(objective_ppo, optimize_for=optimize_for, policy_type=policy_type)
     else:
-        import functools
         objective = functools.partial(
             objective_a2c,
             policy_type=policy_type,
@@ -645,9 +744,8 @@ def run_optimization(
         )
 
     print(f"\n{'='*80}")
-    print(f"Starting Optuna optimization for {algorithm.upper()}"
-          + (f" ({policy_type})" if algorithm == "a2c" else "")
-          + (f" [optimize_for={optimize_for}]" if algorithm == "a2c" else "")
+    print(f"Starting Optuna optimization for {algorithm.upper()} ({policy_type})"
+          + f" [optimize_for={optimize_for}]"
           + (f" [shaping={use_potential_shaping}, randinst={randomize_instances}]" if algorithm == "a2c" else ""))
     print(f"Number of trials: {n_trials}")
     print(f"Parallel jobs: {n_jobs}")
@@ -662,7 +760,11 @@ def run_optimization(
     print("Optimization completed!")
     print(f"{'='*80}\n")
 
-    file_tag = f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}{scale_suffix}" if algorithm == "a2c" else algorithm
+    file_tag = (
+        f"{algorithm}{tardiness_suffix}"
+        if (algorithm == "ppo" and policy_type == "flat")
+        else f"{algorithm}_{policy_type}{tardiness_suffix}{randinst_suffix}{scale_suffix}"
+    )
     results_dir = OPTUNA_RESULTS_DIR
     results_dir.mkdir(parents=True, exist_ok=True)
     import json
@@ -751,9 +853,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hyperparameter optimization for RL scheduling")
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "a2c"],
                         help="Algorithm to optimize")
-    parser.add_argument("--policy-type", type=str, default="pointer", choices=["pointer", "flat"],
-                        help="A2C only: 'pointer' (PointerActorCritic) or 'flat' (MaskableActorCritic). "
-                             "Each gets its own independent study and output files.")
+    parser.add_argument("--policy-type", type=str, default=None, choices=["pointer", "flat"],
+                        help="'pointer' (PointerActorCritic-based) or 'flat' (stock MLP). Defaults to "
+                             "'pointer' for --algo a2c (unchanged) and 'flat' for --algo ppo (unchanged) "
+                             "if not given -- pass --policy-type pointer explicitly to tune PPO's new "
+                             "pointer-network variant instead. Each combination gets its own "
+                             "independent study and output files.")
     parser.add_argument("--trials", type=int, default=50,
                         help="Number of trials to run")
     parser.add_argument("--jobs", type=int, default=1,
@@ -791,6 +896,11 @@ if __name__ == "__main__":
                         help="A2C only: paired with --tuning-num-jobs/--tuning-num-machines.")
 
     args = parser.parse_args()
+
+    # Resolve the algorithm-conditional default -- see --policy-type's help
+    # (mirrors the identical fix in train_optimized.py's CLI).
+    if args.policy_type is None:
+        args.policy_type = "pointer" if args.algo == "a2c" else "flat"
 
     study = run_optimization(
         algorithm=args.algo,

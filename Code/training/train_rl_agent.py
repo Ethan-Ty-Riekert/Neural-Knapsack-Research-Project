@@ -14,7 +14,6 @@ from Code.env.scheduling_env import SchedulingEnv
 from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
 from Code.env.env_config import generate_env_config
 from Code.policies.a2c_policy import make_maskable_a2c, train_a2c
-from Code.policies.ppo_policy import make_maskable_ppo, train_ppo
 from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
 from Code.utils.paths import RL_TRAINING_DIR, LOG_DIR, MODELS_DIR, PLOTS_DIR, ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, ensure_rl_training_dirs
 

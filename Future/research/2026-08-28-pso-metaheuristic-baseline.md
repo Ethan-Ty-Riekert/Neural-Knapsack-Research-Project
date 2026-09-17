@@ -136,6 +136,61 @@ achievable tardiness actually is at this instance scale when that's the
 explicit target -- a useful complement to CP-SAT's small-instance-only
 optimum (Stage C), since PSO doesn't have CP-SAT's scaling limit.
 
+## 6. Follow-up (2026-09-15, S2W9): tardiness-fitness rerun, autonomous overnight session
+
+Section 5's flagged follow-up, done: `Code/baselines/pso.py::optimize_and_run()`
+now takes `fitness="reward"` (unchanged default) or `fitness="tardiness"`
+(maximizes `-total_tardiness` instead), plumbed through `_main()`'s new
+`--fitness` flag. Also added `--num-jobs/--num-machines/--horizon/--max-jobs`
+overrides (mirroring the same fix made to `eval_rl_agent.py` the same
+session) so this can run safely while a training run is concurrently active,
+and fixed a related latent hazard: `_main()`'s fixed-instance run used to
+pass `config=None` through to `run_heuristic()`/`make_env()`, which reads
+`ENV_CONFIG_PATH` directly for job data (not just dimensions) -- unsafe
+under the same concurrency hazard. Now builds the canonical instance
+directly (`generate_env_config(seed=0, ...)`) when overrides are given.
+
+**Result** (swarm=20, iterations=40 -- a somewhat larger budget than
+Section 3's 15/30, since full CPU was otherwise idle): on the real fixed
+instance plus 10 held-out instances (seeds 500000-500009):
+
+```
+                    PSO tardiness-fit    EDF (reference)
+fixed instance:     383.00 (late=41)     16.00  (late=10)
+held-out 0:         366.00 (late=31)     0.00   (late=0)
+held-out 1:         599.00 (late=36)     58.00  (late=26)
+held-out 2:         382.00 (late=31)     9.00   (late=7)
+held-out 3:         493.00 (late=27)     0.00   (late=0)
+held-out 4:         459.00 (late=33)     47.00  (late=23)
+held-out 5:         591.00 (late=41)     84.00  (late=23)
+held-out 6:         480.00 (late=28)     6.00   (late=3)
+held-out 7:         434.00 (late=26)     9.00   (late=6)
+held-out 8:         392.00 (late=30)     2.00   (late=2)
+held-out 9:         548.00 (late=34)     26.00  (late=12)
+```
+
+**Honest reading**: directly optimizing PSO's fitness for tardiness recovers
+a large fraction of the reward-fitness run's damage (383-599 here vs. 963 on
+the fixed instance when optimizing for reward, Section 4) but does **not**
+get anywhere near EDF, let alone the proven floor of 8.0
+(`2026-09-14-ppo-lagrangian-and-reward-structure.md` Section 7) -- it's
+roughly 24-75x the proven optimum, and worse than EDF on every single
+instance tested here (EDF's own tardiness ranges 0-84 across these
+instances, always below PSO's). This is informative in a way a clean win
+wouldn't have been: PSO's priority encoding (a learned per-job/per-machine
+priority key, decoded via the same greedy "min-priority feasible choice"
+structure EDF itself uses) is *structurally* the same kind of solution EDF
+represents -- the only difference is where the priority values come from
+(searched vs. domain knowledge: "sort by deadline"). At this search budget
+(800 episode evaluations per instance), blind search does not rediscover
+"deadline order is a good priority," let alone something better -- direct
+evidence that EDF's domain-informed rule is doing real, non-trivial work
+that a moderate-budget gradient-free search does not trivially reproduce at
+this problem scale. A substantially larger budget (more particles/
+iterations) is the natural next test if this needs revisiting, but was not
+run tonight given wall-clock cost (already ~450s/instance at this budget --
+see the module docstring's honest cost accounting).
+
 ## References
 
 1. Kennedy, J., & Eberhart, R. (1995). "Particle Swarm Optimization."

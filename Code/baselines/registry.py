@@ -58,6 +58,7 @@ for _priority_name in PRIORITY_RULES:
 HEURISTICS["EDF"] = HEURISTICS["EDF+FirstFit"]
 HEURISTICS["SPT"] = HEURISTICS["SPT+FirstFit"]
 HEURISTICS["LST"] = HEURISTICS["LST+FirstFit"]
+HEURISTICS["ATC"] = HEURISTICS["ATC+FirstFit"]
 
 # Curated default set for eval_rl_agent.py's --heuristics (all 18
 # priority+placement combos x 6 priority rules x 3 placements = 18, plus
@@ -65,7 +66,7 @@ HEURISTICS["LST"] = HEURISTICS["LST+FirstFit"]
 # this subset covers each priority rule and each placement rule at least
 # once, plus the joint Tetris scorer).
 DEFAULT_HEURISTICS = [
-    "EDF", "SPT", "LST",
+    "EDF", "SPT", "LST", "ATC",
     "FCFS+FirstFit", "LPT+WorstFit", "WSPT+BestFit", "EDF+BestFit",
     "Tetris",
 ]

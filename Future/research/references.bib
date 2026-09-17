@@ -1,0 +1,931 @@
+% references.bib -- shared bibliography for the Neural-Knapsack-Research-Project.
+% Rule (CLAUDE.md, added 2026-09-17 S2W10): every new research resource or
+% paper found gets an entry here, whether or not it also appears in a dated
+% doc's own References section. Keys: <firstauthor><year><shortslug>.
+% Backfilled 2026-09-17 from every existing Future/research/*.md References
+% section; add new entries going forward rather than starting a second file.
+
+% ---------------------------------------------------------------------
+% Scheduling / RL-for-scheduling
+% ---------------------------------------------------------------------
+
+@inproceedings{mao2016deeprm,
+  author    = {Mao, Hongzi and Alizadeh, Mohammad and Menache, Ishai and Kandula, Srikanth},
+  title     = {Resource Management with Deep Reinforcement Learning},
+  booktitle = {Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets)},
+  year      = {2016},
+  note      = {DeepRM. Action space {\O, job\_slot\_1, ..., job\_slot\_M} (M~10-20,
+               bounded visible window + backlog count), reward $r_t=\sum_j -1/T_j$
+               per tick. Cited in Code/policies/pointer_policy.py, the 2026-09-17
+               action-space-reduction and dense-tardiness-reward docs, and the
+               2026-09-16 online-arrival-mdp-design doc.}
+}
+
+@inproceedings{mao2019decima,
+  author    = {Mao, Hongzi and Schwarzkopf, Malte and Venkatakrishnan, Shaileshh Bojja and Meng, Zili and Alizadeh, Mohammad},
+  title     = {Learning Scheduling Algorithms for Data Processing Clusters},
+  booktitle = {Proceedings of the ACM Special Interest Group on Data Communication (SIGCOMM)},
+  year      = {2019},
+  note      = {Decima. GNN over per-job DAG stages; action = pick a schedulable
+               stage (analogous to DeepRM's job-slot pick) + a small bounded
+               executor-count choice. Reports 19-45\% improvement over baselines.
+               Cited in the 2026-09-17 action-space-reduction and
+               dense-tardiness-reward docs.}
+}
+
+@article{vepsalainen1987atc,
+  author  = {Vepsalainen, Ari P. J. and Morton, Thomas E.},
+  title   = {Priority Rules for Job Shops with Weighted Tardiness Costs},
+  journal = {Management Science},
+  volume  = {33},
+  number  = {8},
+  pages   = {1035--1047},
+  year    = {1987},
+  note    = {ATC (Apparent Tardiness Cost) rule. Cited in
+             Code/baselines/priority_rules.py::atc\_priority/atc\_key, the
+             2026-09-16 online-arrival-mdp-design doc, and the 2026-09-17
+             heavy-tailed-arrivals / action-space-reduction docs (Option 3's
+             ATC-primed feature).}
+}
+
+@article{min2022atctuning,
+  author  = {Min, Boae and Kim, Chang Ouk},
+  title   = {State-Dependent Parameter Tuning of the Apparent Tardiness Cost Dispatching Rule Using Deep Reinforcement Learning},
+  journal = {IEEE Access},
+  volume  = {10},
+  pages   = {20187--20198},
+  year    = {2022},
+  note    = {DDPG-tuned state-dependent ATC parameter k -- NOT what this
+             project implements (fixed k=2.0); named as the extension this
+             project's ATC rule does not attempt. Cited in
+             priority_rules.py::atc\_key and the 2026-09-16
+             online-arrival-mdp-design doc.}
+}
+
+@book{pinedo2016scheduling,
+  author    = {Pinedo, Michael L.},
+  title     = {Scheduling: Theory, Algorithms, and Systems},
+  edition   = {5th},
+  publisher = {Springer},
+  year      = {2016},
+  note      = {Standard reference for EDF/SPT/LST priority-rule scheduling
+               theory. Cited in the 2026-08-28 classical-heuristic-baselines
+               doc.}
+}
+
+@article{graham1969lpt,
+  author  = {Graham, Ronald L.},
+  title   = {Bounds on Multiprocessing Timing Anomalies},
+  journal = {SIAM Journal on Applied Mathematics},
+  volume  = {17},
+  number  = {2},
+  pages   = {416--429},
+  year    = {1969},
+  note    = {LPT's (4/3 - 1/(3m)) makespan approximation bound on identical
+             parallel machines. Cited in priority_rules.py::lpt\_key and the
+             2026-08-28 classical-heuristic-baselines doc.}
+}
+
+@article{smith1956wspt,
+  author  = {Smith, Wayne E.},
+  title   = {Various Optimizers for Single-Stage Production},
+  journal = {Naval Research Logistics Quarterly},
+  volume  = {3},
+  number  = {1-2},
+  pages   = {59--66},
+  year    = {1956},
+  note    = {Smith's rule / WSPT, optimal for minimizing total weighted
+             completion time on a single machine. Cited in
+             priority_rules.py::wspt\_key and the 2026-08-28
+             classical-heuristic-baselines doc.}
+}
+
+@article{johnson1973binpacking,
+  author  = {Johnson, David S.},
+  title   = {Near-Optimal Bin Packing Algorithms},
+  journal = {Journal of the ACM},
+  year    = {1973},
+  note    = {First-Fit / Best-Fit / Worst-Fit classical bin-packing placement
+             rules. Cited in Code/baselines/placement_rules.py and the
+             2026-08-28 classical-heuristic-baselines doc.}
+}
+
+@article{grandl2014tetris,
+  author  = {Grandl, Robert and Ananthanarayanan, Ganesh and Kandula, Srikanth and Rao, Sriram and Akella, Aditya},
+  title   = {Multi-Resource Packing for Cluster Schedulers},
+  journal = {ACM SIGCOMM Computer Communication Review},
+  volume  = {44},
+  number  = {4},
+  pages   = {455--466},
+  year    = {2014},
+  note    = {Tetris: multi-resource dot-product alignment score. Cited in
+             Code/baselines/placement_rules.py::tetris\_score and the
+             2026-08-28 classical-heuristic-baselines doc.}
+}
+
+@article{lenstra1977complexity,
+  author  = {Lenstra, Jan Karel and Rinnooy Kan, Alexander H. G. and Brucker, Peter},
+  title   = {Complexity of Machine Scheduling Problems},
+  journal = {Annals of Discrete Mathematics},
+  volume  = {1},
+  pages   = {343--362},
+  year    = {1977},
+  note    = {NP-hardness of resource-constrained scheduling with tardiness
+             objectives -- grounds why Code/baselines/exact_solver.py's
+             CP-SAT baseline (offline and the 2026-09-17 retrospective
+             online oracle) is restricted to small/time-limited instances.
+             Cited in the 2026-08-28 exact-solver-baseline doc.}
+}
+
+@misc{ortools,
+  author       = {Perron, Laurent and Furnon, Vincent},
+  title        = {OR-Tools},
+  howpublished = {Google},
+  url          = {https://developers.google.com/optimization/cp/cp_solver},
+  note         = {CP-SAT solver and its interval-variable/cumulative-constraint
+                  modelling primitives, used throughout
+                  Code/baselines/exact_solver.py. Cited in the 2026-08-28
+                  exact-solver-baseline doc.}
+}
+
+@article{lassoued2026hyperheuristic,
+  author  = {Lassoued, Sofiene and Gobachew, Asrat and Lier, Stefan and Schwung, Andreas},
+  title   = {Policy-Based Deep Reinforcement Learning Hyperheuristics for Job-Shop Scheduling Problems},
+  journal = {arXiv preprint arXiv:2601.11189},
+  year    = {2026},
+  note    = {Submitted 16 Jan 2026. RL hyper-heuristic agent learns to switch
+             scheduling rules dynamically based on system state, with action
+             prefiltering (restrict to feasible low-level actions) and a
+             commitment mechanism (regulates switching frequency) -- directly
+             analogous to Option 1's rule-selection design
+             (Code/env/rule_selection_gym_wrapper.py, 2026-09-17
+             action-space-reduction). Verified via WebSearch 2026-09-17;
+             found during this session's earlier (pre-compaction) research
+             but never previously recorded in a doc References section --
+             a gap this bib file exists to prevent recurring.}
+}
+
+@article{cie2025dispatchruleselection,
+  title   = {Dynamic Dispatching Rule Selection for the Job Shop Scheduling Problem},
+  journal = {Computers and Industrial Engineering},
+  doi     = {10.1016/j.cie.2025.111471},
+  year    = {2025},
+  note    = {Author list not yet confirmed (unresolved via WebSearch
+             2026-09-17 -- title/journal/DOI confirmed, authors were not
+             surfaced by search results). Periodic and real-time dispatching
+             rule selection systems (supervised/RL) outperform the single
+             best fixed rule by >10\%, periodic more robust than real-time.
+             Directly motivates Option 1's hyper-heuristic framing
+             (2026-09-17 action-space-reduction doc). Found during this
+             session's earlier (pre-compaction) research but never
+             previously recorded -- see lassoued2026hyperheuristic's note.}
+}
+
+% ---------------------------------------------------------------------
+% Neural network architecture (pointer / attention)
+% ---------------------------------------------------------------------
+
+@inproceedings{vinyals2015pointernet,
+  author    = {Vinyals, Oriol and Fortunato, Meire and Jaitly, Navdeep},
+  title     = {Pointer Networks},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2015},
+  note      = {arXiv:1506.03134. Foundational query/key compatibility-as-logit
+               mechanism for selecting one element of a variable-size input
+               set -- the architectural lineage Code/policies/pointer_policy.py
+               is drawn from. Cited in the 2026-08-09
+               pointer-network-action-head and 2026-09-16 pointer-network-ppo
+               docs.}
+}
+
+@inproceedings{kool2019attention,
+  author    = {Kool, Wouter and van Hoof, Herke and Welling, Max},
+  title     = {Attention, Learn to Solve Routing Problems!},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019},
+  note      = {arXiv:1803.08475. Scaled dot-product + tanh-clipping
+               compatibility scoring, used unchanged by
+               PointerActorCritic.CompatibilityScorer and
+               PriorityPointerActorCritic.JobScoreHead. Cited in the
+               2026-08-09 pointer-network-action-head, 2026-09-16
+               pointer-network-ppo, and 2026-09-17 action-space-reduction
+               docs.}
+}
+
+@article{song2023daniel,
+  author  = {Song, Wen and others},
+  title   = {Flexible Job Shop Scheduling via Dual Attention Network Based Reinforcement Learning},
+  journal = {arXiv preprint arXiv:2305.05119},
+  year    = {2023},
+  note    = {DANIEL. Closest structural analog to this project's pointer
+             architecture: separate operation/job and machine embeddings, a
+             pairwise decision network. Cited in the 2026-08-09
+             pointer-network-action-head doc. Full author list not
+             re-verified since original citation.}
+}
+
+@article{hu2021attend2pack,
+  author  = {Zhang, Jingwei and Zi, Bin and Ge, Xiaoyu},
+  title   = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with Attention},
+  journal = {arXiv preprint arXiv:2107.04333},
+  year    = {2021},
+  note    = {Self-attention item encoder + pointer-style masked selection,
+             action-space decomposition into a sequence policy + placement
+             policy. Cited in the 2026-08-09 pointer-network-action-head doc.
+             RESOLVED 2026-09-18: author field was wrong ("Hu, Ruizhen") in an
+             earlier pass -- corrected to Zhang/Zi/Ge, confirmed against
+             reference [35] in NotesForAI/Ty_Riekert_s_Project (1).pdf (the
+             user's own pre-research doc, extracted via pypdf). This is the
+             same paper as DBLP:journals/corr/abs-2107-04333 below, kept under
+             both keys since both are already cited elsewhere -- pick one
+             before submission to avoid a duplicate bibliography entry.}
+}
+
+@article{gnn2024jsspsurvey,
+  title   = {Graph Neural Networks for Job Shop Scheduling Problems: A Survey},
+  journal = {arXiv preprint arXiv:2406.14096},
+  year    = {2024},
+  note    = {Recency citation; GNN message-passing between job and machine
+             nodes as the natural next architectural step beyond this
+             project's independent (non-message-passing) job/machine
+             encoders. Cited in the 2026-08-09 pointer-network-action-head
+             doc.}
+}
+
+@techreport{tavakoli2018actionbranching,
+  author      = {Tavakoli, Arash and Pardo, Fabio and Kormushev, Petar},
+  title       = {Action Branching Architectures for Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1711.08946},
+  year        = {2018},
+  note        = {General factored/hierarchical action-space pattern: decouple
+                 one large joint action into sequential smaller
+                 per-dimension decisions (additive |A1|+|A2| instead of
+                 multiplicative |A1|x|A2|). Raised 2026-09-17 as the
+                 generalizable principle behind a possible future
+                 learned-placement-head follow-up to Options 1/2/3 (see
+                 2026-09-17-action-space-reduction.md Section 7) -- not yet
+                 implemented.}
+}
+
+@techreport{dulacarnold2015largeactionspaces,
+  author      = {Dulac-Arnold, Gabriel and Evans, Richard and van Hasselt, Hado and Sunehag, Peter and Lillicrap, Timothy and Hunt, Jonathan and Mann, Timothy and Weber, Theophane and Degris, Thomas and Coppin, Ben},
+  title       = {Deep Reinforcement Learning in Large Discrete Action Spaces},
+  institution = {arXiv},
+  number      = {1512.07679},
+  year        = {2015},
+  note        = {Wolpertinger architecture: actor outputs a continuous
+                 "proto-action" embedding, k-NN lookup over an embedding
+                 table maps it to a small candidate set of real discrete
+                 actions, a critic ranks the candidates. Scales to
+                 million-action spaces without ever materializing a full
+                 softmax output layer. Raised 2026-09-18 as the general
+                 (non-scheduling-specific) large-discrete-action-space
+                 literature answer, alongside sutton1999options and
+                 huang2020invalidmasking. Not implemented here.}
+}
+
+@article{sutton1999options,
+  author  = {Sutton, Richard S. and Precup, Doina and Singh, Satinder},
+  title   = {Between MDPs and Semi-MDPs: A Framework for Temporal Abstraction in Reinforcement Learning},
+  journal = {Artificial Intelligence},
+  volume  = {112},
+  number  = {1-2},
+  pages   = {181--211},
+  year    = {1999},
+  note    = {The options/hierarchical-RL framework: a high-level policy
+             selects among temporally-extended macro-actions/sub-policies.
+             Formal grounding for what Option 1's hyper-heuristic rule
+             selection actually is (Code/env/rule_selection_gym_wrapper.py)
+             -- a real, well-studied RL paradigm, though still fundamentally
+             bounded by its option set's own capability (see
+             2026-09-17-action-space-reduction.md Section 6.1). Raised
+             2026-09-18.}
+}
+
+@inproceedings{huang2020invalidmasking,
+  author    = {Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
+  title     = {A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+  booktitle = {Proceedings of the International FLAIRS Conference},
+  year      = {2020},
+  note      = {arXiv:2006.14171. Formal study validating invalid-action
+               masking (what sb3\_contrib's MaskablePPO, used throughout
+               this project, implements) -- reduces the effective per-step
+               branching factor without redesigning the action space
+               itself, distinct from and complementary to every
+               space-shrinking technique above. Raised 2026-09-18.}
+}
+
+% ---------------------------------------------------------------------
+% RL theory / reward shaping / constrained RL
+% ---------------------------------------------------------------------
+
+@inproceedings{ng1999shaping,
+  author    = {Ng, Andrew Y. and Harada, Daishi and Russell, Stuart},
+  title     = {Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {1999},
+  note      = {Proves shaped\_reward = reward + gamma*Phi(s') - Phi(s) has the
+               same optimal policies as the unshaped reward, for any bounded
+               potential Phi. Grounds
+               SchedulingEnv.__init__'s use\_potential\_shaping option. Cited
+               in the 2026-08-09 pointer-network-action-head and 2026-09-16
+               online-arrival-mdp-design docs, and CLAUDE.md's own rigor-rule
+               example.}
+}
+
+@inproceedings{tessler2019rcpo,
+  author    = {Tessler, Chen and Mankowitz, Daniel J. and Mannor, Shie},
+  title     = {Reward Constrained Policy Optimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019},
+  note      = {arXiv:1805.11074. RCPO -- basis for the A2C constrained-tardiness
+               training path (Code/policies/a2c_policy.py). Cited in the
+               2026-08-21 rcpo-constrained-tardiness and 2026-09-14
+               ppo-lagrangian-and-reward-structure docs.}
+}
+
+@techreport{borkar2008stochasticapprox,
+  author      = {Borkar, Vivek S.},
+  title       = {Stochastic Approximation: A Dynamical Systems Viewpoint},
+  institution = {Cambridge University Press / Hindustan Book Agency},
+  year        = {2008},
+  note        = {Two-timescale stochastic approximation convergence theory
+                 underlying RCPO's Theorem 1 -- grounds the
+                 update\_every\_episodes timescale separation between the
+                 policy update and the Lagrange multiplier update. Cited in
+                 the 2026-08-21 rcpo-constrained-tardiness and 2026-09-14
+                 ppo-lagrangian-and-reward-structure docs.}
+}
+
+@article{roijers2013morl,
+  author  = {Roijers, Diederik M. and Vamplew, Peter and Whiteson, Shimon and Dazeley, Richard},
+  title   = {A Survey of Multi-Objective Sequential Decision-Making},
+  journal = {Journal of Artificial Intelligence Research},
+  volume  = {48},
+  pages   = {67--113},
+  year    = {2013},
+  note    = {arXiv:1402.0590. Motivates why a fixed linear scalarization
+               weight cannot reliably target a specific point on a
+               multi-objective trade-off. Cited in the 2026-08-21
+               rcpo-constrained-tardiness and 2026-08-28
+               multi-objective-optuna-pareto docs.}
+}
+
+@techreport{eimer2023hyperparams,
+  author      = {Eimer, Theresa and Lindauer, Marius and Raileanu, Roberta},
+  title       = {Hyperparameters in Reinforcement Learning and How To Tune Them},
+  institution = {arXiv},
+  number      = {2306.01324},
+  year        = {2023},
+  note        = {Explains why a fixed-weight tardiness-focused hyperparameter
+                 search tuned at small scale failed to transfer to full
+                 deployment scale. Cited in the 2026-08-21
+                 rcpo-constrained-tardiness doc.}
+}
+
+@techreport{ray2019safeexploration,
+  author      = {Ray, Alex and Achiam, Joshua and Amodei, Dario},
+  title       = {Benchmarking Safe Exploration in Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1910.01708},
+  year        = {2019},
+  note        = {Cited in the 2026-09-14 ppo-lagrangian-and-reward-structure
+                 doc alongside the PPO-Lagrangian constrained-RL literature.}
+}
+
+@inproceedings{stooke2020pidlagrangian,
+  author    = {Stooke, Adam and Achiam, Joshua and Abbeel, Pieter},
+  title     = {Responsive Safety in Reinforcement Learning by PID Lagrangian Methods},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2020},
+  note      = {PMLR v119. Cited in the 2026-09-14
+               ppo-lagrangian-and-reward-structure doc -- PID-Lagrangian as
+               an alternative to the plain dual-ascent Lagrange multiplier
+               update this project uses.}
+}
+
+@techreport{amodei2016concreteproblems,
+  author      = {Amodei, Dario and Olah, Chris and Steinhardt, Jacob and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
+  title       = {Concrete Problems in AI Safety},
+  institution = {arXiv},
+  number      = {1606.06565},
+  year        = {2016},
+  note        = {Cited in the 2026-09-14 ppo-lagrangian-and-reward-structure
+                 doc as general constrained/safe-RL framing.}
+}
+
+@article{skalse2022rewardhacking,
+  author  = {Skalse, Joar and Howe, Nikolaus and Krasheninnikov, Dmitrii and Krueger, David},
+  title   = {Defining and Characterizing Reward Hacking},
+  journal = {arXiv preprint arXiv:2209.13085},
+  year    = {2022},
+  note    = {Formal grounding for classifying a reward-function misalignment
+             as reward hacking rather than ordinary sub-optimality. Cited in
+             the 2026-08-28 multi-objective-optuna-pareto doc, originally
+             from this project's Phase 7 literature review.}
+}
+
+% ---------------------------------------------------------------------
+% Optimization / multi-objective tooling
+% ---------------------------------------------------------------------
+
+@article{deb2002nsga2,
+  author  = {Deb, Kalyanmoy and Pratap, Amrit and Agarwal, Sameer and Meyarivan, T.},
+  title   = {A Fast and Elitist Multiobjective Genetic Algorithm: NSGA-II},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {6},
+  number  = {2},
+  pages   = {182--197},
+  year    = {2002},
+  note    = {Algorithm Optuna uses internally once a multi-objective study is
+             created. Cited in the 2026-08-28 multi-objective-optuna-pareto
+             doc.}
+}
+
+@inproceedings{akiba2019optuna,
+  author    = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru and Koyama, Masanori},
+  title     = {Optuna: A Next-Generation Hyperparameter Optimization Framework},
+  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining (KDD)},
+  year      = {2019},
+  note      = {The hyperparameter-tuning framework used throughout this
+               project. Cited in the 2026-08-28 multi-objective-optuna-pareto
+               doc.}
+}
+
+% ---------------------------------------------------------------------
+% Queueing theory (online / dynamic-arrival case)
+% ---------------------------------------------------------------------
+
+@book{kleinrock1975queueing,
+  author    = {Kleinrock, Leonard},
+  title     = {Queueing Systems, Volume 1: Theory},
+  publisher = {Wiley},
+  year      = {1975},
+  note      = {Standard construction for Poisson-process arrivals
+               (Code/env/arrival_process.py). Cited in the 2026-09-16
+               online-arrival-mdp-design doc.}
+}
+
+@article{little1961law,
+  author  = {Little, John D. C.},
+  title   = {A Proof for the Queuing Formula: L = lambda W},
+  journal = {Operations Research},
+  volume  = {9},
+  number  = {3},
+  pages   = {383--387},
+  year    = {1961},
+  note    = {Little's Law -- underlies this project's rho = arrival\_rate/12
+             utilisation derivation for the online case's default
+             machine/resource parameters. Cited in the 2026-09-16
+             online-arrival-mdp-design doc.}
+}
+
+% ---------------------------------------------------------------------
+% Real-world cloud workload characterization (heavy-tailed arrivals, S2W10)
+% ---------------------------------------------------------------------
+
+@inproceedings{reiss2012googletrace,
+  author    = {Reiss, Charles and Tumanov, Alexey and Ganger, Gregory R. and Katz, Randy H. and Kozuch, Michael A.},
+  title     = {Heterogeneity and Dynamicity of Clouds at Scale: Google Trace Analysis},
+  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  year      = {2012},
+  note      = {Google cluster trace: heavily right-skewed job-size /
+               resource-demand distributions ("mostly mice, occasionally
+               elephants"). Grounds
+               Code/env/arrival_process.py::job\_size\_distribution=
+               "lognormal". Cited in the 2026-09-17 heavy-tailed-arrivals
+               doc.}
+}
+
+@inproceedings{cortez2017resourcecentral,
+  author    = {Cortez, Eli and Bonde, Anand and Muzio, Alexandre and Russinovich, Mark and Fontoura, Marcus and Bianchini, Ricardo},
+  title     = {Resource Central: Understanding and Predicting Workloads for Improved Resource Management in Large Cloud Platforms},
+  booktitle = {Proceedings of the 26th ACM Symposium on Operating Systems Principles (SOSP)},
+  year      = {2017},
+  note      = {Microsoft Azure trace analysis: heavy-tailed VM lifetime/size
+               distributions, independently corroborating
+               reiss2012googletrace's finding. Cited in the 2026-09-17
+               heavy-tailed-arrivals doc.}
+}
+
+% ---------------------------------------------------------------------
+% Cloud resource allocation background / literature review
+% Merged 2026-09-17 from NotesForAI/ethansreferences.bib (the user's own
+% collection, mostly cited in the paper's abstract/introduction rather than
+% a Future/research dated doc). No key collisions with the sections above at
+% merge time -- see hu2021attend2pack's note above for the one semantic
+% duplicate (same arXiv ID, conflicting author lists, not yet resolved).
+% ---------------------------------------------------------------------
+
+@book{huawei2022,
+  author    = {Huawei Technologies},
+  title     = {Introduction to Cloud Computing Computing},
+  publisher = {Springer},
+  address   = {New York},
+  year      = {2022},
+  booktitle = {Cloud Computing Technology},
+  url       = {https://link.springer.com/book/10.1007/978-981-19-3026-3}
+}
+
+@article{saidi2023,
+  author  = {Saidi, Karima and Bardou, Dalal},
+  title   = {Task Scheduling and VM Placement to Resource Allocation in Cloud Computing: Challenges and Opportunities},
+  journal = {Cluster Computing},
+  volume  = {26},
+  number  = {5},
+  pages   = {3069--3087},
+  year    = {2023},
+  doi     = {10.1007/s10586-023-04098-4},
+  url     = {www.proquest.com/docview/2918267010}
+}
+
+@article{sdn2021,
+  author  = {Mohamed, Arwa and Hamdan, Mosab and Khan, Suleman and Abdelaziz, Ahmed and Babiker, Sharief F. and Imran, Muhammad and Marsono, M. N.},
+  title   = {Software-defined networks for resource allocation in cloud computing: A survey},
+  journal = {Computer Networks},
+  volume  = {195},
+  pages   = {108151},
+  year    = {2021},
+  doi     = {10.1016/j.comnet.2021.108151},
+  url     = {https://www.sciencedirect.com/science/article/abs/pii/S1389128621002152}
+}
+
+% Outdated
+@article{vinothina2012,
+  author  = {Vinothina, V. V. and Sridaran, R. and Ganapathi, P.},
+  title   = {A Survey on Resource Allocation Strategies in Cloud Computing},
+  journal = {International Journal of Advanced Computer Science and Applications},
+  year    = {2012},
+  doi     = {10.14569/IJACSA.2012.030616},
+  url     = { https://doi.org/10.14569/IJACSA.2012}
+
+}
+
+% Outdated
+@inproceedings{parikh2013,
+  author    = {Parikh, S. M.},
+  title     = {A Survey on Cloud Computing Resource Allocation Techniques},
+  booktitle = {2013 Nirma University International Conference on Engineering (NUiCONE)},
+  pages     = {1--5},
+  year      = {2013},
+  doi       = {10.1109/NUiCONE.2013.6780076},
+  publisher = {IEEE},
+url         = {https://doi.org/10.1109/NUiCONE.2013.6780076}
+}
+
+@article{mohamaddiah2014,
+  author  = {Mohamaddiah, M. H. and Abdullah, A. and Subramaniam, S. and Hussin, M.},
+  title   = {A Survey on Resource Allocation and Monitoring in Cloud Computing},
+  journal = {International Journal of Machine Learning and Computing},
+  volume  = {4},
+  number  = {1},
+  pages   = {31--38},
+  year    = {2014},
+  doi     = {10.7763/IJMLC.2014.V4.382},
+  url     = {https://doi.org/10.7763/IJMLC.2014.V4.382 }
+}
+
+@article{anuradha2014,
+  author  = {Anuradha, V. and Sumathi, D.},
+  title   = {A Survey on Resource Allocation Strategies in Cloud Computing},
+  journal = {International Conference on Information Communication and Embedded Systems (ICICES2014)},
+  pages   = {1--7},
+  year    = {2014}
+}
+
+@incollection{dynamic2026,
+  author    = {Bhatnagar, S. and Mahant, R.},
+  title     = {Dynamic Resource Allocation in Cloud Computing Environments: AI-Driven Approaches for Optimizing Workload Distribution and Cost Efficiency},
+  booktitle = {Proceedings of International Conference on Paradigms of Communication, Computing and Data Analytics (PCCDA 2025)},
+  editor    = {Nanda, S. J. and Mittal, H. and Lim, M. H.},
+  series    = {Algorithms for Intelligent Systems},
+  publisher = {Springer},
+  address   = {Singapore},
+  year      = {2026},
+  doi       = {10.1007/978-981-96-6843-4\_23},
+  url       = {https://link.springer.com/chapter/10.1007/978-981-96-6843-4\_23}
+}
+
+@incollection{dvbpp2026,
+  author    = {Lee, Zong Yu and Tang, Xueyan},
+  title     = {Evaluation of Dynamic Vector Bin Packing for Virtual Machine Placement},
+  booktitle = {arXiv preprint},
+  year      = {2026},
+  url       = {https://arxiv.org/html/2602.14704v1}
+}
+
+@article{lbts2024,
+  author  = {Devi, Nisha and Dalal, Sandeep and Solanki, Kamna and others},
+  title   = {A Systematic Literature Review for Load Balancing and Task Scheduling Techniques in Cloud Computing},
+  journal = {Artificial Intelligence Review},
+  volume  = {57},
+  pages   = {276},
+  year    = {2024},
+  doi     = {10.1007/s10462-024-10925-w},
+  url     = {https://link.springer.com/article/10.1007/s10462-024-10925-w}
+}
+
+@article{autoscaling2023,
+  author  = {Alharthi, S. and Alshamsi, A. and Alseiari, A. and Alwarafy, A.},
+  title   = {Auto-Scaling Techniques in Cloud Computing: Issues and Research Directions},
+  journal = {Sensors},
+  volume  = {24},
+  number  = {17},
+  pages   = {5551},
+  year    = {2024},
+  doi     = {10.3390/s24175551},
+  url     = {https://www.mdpi.com/1424-8220/24/17/5551}
+}
+
+@inproceedings{lb2024,
+  author    = {Makkar, R. and Mangla, N.},
+  title     = {Load Balancing and Task Scheduling Methods in Cloud Computing -- A Review},
+  booktitle = {2024 7th International Conference on Contemporary Computing and Informatics (IC3I)},
+  pages     = {1037--1043},
+  year      = {2024},
+  doi       = {https://ieeexplore.ieee.org/document/10829119/},
+  publisher = {IEEE}
+}
+
+@phdthesis{approx2015,
+  author = {Khan, Arindam},
+  title  = {Approximation Algorithms for Multidimensional Bin Packing},
+  school = {Georgia Institute of Technology},
+  year   = {2015},
+  url    = {https://www.proquest.com/dissertations-theses/approximation-algorithms-multidimensional-bin/docview/3275489033/se-2}
+}
+
+@inproceedings{sla2013,
+  author    = {Hasan, M. S. and Huh, E.},
+  title     = {Maximizing SLA and QoE in Heterogeneous Cloud Computing Environment},
+  booktitle = {World Congress in Computer Science, Computer Engineering and Applied Computing (WorldComp)},
+  year      = {2013},
+  publisher = {The Steering Committee of WorldComp},
+  url       = {https://www.proquest.com/conference-papers-proceedings/maximizing-sla-qoe-heterogeneous-cloud-computing/docview/1490902207/se-2}
+}
+
+@article{cloudkpi2010,
+  author  = {Zhang, Qi and Cheng, Lu and Boutaba, Raouf},
+  title   = {Cloud Computing: State-of-the-Art and Research Challenges},
+  journal = {Journal of Internet Services and Applications},
+  volume  = {1},
+  pages   = {7--18},
+  year    = {2010},
+  doi     = {10.1007/s13174-010-0007-6},
+  url     = {https://link.springer.com/article/10.1007/s13174-010-0007-6}
+}
+
+@article{migration2020,
+  author  = {Shirvani, Mirsaeid Hosseini and Rahmani, Amir Masoud and Sahafi, Amir},
+  title   = {A Survey Study on Virtual Machine Migration and Server Consolidation Techniques in DVFS-Enabled Cloud Datacenter: Taxonomy and Challenges},
+  journal = {Journal of King Saud University - Computer and Information Sciences},
+  volume  = {32},
+  number  = {3},
+  pages   = {267--286},
+  year    = {2020},
+  doi     = {10.1016/j.jksuci.2018.07.001},
+  url     = {https://www.sciencedirect.com/science/article/pii/S1319157818302842}
+}
+
+@article{binpacking2019,
+  author  = {Kumaraswamy, S. and Nair, M. K.},
+  title   = {Bin Packing Algorithms for Virtual Machine Placement in Cloud Computing: A Review},
+  journal = {International Journal of Electrical and Computer Engineering},
+  volume  = {9},
+  number  = {1},
+  pages   = {512--524},
+  year    = {2019},
+  url     = {https://www.proquest.com/scholarly-journals/bin-packing-algorithms-virtual-machine-placement/docview/2205380596/se-2}
+}
+
+@article{energyaware2012,
+  author  = {Beloglazov, Anton and Abawajy, Jemal and Buyya, Rajkumar},
+  title   = {Energy-Aware Resource Allocation Heuristics for Efficient Management of Data Centers for Cloud Computing},
+  journal = {Future Generation Computer Systems},
+  volume  = {28},
+  number  = {5},
+  pages   = {755--768},
+  year    = {2012},
+  doi     = {10.1016/j.future.2011.04.017},
+  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub}
+}
+
+@article{ranking2013,
+  author  = {Fox, Geoffrey and Pallickara, Shrideep and Garg, Saurabh Kumar and Versteeg, Steve and Buyya, Rajkumar},
+  title   = {A Framework for Ranking of Cloud Computing Services},
+  journal = {Future Generation Computer Systems},
+  volume  = {29},
+  number  = {4},
+  pages   = {1012--1023},
+  year    = {2013},
+  doi     = {10.1016/j.future.2012.06.006}
+}
+
+% Very good on exploring RL for cloud computing RA. Researches current research papers and aims to answer a set of questions. Moreover, explains everything about RL, how it works, and mathematic formulation and algorithms. Even talks about the different methodologies and RL algorithms used for different BP problems. Even mentions public datasets, and RL structures.
+@article{ml_ra_litrev2025,
+    author = {Rathee, Ajay and Dalal, Sandeep},
+    year={2025},
+    month={09},
+    title={A systematic literature review of machine learning-based resource allocation techniques in cloud computing},
+    journal={Computing.Archives for Informatics and Numerical Computation},
+    volume={107},
+    number={9},
+    pages={179},
+    isbn={0010485X},
+    language={English},
+    url={https://www.proquest.com/scholarly-journals/systematic-literature-review-machine-learning/docview/3239203131/se-2},
+}
+
+% Good on understanding RL for bin packing and the advancements.
+% VERY VERY VERY GOOD PAPER
+@article{DAHMANI2025100616,
+title = {Reinforcement learning based intelligent optimisation for bin packing problems: A review},
+journal = {Array},
+volume = {28},
+pages = {100616},
+year = {2025},
+issn = {2590-0056},
+doi = {https://doi.org/10.1016/j.array.2025.100616},
+url = {https://www.sciencedirect.com/science/article/pii/S2590005625002437},
+author = {Nadia Dahmani and Amril Nazir and Ikbal Taleb and Syed M. Salman Bukhari},
+keywords = {Reinforcement learning, Bin packing problems, Deep reinforcement learning, Algorithmic performance, Logistics and manufacturing optimisation},
+abstract = {The convergence of Reinforcement Learning (RL) and Bin Packing Problems (BPP) is a critical field of study that has profound ramifications in logistics, manufacturing, computer, and retail industries. This paper thoroughly examines the progression from simple rule-based tactics to advanced Deep Reinforcement Learning (DRL) techniques in solving BPPs. By conducting a thorough review of 231 papers conducted between 2019 and 2024, we address and provide answers to important research inquiries, such as “To what extent has academic research explored the use of RL for BPP during this time frame?” and “Which specific areas of application and methodologies have been predominantly used?” Our examination highlights a significant and rapid growth in research activity in this field. The study reveals a clear inclination towards DRL compared to traditional RL techniques, especially in complex, multi-dimensional BPP situations. It also identifies a growing interest in hybrid models and transfer learning methods as potential solutions to the challenges of scalability, computational requirements, and the exploration-exploitation trade-off. This study shows that some DRL models are highly effective in complex BPP scenarios. It suggests that future research should focus on scalability, operational efficiency, and the practical implementation of theoretical achievements in industry. This study aims to promote multidisciplinary discourse and collaboration in optimisation and artificial intelligence by comprehensively analysing current achievements and identifying the remaining problems.}
+}
+
+% RL approach to bin packing (not cloud related)
+@article{10854610,
+  author={Wang, Baoying and Lin, Zhaohui and Kong, Weijie and Dong, Huixu},
+  journal={IEEE Robotics and Automation Letters},
+  title={Bin Packing Optimization via Deep Reinforcement Learning},
+  year={2025},
+  volume={10},
+  number={3},
+  pages={2542-2549},
+  keywords={Three-dimensional displays;Genetic algorithms;Costs;Deep reinforcement learning;Decoding;Accuracy;Search problems;Logistics;Convolutional neural networks;Reinforcement learning;Robot sensing systems;Reinforcement learning;manipulation planning;bin packing problem (BPP);robot packing},
+  doi={10.1109/LRA.2025.3534070}
+  }
+
+% RL approach to bin packing (not cloud related). NOTE: same arXiv:2107.04333
+% paper as hu2021attend2pack above -- author lists conflict (Hu, Ruizhen vs.
+% Zhang/Zi/Ge per DBLP). Unresolved, flagged above; pick one before submission.
+@article{DBLP:journals/corr/abs-2107-04333,
+  author       = {Jingwei Zhang and
+                  Bin Zi and
+                  Xiaoyu Ge},
+  title        = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with
+                  Attention},
+  journal      = {CoRR},
+  volume       = {abs/2107.04333},
+  year         = {2021},
+  url          = {https://arxiv.org/abs/2107.04333},
+  eprinttype    = {arXiv},
+  eprint       = {2107.04333},
+  timestamp    = {Tue, 20 Jul 2021 15:08:33 +0200},
+  biburl       = {https://dblp.org/rec/journals/corr/abs-2107-04333.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+
+% Used the system implementation section
+@ARTICLE{7039233,
+  author={Hadji, Makhlouf and Zeghlache, Djamal},
+  journal={IEEE Transactions on Cloud Computing},
+  title={Mathematical Programming Approach for Revenue Maximization in Cloud Federations},
+  year={2017},
+  volume={5},
+  number={1},
+  pages={99-111},
+  keywords={Pricing;Outsourcing;Cloud computing;Mathematical model;Resource management;Computational modeling;Optimization;Cloud federation;resource allocation;mathematical programming;linear integer programming;pricing},
+  doi={10.1109/TCC.2015.2402674}}
+
+% Good problem formulation using VMs however paper is about particle swarm optimisation
+@ARTICLE{6782394,
+  author={Rodriguez, Maria Alejandra and Buyya, Rajkumar},
+  journal={IEEE Transactions on Cloud Computing},
+  title={Deadline Based Resource Provisioningand Scheduling Algorithm for Scientific Workflows on Clouds},
+  year={2014},
+  volume={2},
+  number={2},
+  pages={222-235},
+  keywords={Quality of service;Cloud computing;Processor scheduling;Computational modeling;Distributed processing;Computer applications;Mathematical model;Cloud computing;resource provisioning;scheduling;scientific workflow},
+  doi={10.1109/TCC.2014.2314655}}
+
+% Outlines deep reinforcement learning
+@article{DRL_Intrusion,
+author={Yang,Wanrong and Acuto,Alberto and Zhou,Yihang and Wojtczak,Dominik},
+year={2026},
+month={Jun 01},
+title={A Survey for Deep Reinforcement Learning Based Network Intrusion Detection},
+journal={Applied AI Letters},
+volume={7},
+number={2},
+pages={22},
+note={Copyright - © 2026. This work is published under http://creativecommons.org/licenses/by/4.0/ (the "License"). Notwithstanding the ProQuest Terms and Conditions, you may use this content in accordance with the terms of the License; Last updated - 2026-03-17},
+url={https://www.proquest.com/scholarly-journals/survey-deep-reinforcement-learning-based-network/docview/3314625396/se-2},
+}
+
+% Explores deep reinforcement learning
+@article{LADOSZ20221,
+title = {Exploration in deep reinforcement learning: A survey},
+journal = {Information Fusion},
+volume = {85},
+pages = {1-22},
+year = {2022},
+issn = {1566-2535},
+doi = {https://doi.org/10.1016/j.inffus.2022.03.003},
+url = {https://www.sciencedirect.com/science/article/pii/S1566253522000288},
+author = {Pawel Ladosz and Lilian Weng and Minwoo Kim and Hyondong Oh},
+keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Sparse reward problems}
+}
+
+% Introduction to reinforcement learning
+@ARTICLE{8103164,
+  author={Arulkumaran, Kai and Deisenroth, Marc Peter and Brundage, Miles and Bharath, Anil Anthony},
+  journal={IEEE Signal Processing Magazine},
+  title={Deep Reinforcement Learning: A Brief Survey},
+  year={2017},
+  volume={34},
+  number={6},
+  pages={26-38},
+  keywords={Artificial intelligence;Signal processing algorithms;Visualization;Machine learning;Learning (artificial intelligence);Neural networks},
+  doi={10.1109/MSP.2017.2743240}}
+
+@article{vanheeswijk2021fourpolicies,
+  title        = {The Four Policy Classes of Reinforcement Learning},
+  author       = {van Heeswijk, Wouter},
+  journal      = {Towards Data Science},
+  year         = {2021},
+  month        = {May},
+  url          = {https://towardsdatascience.com/the-four-policy-classes-of-reinforcement-learning-38185daa6c8a},
+  note         = {Accessed: 2026-07-08}
+}
+
+@article{williams1992reinforce,
+  author    = {Ronald J. Williams},
+  title     = {Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning},
+  journal   = {Machine Learning},
+  year      = {1992},
+  volume    = {8},
+  number    = {3--4},
+  pages     = {229--256},
+  month     = may,
+  doi       = {10.1007/BF00992696},
+  url       = {https://doi.org/10.1007/BF00992696},
+  issn      = {0885-6125},
+  publisher = {Springer}
+}
+
+@inproceedings{sutton2000policy,
+  author    = {Richard S. Sutton and David A. McAllester and Satinder P. Singh and Yishay Mansour},
+  title     = {Policy Gradient Methods for Reinforcement Learning with Function Approximation},
+  booktitle = {Advances in Neural Information Processing Systems 12 (NIPS 1999)},
+  editor    = {S. A. Solla and T. K. Leen and K.-R. M{\"u}ller},
+  year      = {2000},
+  pages     = {1057--1063},
+  publisher = {MIT Press},
+  url       = {https://papers.nips.cc/paper_files/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html}
+}
+
+@inproceedings{konda1999actorcritic,
+  title        = {Actor-Critic Algorithms},
+  author       = {Konda, Vijay R. and Tsitsiklis, John N.},
+  booktitle    = {Advances in Neural Information Processing Systems},
+  volume       = {12},
+  pages        = {1008--1014},
+  year         = {1999},
+  publisher    = {MIT Press},
+  url          = {https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf}
+}
+
+@article{lehmann2024policygradients,
+  title={The Definitive Guide to Policy Gradients in Deep Reinforcement Learning: Theory, Algorithms and Implementations},
+  author={Lehmann, Matthias},
+  journal={arXiv preprint arXiv:2401.13662},
+  year={2024},
+  url={https://arxiv.org/abs/2401.13662},
+  note={Version 2, 1 Mar 2024}
+}
+
+@article{chadia2023understandingRL,
+  title={Understanding Reinforcement Learning Algorithms: The Progress from Basic Q-learning to Proximal Policy Optimization},
+  author={Chadia, Mohamed-Amine and Mousannifa, Hajar},
+  journal={arXiv preprint arXiv:2304.00026},
+  year={2023},
+  url={https://arxiv.org/abs/2304.00026}
+}
+
+@misc{aigreeksActorCritic,
+  author       = {AI Greeks},
+  title        = {Types of Actor{-}Critic Algorithms in Reinforcement Learning},
+  year         = {2024},
+  howpublished = {\url{https://aigreeks.com/types-of-actor-critic-algorithms-in-reinforcement/}},
+  note         = {Accessed: 2026-07-19}
+}
+
+@misc{apxml_a2c_a3c_2026,
+  title        = {A2C and A3C Algorithms},
+  author       = {{ApX Machine Learning}},
+  howpublished = {\url{https://apxml.com/courses/advanced-reinforcement-learning/chapter-3-advanced-policy-gradients-actor-critic/a2c-a3c}},
+  note         = {Accessed: 2026-07-19},
+  year         = {2026}
+}

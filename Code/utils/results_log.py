@@ -36,11 +36,23 @@ EVAL_RESULT_FIELDS = [
     # first glance. Tracked by default now instead of needing a one-off
     # diagnostic script each time. Blank for any row logged before this date.
     "jobs_scheduled_mean", "jobs_scheduled_std",
+    # tardiness_p95_*: added 2026-09-14 (S2W9). Mean/std tardiness can look
+    # fine while a handful of jobs are catastrophically late -- standard
+    # practice in cloud/distributed-systems evaluation is to track tail
+    # behaviour, not just the mean (Dean & Barroso, "The Tail at Scale",
+    # CACM 2013). Computed as the 95th percentile of one run's per-job
+    # tardiness array (Hyndman & Fan 1996 Type-7 estimator, numpy's default),
+    # then mean/std of that per-run P95 across the n_episodes runs -- same
+    # aggregation convention as tardiness_mean/std (per-run scalar, averaged
+    # across runs), just swapping sum-per-run for P95-per-run. Blank for any
+    # row logged before this date.
+    "tardiness_p95_mean", "tardiness_p95_std",
     "heuristic_name",
     "heuristic_reward_mean", "heuristic_reward_std",
     "heuristic_tardiness_mean", "heuristic_tardiness_std",
     "heuristic_late_jobs_mean", "heuristic_late_jobs_std",
     "heuristic_jobs_scheduled_mean", "heuristic_jobs_scheduled_std",
+    "heuristic_tardiness_p95_mean", "heuristic_tardiness_p95_std",
     "n_episodes",
 ]
 

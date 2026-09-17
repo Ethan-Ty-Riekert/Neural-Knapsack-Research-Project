@@ -4,6 +4,7 @@ NOTE TO SELF:
 """
 
 import os
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -15,8 +16,11 @@ from sb3_contrib.common.wrappers import ActionMasker
 from Code.env.scheduling_env import SchedulingEnv
 from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
 from Code.env.env_config import generate_env_config
+from Code.env.online_scheduling_env import OnlineSchedulingEnv
+from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
+from Code.env.arrival_process import generate_poisson_arrivals
 from Code.policies.a2c_policy import make_maskable_a2c
-from Code.utils.plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter
+from Code.utils.plotting_utils import make_run_dir, save_and_show, EvalProgressPlotter, plot_machine_utilisation
 from Code.utils.paths import ENV_CONFIG_PATH, PPO_MODEL_PATH, A2C_MODEL_PATH, PLOTS_DIR, EVAL_RESULTS_CSV
 from Code.utils.results_log import append_eval_result
 from Code.baselines.registry import HEURISTICS, DEFAULT_HEURISTICS, ALL_HEURISTICS
@@ -37,31 +41,56 @@ def make_env(config=None):
     seed=0 instance). Pass an explicit config dict (from generate_env_config())
     to evaluate on a different instance instead -- used by --randomized-eval
     below to build N distinct held-out instances rather than reusing one.
+
+    Online-case configs (from generate_poisson_arrivals(), or an
+    ENV_CONFIG_PATH saved by a --online training run) are auto-detected by
+    the presence of a "job_arrival_times" key and build
+    OnlineSchedulingEnv/OnlineGymSchedulingEnv instead -- no separate
+    make_env() signature needed, since a config dict already unambiguously
+    says which case it's for.
     """
     if config is None:
         data = np.load(ENV_CONFIG_PATH)
         config = {k: data[k] for k in data.files}
 
-    base_env = SchedulingEnv(
-        job_durations=config["job_durations"],
-        job_resources=config["job_resources"],
-        job_deadlines=config["job_deadlines"],
-        job_weights=config["job_weights"],
-        num_machines=int(config["num_machines"]),
-        machine_capacity=config["machine_capacity"],
-        horizon=int(config["horizon"]),
-        lambda_1=1.0,
-        lambda_2=1.0,
-        lambda_3=1.0,
-        invalid_penalty=5.0,
-    )
-
-    # max_jobs (padding capacity) must match what the model was trained with -- see
-    # gym_scheduling_wrapper.py and train_rl_agent.py's curriculum for why.
+    is_online = "job_arrival_times" in config
     max_jobs = int(config["max_jobs"]) if "max_jobs" in config else None
-    gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
-    masked_env = ActionMasker(gym_env, mask_fn)
 
+    if is_online:
+        base_env = OnlineSchedulingEnv(
+            job_durations=config["job_durations"],
+            job_resources=config["job_resources"],
+            job_deadlines=config["job_deadlines"],
+            job_weights=config["job_weights"],
+            num_machines=int(config["num_machines"]),
+            machine_capacity=config["machine_capacity"],
+            horizon=int(config["horizon"]),
+            job_arrival_times=config["job_arrival_times"],
+            lambda_1=1.0,
+            lambda_2=1.0,
+            lambda_3=1.0,
+            invalid_penalty=5.0,
+        )
+        gym_env = OnlineGymSchedulingEnv(base_env, max_jobs=max_jobs)
+    else:
+        base_env = SchedulingEnv(
+            job_durations=config["job_durations"],
+            job_resources=config["job_resources"],
+            job_deadlines=config["job_deadlines"],
+            job_weights=config["job_weights"],
+            num_machines=int(config["num_machines"]),
+            machine_capacity=config["machine_capacity"],
+            horizon=int(config["horizon"]),
+            lambda_1=1.0,
+            lambda_2=1.0,
+            lambda_3=1.0,
+            invalid_penalty=5.0,
+        )
+        # max_jobs (padding capacity) must match what the model was trained with -- see
+        # gym_scheduling_wrapper.py and train_rl_agent.py's curriculum for why.
+        gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs)
+
+    masked_env = ActionMasker(gym_env, mask_fn)
     return masked_env
 
 
@@ -267,15 +296,8 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir, model_label="PPO"
         min(len(r["utilisation_over_time"]) for r in ppo_runs),
         min(len(r["utilisation_over_time"]) for r in heur_runs),
     )
-    ppo_util = np.stack([r["utilisation_over_time"][:min_len] for r in ppo_runs])
-    heur_util = np.stack([r["utilisation_over_time"][:min_len] for r in heur_runs])
-
-    # Compute mean curves
-    ppo_mean = ppo_util.mean(axis=0).mean(axis=1)
-    ppo_std = ppo_util.mean(axis=2).std(axis=0)
-
-    heur_mean = heur_util.mean(axis=0).mean(axis=1)
-    heur_std = heur_util.mean(axis=2).std(axis=0)
+    ppo_runs_trunc = [{**r, "utilisation_over_time": r["utilisation_over_time"][:min_len]} for r in ppo_runs]
+    heur_runs_trunc = [{**r, "utilisation_over_time": r["utilisation_over_time"][:min_len]} for r in heur_runs]
 
     # Scalar metrics
     ppo_tard = np.array([r["tardiness"].sum() for r in ppo_runs])
@@ -288,23 +310,15 @@ def plot_results(ppo_runs, heur_runs, heuristic_name, run_dir, model_label="PPO"
     heur_reward = np.array([r["total_reward"] for r in heur_runs])
 
     # ---------------------------------------------------------
-    # 1. Mean utilisation curve
+    # 1. Per-machine utilisation graphs (one figure per model) -- see
+    # Future/research/2026-09-13-machine-utilisation-envelope-method.md for
+    # why the envelope is a plain 95th percentile across machines rather than
+    # e.g. a Tukey IQR fence.
     # ---------------------------------------------------------
-    fig1 = plt.figure(figsize=(12, 5))
-    steps = np.arange(len(ppo_mean))
-
-    plt.plot(steps, ppo_mean, label=model_label, color="tab:blue")
-    plt.fill_between(steps, ppo_mean - ppo_std, ppo_mean + ppo_std, alpha=0.2)
-
-    plt.plot(steps, heur_mean, label="Fixed Heuristic", color="tab:orange")
-    plt.fill_between(steps, heur_mean - heur_std, heur_mean + heur_std, alpha=0.2)
-
-    plt.title("Mean Machine Utilisation Over Time (50 runs)")
-    plt.xlabel("Step")
-    plt.ylabel("Utilisation")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    save_and_show(fig1, run_dir, "mean_utilisation.png")
+    model_slug = re.sub(r"[^a-z0-9]+", "_", model_label.lower()).strip("_")
+    heuristic_slug = re.sub(r"[^a-z0-9]+", "_", heuristic_name.lower()).strip("_")
+    plot_machine_utilisation(ppo_runs_trunc, model_label, run_dir, f"machine_utilisation_{model_slug}.png")
+    plot_machine_utilisation(heur_runs_trunc, heuristic_name, run_dir, f"machine_utilisation_{heuristic_slug}.png")
 
     # ---------------------------------------------------------
     # 2. Total tardiness (bar chart)
@@ -369,11 +383,40 @@ def main():
                          help="Experiment 2: evaluate on N distinct held-out random instances (seeds "
                               ">= RANDOM_INSTANCE_SEED_CEILING, disjoint from any training seed) instead "
                               "of the single fixed ENV_CONFIG_PATH instance every prior eval used. "
-                              "Instance dimensions (num_jobs/num_machines/horizon/max_jobs) are still "
-                              "read from ENV_CONFIG_PATH -- only which specific job set is used changes.")
+                              "Instance dimensions (num_jobs/num_machines/horizon/max_jobs) are read from "
+                              "ENV_CONFIG_PATH unless overridden by --num-jobs/--num-machines/--horizon/"
+                              "--max-jobs below.")
+    parser.add_argument("--num-jobs", type=int, default=None,
+                         help="--randomized-eval only: override the instance dimension instead of reading "
+                              "it from ENV_CONFIG_PATH. Use this (with --num-machines/--horizon/--max-jobs) "
+                              "to evaluate safely while a training run is concurrently active -- "
+                              "ENV_CONFIG_PATH transiently holds whatever curriculum stage a concurrent "
+                              "train_optimized.py run is currently on, not necessarily the deployed "
+                              "100-job/horizon=100 instance (see Future/research/training-log.md's "
+                              "2026-08-28 hazard entry). All four of --num-jobs/--num-machines/--horizon/"
+                              "--max-jobs must be given together to skip the ENV_CONFIG_PATH read.")
+    parser.add_argument("--num-machines", type=int, default=None,
+                         help="--randomized-eval only: see --num-jobs.")
+    parser.add_argument("--horizon", type=int, default=None,
+                         help="--randomized-eval only: see --num-jobs.")
+    parser.add_argument("--max-jobs", type=int, default=None,
+                         help="--randomized-eval only: see --num-jobs.")
     parser.add_argument("--eval-seeds", type=int, default=50,
                          help="Number of held-out instances for --randomized-eval (default 50, matching "
                               "the default n_episodes of the fixed-instance eval).")
+    parser.add_argument("--online", action="store_true",
+                         help="Evaluate the online (dynamic-arrival) case instead of the offline one -- "
+                              "builds N held-out Poisson-arrival instances (seeds >= "
+                              "RANDOM_INSTANCE_SEED_CEILING, same disjoint-seed convention as "
+                              "--randomized-eval) via generate_poisson_arrivals() rather than "
+                              "generate_env_config(). Requires --arrival-rate; mutually exclusive with "
+                              "--randomized-eval. Instance dimensions (num_machines/horizon/max_jobs) are "
+                              "read from ENV_CONFIG_PATH unless overridden by --num-machines/--horizon/"
+                              "--max-jobs (--num-jobs is not meaningful here -- see "
+                              "Code/training/train_optimized.py::make_env()'s online docstring).")
+    parser.add_argument("--arrival-rate", type=float, default=None,
+                         help="--online only: mean Poisson arrival rate (jobs/tick). Required when "
+                              "--online is set.")
     parser.add_argument("--heuristics", type=str, nargs="+", default=None,
                          help="Named baselines (Code.baselines.registry.HEURISTICS) to compare the model "
                               "against, one full evaluate_multiple()+plot_results()+append_eval_result() "
@@ -381,6 +424,11 @@ def main():
                               "every priority and placement rule). Pass 'all' to run every registered "
                               "combo instead.")
     args = parser.parse_args()
+
+    if args.online and args.randomized_eval:
+        raise ValueError("--online and --randomized-eval are mutually exclusive.")
+    if args.online and args.arrival_rate is None:
+        raise ValueError("--online requires --arrival-rate")
 
     if args.heuristics is None:
         heuristic_names = DEFAULT_HEURISTICS
@@ -400,7 +448,37 @@ def main():
     if USE_PPO:
         model = MaskablePPO.load(args.model_path or PPO_MODEL_PATH)
     else:
-        env = make_env()
+        # BUG FIX (this session): this used to always call bare make_env()
+        # (reads ENV_CONFIG_PATH) to build the template env A2C's constructor
+        # infers max_jobs/num_machines/num_resources from -- but ENV_CONFIG_PATH
+        # is a single shared file, racy across concurrent training runs
+        # (the documented 2026-08-28 hazard) and, for --online, doesn't
+        # necessarily hold the SAME dimensions as the specific checkpoint being
+        # evaluated (e.g. a --max-jobs override, or a different concurrent
+        # --online run's arrival_rate/max_jobs having last written the shared
+        # file). Caught by a real 6-way concurrent online arrival-rate sweep
+        # tonight: 2 of 3 A2C evals crashed with an action-mask shape mismatch
+        # because the template env's max_jobs didn't match the checkpoint's.
+        # Fix: build the template env from the SAME explicit dims used for the
+        # actual eval instances below, when given, instead of blindly reading
+        # the shared file.
+        if args.online:
+            template_config = generate_poisson_arrivals(
+                seed=0, arrival_rate=args.arrival_rate,
+                horizon=args.horizon or 100,
+                max_jobs=args.max_jobs or 100,
+                num_machines=args.num_machines or 10,
+            )
+            env = make_env(template_config)
+        elif args.randomized_eval and args.num_jobs is not None:
+            template_config = generate_env_config(
+                seed=0, num_jobs=args.num_jobs, num_machines=args.num_machines, horizon=args.horizon,
+            )
+            if args.max_jobs is not None:
+                template_config["max_jobs"] = args.max_jobs
+            env = make_env(template_config)
+        else:
+            env = make_env()
         # BUG FIX (this session): building the pointer network with its bare
         # defaults (embed_dim=128, hidden=64) crashes load_state_dict with a
         # shape mismatch against any checkpoint trained with different
@@ -431,11 +509,26 @@ def main():
         # RANDOM_INSTANCE_SEED_CEILING = 500_000) -- guarantees no overlap with
         # any seed the model could have trained on, by construction.
         from Code.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
-        dims = np.load(ENV_CONFIG_PATH)
-        num_jobs = int(dims["num_jobs"])
-        num_machines = int(dims["num_machines"])
-        horizon = int(dims["horizon"])
-        max_jobs = int(dims["max_jobs"]) if "max_jobs" in dims else None
+        overrides_given = [args.num_jobs, args.num_machines, args.horizon, args.max_jobs]
+        if any(v is not None for v in overrides_given) and not all(v is not None for v in overrides_given):
+            raise ValueError(
+                "--num-jobs/--num-machines/--horizon/--max-jobs must all be given together "
+                "(or none of them, to read dimensions from ENV_CONFIG_PATH as before)."
+            )
+        if args.num_jobs is not None:
+            num_jobs, num_machines, horizon, max_jobs = (
+                args.num_jobs, args.num_machines, args.horizon, args.max_jobs
+            )
+            print(f"\n--randomized-eval: using explicit dimension overrides "
+                  f"(num_jobs={num_jobs}, num_machines={num_machines}, horizon={horizon}, "
+                  f"max_jobs={max_jobs}) -- NOT reading ENV_CONFIG_PATH, safe even while a "
+                  f"training run is concurrently active.")
+        else:
+            dims = np.load(ENV_CONFIG_PATH)
+            num_jobs = int(dims["num_jobs"])
+            num_machines = int(dims["num_machines"])
+            horizon = int(dims["horizon"])
+            max_jobs = int(dims["max_jobs"]) if "max_jobs" in dims else None
         configs = []
         for i in range(args.eval_seeds):
             cfg = generate_env_config(
@@ -447,6 +540,32 @@ def main():
             configs.append(cfg)
         print(f"\n--randomized-eval: evaluating on {len(configs)} held-out instances "
               f"(seeds {RANDOM_INSTANCE_SEED_CEILING}..{RANDOM_INSTANCE_SEED_CEILING + len(configs) - 1})\n")
+    elif args.online:
+        # Same disjoint-seed convention as --randomized-eval, via
+        # generate_poisson_arrivals() instead of generate_env_config().
+        # --num-jobs has no meaning here (see make_env()'s online docstring
+        # in train_optimized.py) -- only num_machines/horizon/max_jobs.
+        from Code.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
+        if args.num_machines is not None:
+            num_machines, horizon, max_jobs = args.num_machines, args.horizon, args.max_jobs
+            print(f"\n--online: using explicit dimension overrides "
+                  f"(num_machines={num_machines}, horizon={horizon}, max_jobs={max_jobs}) -- "
+                  f"NOT reading ENV_CONFIG_PATH.")
+        else:
+            dims = np.load(ENV_CONFIG_PATH)
+            num_machines = int(dims["num_machines"])
+            horizon = int(dims["horizon"])
+            max_jobs = int(dims["max_jobs"]) if "max_jobs" in dims else int(dims["num_jobs"])
+        configs = [
+            generate_poisson_arrivals(
+                seed=RANDOM_INSTANCE_SEED_CEILING + i, arrival_rate=args.arrival_rate,
+                horizon=horizon, max_jobs=max_jobs, num_machines=num_machines,
+            )
+            for i in range(args.eval_seeds)
+        ]
+        print(f"\n--online: evaluating on {len(configs)} held-out Poisson-arrival instances "
+              f"(rate={args.arrival_rate}, seeds {RANDOM_INSTANCE_SEED_CEILING}.."
+              f"{RANDOM_INSTANCE_SEED_CEILING + len(configs) - 1})\n")
 
     n_episodes = len(configs) if configs is not None else 50
 
@@ -472,25 +591,33 @@ def main():
         model_tardiness = np.array([r["tardiness"].sum() for r in ppo_runs])
         model_late = np.array([r["late_jobs"] for r in ppo_runs])
         model_scheduled = np.array([r["jobs_scheduled"] for r in ppo_runs])
+        # Tail metric (see EVAL_RESULT_FIELDS' tardiness_p95_* comment): mean
+        # tardiness can look fine while a handful of jobs are catastrophically
+        # late -- track the 95th-percentile per-job tardiness too, not just
+        # the per-run sum.
+        model_tardiness_p95 = np.array([np.percentile(r["tardiness"], 95) for r in ppo_runs])
         heur_rewards = np.array([r["total_reward"] for r in heur_runs])
         heur_tardiness = np.array([r["tardiness"].sum() for r in heur_runs])
         heur_late = np.array([r["late_jobs"] for r in heur_runs])
         heur_scheduled = np.array([r["jobs_scheduled"] for r in heur_runs])
+        heur_tardiness_p95 = np.array([np.percentile(r["tardiness"], 95) for r in heur_runs])
 
         append_eval_result({
             "algo": args.algo,
             "policy_type": args.policy_type if not USE_PPO else "",
-            "tag": (args.run_tag or "") + ("_randomized_eval" if args.randomized_eval else ""),
+            "tag": (args.run_tag or "") + ("_randomized_eval" if args.randomized_eval else "") + ("_online_eval" if args.online else ""),
             "model_path": str(args.model_path or (PPO_MODEL_PATH if USE_PPO else A2C_MODEL_PATH)),
             "reward_mean": model_rewards.mean(), "reward_std": model_rewards.std(),
             "tardiness_mean": model_tardiness.mean(), "tardiness_std": model_tardiness.std(),
             "late_jobs_mean": model_late.mean(), "late_jobs_std": model_late.std(),
             "jobs_scheduled_mean": model_scheduled.mean(), "jobs_scheduled_std": model_scheduled.std(),
+            "tardiness_p95_mean": model_tardiness_p95.mean(), "tardiness_p95_std": model_tardiness_p95.std(),
             "heuristic_name": heuristic_name,
             "heuristic_reward_mean": heur_rewards.mean(), "heuristic_reward_std": heur_rewards.std(),
             "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
             "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
             "heuristic_jobs_scheduled_mean": heur_scheduled.mean(), "heuristic_jobs_scheduled_std": heur_scheduled.std(),
+            "heuristic_tardiness_p95_mean": heur_tardiness_p95.mean(), "heuristic_tardiness_p95_std": heur_tardiness_p95.std(),
             "n_episodes": n_episodes,
         })
 

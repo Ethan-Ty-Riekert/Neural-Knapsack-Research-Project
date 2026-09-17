@@ -32,6 +32,1097 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-18 (S2W10) -- Randomized-instance Option 1: the action-space fix alone did NOT transfer; same collapse mechanism, worse rule
+
+**Config:** Option 1, `--randomize-instances` (fresh random job set every episode via
+`make_random_instance_resampler()`), legacy reward, 300k timesteps. Evaluated via the new
+`--randomized-eval` mode (50 held-out instances, seeds
+RANDOM_INSTANCE_SEED_CEILING..+49, matching `eval_rl_agent.py`'s own convention).
+Motivated by the user noticing the project's long-standing randomized-instance PPO
+results were still terrible (~1327 tardiness, tracked all the way back to 2026-09-14) and
+asking whether the newly-diagnosed action-space-size bottleneck explains it.
+
+**Stats:**
+```
+Option 1 (legacy, randomized, 300k): tardiness=1377.88+/-158.85  late=44.30  scheduled=99.22/100
+EDF  (same 50 held-out instances):   tardiness=  37.30+/- 60.43  late=12.22  scheduled=96.84/100
+LST  (same 50 held-out instances):   tardiness=  23.94+/- 56.02  late= 8.26  scheduled=97.76/100
+
+Rule-choice diagnostic (5 held-out instances, logging every decision):
+  LPT ~80%, WSPT ~13%, FCFS ~6%, idle (forced) ~1% -- consistent across all 5 checked instances
+```
+
+**Observation:** Surprising, and worth being honest about: shrinking the action space did
+NOT by itself fix the randomized-instance case -- 1377.88 is back in the same catastrophic
+band as every historic PPO failure. Diagnosed by re-running the same rule-choice logging
+used for the online SPT-collapse finding (2026-09-17 action-space-reduction.md Section
+5.3): the policy collapsed onto **LPT** (Longest-Processing-Time-first) as its dominant
+choice (~80% of decisions) -- a rule already measured in
+`2026-08-28-classical-heuristic-baselines.md` at 1100-1400 tardiness, matching this result
+almost exactly. This is the same failure *mechanism* as the online case (policy-gradient
+collapse onto a single rule with zero adaptive switching), just landing on a worse rule
+here, and it happened on the genuinely harder task (must generalize across instances,
+can't memorize one) at the same 300k-timestep budget that was enough for the *fixed*
+instance. Action-space size was necessary but not sufficient here; exploration/training
+budget is the evident remaining gap.
+
+**Conclusion / next step:** Immediately launched the same config with
+`--reward-mode dense_tardiness` (`offline_randomized_dense`) -- well-motivated given
+dense_tardiness fixed an extremely similar-looking collapse on the fixed instance
+(2026-09-18 entry below). If that doesn't fix it either, more timesteps and/or a higher
+PPO entropy coefficient (to sustain exploration past the early LPT local optimum) are the
+next levers, in that order.
+
+**Follow-up, same day (user-prompted: "why would it pick literally the worst rule"):**
+Measured `total_reward` per rule directly (not just tardiness) on the same held-out
+instances, under `reward_mode="legacy"`. **LPT+WorstFit has the HIGHEST reward of all 7
+rules on every instance checked** (e.g. seed=500000: LPT reward=328.21 vs LST's 288.50,
+despite LPT's tardiness=1249 vs LST's 0.00) -- because LPT reliably schedules all 100/100
+jobs, collecting the flat `+3.0`-per-completion and `+50`-all-done bonuses on every one,
+which dwarfs the weak, capped tardiness penalty. **This is not an exploration failure at
+all: the policy correctly found the actual reward-maximizing rule.** The reward function
+was wrong, not the search. This is the 2026-09-17 dense-tardiness-reward defect, now
+caught with direct numbers rather than just derived algebraically.
+
+The SAME check was then run for the ONLINE rho~0.75 case, under both legacy and
+dense_tardiness, to see if it explains the online SPT-collapse the same way:
+```
+Online, legacy:          SPT reward=3083.87 (highest, narrowly over ATC's 3034.30)
+Online, dense_tardiness: EDF reward=-63.59 (highest) > ATC's -63.94 > ... > SPT's -65.67 (near worst)
+```
+**Under dense_tardiness, SPT is measurably NOT the best rule -- EDF/ATC score better.**
+But the online dense_tardiness checkpoint (trained from scratch on this exact reward for
+the full 300k timesteps) still converged onto SPT anyway. Conclusion: the offline
+LPT-collapse and online SPT-collapse are two DIFFERENT failure modes that happened to look
+similar. Offline was a reward-design problem (fixed by changing the reward). Online is a
+genuine exploration/optimization failure -- the correct answer was reachable under the
+reward it was actually trained on, and it still didn't find it. Next lever for the online
+case specifically: more timesteps and/or a higher PPO entropy coefficient, not another
+reward-mode change.
+
+---
+
+## 2026-09-18 (S2W10) -- Dense-tardiness reward and potential shaping retested against Option 1's fixed action space
+
+**Config:** Option 1, 300k timesteps, four combinations: {offline fixed instance, online
+rho~0.75 lognormal} x {`reward_mode=dense_tardiness`, `use_potential_shaping=True`}.
+Both mechanisms were tested and ruled out earlier this session against the OLD (huge)
+action space (`2026-09-17-dense-tardiness-reward.md`) -- untested against Option 1's
+`Discrete(8)` action space until now. New `--reward-mode`/`--use-potential-shaping`
+CLI flags added to `train_action_space_variant.py` for this.
+
+**Stats:**
+```
+                        Offline (300k)      Online rho~0.75 (300k, 864 realized)
+Legacy (baseline)          35.00                 163.00 (identical to SPT)
+Dense_tardiness             16.00 (=EDF)         163.00 (IDENTICAL to legacy -- no change)
+Potential shaping          148.00 (worse)        246.00 (worse)
+```
+
+**Observation:** Dense-tardiness reward is a real, substantial win offline -- 300k
+timesteps with it beats even the 600k-timestep legacy-reward run (19.00), landing exactly
+on EDF (16.00). This confirms the hypothesis raised this session: dense_tardiness was
+correctly ruled out against the old action space, but the old action space was masking a
+real interaction with the new one. Online, it made literally zero difference -- byte-
+identical tardiness/late/scheduled to the legacy-reward run, both landing on SPT's exact
+numbers. Potential shaping hurts in both settings at this budget -- not investigated
+further here (not the promising lead).
+
+**Follow-up (2026-09-18, dense_tardiness now default -- see policy decision below):**
+Option 3 offline, `--reward-mode dense_tardiness`, 300k timesteps: **tardiness=56.00**
+(vs. 152.00/155.00 at 300k/600k under legacy -- a 2.7x improvement, and now beats ATC's
+106.00 too). Confirms Option 3's legacy-mode plateau was the same reward defect, not a
+training-budget ceiling -- the first result this session where genuinely learned
+(non-rule-selecting) RL beats a strong classical heuristic.
+
+**Conclusion / next step:** Carry dense_tardiness forward as the default reward mode for
+further offline Option 1/3 work; drop potential shaping for now. The online null result
+is itself informative: whatever is causing Option 1 to converge onto SPT online isn't a
+reward-shaping problem, which points back toward exploration/local-optimum causes (a
+higher entropy coefficient, more training) or the "not much RL" ceiling problem
+(`2026-09-17-action-space-reduction.md` Section 6.1) rather than the reward function --
+consistent with this session's broader pattern of ruling out reward-side explanations one
+at a time.
+
+**Follow-up (2026-09-18): dense_tardiness fixes both the score AND the collapse mechanism.**
+Same config, `--reward-mode dense_tardiness`, 300k timesteps, evaluated identically
+(50 held-out instances): **tardiness=359.40+/-223.66** (vs. legacy's 1377.88 -- ~3.8x
+better), late=24.18, scheduled=97.04/100. Still behind EDF (37.30) and LST (23.94). Rule-
+choice diagnostic (same 5 instances as the legacy check): **ATC ~63%, LST ~22%, WSPT ~9%,
+EDF ~4%, idle ~3%** -- genuine state-dependent switching among four rules, qualitatively
+different from every prior collapse this session (online SPT-only, offline-randomized
+LPT-only under legacy). Dense_tardiness fixed the underlying mechanism, not just the
+number -- the remaining gap to EDF/LST is presumably an undertrained/uncalibrated
+switching policy, not another collapse, though not yet verified further.
+
+**Policy decision (2026-09-18, user-directed, following the LPT-reward-measurement finding
+below):** `dense_tardiness` is now the DEFAULT reward mode for all new action-space-
+reduction training, not an occasional A/B check -- the direct measurement that LPT
+out-scores every genuinely-good rule under legacy reward on every held-out instance
+checked (see below) is treated as decisive, not just suggestive. Caveat carried forward
+honestly: this is necessary but not sufficient by itself -- the online SPT-collapse case
+(same entry) shows a policy that already converged before finding the better answer isn't
+automatically fixed by changing the reward mode alone; training budget/exploration may
+still need separate attention there. The in-flight `option3_online_rho075` (legacy) run
+was killed and relaunched as `option3_online_rho075_dense`; `option3_offline_dense`
+(new, testing whether dense_tardiness also fixes Option 3's offline 300k/600k legacy
+plateau) launched alongside it.
+
+---
+
+## 2026-09-17 (S2W10) -- Option 1 validation: offline 600k-timestep scale-up + online heavy-tailed comparison
+
+**Config:** Four background jobs run concurrently: (1) Option 1, offline fixed instance,
+600k timesteps (2x the earlier 300k comparison run, `--save-tag offline_600k`); (2)
+Option 1, online, `job_size_distribution=lognormal`, `rho~0.25` (arrival_rate=3,
+`--save-tag online_lognormal`); (3) Option 1, online, lognormal, `rho~0.75`
+(arrival_rate=9, `--save-tag online_lognormal_rho075`); (4) retrospective CP-SAT oracle,
+online, lognormal, `rho~0.75`, same instance as (3), 600s time limit, 2 search workers.
+A 5th job (offline CP-SAT, 900s, 1 search worker, run under heavy contention from the
+other four) is excluded from the results below -- see Observation.
+
+**Stats:**
+```
+Offline fixed instance (300 evals timesteps=300k vs 600k):
+  Option 1 (300k):  tardiness= 35.00  late=10  scheduled=100/100
+  Option 1 (600k):  tardiness= 19.00  late=11  scheduled=100/100
+  EDF:               tardiness= 16.00  late=10  scheduled= 98/100
+  LST:                tardiness=  8.00  late= 7  scheduled= 99/100
+
+Online, lognormal, rho~0.25 (309 realized, seed=0): Option 1 == every one of 9
+  DEFAULT_HEURISTICS exactly (tardiness=36.00, late=2, scheduled=298/309) -- the
+  no-differentiation regime already found in the heuristic-only sweep.
+
+Online, lognormal, rho~0.75 (864 realized, seed=0):
+  CP-SAT oracle (hindsight, UNKNOWN status): best_bound=105.0
+  ATC:               tardiness=120.00  late=14  scheduled=799/864  (best live policy)
+  Option 1:          tardiness=163.00  late=15  scheduled=799/864  (IDENTICAL to SPT)
+  SPT:               tardiness=163.00  late=15  scheduled=799/864
+  WSPT+BestFit:      tardiness=192.00  late=19  scheduled=796/864
+  EDF:               tardiness=193.00  late=25  scheduled=797/864
+  EDF+BestFit:       tardiness=235.00  late=23  scheduled=792/864
+  Tetris:            tardiness=248.00  late=18  scheduled=799/864
+  LST:               tardiness=275.00  late=28  scheduled=789/864
+  FCFS+FirstFit:     tardiness=294.00  late=23  scheduled=793/864
+  LPT+WorstFit:      tardiness=634.00  late=34  scheduled=759/864  (worst)
+```
+
+**Observation:** Offline: doubling timesteps (300k->600k) roughly halved tardiness again
+(35->19), closing in on EDF (16) -- no sign of a plateau, so the full 1.9M-timestep run
+is likely to close the gap further, possibly past EDF. Online rho~0.75 (the genuinely
+differentiated regime found in the earlier heuristic sweep): Option 1, trained only
+300k timesteps with no curriculum/tuning, beats 6 of 8 other heuristics but loses to ATC
+(163 vs 120) and sits ~55% above the CP-SAT oracle's hindsight floor (105) vs. ATC's
+~14%. Option 1's numbers are *exactly* identical to SPT's, not just close -- strong
+evidence the learned policy converged to "always pick SPT" on this instance rather than
+discovering a genuinely novel strategy, unlike the offline case where it clearly beats
+every single-rule baseline. This is the most honest result of the session so far: RL
+does not automatically dominate in the harder, literature-grounded online setting the
+way it did on the offline fixed instance -- a real, literature-grounded heuristic (ATC)
+still wins there at this training budget. The offline CP-SAT run (900s, 1 search worker,
+run concurrently with the other four CPU-bound jobs) returned tardiness=500/best_bound=0,
+worse than every heuristic -- attributed to running single-threaded under heavy
+contention (CP-SAT leans heavily on parallel search workers at this job count), NOT
+treated as a real update to the established offline floor (LST=8.0).
+
+**Conclusion / next step:** Option 1 is confirmed as the right choice for a full
+1.9M-timestep offline validation run (not yet done -- ~6hr estimated cost, deferred).
+For the online case specifically, ATC remains the benchmark to beat -- Option 1 would
+need more training/tuning (or a smarter action-space design) to surpass it, not just
+match SPT. Re-running the online rho~0.75 comparison at a larger timestep budget (mirroring
+the offline 300k->600k improvement) is a natural next step before concluding anything
+final about RL vs. heuristics in the online heavy-tailed setting.
+
+---
+
+## 2026-09-17 (S2W10) -- Heavy-tailed (log-normal) job sizes for the online case
+
+**Config:** `Code/env/arrival_process.py::generate_poisson_arrivals()` gained
+`job_size_distribution="uniform"|"lognormal"` (default "uniform", unchanged). Under
+"lognormal", duration and per-resource demand are drawn log-normal, mean-matched to the
+uniform baseline's mean (`mu = ln(target_mean) - sigma^2/2`, an exact property of the
+log-normal distribution) so `rho = arrival_rate/12` calibration stays valid -- only
+variance/skew changes. Threaded through `train_optimized.py`'s `--job-size-distribution`
+CLI flag.
+
+**Stats:**
+```
+tests/test_heavy_tailed_arrivals.py (6 checks), seed=1, horizon=200, arrival_rate=2.0:
+  uniform duration:   mean=5.13  std=2.56  max=10 (range ceiling)
+  lognormal duration: mean=5.31  std=6.39  max=40 (4x range ceiling -- genuine elephants)
+  max realized resource demand: 29 (machine_capacity_value=30 -- always schedulable by size)
+```
+
+**Observation:** Motivated by the user's own diagnosis that pushing `rho` toward/above 1
+to force lateness "essentially just makes it offline" -- raw volume tests throughput, not
+decision-making under genuine uncertainty about the future, which was the actual point of
+the online case. Checked real-world grounding rather than picking a "realistic-sounding"
+distribution by feel: Google's (Reiss et al. 2012, SoCC) and Microsoft Azure's (Cortez et
+al. 2017, SOSP) published cluster-trace analyses both independently report heavily
+right-skewed job-size/resource-demand distributions ("mostly mice, occasionally
+elephants") -- log-normal is the standard parametric family for this. Mean-matching means
+this isolates distribution *shape* as the only changed variable at any given nominal rho,
+rather than confounding it with a load increase.
+
+**Conclusion / next step:** Implemented and validated (mean-matching holds empirically,
+genuine heavy tail confirmed, no job ever unschedulable by size alone). Follow-up
+heuristic sweep (same day, user-prompted): at `rho~0.25` every one of 9
+`DEFAULT_HEURISTICS` produced *identical* results (all failures traced to the same
+11 arrive-too-late-to-finish jobs) -- heavy tails alone don't differentiate scheduling
+skill at low load, only at `rho~0.75-1.0` do heuristics genuinely diverge (ATC best at
+0.75: tardiness=120/864 scheduled=799; WSPT+BestFit best at 1.0: tardiness=333/1199
+scheduled=1071; LPT+WorstFit worst at both). Option 1 is now training against both
+`rho~0.25` and `rho~0.75` heavy-tailed online instances in the background for direct
+comparison. Full writeup: `2026-09-17-heavy-tailed-arrivals.md`.
+
+---
+
+## 2026-09-17 (S2W10) -- Retrospective CP-SAT oracle for the online case + rho>1 testing findings
+
+**Config:** `Code/baselines/exact_solver.py` gained `earliest_start` and
+`enforce_single_start_per_tick` params on `solve()`, plus new
+`solve_retrospective()`/`make_retrospective_config()` and a `--online` CLI mode.
+No offline-case behaviour changed (`earliest_start=None`,
+`enforce_single_start_per_tick=True` are both the prior defaults).
+
+**Stats:**
+```
+Small scale (rho~0.04, 12 realized/9 completable arrivals, horizon=15):
+  Retrospective CP-SAT oracle: tardiness=0.00, scheduled=9/9, status=OPTIMAL
+  EDF / ATC (live online):     tardiness=0.00, scheduled=9/9   (exact match)
+
+Deployed scale, rho~0.67 (arrival_rate=8, horizon=100, max_jobs=200):
+  Retrospective CP-SAT oracle: status=UNKNOWN (NP-hard at this scale, matches
+                                the offline case's own ~10-job proven-optimal limit)
+  EDF: tardiness=0.00, scheduled=200/200   ATC: tardiness=0.00, scheduled=200/200
+
+Deployed scale, rho~1.17 (arrival_rate=14, horizon=100), max_jobs=300 (WRONG --
+see finding below) vs. max_jobs=2000 (correct):
+  max_jobs=300:  all 300 arrivals land by tick 20 of 100 -- 80-tick uncontested
+                 tail -> EDF/ATC both 0.00 tardiness, scheduled=300/300 (fake result)
+  max_jobs=2000: 1411 realized arrivals sustained through tick 97 -- EDF:
+                 tardiness=0.00 but scheduled=1136/1352 completable; ATC:
+                 tardiness=0.00 but scheduled=1145/1352 completable
+```
+
+**Observation:** Two real findings, not just an implementation exercise. (1) The
+retrospective oracle's first draft reused the offline model's
+`AddAllDifferent(start)` unchanged, which does not hold for the online case
+(`OnlineSchedulingEnv`'s Option 2 tick-advance relaxation allows same-tick
+placements) -- this produced a proven-`INFEASIBLE` result at deployed scale via a
+plain pigeonhole contradiction (more jobs than distinct tick values), caught by
+noticing the status was `INFEASIBLE` (a proof) rather than `UNKNOWN` (a timeout)
+and not accepting it at face value. (2) `generate_poisson_arrivals()` stops
+drawing arrivals once `max_jobs` slots fill -- at high `arrival_rate` this
+happens almost immediately, leaving a long arrival-free tail that lets any
+heuristic fully drain its backlog and report a misleadingly perfect 0.00
+tardiness. Once `max_jobs` is sized to sustain arrivals across the whole horizon,
+rho>1 overload is real but shows up as **job abandonment**
+(`jobs_scheduled` collapsing, ~15-18% of completable jobs never reached), not as
+tardiness on the jobs that do get scheduled -- tardiness alone is the wrong metric
+to read for rho>1 comparisons.
+
+**Conclusion / next step:** Oracle mechanism is correct and validated; a
+long-time-limit run at deployed scale for a real citable bound is future work
+(matches the offline case's own eventual "final" CP-SAT protocol). Any future
+rho>1 online comparison (Options 1/2/3, or PPO/A2C) must report
+`jobs_scheduled`/completion-rate alongside tardiness or a policy that "solves"
+overload by quietly abandoning the hardest jobs will look identical to one that
+doesn't. Full writeup:
+`2026-09-17-retrospective-cpsat-oracle-and-rho-testing.md`.
+
+---
+
+## 2026-09-17 (S2W10) -- Comprehensive reward redesign result: dense per-tick tardiness does NOT fix PPO either
+
+**Config:** `Code/env/scheduling_env.py` gained `reward_mode="dense_tardiness"` -- an
+exact, algebraically-verified per-tick decomposition of weighted tardiness (charges
+`-lambda_2*w_j/horizon` every tick a job remains unfinished past its deadline,
+reproducing the legacy lump-sum total exactly -- see
+`2026-09-17-dense-tardiness-reward.md` and `tests/test_dense_tardiness_reward.py`),
+with the flat `+3.0`/`+50` completion bonuses removed. Modelled directly on DeepRM
+(Mao et al., 2016) and Decima (Mao et al., 2019)'s reward-design principle, in direct
+response to the mathematically-proven defect in the legacy reward (the flat bonuses
+always exceeding the bounded tardiness penalty for every `lambda_2` any search here
+has found). Tested both a fast (300k, no-curriculum) and a full-scale (1.9M,
+full curriculum) PPO run, same Optuna-tuned hyperparameters as every other offline
+PPO result, `lambda_2` unchanged.
+
+**Stats:**
+```
+                        tardiness   P95     late     scheduled
+Legacy (full-scale):     1301.12   58.92   41.96/100  96.90/100
+Dense  (full-scale):     1309.66   59.00   41.72/100  96.74/100
+Legacy (300k quick):     1337.43   58.89   42.40/100  96.73/100
+Dense  (300k quick):     1336.93   60.27   41.97/100  96.80/100
+```
+
+**Observation:** No idle-collapse (the honestly-flagged risk from removing the flat
+bonuses never materialized -- jobs-scheduled stays healthy at ~96.7-96.9/100 in both
+modes). But also **no improvement whatsoever** -- dense_tardiness and legacy are
+statistically indistinguishable, both landing squarely in the same ~1290-1330 band
+every other PPO variant has landed in tonight. This is despite the dense reward
+visibly producing much better-behaved training dynamics (`value_loss` ~0.02-0.03 for
+dense vs. ~30-46 for legacy, `explained_variance` similarly better) -- confirming the
+literature's credit-assignment argument was directionally correct (a dense, every-
+tick reward IS more learnable/predictable for the value function), but that improved
+learnability did not translate into a better final *tardiness* policy.
+
+**This is the seventh mechanism tried for PPO's tardiness tonight** (fixed reward
+weight, four Lagrangian $\lambda_{\max}$ ceilings, a tardiness-directed
+hyperparameter search, pointer-network architecture, and now a comprehensive,
+literature-grounded reward redesign) -- all seven converge on the same band. The
+reward-function hypothesis was well-reasoned, correctly and rigorously implemented
+(verified algebraically exact, not just empirically plausible), and is now also ruled
+out as the dominant bottleneck, alongside architecture and hyperparameters. A genuine,
+structural difference from DeepRM/Decima that has NOT yet been tested: **action space
+size**. DeepRM's action space is ~11 discrete choices (M=10 job slots + void); this
+project's is `max_jobs*num_machines+1` (1000+ choices for the 100-job/10-machine
+deployed scale). A combinatorially large action space is a well-known driver of
+sample-inefficiency and poor convergence in policy-gradient methods independent of
+reward design -- this was named as "out of scope" when the reward redesign was
+planned, on the assumption the reward was the more likely culprit; given the reward
+fix's negative result, this becomes the leading untested structural hypothesis.
+
+**Conclusion / next step:** Do not pursue further reward-function variants for PPO's
+tardiness without new evidence pointing back at the reward specifically -- seven
+mechanisms is a strong signal this isn't where the problem lives. The action-space-
+size hypothesis (and, more generally, PPO's clipped-surrogate optimization dynamics
+on this specific problem, independent of any single input to it) is the recommended
+next investigation, not attempted tonight -- flagged for the user's input before
+committing more compute to it, given the scale of investigation already spent on this
+question. `dense_tardiness` is kept in the codebase (opt-in, A/B-able, well-tested)
+since it's a real, literature-grounded improvement in training dynamics even though
+it didn't move the tardiness needle here -- worth re-testing on A2C and the online
+case rather than discarding.
+
+---
+
+## 2026-09-16 (S2W9) -- Online case: first real campaign launched (3-rate sweep x 2 algorithms)
+
+**Config:** User confirmed 4 scope decisions for the first real online campaign
+(not just validation runs): (1) sweep 3 arrival rates rather than one fixed
+target, given tonight's rho~0.7-vs-rho~0.92 finding; (2) single-stage
+(`--no-curriculum`) -- online curriculum scaling is an unresolved design
+question, not solved tonight; (3) baseline only for now (no importance-feature
+or hotspot-penalty ablation yet); (4) both PPO and A2C.
+
+Concrete choices made to operationalize this (not separately re-confirmed with
+the user -- reasonable defaults consistent with tonight's established
+patterns, flagged here for visibility): three rates spanning known-trivial to
+known-discriminating (light rho~0.5 / moderate rho~0.8, the untested gap
+between tonight's two data points / heavy rho~0.95, just past tonight's
+discriminating rho~0.92), each with `max_jobs` sized to the rate's expected
+arrival count plus ~25% headroom, `--randomize-instances` (fresh Poisson draw
+every episode -- treated as the more natural "online" default over a single
+repeated arrival sequence), single seed for this first pass (matching how the
+offline campaign itself started single-seed before its later 3-seed rigor
+pass), 300k timesteps each:
+
+| Rate | nu | rho | max_jobs |
+|---|---|---|---|
+| Light | 6.0 | ~0.50 | 750 |
+| Moderate | 9.6 | ~0.80 | 1150 |
+| Heavy | 11.4 | ~0.95 | 1350 |
+
+6 runs (`online_sweep_{ppo,a2c}_{light,moderate,heavy}`) launched concurrently.
+
+**Bug hit and fixed during this campaign (before results below could be trusted):**
+concurrent runs at different arrival rates shared the same canonical checkpoint
+path (`path_suffix` never distinguished `arrival_rate`) -- verified via checkpoint
+weight hashing that no actual corruption occurred this time (the runs happened to
+finish at staggered times, purely by luck, since heavier configs take longer), but
+fixed properly (`online_suffix` added to `path_suffix`) rather than relying on that
+luck again. Separately, `eval_rl_agent.py`'s A2C loading path always built its
+"what shape network do I construct" template env via bare `make_env()`, which reads
+the shared `ENV_CONFIG_PATH` file -- for 2 of 6 evals (a2c moderate/heavy) this
+didn't match the specific checkpoint being loaded (a different concurrent run had
+last written that file), crashing with an action-mask shape mismatch. Fixed: the
+template env now uses the same explicit `--online`/`--randomized-eval` dimension
+overrides as the actual eval instances, not a blind shared-file read.
+
+**Stats** (15 held-out instances per cell; single seed, not yet 3-seed-verified):
+```
+                  rho~0.50 (trivial)      rho~0.80                  rho~0.95
+                  tardiness / late        tardiness / late           tardiness / late
+EDF/LST/ATC       0.00 / 0.00             0.00 / 0.00                0.00 / 0.00
+FCFS+FirstFit     0.00 / 0.00             0.47 / 0.33                63.93 / 21.53
+PPO               0.00 / 0.00             21.73 / 3.07               392.93 / 30.60
+A2C (pointer)     0.00 / 0.00             176.00 / 10.00             1031.00 / 59.20
+```
+
+**Observation -- a genuine, important reversal from the offline case.** Deadline-
+aware heuristics (EDF/LST/ATC) stay *perfectly* on time even at rho~0.95; FCFS
+degrades gracefully as load rises (deadline-blind, so this is expected). But
+**A2C is now the WORSE learned policy, not the better one** -- at rho~0.80 A2C's
+tardiness (176.00) is 8x PPO's (21.73); at rho~0.95 A2C's tardiness (1031.00,
+matching the *scale* of offline PPO's worst results) is 2.6x PPO's (392.93).
+This is the opposite ranking from every offline result this project has produced,
+where A2C (pointer architecture) was consistently and substantially better than
+PPO. Neither algorithm comes close to the heuristics' near-perfect online
+performance, but PPO is clearly the less-bad learner here.
+
+Plausible explanations, **not yet investigated, stated as open hypotheses only**:
+A2C's hand-rolled training loop runs a single, unvectorized environment (no
+parallel rollout collection, unlike PPO's `n_envs=2` here), which may cope worse
+with the added stochasticity of dynamic arrivals than PPO's more diverse,
+parallel experience; alternatively, A2C's global-context pooling in
+`PointerActorCritic` (mean over all currently-revealed jobs) may be a worse fit
+when the revealed-job population itself is constantly changing size and
+composition, compared to the offline case's fixed job set. Both are hypotheses,
+not conclusions -- no ablation has been run to distinguish them.
+
+**Conclusion / next step:** This reverses the "A2C is just better" assumption
+carried over from the offline campaign -- do not assume it holds for the online
+case without re-testing. 3-seed verification at rho~0.80 and rho~0.95 is the
+natural next step before treating this ranking as confirmed, followed by
+investigating *why* (the two hypotheses above, and/or a direct training-dynamics
+comparison akin to what's now also needed for the offline PPO-vs-A2C puzzle).
+
+---
+
+## 2026-09-16 (S2W9) -- Online case (dynamic arrivals): MDP design + core implementation
+
+**Config:** N/A -- implementation, not a training run. Full design writeup:
+`2026-09-16-online-arrival-mdp-design.md`.
+
+**Stats:** `python -m tests.test_online_env` -- all 6 checks + 1 regression guard
+pass.
+
+**Observation:** Implemented `OnlineSchedulingEnv`/`OnlineGymSchedulingEnv`
+(subclassing, not modifying, the offline classes), `generate_poisson_arrivals()`,
+and wired `--online`/`--arrival-rate` into `train_optimized.py` and
+`eval_rl_agent.py`. Found and fixed **three real bugs** during implementation,
+one of which (the invalid-action-detection proxy misclassifying valid same-tick
+placements as invalid, eventually truncating episodes) would have silently
+corrupted every online training run without ever raising an exception -- see the
+dated doc's Section 3 for full detail on all three. Small-scale smoke tests (both
+flat-MLP and, via `build_vec_env`, the full PPO training path) pass; no real-scale
+training run yet.
+
+**Conclusion / next step:** Core environment is solid and tested. Remaining: the
+importance-feature and hotspot-penalty ablations (both scoped, neither
+implemented), a real deployment-scale training run, and combining with
+pointer-network PPO once that lands (see next entry).
+
+**Update, same day: first real (demo-scale) online training + eval run.**
+`train_optimized.py --algo ppo --policy-type flat --no-curriculum --online
+--arrival-rate 1.0` (300k timesteps, flat MLP -- pointer-PPO not yet tuned),
+evaluated on 30 held-out Poisson instances against EDF/LST/ATC/FCFS:
+```
+PPO:           reward=3132.16  tardiness=0.00  late=0.00/100  scheduled=93.93/100
+EDF/LST/ATC:   reward=3139.2-3139.3  tardiness=0.00  late=0.00/100  scheduled=93.93/100
+```
+**Important caveat**: `arrival_rate=1.0` gives $\rho=1/12\approx0.08$ -- a very
+light load, not the calibrated $\rho\approx0.7$ target agreed for the real
+experiment. Every method (including untrained-comparable heuristics) achieves
+zero tardiness here, which is expected at this load, not evidence PPO has solved
+the online case. This run's purpose was **pipeline validation** (train -> eval ->
+baseline-comparison -> CSV logging all work correctly end-to-end for the online
+case), which it confirms; it is not yet a meaningful performance result.
+A real run needs `max_jobs` sized for the target rate (expected arrivals over
+$H=100$ at $\rho\approx0.7$ is $\approx840$, not 100 -- see the arrival-rate
+scale discussion) and, ideally, pointer-network PPO once that Optuna search
+(next entry) completes and full training runs.
+
+**Update, same day: real target-load run (rho~0.7, max_jobs=900) -- a genuinely
+new finding.** Same flat-MLP PPO, 300k timesteps, `--arrival-rate 8.4 --max-jobs
+900`, evaluated on 20 held-out instances:
+```
+PPO:           reward=5850.15  tardiness=0.10  P95=0.00  late=0.05/808  scheduled=808.05/808
+EDF/LST/ATC/FCFS: reward=6190-6211  tardiness=0.00  late=0.00/808  scheduled=808.2-808.3/808
+```
+**Everyone -- PPO and every heuristic alike -- achieves essentially zero tardiness
+at this load**, unlike the offline case where PPO was specifically deadline-blind.
+This is a real, structurally-explainable finding, not noise: under Option 2's
+relaxed tick-advance rule (many placements allowed per tick), the system's
+effective per-tick service capacity is far higher than the offline single-decision
+model implicitly assumed when $\rho=\nu/12$ was derived -- so a nominally
+"moderately loaded" $\rho\approx0.7$ (computed the same way as the offline
+resource-utilization bound) turns out not to meaningfully stress deadline-keeping
+once multiple placements per tick are allowed. **This means the earlier assumption
+that $\rho\approx0.7$ would be "interesting but stable" doesn't hold in practice
+under the chosen relaxation** -- reaching a genuinely challenging online regime
+likely needs a substantially higher $\nu$ (pushing $\rho$ toward or past 1) than
+the offline-derived formula alone suggests, since that formula doesn't account for
+Option 2's much higher effective throughput.
+
+The informative gap that *does* show up is elsewhere: PPO's reward (5850) is
+~350-360 below every heuristic's (~6200) despite near-identical tardiness/
+completion -- meaning PPO is doing something less efficient on the *other* reward
+terms (machine activation, hotspot, idling), not tardiness, at this load. This is
+a genuinely different online-case story from the offline one, worth a real
+ablation/investigation once more runs exist, not just this one data point.
+
+**Conclusion / next step:** Re-run at a higher $\nu$ (e.g. targeting
+$\rho\gtrsim0.9$-1.0) to find a load that actually stresses deadline-keeping under
+the relaxed clock, and investigate the activation/hotspot/idle gap directly (e.g.
+per-term reward breakdown, not just the aggregate) rather than assuming it's the
+same tardiness story as offline.
+
+**Update, same day: high-load run (rho~0.92, arrival_rate=11, max_jobs=1200) --
+reproduces the offline case's core finding in the online setting.** Same
+flat-MLP PPO, 300k timesteps, evaluated on 15 held-out instances:
+```
+PPO:           reward=3339.42  tardiness=287.93  P95=0.00  late=23.87/1028  scheduled=1027.93/~1031
+EDF/LST/ATC:   reward=3371-3390  tardiness=0.00   P95=0.00  late=0.00/1032  scheduled=1029.8-1031.7
+FCFS+FirstFit: reward=3402.92  tardiness=31.20   P95=0.00  late=12.87/1034  scheduled=1033.80
+```
+**This is the discriminating load the rho~0.7 run wasn't**: deadline-aware
+heuristics (EDF/LST/ATC) still achieve *perfect* tardiness even at rho~0.92, while
+PPO shows real, meaningful tardiness and even underperforms simple
+deadline-blind FCFS. This is qualitatively the same pattern as the offline
+case's PPO-vs-heuristics gap (`training-log.md`'s 2026-09-15 overnight entry) --
+evidence that PPO's tardiness-blindness is a robust phenomenon across both the
+offline and online formulations, not an offline-specific artifact. Single-seed,
+single-run -- not yet 3-seed-verified the way the offline results were, so
+treat as a strong signal rather than a confirmed result.
+
+**Conclusion / next step:** rho~0.92 is the right ballpark for a genuinely
+informative online arrival-rate target going forward (supersedes the earlier
+rho~0.7 recommendation). Natural next steps once returning to this thread:
+3-seed verification at this load, and testing whether the same interventions
+that failed for offline PPO (Lagrangian, pointer architecture) also fail here --
+though given tonight's pointer-PPO result (previous entries), that specific one
+is not a promising avenue to repeat.
+
+---
+
+## 2026-09-16 (S2W9) -- Environment breakage found and fixed (`requirements.txt` UTF-16 encoding)
+
+**Config:** N/A -- infrastructure, not a training run.
+
+**Observation:** At the start of this autonomous session, `sb3_contrib`/
+`stable_baselines3`/`torch` were not importable under any Python installation
+discoverable on this machine, despite the previous session having produced
+real checkpoints and eval results hours earlier. Root cause:
+`requirements.txt` was UTF-16LE-encoded (with BOM) -- a known PowerShell
+`Out-File`/`Set-Content` default-encoding gotcha when the encoding isn't
+given explicitly. `pip install -r` does not auto-detect UTF-16 and appears to
+silently no-op or partially fail rather than raising a clear parse error,
+which is presumably how a prior session's environment drifted out of sync
+with its own dependency list without anyone noticing at the time.
+
+**Conclusion / next step:** Rewrote `requirements.txt` as UTF-8 and
+reinstalled (`pip install -r requirements.txt`); all packages now import
+correctly. If any future session hits an inexplicable "package not found"
+error despite `requirements.txt` looking normal when opened in an editor,
+check the file's actual byte encoding first
+(`file requirements.txt` / check for a `fffe` BOM) before assuming the
+package was never installed. Avoid `Out-File`/`Set-Content` without
+`-Encoding utf8` when writing any file another tool (pip, etc.) will parse.
+
+---
+
+## 2026-09-16 (S2W9) -- A2C 3-seed rigor pass evaluated: shaped is solid, RCPO is unstable (new negative finding)
+
+**Config:** Evaluated the 3-seed A2C checkpoints trained in the previous
+session (`a2c_pointer_scheduling_optimized_{shaped,shaped_rcpo}_seed{1,2,3}.pt`,
+`--hidden 32` per `a2c_pointer_best_params.json`) with the same
+`eval_rl_agent.py --randomized-eval --num-jobs 100 --num-machines 10
+--horizon 100 --max-jobs 100` protocol used for every other 3-seed set.
+
+**Stats:**
+```
+a2c shaped:      seed1 reward=277.95 tardiness=28.48  late=9.66  sched=96.50/100
+                 seed2 reward=262.08 tardiness=27.30  late=9.46  sched=91.14/100
+                 seed3 reward=228.32 tardiness=31.20  late=9.96  sched=81.76/100
+
+a2c shaped+rcpo: seed1 reward=154.40 tardiness=219.60  late=11.50  sched=60.04/100
+                 seed2 reward=161.29 tardiness=171.22  late=11.04  sched=61.84/100
+                 seed3 reward=271.48 tardiness=1299.66 late=42.16  sched=97.08/100
+```
+
+**Observation:** Plain A2C (shaped, no RCPO) confirms the strong tardiness
+already suggested by the earlier single-run check (~28-29): consistent
+across all 3 seeds, vastly better than any PPO variant's ~1290-1330. A2C+RCPO
+is a genuinely new negative finding, however: high seed-to-seed variance
+(tardiness 171-1300, a >7x spread) and, critically, **seed3 shows the exact
+same reward-hacking signature already diagnosed for PPO-Lagrangian**
+(2026-09-14-ppo-lagrangian-and-reward-structure.md): high completion
+(97/100 scheduled) paired with tardiness back at the bad-PPO band, meaning
+the Lagrangian-adapted cost is being paid off by scheduling jobs late rather
+than by avoiding lateness. RCPO does not reliably preserve or improve on
+A2C's baseline good tardiness -- if anything it makes results worse and far
+less predictable across seeds.
+
+**Conclusion / next step:** User flagged this as "not acceptable" and wants
+it reviewed later -- not fixed unsupervised in this session, consistent with
+the standing decision (training-log 2026-09-15 entries) that the Lagrangian
+instability's real fix (two-critic architecture, separate reward/cost value
+functions, Ray/Achiam/Amodei 2019) needs human design input rather than
+further unsupervised hyperparameter tuning. Recorded here as a confirmed,
+3-seed-verified finding, not a single-run anomaly: **RCPO's instability is
+not PPO-specific** -- it also affects A2C's hand-rolled implementation, which
+points toward the Lagrangian-mutates-the-reward-in-place mechanism itself
+(shared by both algorithms' current RCPO implementation) as the common root
+cause, rather than something specific to either algorithm's architecture.
+
+---
+
+## 2026-09-16 (S2W9) -- A2C randomized-instance brought to 3 seeds: confirms the known tardiness-transfer caveat
+
+**Config:** Trained `a2c_pointer_randinst_seed{1,2,3}` (previously only 1
+untracked seed existed) for parity with PPO's randomized-instance set --
+same protocol as the fixed-instance 3-seed set, `--randomize-instances`
+added. Evaluated the same way.
+
+**Stats:**
+```
+seed1: reward=281.46 tardiness=1589.98 late=36.16 sched=98.52/100
+seed2: reward=271.17 tardiness=1723.42 late=37.54 sched=97.84/100
+seed3: reward=280.78 tardiness=1580.16 late=35.14 sched=98.58/100
+```
+
+**Observation:** Tight 3-seed agreement confirms (not just suggests, as the
+single earlier seed did) the caveat already recorded in
+`project_offline_training_campaign` memory and the 2026-08-20 entry: A2C's
+excellent fixed-instance tardiness (~28) does not transfer to the
+randomized-instance distribution at all -- it lands *worse* than every PPO
+variant's ~1290-1330 band. Root cause remains as previously diagnosed: the
+Optuna hyperparameters (`a2c_pointer_best_params.json`) were tuned against
+the fixed instance only and never re-tuned for the harder randomized
+distribution (Eimer et al. 2023's tuning-transfer failure mode, already hit
+twice elsewhere in this project).
+
+**Conclusion / next step:** Offline case's A2C results are now fully
+3-seed-verified across both instance regimes, closing out that part of the
+finalization checklist. A randomized-instance-specific Optuna search for A2C
+would be the natural fix, but is out of scope for this session (not
+requested; the priority is the online case and pointer-network PPO).
+
+---
+
+## 2026-09-16 (S2W9) -- Pointer-network PPO result: architecture does NOT fix PPO's tardiness -- the overnight session's leading hypothesis is refuted
+
+**Config:** `ppo_pointer_fixed_seed{1,2,3}`, full protocol (Optuna-tuned params:
+embed_dim=256, hidden=64, lambda_2=1.89; 1.9M timesteps curriculum; same fixed
+instance as every other offline PPO/A2C result).
+
+**Stats:**
+```
+seed1: reward=330.85  tardiness=1303.36 (P95=55.96)  late=45.48/100  scheduled=99.96/100
+seed2: reward=328.23  tardiness=1619.24 (P95=65.07)  late=46.16/100  scheduled=100.0/100
+seed3: reward=317.84  tardiness=1403.86 (P95=59.47)  late=45.36/100  scheduled=99.76/100
+
+For comparison, same fixed instance:
+  Flat-MLP PPO (reward-tuned):    ~1310-1320
+  Flat-MLP PPO (tardiness-tuned): ~1289-1315
+  Pointer-network PPO (this):     ~1303-1619
+  A2C, same pointer architecture: ~28 (!)
+```
+
+**Observation:** This directly refutes the previous entry's leading hypothesis.
+Pointer-network PPO is statistically indistinguishable from flat-MLP PPO --
+if anything slightly worse and with higher seed-to-seed variance (seed2 at
+1619 is the worst PPO tardiness result recorded this entire campaign, excluding
+the lambda_max=50 collapse). **A2C achieves ~28 tardiness with the EXACT SAME
+`PointerActorCritic` architecture** -- so architecture cannot be the
+explanatory variable; the real differentiator must be something about PPO
+itself (the clipped surrogate objective, multi-epoch minibatch reuse of
+rollout data, GAE/advantage estimation, or an interaction between these and
+this environment/reward's sparsity) rather than the network's capacity to
+reason about job-to-job relationships.
+
+**Conclusion / next step:** Five now-refuted-or-ineffective mechanisms for
+PPO's tardiness: fixed reward weight, four Lagrangian lambda_max ceilings, a
+tardiness-directed hyperparameter search, and now pointer-network
+architecture. Every one of them left PPO in the same ~1290-1620 band while
+A2C, sharing either the reward structure (flat MLP tests) or now the
+architecture (this test), sits at ~28. The remaining plausible explanation is
+something intrinsic to PPO's optimization procedure on this environment/
+reward, not any single fixable input to it -- this needs a genuinely
+different investigation (e.g. directly comparing PPO's and A2C's *training
+dynamics* on identical architecture+reward, not just final performance) rather
+than another reward/architecture variant. Recommended as the next real
+investigation, not attempted further tonight given the scope already covered.
+
+---
+
+## 2026-09-16 (S2W9) -- Pointer-network PPO implemented and validated; full search + training launched
+
+**Config:** New `Code/policies/pointer_ppo_policy.py` --
+`PointerMaskableActorCriticPolicy`, an `sb3_contrib`-compatible wrapper
+around `PointerActorCritic` (the same architecture A2C has used since
+2026-08-09), giving `MaskablePPO` a drop-in `policy_class` alternative to
+`"MlpPolicy"`. Wired into `train_optimized.py` (`--policy-type pointer` now
+works for `--algo ppo`, previously silently ignored) and `optuna_tune.py`
+(`objective_ppo` gained the same `policy_type` branch `objective_a2c`
+already had). See the new dated doc,
+`2026-09-16-pointer-network-ppo.md`, for the full design writeup
+(SB3 policy-interface analysis, the optimizer-parameter-registration hazard
+found and avoided, and the backward-compatibility fix needed for
+`--policy-type`'s CLI default).
+
+**Stats:** Two smoke tests (standalone `PointerMaskableActorCriticPolicy`
+construction/rollout/save-load; full `build_vec_env` -> `get_attr` ->
+`MaskablePPO` integration) both passed before any real-scale run. A 50-trial
+Optuna search (`optuna_tune.py --algo ppo --policy-type pointer`, matching
+every other architecture variant's search rigor) is running as of this
+entry; full 3-seed fixed-instance + 3-seed randomized-instance training to
+follow once it completes.
+
+**Observation:** N/A yet -- implementation and validation only, no
+tardiness result to report in this entry.
+
+**Conclusion / next step:** This directly replaces the full 3-seed/full-budget
+PPO-Lagrangian $\lambda_{\max}$ sweep the user originally requested (deprioritized
+in favor of this, per the user's explicit choice: smoke tests + a 500k-step
+diagnostic already showed no lambda value escapes the ~1290-1330 band, so
+that compute goes toward the untested architecture variable instead). This
+is the test of the overnight session's own leading hypothesis
+(2026-09-15 entry above): if pointer-network PPO closes some of the gap to
+A2C's tardiness, architecture is confirmed as the real bottleneck; if it
+doesn't, the mystery deepens further and the two-critic Lagrangian
+architecture becomes the more urgent next thing to try (with human design
+input, as already decided).
+
+---
+
+## 2026-09-15 (S2W9) -- Overnight session conclusion: no reward/hyperparameter fix improves PPO's tardiness; architecture is the new leading hypothesis
+
+**Config:** Full-scale validation of the tardiness-tuned Optuna search from
+the previous entry: 3 seeds, `train_optimized.py --params-tag tardiness`,
+same protocol as every other PPO run this session.
+
+**Stats:**
+```
+seed 1: reward=266.19  tardiness=1315.06 (P95=58.98)  late=42.32/100  scheduled=97.06/100
+seed 2: reward=264.71  tardiness=1289.04 (P95=57.35)  late=42.46/100  scheduled=96.84/100
+seed 3: reward=264.72  tardiness=1304.88 (P95=59.50)  late=41.76/100  scheduled=96.90/100
+
+Every PPO mechanism tried tonight, for comparison:
+  Reward-tuned (fixed instance):      ~1310-1320
+  Reward-tuned (randomized instance): ~1327
+  PPO-Lagrangian lambda_max=8/12/18:  ~1291-1312
+  PPO-Lagrangian lambda_max=50:       collapse (0 scheduled)
+  Tardiness-tuned (this entry):       ~1289-1315
+```
+
+**Observation:** The tardiness-tuned search's perfect small-scale result
+(previous entry) completely failed to transfer to the deployed 100-job
+scale -- exactly the Eimer et al. (2023) failure mode this project has now
+hit twice (previously A2C, S2W5; now PPO). More strikingly, **five
+completely different mechanisms for fixing PPO's tardiness -- a fixed
+weight, four different Lagrangian multiplier ceilings, and a from-scratch
+hyperparameter search -- all converge on the same ~1290-1330 band**, with
+the sole exception being the Lagrangian collapse at lambda_max=50 (a
+different, worse failure). This consistency is hard to explain by "the
+weight/mechanism was wrong" and points instead to something upstream of
+reward weighting entirely: most plausibly the flat MlpPolicy architecture
+itself, which (unlike A2C's `PointerActorCritic`, which gets 28.16-28.66
+tardiness) has no explicit mechanism for reasoning about job-to-job
+relationships or deadline ordering. Full analysis:
+`2026-09-14-ppo-lagrangian-and-reward-structure.md` Section 12.
+
+**Conclusion / next step (end of this autonomous overnight session):**
+Every reward-formulation and hyperparameter-search avenue tried for PPO
+tonight is now exhausted without success -- the most promising untried lead
+is architecture, not reward: a pointer/attention-based PPO policy
+(`sb3_contrib.MaskablePPO` supports custom feature extractors via
+`policy_kwargs`, so this doesn't require a hand-rolled training loop the way
+the two-critic PPO-Lagrangian rewrite would). Also still open: the two-critic
+PPO-Lagrangian architecture itself (deliberately not attempted unsupervised,
+needs human design input -- see the previous PPO-Lagrangian entries). All
+five PPO variants trained tonight (fixed-instance, randomized-instance,
+PPO-Lagrangian at 4 lambda_max values plus the collapse, tardiness-tuned)
+are checkpointed and organized under
+`rl_training/results_by_setting/*/checkpoints/` with matching eval plots,
+and every finding is cross-referenced between this log and the two dated
+research docs touched tonight
+(`2026-09-14-ppo-lagrangian-and-reward-structure.md`,
+`2026-08-28-pso-metaheuristic-baseline.md`).
+
+---
+
+## 2026-09-15 (S2W9) -- optimize_for="tardiness" extended to PPO; full-scale validation launched; PSO-tardiness-fitness rerun in progress (autonomous overnight session, continued)
+
+**Config:** `Code/training/optuna_tune.py::objective_ppo` now supports
+`optimize_for` ("reward"/"tardiness"/"pareto"), mirroring `objective_a2c`'s
+existing mechanism exactly (same `TARDINESS_PENALTY_WEIGHT`-scalarized
+composite score). `run_optimization()`'s suffix/dispatch logic (previously
+`algorithm == "a2c"`-gated) extended to apply to PPO. Also added
+`--fitness {reward,tardiness}` to `Code/baselines/pso.py` (negated total
+tardiness as the fitness value when `tardiness`), plus `--num-jobs/
+--num-machines/--horizon/--max-jobs` overrides to both `pso.py` and (earlier
+this session) `eval_rl_agent.py` so either can run safely while a training
+run is concurrently active.
+
+**Stats:**
+```
+PPO Optuna search, optimize_for=tardiness, 50 trials (tuning scale: 20 jobs,
+5 machines, horizon 30, make_tuning_env's default):
+  Best trial (42): composite_score=107.66, lambda_2=1.927 (~unchanged from
+    the reward-tuned 1.9315), but layer_size=512, activation=relu,
+    learning_rate=0.000196 (~15x the reward-tuned value), n_steps=1024,
+    batch_size=512, n_epochs=10, ent_coef=0.029 (~4x larger) -- everything
+    EXCEPT lambda_2 differs substantially.
+  Top ~10 trials by score: mean_tardiness=0.0, mean_late_jobs=0.0 exactly
+    (perfect on-time completion) AT THIS TUNING SCALE.
+```
+
+**Observation:** The tardiness-directed search did NOT converge on a larger
+`lambda_2` the way the earlier ad hoc Lagrangian sweep's reasoning predicted
+-- it found a *different overall configuration* (bigger network, much higher
+learning rate, more entropy) achieves perfect tardiness at the small tuning
+scale with essentially the *same* lambda_2 as before. This is a genuinely
+different, more promising hypothesis than "lambda_2 was too low": maybe the
+original reward-tuned PPO's network/learning-rate/entropy settings simply
+couldn't learn a sequencing-sensitive policy well at all, independent of how
+tardiness was weighted. **Critical caveat, not yet resolved**: this is
+measured at the small 20-job tuning scale, not the deployed 100-job
+instance -- this project's own history (Eimer et al. 2023, cited in
+`objective_a2c`'s docstring; the S2W5 tardiness-retuning episode) already
+demonstrated that small-scale-tuned hyperparameters can fail to transfer.
+Full grounding: `2026-09-14-ppo-lagrangian-and-reward-structure.md` Section
+11.
+
+**Conclusion / next step:** Launched the actual validation this needs: 3
+seeds of full-scale PPO training (`--params-tag tardiness`, same protocol as
+every other PPO run this session --n-envs 5 --vec-backend dummy
+--torch-threads 5 --stage4-timesteps 1600000) on the real 100-job fixed
+instance, run concurrently with a tardiness-fitness PSO rerun (`pso.py
+--fitness tardiness`, real fixed instance + 10 held-out, swarm=20/
+iterations=40) that was already in progress -- both use mostly single-core/
+light CPU individually, confirmed to coexist without issue. Results pending.
+
+---
+
+## 2026-09-15 (S2W9) -- PPO-Lagrangian lambda_max sweep: ruled out as a hyperparameter fix, autonomous overnight session
+
+**Config:** Fast smoke tests (real `train_optimized.py` pipeline, full 4-stage
+curriculum, reduced `--stage4-timesteps`) at `lambda_max in {8, 12, 18}`
+(100k stage-4 steps each) plus one longer diagnostic (`lambda_max=15`, 500k
+stage-4 steps), per the user's request to verify with small excerpts before
+committing another multi-hour run, done autonomously overnight after the
+user went to sleep.
+
+**Stats:**
+```
+lambda_max=8,  100k steps: tardiness=1312.62  late=42.40/100  scheduled=96.90/100
+lambda_max=12, 100k steps: tardiness=1291.16  late=42.42/100  scheduled=96.82/100
+lambda_max=18, 100k steps: tardiness=1291.64  late=42.50/100  scheduled=96.84/100
+
+lambda_max=15, 500k steps -- episode_cost trend across stage 4 (lambda held
+constant at 15.0 throughout, so this isolates the training-time question):
+  t=300k-349k: avg_cost=14.38   t=549k-599k: avg_cost=16.54
+  t=349k-399k: avg_cost=15.20   t=599k-649k: avg_cost=16.77
+  t=399k-449k: avg_cost=15.63   t=649k-699k: avg_cost=16.89
+  t=449k-499k: avg_cost=16.07   t=699k-749k: avg_cost=17.12
+  t=499k-549k: avg_cost=16.37   t=749k-801k: avg_cost=17.27
+```
+
+**Observation:** None of 8/12/18 improved on the original (uncontrolled)
+PPO's tardiness (~1315-1327) or on each other -- all indistinguishable
+within this training budget, despite lambda sitting at 90%+ of its cap for
+essentially the entire stage. The longer run rules out "just needs more
+training time": cost rose smoothly and monotonically over the full 500k-step
+window at a *constant* lambda (no confound from the multiplier itself
+changing), the opposite of convergence. Full mechanistic discussion:
+`2026-09-14-ppo-lagrangian-and-reward-structure.md` Sections 9-10.
+
+**Conclusion / next step:** `lambda_max` is not the lever -- every value
+tried sits on the same failure spectrum (no effect -> slow degradation ->
+full collapse at 50) rather than having a working middle ground. The
+mechanism is architectural: mutating the environment's raw reward in place
+(shared with A2C's RCPO) forces PPO's single value function to track a
+shifting target, corrupting the advantage estimates the policy gradient
+needs. The real fix is the two-critic PPO-Lagrangian architecture (separate
+reward/cost value functions and advantages, Ray/Achiam/Amodei 2019) rather
+than more hyperparameter search -- scoped but deliberately NOT attempted
+autonomously overnight (a genuinely new, hand-rolled training loop with
+substantial unverified design surface, better done with a human in the
+loop). Pausing PPO-Lagrangian here; continuing with the lower-risk queued
+follow-ups (PSO-with-tardiness-fitness rerun, `optimize_for="tardiness"`
+extended to PPO) that reuse existing, already-validated infrastructure.
+
+---
+
+## 2026-09-15 (S2W9) -- PPO-Lagrangian result: all 3 seeds collapsed to zero jobs scheduled
+
+**Config:** Same as the fixed-instance PPO entry below, plus `--use-rcpo`
+(PPO-Lagrangian, `Code/policies/ppo_lagrangian.py`), `alpha=0,
+lambda_init=1.9315 (warm-started from PPO's tuned lambda_2), lambda_lr=0.01,
+lambda_max=50, update_every=5 episodes`.
+
+**Stats:**
+```
+seed 1: reward=-50.50  tardiness=0.00  late=0/100  scheduled=0/100  (std=0 across 50 held-out runs)
+seed 2: reward=-50.50  tardiness=0.00  late=0/100  scheduled=0/100  (std=0)
+seed 3: reward=-50.50  tardiness=0.00  late=0/100  scheduled=0/100  (std=0)
+
+lambda trajectory (all seeds similar): hit lambda_max=50 at ~18% of training
+(timestep ~345k/1.9M) and stayed pinned there; mean sampled cost ROSE over
+the remaining 82% of training (0.96 -> 15.88 -> 18.15 -> 25.86), not fell.
+```
+
+**Observation:** Complete, deterministic idle-collapse (zero variance across
+all 50 held-out instances x 3 seeds) -- not partial degradation, not noise.
+Tardiness=0 is trivial and worthless here: unscheduled jobs are never late by
+definition. Full mechanistic diagnosis (runaway lambda-vs-abandonment
+feedback loop) and proposed fixes (tighter `lambda_max`; possibly the
+two-critic PPO-Lagrangian architecture instead of modifying the reward in
+place) recorded in `2026-09-14-ppo-lagrangian-and-reward-structure.md`
+Section 8. This is the exact instability risk that doc's Section 5 flagged
+*before* this run, based on Stooke, Achiam & Abbeel (2020)'s critique of
+plain Lagrangian ascent -- now confirmed empirically, not just cited as a
+risk.
+
+**Conclusion / next step:** PPO-Lagrangian as implemented is not usable as-is
+-- it did not close the gap to the proven floor (tardiness=8.0, S2W9's
+2026-09-14 entry below), it produced a worse outcome than the original
+reward-tuned PPO. Two concrete follow-ups identified, not yet tried: (1)
+retry with a much tighter `lambda_max` (~5-10 instead of 50); (2) implement
+the standard two-critic PPO-Lagrangian architecture (separate cost value
+function/advantage, `A = A_reward - lambda*A_cost`) instead of mutating the
+environment's raw reward, which may itself be contributing to the
+instability by constantly moving the value function's target.
+
+---
+
+## 2026-09-14 (S2W9) -- Randomized-instance PPO (3 seeds) matches fixed-instance's tardiness failure; CP-SAT proves the real floor is 8.0; PPO-Lagrangian launched
+
+**Config:** Same as the fixed-instance entry below, plus `--randomize-instances`
+(fresh random job set every episode). `--seed` now also determines the stream
+of training instances (via seeding the global numpy RNG the resampler reads),
+not just algorithmic randomness -- appropriate here since there's no single
+"correct" instance to hold fixed in this mode (see conversation this session
+for the full reasoning).
+
+**Stats:**
+```
+Randomized-instance PPO, 50-held-out-instance protocol:
+  seed 1: reward=267.18  tardiness=1327.62 (P95=58.60)  late=42.82/100  scheduled=96.84/100
+  seed 2: reward=269.54  tardiness=1327.22 (P95=58.75)  late=41.86/100  scheduled=96.94/100
+  seed 3: reward=267.64  tardiness=1327.30 (P95=59.10)  late=42.96/100  scheduled=96.68/100
+
+CP-SAT, real fixed instance (seed=0, 100 jobs), 900s budget, 15 search workers:
+  status=OPTIMAL, objective=8.0, best_bound=8.0, solve_time=21.98s
+  reward=339.09  tardiness=8.00  late=5/100 (schedules ALL 100 jobs)
+  (reference) EDF: tardiness=16.00 late=10   LST: tardiness=8.00 late=7
+```
+
+**Observation:**
+1. Randomized-instance training lands at essentially the same tardiness
+   failure as the fixed-instance run (~1327 vs ~1315). This is exactly what
+   the reward-structure analysis (`2026-09-14-ppo-lagrangian-and-reward-
+   structure.md`) predicts: the root cause is that `lambda_2=1.93 < 3.0` (the
+   flat per-job completion bonus), independent of which instance(s) are
+   trained on. Instance diversity was never the problem, so randomizing
+   instances doesn't fix it -- consistent with, and now further evidence for,
+   that doc's diagnosis.
+2. **CP-SAT solved the real deployed instance to proven optimality** (not
+   just a small synthetic one -- see `exact_solver.py --fixed-instance`,
+   and the new `--num-search-workers` flag that made this fast) in 22
+   seconds: true minimum tardiness is 8.0, achieved while scheduling all 100
+   jobs. This settles a question raised earlier this session ("how do we
+   know 42 late jobs isn't just because some were impossible") definitively
+   for this instance: they weren't impossible. It also disproves a possible
+   "completion vs. punctuality tradeoff" explanation -- CP-SAT gets both
+   simultaneously, so PPO's ~97 scheduled + ~1315 tardiness isn't a forced
+   trade-off, it's just not deadline-aware at all. Full writeup and the
+   decisive framing: `2026-09-14-ppo-lagrangian-and-reward-structure.md`
+   Section 7.
+
+**Conclusion / next step:** PPO-Lagrangian (`Code/policies/ppo_lagrangian.py`,
+extending RCPO to PPO via an SB3 callback, see the dated doc) launched
+immediately after this -- 3 seeds, same protocol, warm-started from PPO's own
+tuned `lambda_2`. Smoke-tested separately before the real run: multiplier
+correctly climbed from 1.93 toward 3+ within a few thousand steps and
+propagated to all sub-envs. Success criterion is now concrete: how close does
+it get to the proven floor of 8.0, not just "better than before."
+
+---
+
+## 2026-09-14 (S2W9) -- Final offline-case PPO (fixed instance, 3 seeds): completes jobs but is not deadline-aware; ENV_CONFIG_PATH hazard recurred and is now actually fixed
+
+**Config:** PPO, MlpPolicy, default reward-tuned Optuna params (`ppo_best_params.json`,
+unchanged), curriculum training with `--stage4-timesteps 1600000` (scaled up from the
+200k default after measuring real throughput -- see below), 3 seeds (1, 2, 3), each
+`--n-envs 5 --vec-backend dummy --torch-threads 5` for parallel rollout collection
+(new this session -- see `Code/training/train_optimized.py::build_vec_env()`).
+Evaluated via `eval_rl_agent.py --randomized-eval --num-jobs 100 --num-machines 10
+--horizon 100 --max-jobs 100` (new explicit-override flags, see Observation 3 below).
+
+**Stats:**
+```
+Per-stage throughput (dummy-backend vectorized rollout, this machine, 16 cores):
+  Stage 1 (15 jobs,  h=20 ):  630 fps
+  Stage 2 (30 jobs,  h=40 ):  389 fps
+  Stage 3 (60 jobs,  h=60 ):  246 fps
+  Stage 4 (100 jobs, h=100):  162-172 fps
+
+PPO (fixed instance, seed=0), 50-held-out-instance protocol:
+  seed 1: reward=269.33  tardiness=1318.38 (P95=59.32)  late=42.44/100  scheduled=97.14/100
+  seed 2: reward=267.12  tardiness=1320.54 (P95=58.68)  late=42.36/100  scheduled=97.06/100
+  seed 3: reward=268.61  tardiness=1309.78 (P95=58.78)  late=42.12/100  scheduled=96.90/100
+
+Same instance, classical heuristics (from eval_results.csv, unchanged from 2026-08-28):
+  EDF   tardiness=37.30  late=12.22  scheduled=96.84
+  LST   tardiness=23.94  late=8.26   scheduled=97.76
+  SPT/WSPT (no deadline signal) tardiness=1150.86  late=37.74  scheduled=92.08
+  FCFS+FirstFit (no deadline signal) tardiness=1299.52  late=42.06  scheduled=96.86
+```
+
+**Observation:**
+1. **This PPO checkpoint has not learned deadline-aware scheduling.** All 3 seeds
+   agree tightly (tardiness 1310-1320, late 42.1-42.4), which rules out seed noise
+   as the explanation. It lands squarely in the same tardiness/late-jobs band as
+   heuristics that ignore deadlines entirely (SPT, FCFS, Tetris -- see the
+   2026-08-28 classical-heuristics entry), not anywhere near EDF or LST. This is
+   the first same-instance PPO-vs-heuristics comparison at this training scale in
+   this project (the only pre-existing PPO checkpoint, `ppo_scheduling.zip`, has an
+   incompatible legacy action-space size and can't be loaded against the current
+   wrapper). Likely cause (not yet verified): the default reward-tuned Optuna
+   params' `lambda_2` (tardiness weight) may not sufficiently penalize tardiness
+   relative to `lambda_1`/idle-penalty for this architecture -- a `--params-tag
+   tardiness`-tuned rerun (if such a params file exists / is worth producing) would
+   directly test this.
+2. **The new per-machine utilisation graphs already earn their keep.** EDF's
+   placement rule concentrates almost all load on machine 0 (visible for the first
+   time -- the old single-aggregated-line plot averaged this away); this PPO
+   checkpoint spreads load across far more machines. So: PPO load-balances better
+   but is not deadline-aware, while EDF is deadline-aware but load-imbalanced --
+   a real trade-off the new graphs surface that the old ones couldn't.
+3. **Re-hit and finally fixed the 2026-08-28 `ENV_CONFIG_PATH` concurrency hazard**
+   (this exact log's prior entry describes it and explicitly deferred fixing it).
+   Ran eval against these checkpoints while a second training run (randomized-
+   instance set, see below) was concurrently active; the first eval attempt read
+   `ENV_CONFIG_PATH` mid-write by the new run's early curriculum stage, producing
+   a fully plausible-looking but wrong result (jobs_scheduled ~14-30 instead of
+   ~97). Fixed for real this time: `build_vec_env()`/`make_env()` now only write
+   `ENV_CONFIG_PATH` on the training run's FINAL curriculum stage, and
+   `eval_rl_agent.py --randomized-eval` gained `--num-jobs/--num-machines/
+   --horizon/--max-jobs` overrides so it never needs to touch the shared file at
+   all when the caller already knows the target dimensions.
+4. **Parallel rollout collection (`n_envs`-way `DummyVecEnv`) works and was
+   correctly re-derived after a real bug**: an earlier version of this session's
+   `build_vec_env()` gave each of the `n_envs` parallel workers a *different* job
+   instance (and coupled that to the `--seed` CLI flag meant only for algorithmic
+   randomness) -- silently turning "3 seeds of the same fixed-instance task" into
+   3-5x mixed-instance training. A first (buggy) 3-seed run completed under that
+   code before the bug was caught; its results (reward ~268-270, tardiness
+   ~1300-1330, late ~42/100) are numerically close to this corrected run's, by
+   apparent coincidence -- read the buggy run's numbers as invalid regardless of
+   the similarity (mixed-instance training, not the intended comparison).
+   `SubprocVecEnv` vs `DummyVecEnv` was also benchmarked directly on this machine:
+   `dummy` was at least as fast as `subproc` for this cheap environment (IPC
+   overhead offsets `subproc`'s parallelism gain at this scale), so `dummy` was
+   used for the real run.
+
+**Conclusion / next step:** Randomized-instance set (`--randomize-instances`, same
+3 seeds) launched immediately after this one finished, per the user's explicit
+request for both settings as final data (not just whichever already performed
+better). A CP-SAT best-objective-bound run on this same fixed instance (new
+`Code/baselines/exact_solver.py --fixed-instance` flag, added this session) is
+planned once both training sets finish, to get a genuine provable tardiness floor
+rather than only heuristic comparisons. Worth testing directly: does a
+`--params-tag tardiness`-tuned PPO run close the gap to EDF/LST, or is the flat
+MlpPolicy architecture itself the limiting factor (cf. A2C+pointer's much better
+28.66 tardiness in the 2026-08-28 entry)?
+
+---
+
 ## 2026-08-28 (S2W6) -- jobs_scheduled measured for the full baseline roster; corrects two earlier ad hoc figures
 
 **Config:** N/A (measurement pass, prompted by a request to add jobs-scheduled to the results review tables). All numbers below use the official 50-held-out-instance protocol (`num_jobs=100, num_machines=10, horizon=100`, seeds 500000-500049) -- the same one `eval_results.csv` uses everywhere else.

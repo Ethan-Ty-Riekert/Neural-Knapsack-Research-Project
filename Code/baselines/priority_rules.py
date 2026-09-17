@@ -9,6 +9,7 @@ eval_rl_agent.py, which iterated action ids in ascending job*num_machines+
 machine order). See Future/research/2026-08-28-classical-heuristic-baselines.md
 for full citation grounding; short form below.
 """
+import math
 
 
 def edf_key(base_env, job):
@@ -28,11 +29,25 @@ def lst_key(base_env, job):
 
 
 def fcfs_key(base_env, job):
-    """First-Come-First-Served. Every job in this environment is available
-    at t=0 (SchedulingEnv models static, deterministic jobs -- see its
-    module docstring), so "arrival order" reduces to job index. Named as a
+    """First-Come-First-Served.
+
+    Online case (OnlineSchedulingEnv, has .arrival_times): "first come" means
+    actual arrival order, tau_j -- ties (same-tick arrivals) fall back to job
+    index for determinism, matching every other rule's tie-breaking here.
+
+    Offline case (plain SchedulingEnv, no .arrival_times): every job is
+    available at t=0 (see its module docstring), so "arrival order" reduces
+    to job index -- unchanged from the original behaviour. Named as a
     baseline in the project's own literature review (NotesForAI's RA
-    taxonomy, p.5)."""
+    taxonomy, p.5).
+
+    registry.py already wraps every key function's return value with `job`
+    as a secondary tie-break (key=lambda j: (priority_key(base_env, j), j)),
+    so same-tick arrivals need no special handling here -- a plain scalar
+    return, matching every other rule's convention, is sufficient."""
+    arrival_times = getattr(base_env, "arrival_times", None)
+    if arrival_times is not None:
+        return arrival_times[job]
     return job
 
 
@@ -60,6 +75,70 @@ def wspt_key(base_env, job):
     return base_env.job_durations[job] / max(base_env.job_weights[job], 1e-8)
 
 
+def atc_priority(base_env, job, k: float = 2.0):
+    """Raw Apparent Tardiness Cost priority I_j(t) (Vepsalainen & Morton,
+    1987, "Priority Rules for Job Shops with Weighted Tardiness Costs,"
+    Management Science 33(8)):
+
+        I_j(t) = (w_j / p_j) * exp(-max(d_j - p_j - t, 0) / (k * mean_p))
+
+    A smooth interpolation between Smith's rule (w_j/p_j, WSPT -- optimal for
+    weighted completion time with no deadlines) and pure urgency: priority is
+    near 0 while a job has ample slack, and ramps up to the full w_j/p_j
+    value as slack shrinks toward 0, saturating there rather than growing
+    further once a job is already at risk. Standard heuristic for weighted-
+    tardiness objectives, matching this project's own lambda_2*w_j*T_j
+    reward term. k=2.0 is a commonly-used literature default (Vepsalainen &
+    Morton's own tuning experiments), not a value re-derived or re-tuned for
+    this project's instance distribution -- flagged per CLAUDE.md's rule
+    that untested constants must say so.
+
+    Online-adapted: mean_p is computed over only the jobs currently known to
+    have arrived (getattr(base_env, "revealed_jobs", None)), not the full
+    job array -- keeping this baseline causally restricted to information
+    actually available at decision time (the online-case plan's "online-
+    adapted classical heuristics ... restricted to currently-arrived jobs").
+    Falls back to every job for the offline case (plain SchedulingEnv, no
+    .revealed_jobs), where full self-knowledge is legitimate.
+
+    HIGHER means more urgent/valuable to schedule now -- the usual ATC
+    convention. Factored out from atc_key (below), which negates this to fit
+    every other priority rule's "minimum key wins" convention, so this
+    un-negated form has one definition used two ways: as a baseline's
+    ranking key (via atc_key) and directly as an RL observation feature
+    (Code/env/priority_only_gym_wrapper.py's Option 3, the ATC-primed
+    priority-learning variant of the 2026-09-17 action-space-reduction work)
+    -- rather than duplicating the formula for the second use.
+    """
+    revealed = getattr(base_env, "revealed_jobs", None)
+    known_jobs = revealed if revealed else range(len(base_env.job_durations))
+    mean_p = max(1e-8, sum(base_env.job_durations[j] for j in known_jobs) / len(known_jobs))
+
+    p_j = base_env.job_durations[job]
+    w_j = base_env.job_weights[job]
+    slack = base_env.job_deadlines[job] - p_j - base_env.time
+    urgency = math.exp(-max(slack, 0.0) / (k * mean_p))
+    return (w_j / max(p_j, 1e-8)) * urgency
+
+
+def atc_key(base_env, job, k: float = 2.0):
+    """Apparent Tardiness Cost priority rule -- see atc_priority() for the
+    formula and citation. Negated so that HIGHER priority (the usual ATC
+    convention: maximize I_j) becomes a SMALLER key, matching every other
+    rule here's "minimum key wins" convention (see lpt_key's identical
+    negation).
+
+    NOT the state-dependent-tuned variant of Min & Kim (2022, "State-
+    Dependent Parameter Tuning of the Apparent Tardiness Cost Dispatching
+    Rule Using Deep Reinforcement Learning," IEEE Access 10) -- that tunes k
+    itself via a DDPG agent conditioned on raw job data, a genuinely separate
+    small RL-training sub-project, not implemented here. This is the
+    original, fixed-k ATC rule; the state-dependent extension remains future
+    work.
+    """
+    return -atc_priority(base_env, job, k)
+
+
 PRIORITY_RULES = {
     "EDF": edf_key,
     "SPT": spt_key,
@@ -67,4 +146,5 @@ PRIORITY_RULES = {
     "FCFS": fcfs_key,
     "LPT": lpt_key,
     "WSPT": wspt_key,
+    "ATC": atc_key,
 }

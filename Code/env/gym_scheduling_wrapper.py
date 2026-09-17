@@ -136,6 +136,23 @@ class GymSchedulingEnv(gym.Env):
 
         return np.array(obs, dtype=np.float32) # use numpy for efficiency
 
+    def set_lambda2(self, value: float) -> None:
+        """Set the underlying SchedulingEnv's tardiness weight (lambda2) at
+        runtime -- the hook a Lagrangian-constrained trainer (RCPO for A2C,
+        PPO-Lagrangian for PPO -- see Code/policies/ppo_lagrangian.py) uses to
+        push an adapted multiplier value into the live env.
+
+        Reachable through a VecEnv via env_method("set_lambda2", value):
+        SB3's VecEnv.env_method calls env.get_wrapper_attr(method_name)
+        (confirmed empirically this session), which chain-walks the
+        Monitor/ActionMasker wrapper stack via gymnasium's own wrapper-attr
+        resolution rather than the generic __getattr__ forwarding gymnasium
+        >=1.x removed -- see the matching comments in
+        Code/policies/a2c_policy.py's _resolve_sched_env() for why that
+        generic forwarding can no longer be relied on here.
+        """
+        self.env.lambda2 = float(value)
+
     def get_action_mask(self):
         """Action mask building:
         mask[a] = 1 if (job, machine) is feasible at current time
