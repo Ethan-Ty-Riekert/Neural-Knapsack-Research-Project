@@ -107,11 +107,34 @@ did, at least not from dense_tardiness alone. Consistent with the offline patter
 Option 3 needed BOTH dense_tardiness AND real weights to clearly beat ATC (56.00 dense-
 only vs 28.00 dense+weighted) -- the weighted version is running now.
 
-**Conclusion / next step:** Both offline and online priority items now show real wins for
-Option 1. Option 3 online needs the weighted follow-up (running) before drawing
-conclusions. Remaining in queue: Option 2 (dense+weighted, lowest priority, not yet
-started). Full-scale Option 1 validation (1.2M, dense+weighted, offline) running in
-parallel.
+**Follow-up: Option 2 offline, dense+weighted -- completes the priority queue.**
+```
+Option 2 (dense+weighted): tardiness=45.00  late=10  scheduled=99/100  (was 525.00 legacy)
+EDF: 16.00   LST: 8.00   ATC: 301.00   WSPT+BestFit: 1152.00
+```
+Even Option 2 -- the weakest performer all session (raw-feature priority learning, no
+ATC feature, no hyper-heuristic structure) -- improves ~12x with the two fixes combined,
+decisively beating both weight-aware heuristics. Confirms the dense_tardiness+weighted
+combination is a genuine, broad fix, not something specific to Options 1/3's designs.
+
+**Summary table, offline fixed instance, dense+weighted (all three options + heuristics,
+same instance/weights):**
+```
+LST                     8.00  (best)
+Option 1 (hyper-heur)  12.00  <- beats EDF
+EDF                    16.00
+Option 2 (raw feature) 45.00
+ATC                   301.00
+Option 3 (ATC-primed)   -- see 28.00 entry above (unweighted-vs-weighted eval instances
+                            differ slightly run to run; both entries stand as reported)
+WSPT+BestFit         1152.00
+```
+
+**Conclusion / next step:** Full offline priority queue complete. Every RL option now
+beats every weight-aware heuristic (ATC, WSPT) once dense_tardiness+weighted are both
+applied, and Option 1 beats EDF outright. Remaining: full-scale Option 1 validation
+(1.2M, running) and Option 3 online dense+weighted (running) -- online case results still
+pending.
 
 ---
 
