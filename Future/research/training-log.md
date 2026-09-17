@@ -130,11 +130,24 @@ Option 3 (ATC-primed)   -- see 28.00 entry above (unweighted-vs-weighted eval in
 WSPT+BestFit         1152.00
 ```
 
-**Conclusion / next step:** Full offline priority queue complete. Every RL option now
-beats every weight-aware heuristic (ATC, WSPT) once dense_tardiness+weighted are both
-applied, and Option 1 beats EDF outright. Remaining: full-scale Option 1 validation
-(1.2M, running) and Option 3 online dense+weighted (running) -- online case results still
-pending.
+**Follow-up: full-scale (1.2M timestep) Option 1 validation, dense+weighted -- the
+session's capstone offline result.**
+```
+Option 1 (dense+weighted, 1.2M): tardiness=11.00  late=8  scheduled=100/100
+Option 1 (dense+weighted, 300k): tardiness=12.00  (essentially the same -- stable, not a fluke)
+LST:  8.00   EDF: 16.00   ATC: 301.00   WSPT+BestFit: 1152.00
+```
+Confirms the 300k result holds at 4x the training budget -- RL is now within 3 tardiness
+units of the best classical heuristic (LST, which itself matches CP-SAT's proven-optimal
+floor for the unweighted case) and solidly ahead of EDF. This is the strongest, most
+validated RL result of the entire session: starting point was ~1300 tardiness (7 failed
+mechanisms), ending point is 11.00 -- roughly a 118x improvement, via action-space
+reduction (Option 1) + dense-tardiness reward + real job weights, each contributing a
+distinct, separately-verified piece of the fix.
+
+**Conclusion / next step:** Full offline priority queue and full-scale validation
+complete. Remaining: Option 3 online dense+weighted (running) -- the last open item from
+tonight's queue.
 
 ---
 
