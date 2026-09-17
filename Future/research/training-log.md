@@ -32,6 +32,49 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-18 (S2W10) -- Job weights: randomized, no longer dead code for WSPT/ATC (user-directed, foundational fix)
+
+**Config:** `Code/env/env_config.py::generate_env_config()` and
+`Code/env/arrival_process.py::generate_poisson_arrivals()` both gained `job_weight_range`
+(default `None`, unchanged -- every job weight stays 1.0 exactly as before, so the seed=0
+fixed instance and every historic CP-SAT/EDF/LST/ATC reference number stay reproducible).
+Passing e.g. `(1, 6)` draws each job's weight i.i.d. Uniform{1,...,5}. Threaded through
+`train_action_space_variant.py`/`eval_action_space_variant.py`'s new
+`--job-weight-min`/`--job-weight-max` flags and `train_optimized.py`'s two resamplers.
+6 new regression tests (`tests/test_job_weights.py`).
+
+**Stats (review-the-outputs sanity check, seed=0, 100-job fixed instance):**
+```
+                  unweighted (all w=1)          weighted (mean w=3.00)
+EDF               tardiness=  16.00              tardiness=  16.00   (unchanged, doesn't use weight)
+LST               tardiness=   8.00              tardiness=   8.00   (unchanged, doesn't use weight)
+SPT               tardiness=1321.00              tardiness=1321.00  (unchanged, doesn't use weight)
+WSPT+BestFit      tardiness=1321.00 (=SPT exactly)  tardiness=1152.00 (now genuinely differs from SPT)
+ATC               tardiness= 106.00              tardiness= 301.00  (genuinely different job ordering)
+```
+
+**Observation:** Confirms the fix works exactly as intended: WSPT (duration/weight ratio)
+was previously byte-identical to SPT (duration/weight=duration/1=duration for every job)
+-- already flagged as dead code in `priority_rules.py::wspt_key`'s own docstring, now
+genuinely live. ATC's weight-aware urgency term also now produces real, different
+scheduling decisions. Rules that never referenced weight (EDF/LST/SPT) are correctly
+unaffected. This was raised by the user as something they believed was already
+implemented ("I got told we were randomising job weights") -- checked memory and this
+session's own history, found no prior record of the request; treating this as the honest
+answer either way, and as a standing process fix (see CLAUDE.md's new "Follow-through on
+concrete requests" section) rather than litigating the history further.
+
+**Conclusion / next step:** This is a foundational change to problem generation (the
+objective function's `lambda_2*w_j*T_j` term was, in effect, degenerate for every result
+this project has ever produced) -- per the user's explicit instruction, retrain the
+currently-active action-space-reduction work (Options 1/2/3, offline/online,
+dense_tardiness, randomized-instance) with real weights. Retraining the full multi-week
+historical archive (RCPO/PPO-Lagrangian/original A2C-PPO sweeps) is out of scope for one
+overnight session and not attempted here -- flagged explicitly rather than silently
+narrowed.
+
+---
+
 ## 2026-09-18 (S2W10) -- Randomized-instance Option 1: the action-space fix alone did NOT transfer; same collapse mechanism, worse rule
 
 **Config:** Option 1, `--randomize-instances` (fresh random job set every episode via
