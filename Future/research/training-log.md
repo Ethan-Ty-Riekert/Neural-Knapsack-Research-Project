@@ -58,9 +58,29 @@ scheduled=100/100 -- BEATS EDF (16.00) outright**, closing in on LST (8.00). Fir
 any RL-trained policy this session has beaten EDF. This is now the single best offline
 result of the entire session, RL or heuristic, other than LST/CP-SAT themselves.
 
-**Conclusion / next step:** Option 3 offline randomized-instance (dense+weighted)
-launched next in the priority queue. Full comparison table (Option 1 offline, Option 1
-online, etc.) to follow as each job completes.
+**Follow-up: randomized-instance results, dense+weighted (50 held-out instances each):**
+```
+Option 1 (dense+weighted, randomized): tardiness= 49.32+/- 70.74  late=13.72  scheduled=99.44/100
+Option 3 (dense+weighted, randomized): tardiness= 98.82+/- 94.83  late=12.08  scheduled=99.28/100
+EDF:          tardiness= 37.30+/- 60.43  late=12.22  scheduled=96.84/100
+LST:          tardiness= 23.94+/- 56.02  late= 8.26  scheduled=97.76/100
+ATC:          tardiness=221.24+/-129.98  late=11.10  scheduled=94.68/100
+WSPT+BestFit: tardiness=1221.40+/-170.28 late=40.10  scheduled=94.20/100
+```
+Both a huge improvement over the legacy-mode disaster found earlier today
+(Option 1 legacy randomized: 1377.88; the LPT-collapse). Option 1 dense+weighted
+(49.32) is now close to EDF (37.30) and dramatically ahead of the weight-aware
+heuristics (ATC/WSPT), continuing the same compounding pattern as the fixed-instance
+results. Rule-choice diagnostic on the new Option 1 randomized+dense+weighted
+checkpoint: EDF ~85%, LPT ~13%, ATC/idle ~1% each -- genuine multi-rule switching,
+not a collapse (LPT's reappearance here, despite being the earlier collapse rule, is
+plausible as a deliberately-used minority choice rather than the sole strategy -- not
+investigated further).
+
+**Conclusion / next step:** Both randomized-instance priority items done. Remaining in
+queue: Option 1/Option 3 online (dense+weighted, not yet run), Option 2 (dense+weighted,
+lowest priority). Full-scale Option 1 validation (1.2M, dense+weighted, offline) running
+in parallel.
 
 ---
 
