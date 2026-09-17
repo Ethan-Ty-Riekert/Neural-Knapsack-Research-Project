@@ -25,6 +25,7 @@ from Code.env.env_config import generate_env_config
 from Code.env.online_scheduling_env import OnlineSchedulingEnv
 from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
 from Code.env.arrival_process import generate_poisson_arrivals
+from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
 from Code.utils.plotting_utils import make_run_dir, LiveTrainingPlotter
 from Code.utils.paths import (
     LOG_DIR, MODELS_DIR, PLOTS_DIR, OPTUNA_RESULTS_DIR, ENV_CONFIG_PATH,
@@ -112,8 +113,28 @@ def make_env(
     arrival_rate: float = None,
     reward_mode: str = "legacy",
     job_size_distribution: str = "uniform",
+    job_weight_range=None,
+    action_mode: str = "placement",
 ):
     """Environment creation with tunable reward penalties.
+
+    job_weight_range (2026-09-18, S2W10): see
+    Code.env.env_config.generate_env_config()'s matching parameter -- None
+    (default, unchanged) keeps every job's weight at 1.0.
+
+    action_mode (2026-09-18, S2W10): "placement" (default, unchanged) is
+    every prior behaviour in this file -- the policy picks a raw (job,
+    machine) pair. "rule_selection" wraps the built GymSchedulingEnv/
+    OnlineGymSchedulingEnv with RuleSelectionGymSchedulingEnv (Option 1,
+    Future/research/2026-09-17-action-space-reduction.md) BEFORE masking, so
+    curriculum training can use Option 1's Discrete(8) hyper-heuristic
+    action space at real (Optuna-tuned-hyperparameter, multi-stage
+    curriculum) scale instead of only the standalone
+    train_action_space_variant.py trainer's flat-timestep runs. Rebuilt
+    fresh at each curriculum stage exactly like every other wrapper here, so
+    the action space size (fixed at 8 regardless of num_jobs) stays valid
+    across model.set_env() calls the same way max_jobs already does for
+    the placement action space.
 
     reward_mode: "legacy" (default, unchanged) or "dense_tardiness" (new --
     see SchedulingEnv.__init__'s reward_mode docstring for the full
@@ -165,7 +186,7 @@ def make_env(
         online_horizon = horizon if horizon is not None else 100
         config = generate_poisson_arrivals(
             seed=seed, arrival_rate=arrival_rate, horizon=online_horizon, max_jobs=online_max_jobs,
-            job_size_distribution=job_size_distribution,
+            job_size_distribution=job_size_distribution, job_weight_range=job_weight_range,
         )
         if num_machines is not None:
             config["num_machines"] = num_machines
@@ -196,15 +217,17 @@ def make_env(
             make_online_resampler(
                 arrival_rate, config["horizon"], config["num_jobs"],
                 config["num_machines"], config["num_resources"],
-                job_size_distribution=job_size_distribution,
+                job_size_distribution=job_size_distribution, job_weight_range=job_weight_range,
             )
             if randomize_instances else None
         )
         gym_env = OnlineGymSchedulingEnv(base_env, max_jobs=config["num_jobs"], job_resampler=job_resampler)
+        if action_mode == "rule_selection":
+            gym_env = RuleSelectionGymSchedulingEnv(gym_env)
         masked_env = ActionMasker(gym_env, mask_fn)
         return Monitor(masked_env)
 
-    config = generate_env_config(seed=seed)
+    config = generate_env_config(seed=seed, job_weight_range=job_weight_range)
 
     # Curriculum overrides
     if num_jobs is not None:
@@ -252,10 +275,13 @@ def make_env(
     # behaviour) unless randomize_instances=True -- see
     # make_random_instance_resampler() and GymSchedulingEnv.reset().
     job_resampler = (
-        make_random_instance_resampler(config["num_jobs"], config["num_machines"], config["horizon"])
+        make_random_instance_resampler(config["num_jobs"], config["num_machines"], config["horizon"],
+                                        job_weight_range=job_weight_range)
         if randomize_instances else None
     )
     gym_env = GymSchedulingEnv(base_env, max_jobs=max_jobs, job_resampler=job_resampler)
+    if action_mode == "rule_selection":
+        gym_env = RuleSelectionGymSchedulingEnv(gym_env)
     masked_env = ActionMasker(gym_env, mask_fn)
     monitored_env = Monitor(masked_env)
 
@@ -458,8 +484,16 @@ def train_with_optimized_params(
     arrival_rate: float = None,
     max_jobs_override: int = None,
     job_size_distribution: str = "uniform",
+    job_weight_range=None,
+    action_mode: str = "placement",
 ):
     """Train agent using optimized hyperparameters from Optuna.
+
+    job_weight_range / action_mode (2026-09-18, S2W10): see make_env()'s
+    matching parameters. action_mode="rule_selection" is only wired through
+    the PPO (non-RCPO) curriculum path below -- Option 1 has only ever been
+    trained via MaskablePPO this session, so the A2C/RCPO paths are left
+    untouched.
 
     is_online / arrival_rate: online (dynamic-arrival) case -- see
     make_env()'s matching docstring. Curriculum stages still vary `horizon`;
@@ -625,6 +659,15 @@ def train_with_optimized_params(
     # "legacy" checkpoint at the same config, since the whole point of this
     # experiment is comparing the two.
     reward_mode_suffix = f"_{reward_mode}" if reward_mode != "legacy" else ""
+    # action_mode="rule_selection" changes the action space size itself
+    # (Discrete(8) vs the placement space) -- a fundamentally different,
+    # incompatible checkpoint shape, so it needs its own path exactly like
+    # reward_mode_suffix above, not a silent overwrite of the placement-mode
+    # checkpoint at the same config.
+    action_mode_suffix = f"_{action_mode}" if action_mode != "placement" else ""
+    weight_suffix = (
+        f"_w{job_weight_range[0]}-{job_weight_range[1]}" if job_weight_range is not None else ""
+    )
     path_suffix = (
         (f"_{params_tag}" if params_tag else "")
         + ("_shaped" if use_potential_shaping else "")
@@ -632,6 +675,8 @@ def train_with_optimized_params(
         + ("_rcpo" if use_rcpo else "")
         + online_suffix
         + reward_mode_suffix
+        + action_mode_suffix
+        + weight_suffix
         + seed_suffix
     )
     # BUG FIX (this session): unlike A2C's path (below), which has always
@@ -770,6 +815,8 @@ def train_with_optimized_params(
             arrival_rate=arrival_rate,
             reward_mode=reward_mode,
             job_size_distribution=job_size_distribution,
+            job_weight_range=job_weight_range,
+            action_mode=action_mode,
         )
 
         if policy_type == "pointer":
@@ -856,6 +903,8 @@ def train_with_optimized_params(
                 arrival_rate=arrival_rate,
                 reward_mode=reward_mode,
                 job_size_distribution=job_size_distribution,
+                job_weight_range=job_weight_range,
+                action_mode=action_mode,
             )
 
             model.set_env(env)
@@ -1294,6 +1343,29 @@ if __name__ == "__main__":
              "disguised-offline overload."
     )
     parser.add_argument(
+        "--action-mode",
+        type=str,
+        choices=["placement", "rule_selection"],
+        default="placement",
+        help="'placement' (default, unchanged) picks a raw (job, machine) pair. "
+             "'rule_selection' (2026-09-18, S2W10 -- Option 1, "
+             "Future/research/2026-09-17-action-space-reduction.md) wraps the env "
+             "with RuleSelectionGymSchedulingEnv so the policy instead picks among "
+             "7 classical priority rules + idle (Discrete(8)) -- lets Option 1 use "
+             "this file's real curriculum/Optuna-hyperparameter machinery instead "
+             "of only train_action_space_variant.py's standalone flat-timestep "
+             "trainer. Only wired through the PPO (non-RCPO) path."
+    )
+    parser.add_argument(
+        "--job-weight-min", type=int, default=None,
+        help="2026-09-18, S2W10: with --job-weight-max, draws each job's weight "
+             "i.i.d. Uniform{min,...,max-1} instead of the historic constant 1.0 "
+             "(previously dead code for WSPT/ATC's w_j/p_j term). Omit both for "
+             "unchanged legacy behaviour."
+    )
+    parser.add_argument("--job-weight-max", type=int, default=None,
+                         help="See --job-weight-min (numpy.integers convention: exclusive).")
+    parser.add_argument(
         "--reward-mode",
         type=str,
         default="legacy",
@@ -1320,6 +1392,15 @@ if __name__ == "__main__":
 
     if args.online and args.arrival_rate is None:
         parser.error("--online requires --arrival-rate")
+    if (args.job_weight_min is None) != (args.job_weight_max is None):
+        parser.error("--job-weight-min and --job-weight-max must be given together")
+    if args.action_mode == "rule_selection" and args.policy_type == "pointer":
+        parser.error("--action-mode rule_selection needs --policy-type flat -- "
+                      "PointerActorCritic is sized for the placement action space, "
+                      "not Option 1's Discrete(8) rule-selection space.")
+    job_weight_range = (
+        (args.job_weight_min, args.job_weight_max) if args.job_weight_min is not None else None
+    )
 
     train_with_optimized_params(
         algorithm=args.algo,
@@ -1344,4 +1425,6 @@ if __name__ == "__main__":
         arrival_rate=args.arrival_rate,
         max_jobs_override=args.max_jobs,
         job_size_distribution=args.job_size_distribution,
+        job_weight_range=job_weight_range,
+        action_mode=args.action_mode,
     )

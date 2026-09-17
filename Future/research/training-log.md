@@ -32,6 +32,41 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-18 (S2W10) -- Windowed action space (prepared, not trained) + Option 1 curriculum integration
+
+**Config:** Implementation-only entry (overnight autonomous work, alongside the weighted
+retrain queue). `Code/env/windowed_priority_gym_wrapper.py` (new): DeepRM-style bounded
+action-space window for Options 2/3 -- `Discrete(window_size+1)` instead of
+`Discrete(max_jobs+1)`, EDF-ordered window selection, one backlog scalar. Matching
+adapted network (`windowed_priority_pointer_policy.py`) and SB3 wrapper. 7 new regression
+tests (`tests/test_windowed_priority_wrapper.py`), all passing. Deliberately NOT wired
+into any training run -- window size/ordering are real design choices for review, not
+just engineering (see the full write-up,
+`2026-09-18-windowed-action-space-and-curriculum-integration.md`).
+
+Separately: `train_optimized.py::make_env()` gained `action_mode="rule_selection"` (wraps
+with `RuleSelectionGymSchedulingEnv`, i.e. Option 1) and `job_weight_range`, so Option 1
+can now run through this file's real curriculum/Optuna machinery instead of only the
+standalone `train_action_space_variant.py` trainer -- needed for a genuine full-scale
+(curriculum, not flat-timestep) validation run. Smoke-tested via `--no-curriculum`; this
+surfaced a real, unrelated pre-existing rough edge (`--no-curriculum` ignores
+`--stage4-timesteps`, always runs a hardcoded 300k) which turned the intended tiny smoke
+test into a full 300k-timestep run -- not a bug in tonight's changes, noted for later
+rather than fixed mid-integration.
+
+**Observation:** Both pieces are additive/backward-compatible (default behaviour
+unchanged, verified). No training results yet from either -- this entry exists to record
+what was implemented, not what it produced.
+
+**Conclusion / next step:** Windowed action space awaits the user's review of its design
+choices before any training commits to it. Option 1's curriculum-integrated path is ready
+for the full-scale (1.9M, 4-stage curriculum) validation run once the accidental 300k
+smoke-test run (offline, legacy reward, unweighted) finishes and confirms the integration
+produces results consistent with the standalone trainer's own 300k legacy result (35.00)
+before scaling up further.
+
+---
+
 ## 2026-09-18 (S2W10) -- Job weights: randomized, no longer dead code for WSPT/ATC (user-directed, foundational fix)
 
 **Config:** `Code/env/env_config.py::generate_env_config()` and
