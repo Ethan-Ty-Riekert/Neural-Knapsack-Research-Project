@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-18 (S2W10) -- Weighted retrain results (overnight queue, best performers first)
+
+**Config:** Following the user's priority ("best performing models first"), weighted
+retrain queue launched in order: Option 1 offline (dense+weighted), Option 3 offline
+(dense+weighted), Option 1 offline randomized-instance (dense+weighted), ... Each
+evaluated on the SAME weighted instance/distribution it was trained on.
+
+**Stats:**
+```
+Option 3 offline, dense_tardiness + weighted (job_weight_range=(1,6)):
+  tardiness=28.00  late=5  scheduled=100/100
+  (vs. dense-only 56.00, vs. legacy 152.00/155.00 @ 300k/600k)
+  EDF=16.00  LST=8.00  ATC=301.00 (much worse once weights matter)  WSPT+BestFit=1152.00
+```
+
+**Observation:** The two fixes compound: dense_tardiness alone took Option 3 from
+152/155 (legacy) to 56.00; adding real weights on top takes it to 28.00 -- within 20 of
+EDF, and now dramatically ahead of ATC/WSPT (both of which get noticeably worse once
+weights are real, since a "good" unweighted job ordering can now be a bad weighted one).
+This is the best "real RL" (non-hyper-heuristic) result of the entire session.
+
+**Conclusion / next step:** Option 1 offline randomized-instance (dense+weighted)
+launched next in the priority queue. Full comparison table (Option 1 offline, Option 1
+online, etc.) to follow as each job completes.
+
+---
+
 ## 2026-09-18 (S2W10) -- Windowed action space (prepared, not trained) + Option 1 curriculum integration
 
 **Config:** Implementation-only entry (overnight autonomous work, alongside the weighted
