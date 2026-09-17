@@ -94,10 +94,24 @@ today (legacy AND dense-only-unweighted both gave 100% SPT, 0% anything else, ex
 was needed to unstick the online policy from its earlier local optimum, not either fix
 alone.
 
-**Conclusion / next step:** Both offline and online priority items now show real wins.
-Remaining in queue: Option 3 online (dense+weighted, launching next), Option 2
-(dense+weighted, lowest priority, not yet started). Full-scale Option 1 validation (1.2M,
-dense+weighted, offline) running in parallel.
+**Follow-up: Option 3 online rho~0.75, dense_tardiness (unweighted) -- first Option 3
+online result at all.**
+```
+Option 3 (dense, unweighted): tardiness=199.00  late=19  scheduled=772/864
+EDF: 193.00  ATC: 120.00  SPT: 163.00  WSPT+BestFit: 192.00
+```
+Worse than ATC/SPT, roughly level with EDF/WSPT, and notably fewer jobs scheduled
+(772 vs 796-799 for every heuristic) -- Option 3's raw-feature-priority-learning
+approach doesn't transfer to the online case as readily as Option 1's rule selection
+did, at least not from dense_tardiness alone. Consistent with the offline pattern where
+Option 3 needed BOTH dense_tardiness AND real weights to clearly beat ATC (56.00 dense-
+only vs 28.00 dense+weighted) -- the weighted version is running now.
+
+**Conclusion / next step:** Both offline and online priority items now show real wins for
+Option 1. Option 3 online needs the weighted follow-up (running) before drawing
+conclusions. Remaining in queue: Option 2 (dense+weighted, lowest priority, not yet
+started). Full-scale Option 1 validation (1.2M, dense+weighted, offline) running in
+parallel.
 
 ---
 
