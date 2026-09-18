@@ -69,19 +69,34 @@ def run_episode(model, env):
     return {
         "total_reward": sum(rewards),
         "tardiness": base_env.tardiness.copy(),
+        "job_weights": base_env.job_weights.copy(),
         "late_jobs": int((base_env.tardiness > 0).sum()),
         "jobs_scheduled": int((base_env.start_times != -1).sum()),
         "truncated": truncated,
     }
 
 
+def _weighted_tardiness(result):
+    """SchedulingEnv.tardiness stores RAW, unweighted T_j -- no weight
+    multiplication anywhere in the env (2026-09-18, S2W10 finding). Every
+    result before this fix reported raw tardiness even once real job
+    weights were introduced, which is NOT the objective the reward function
+    (lambda_2 * sum(w_j*T_j)) or the RL training signal actually optimizes
+    -- see training-log.md's matching entry. Compute it explicitly here so
+    both are always reported and this can't silently recur. Equal to raw
+    tardiness when every weight is 1.0 (the unweighted default)."""
+    return float((result["tardiness"] * result["job_weights"]).sum())
+
+
 def _print_row(tag, result, denom, trunc_note=""):
     print(f"{tag:22s} reward={result['total_reward']:9.2f}  tardiness={result['tardiness'].sum():9.2f}  "
+          f"weighted_tardiness={_weighted_tardiness(result):9.2f}  "
           f"late={result['late_jobs']:4d}  scheduled={result['jobs_scheduled']:4d}/{denom}{trunc_note}")
 
 
-def _print_aggregate_row(tag, tardiness_vals, late_vals, scheduled_vals, denom):
+def _print_aggregate_row(tag, tardiness_vals, weighted_tardiness_vals, late_vals, scheduled_vals, denom):
     print(f"{tag:22s} tardiness={np.mean(tardiness_vals):8.2f}+/-{np.std(tardiness_vals):6.2f}  "
+          f"weighted_tardiness={np.mean(weighted_tardiness_vals):8.2f}+/-{np.std(weighted_tardiness_vals):6.2f}  "
           f"late={np.mean(late_vals):5.2f}  scheduled={np.mean(scheduled_vals):5.2f}/{denom}")
 
 
@@ -141,7 +156,7 @@ def main():
             ))
         model = load_model(args.option, template_env, checkpoint_tag=args.checkpoint_tag)
 
-        variant_tardiness, variant_late, variant_scheduled, denoms = [], [], [], []
+        variant_tardiness, variant_weighted, variant_late, variant_scheduled, denoms = [], [], [], [], []
         for i in range(args.eval_runs):
             seed = RANDOM_INSTANCE_SEED_CEILING + i
             if args.online:
@@ -159,13 +174,15 @@ def main():
                 env = build_eval_env(args.option, make_base_gym_env(seed=seed, job_weight_range=job_weight_range))
             r = run_episode(model, env)
             variant_tardiness.append(r["tardiness"].sum())
+            variant_weighted.append(_weighted_tardiness(r))
             variant_late.append(r["late_jobs"])
             variant_scheduled.append(r["jobs_scheduled"])
         avg_denom = np.mean(denoms)
-        _print_aggregate_row(f"Option {args.option}", variant_tardiness, variant_late, variant_scheduled, f"{avg_denom:.0f}")
+        _print_aggregate_row(f"Option {args.option}", variant_tardiness, variant_weighted, variant_late,
+                              variant_scheduled, f"{avg_denom:.0f}")
 
         for name in args.heuristics:
-            h_tardiness, h_late, h_scheduled = [], [], []
+            h_tardiness, h_weighted, h_late, h_scheduled = [], [], [], []
             for i in range(args.eval_runs):
                 seed = RANDOM_INSTANCE_SEED_CEILING + i
                 if args.online:
@@ -178,9 +195,10 @@ def main():
                                                job_weight_range=job_weight_range)
                 h = run_heuristic(name, config=cfg)
                 h_tardiness.append(h["tardiness"].sum())
+                h_weighted.append(float((h["tardiness"] * cfg["job_weights"]).sum()))
                 h_late.append(h["late_jobs"])
                 h_scheduled.append(h["jobs_scheduled"])
-            _print_aggregate_row(name, h_tardiness, h_late, h_scheduled, f"{avg_denom:.0f}")
+            _print_aggregate_row(name, h_tardiness, h_weighted, h_late, h_scheduled, f"{avg_denom:.0f}")
         return
 
     if args.online:
@@ -201,7 +219,7 @@ def main():
               f"{n_realized} realized arrivals\n")
     else:
         eval_config = generate_env_config(seed=0, num_jobs=100, num_machines=10, horizon=100,
-                                           job_weight_range=job_weight_range) if job_weight_range else None
+                                           job_weight_range=job_weight_range)
         denom = 100
         variant_env = make_base_gym_env(job_weight_range=job_weight_range)
 
@@ -213,6 +231,7 @@ def main():
 
     for name in args.heuristics:
         h = run_heuristic(name, config=eval_config)
+        h["job_weights"] = eval_config["job_weights"]
         _print_row(name, h, denom)
 
 

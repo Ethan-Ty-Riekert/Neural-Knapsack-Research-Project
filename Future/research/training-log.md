@@ -201,6 +201,57 @@ Option 3's online underperformance is real and confirmed, not an artifact of one
 seed -- unlike Option 1's case, more rigorous evaluation did not overturn the earlier
 finding here.
 
+**Methodological correction (user-prompted: "do we need to update the heuristics to work
+with weighted jobs?"): every "tardiness" number reported since job weights were
+introduced was the WRONG metric.** `SchedulingEnv.tardiness[job]` stores raw, unweighted
+`T_j = max(0, C_j-d_j)` -- no weight multiplication anywhere in the env. Every comparison
+this session used `tardiness.sum()` (raw), not the actual objective the reward function
+optimizes (`lambda_2 * sum(w_j * T_j)`, weighted). This matters specifically for WSPT/ATC,
+which are *designed* to deliberately sacrifice a low-weight job's timeliness to protect
+high-weight ones -- exactly the trade raw tardiness can't see. The heuristics themselves
+need no code changes (EDF/SPT/LST/FCFS/LPT are correctly weight-blind by definition;
+WSPT/ATC already correctly use weight, confirmed earlier today) -- the EVALUATION metric
+was wrong, not the heuristics.
+
+**Recomputed with the correct metric (weighted tardiness = sum(w_j*T_j)):**
+```
+Offline (fixed instance, single instance as always for this track):
+  Option 3 (1.2M): weighted=13.00  <- BEATS LST (24.00) outright, not just "close"
+  LST:             weighted=24.00
+  Option 1 (1.2M): weighted=30.00  <- still beats EDF
+  EDF:             weighted=46.00
+  ATC:             weighted=341.00
+  WSPT+BestFit:     weighted=3013.00
+
+Online (rho~0.75, 20 held-out instances, mean):
+  ATC:      weighted=644.20+/-303.43  <- still best (same conclusion as the raw-tardiness
+                                          20-instance check -- a smaller 5-instance check
+                                          run first gave a misleading reversal, itself
+                                          another instance of the small-sample trap)
+  Option 1: weighted=730.30+/-306.91
+  EDF:      weighted=769.70+/-414.44
+  SPT:      weighted=788.20+/-389.26
+```
+
+**Observation:** The offline picture genuinely improves under the correct metric -- Option
+3 doesn't just approach LST, it beats it, a real (same single instance both ways, not a
+sample-size artifact) and important upgrade to the session's headline result. The online
+picture is qualitatively unchanged from the raw-tardiness 20-instance correction: ATC
+still wins, Option 1 closes most but not all of the gap. Both raw and weighted tardiness
+now get reported going forward (see the eval-script fix below) so this can't silently
+recur.
+
+**Conclusion / next step:** `eval_action_space_variant.py` updated to report
+`weighted_tardiness` alongside raw tardiness whenever `--job-weight-min/max` is set.
+Results artifact corrected to lead with weighted tardiness (the actual objective) for
+every weighted comparison; raw tardiness kept as a secondary/historical reference where
+useful. This is now the permanent convention for any future weighted-instance
+evaluation in this project.
+
+---
+
+## 2026-09-18 (S2W10) -- Full-scale Option 3 offline validation (superseded numbers corrected above)
+
 **Full-scale (1.2M timestep) Option 3 offline validation, matching Option 1's treatment
 -- new best RL result of the entire session.**
 ```
