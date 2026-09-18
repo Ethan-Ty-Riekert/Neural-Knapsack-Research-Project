@@ -166,12 +166,14 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
         model.Add(t >= 0)
         tardiness_vars.append(t)
 
-    # job_weights are always 1.0 in every instance this project generates
-    # (Code/env/env_config.py::generate_env_config) -- CP-SAT requires
-    # integer objective coefficients, so weights are rounded to the nearest
-    # integer here. Stated explicitly per CLAUDE.md rather than silently:
-    # this would need revisiting (e.g. scaling by 1000 and dividing back)
-    # if a future instance ever uses non-uniform, non-integer weights.
+    # STALE COMMENT FIXED (2026-09-18, S2W9): this used to say "job_weights
+    # are always 1.0 in every instance this project generates" -- no longer
+    # true since generate_env_config()'s job_weight_range parameter
+    # (added 2026-09-18) draws integer weights via rng.integers(). CP-SAT
+    # still requires integer objective coefficients, so weights are rounded
+    # to the nearest integer here -- a no-op for the current integer-only
+    # job_weight_range, but would need revisiting (e.g. scaling by 1000 and
+    # dividing back) if a future instance ever uses non-integer weights.
     weights = np.round(job_weights).astype(int)
     model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs)))
 
@@ -392,10 +394,15 @@ def _main():
              "num_jobs=100, num_machines=10, horizon=100 -- the exact instance every "
              "fixed-instance training/eval run in this project uses) instead of small "
              "freshly-generated held-out instances. Overrides --num-instances/--num-jobs/"
-             "--num-machines/--horizon. Not expected to reach proven OPTIMAL status "
-             "(NP-hard, this project's own finding capped proven-optimal solving at "
-             "~10 jobs) -- read result['best_bound'] as a valid lower bound regardless "
-             "of status, per solve()'s docstring."
+             "--num-machines/--horizon. NP-hard in general, so proven OPTIMAL status is "
+             "not guaranteed -- but STALE CLAIM FIXED (2026-09-18, S2W9): this used to say "
+             "'capped at ~10 jobs,' which was true only with the default "
+             "--num-search-workers 1. The 2026-09-14 finding "
+             "(training-log.md) is that --num-search-workers 15 reaches OPTIMAL on this "
+             "exact 100-job instance in ~22s -- pass --num-search-workers generously "
+             "(e.g. os.cpu_count()-1) before assuming OPTIMAL is out of reach. Read "
+             "result['best_bound'] as a valid lower bound regardless of status either way, "
+             "per solve()'s docstring."
     )
     parser.add_argument(
         "--online", action="store_true",

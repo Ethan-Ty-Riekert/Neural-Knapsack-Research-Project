@@ -235,10 +235,9 @@
              RESOLVED 2026-09-18: author field was wrong ("Hu, Ruizhen") in an
              earlier pass -- corrected to Zhang/Zi/Ge, confirmed against
              reference [35] in NotesForAI/Ty_Riekert_s_Project (1).pdf (the
-             user's own pre-research doc, extracted via pypdf). This is the
-             same paper as DBLP:journals/corr/abs-2107-04333 below, kept under
-             both keys since both are already cited elsewhere -- pick one
-             before submission to avoid a duplicate bibliography entry.}
+             user's own pre-research doc, extracted via pypdf). RESOLVED
+             2026-09-18: the duplicate DBLP:journals/corr/abs-2107-04333 entry
+             for this same paper has been removed -- cite this key.}
 }
 
 @article{gnn2024jsspsurvey,
@@ -766,25 +765,14 @@ abstract = {The convergence of Reinforcement Learning (RL) and Bin Packing Probl
   doi={10.1109/LRA.2025.3534070}
   }
 
-% RL approach to bin packing (not cloud related). NOTE: same arXiv:2107.04333
-% paper as hu2021attend2pack above -- author lists conflict (Hu, Ruizhen vs.
-% Zhang/Zi/Ge per DBLP). Unresolved, flagged above; pick one before submission.
-@article{DBLP:journals/corr/abs-2107-04333,
-  author       = {Jingwei Zhang and
-                  Bin Zi and
-                  Xiaoyu Ge},
-  title        = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with
-                  Attention},
-  journal      = {CoRR},
-  volume       = {abs/2107.04333},
-  year         = {2021},
-  url          = {https://arxiv.org/abs/2107.04333},
-  eprinttype    = {arXiv},
-  eprint       = {2107.04333},
-  timestamp    = {Tue, 20 Jul 2021 15:08:33 +0200},
-  biburl       = {https://dblp.org/rec/journals/corr/abs-2107-04333.bib},
-  bibsource    = {dblp computer science bibliography, https://dblp.org}
-}
+% RESOLVED (2026-09-18, S2W9): this was a DBLP-exported duplicate of
+% hu2021attend2pack above (same paper, arXiv:2107.04333). The "conflicting
+% author lists" note that used to justify keeping both was itself stale --
+% hu2021attend2pack's author field was already corrected to Zhang/Zi/Ge
+% (matching this entry exactly) earlier the same day, so there was no longer
+% any actual conflict, just a pure duplicate under a raw DBLP export key
+% (violating this file's own <author><year><slug> key convention). Removed;
+% cite hu2021attend2pack for this paper.
 
 % Used the system implementation section
 @ARTICLE{7039233,

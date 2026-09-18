@@ -412,6 +412,103 @@ doesn't yet have a validated way to turn that structure into a better deployed c
 that needs a full-training-budget search, a substantially larger compute commitment left
 for a future session.
 
+## Phase 13 — PPO-Lagrangian ruled out, architecture ruled out, action-space size confirmed as root cause; online case, heavy tails, job weights, and windowing added (2026-08-29 – 2026-09-18, S2W6-S2W9)
+
+Three weeks of work missing from this file until now (flagged by an external critical
+review of the project, 2026-09-18 -- see `report.md`); the authoritative blow-by-blow
+record throughout is `Future/research/training-log.md`, this is a summary with pointers.
+
+**PPO-Lagrangian tried and ruled out (2026-09-14/15).** Implemented the standard
+Lagrangian-relaxation approach to the abandonment problem (`Code/policies/
+ppo_lagrangian.py`, `alpha`/`lambda` dual ascent per Stooke, Achiam & Abbeel 2020).
+Result: complete, deterministic collapse to zero jobs scheduled across all 3 seeds x 50
+held-out instances (zero variance) -- `lambda` hit its cap at ~18% of training and stayed
+pinned while the sampled cost kept rising for the rest of the run, the exact instability
+risk the design doc flagged before running it. Two follow-ups identified (tighter
+`lambda_max`; the standard two-critic architecture instead of mutating reward in place)
+but not pursued further -- superseded by the architecture and action-space investigations
+below. Writeup: `2026-09-14-ppo-lagrangian-and-reward-structure.md`.
+
+**Architecture (pointer network) tried and ruled out (2026-09-16).** Adapted the
+`PointerActorCritic` network (per-job/per-machine attention, matching DeepRM/Decima-style
+designs) to PPO, full 1.9M-timestep curriculum, 3 seeds. Result: statistically
+indistinguishable from the existing flat-MLP PPO (~1303-1619 vs. ~1289-1320 tardiness) --
+architecture is not the bottleneck. Confirmed by the same architecture working fine under
+A2C (~28 tardiness) on the identical `PointerActorCritic` class, isolating the failure to
+something specific to PPO's training dynamics, not the network. Writeup:
+`2026-09-16-pointer-network-ppo.md`.
+
+**Online case (dynamic Poisson arrivals) designed and implemented (2026-09-16).** New
+`OnlineSchedulingEnv`/`arrival_process.py`, full MDP formulation with a resampler for
+curriculum-style training against a distribution of arrival sequences rather than one
+fixed episode. First 3-rate x 2-algorithm campaign launched the same day. Writeup:
+`2026-09-16-online-arrival-mdp-design.md`.
+
+**Root cause found: action-space size, not reward or architecture (2026-09-17).** Seven
+independent fixes (reward-weight tuning, four Lagrangian variants, a hyperparameter
+search, the pointer architecture, a full reward redesign) had all converged on the same
+~1290-1330 tardiness band. Comparing against DeepRM/Decima's own action-space size
+(~11 choices) against this project's `max_jobs*num_machines+1` (1000+ at deployed scale)
+identified the one untested structural variable. Three shrinking designs implemented and
+compared (`Code/env/rule_selection_gym_wrapper.py` Option 1: `Discrete(8)`, pick one of 7
+priority heuristics + idle; Options 2/3: `Discrete(max_jobs+1)`, learned per-job priority
+scoring, Option 3 adds an ATC composite feature). Result, offline fixed instance:
+```
+CP-SAT (proven optimal)     8.00      LST                8.00
+EDF                        16.00      Option 1 (600k)    19.00
+Historic PPO (7 fixes)  ~1290-1330    SPT              1321.00
+```
+Option 1 beat the entire 7-fix PPO history by ~68x and closed to within 3 units of EDF --
+the first real improvement of the whole PPO campaign. Honest limitation (user-raised,
+recorded the same day): Option 1's action space is literally "pick one of 7 pre-written
+heuristics," so its win is a meta-selection result (adaptive heuristic-switching), not
+evidence RL discovered new scheduling behaviour -- Options 2/3 (continuous learned
+priority scores) are the actually-novel-strategy-capable designs and were weaker at this
+training budget. Online (heavy load, rho~0.75): Option 1 beat 6 of 8 heuristics but lost
+to ATC, and its numbers were *exactly* identical to SPT's -- evidence it converged onto
+imitating one classical rule rather than synthesizing new behaviour online. Writeup:
+`2026-09-17-action-space-reduction.md` (see its Section 6.1 for the full limitation
+discussion).
+
+**Heavy-tailed arrivals + retrospective CP-SAT oracle for the online case (2026-09-17).**
+Uniform online arrivals made near-perfect scheduling structurally achievable regardless of
+load (every job had enough deadline slack to absorb average-case congestion) -- switched
+to a log-normal job-size distribution grounded in Google/Azure cluster-trace literature
+(Reiss et al. 2012; Cortez et al. 2017) so lateness becomes genuinely unavoidable at high
+load. Also built a retrospective CP-SAT oracle (`exact_solver.py::solve_retrospective()`)
+that re-solves an online episode with hindsight once the realized arrival order is known,
+giving the online case a proven-lower-bound reference point it previously lacked (NP-hard
+at deployed scale, `UNKNOWN`/unproven status there, but exact on small instances).
+Writeups: `2026-09-17-heavy-tailed-arrivals.md`, `2026-09-17-retrospective-cpsat-oracle-
+and-rho-testing.md`.
+
+**Foundational fix: job weights randomized (2026-09-18, user-directed).** `job_weights`
+had been hardcoded to 1.0 in every instance this project has ever generated, silently
+making the reward function's and WSPT/ATC's `w_j` weighting term dead code for the
+project's entire history despite weights being part of the objective function from the
+start. Fixed in `generate_env_config()`/`generate_poisson_arrivals()` (`job_weight_range`
+parameter, backward-compatible default), and a real evaluation bug this surfaced --
+`SchedulingEnv.tardiness` is raw/unweighted, so every result reported between introducing
+weights and fixing this used the wrong metric -- was found and fixed the same day
+(`eval_action_space_variant.py::_weighted_tardiness()`). Every Option 1/2/3 offline/online
+checkpoint was then retrained against real weights, dense per-tick tardiness reward (a
+reward redesign that, unlike the earlier full redesign above, worked well once combined
+with the smaller action space), and evaluated on both weighted and unweighted metrics
+throughout.
+
+**DeepRM-style windowed action space: implemented, trained, negative result so far
+(2026-09-18).** Options 2/3's action space bounds job-slot selection to an EDF-ordered
+window of `window_size` visible jobs + a backlog scalar (`windowed_priority_gym_wrapper
+.py`), matching DeepRM's own ~10-20-choice design more closely than the unwindowed
+`Discrete(max_jobs+1)`. All three windowed checkpoints trained tonight (Options 2 and 3
+offline, Option 3 online) underperformed their unwindowed counterparts -- offline results
+converge to an almost-exact tie with plain EDF, and the online result is the
+second-worst of nine methods compared, well below even FCFS. Not yet separated from an
+undertraining confound (300k timesteps vs. the unwindowed results' larger training
+budget) or a design confound (the window's EDF-ordering may itself bias the learnable
+policy toward EDF-like behaviour) -- flagged as unresolved, not a validated direction, in
+`Future/research/training-log.md`'s 2026-09-18 entries.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

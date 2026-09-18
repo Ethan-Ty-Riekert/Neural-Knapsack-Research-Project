@@ -1,8 +1,22 @@
+> **⚠️ SUPERSEDED (2026-09-18, S2W9).** This document's headline conclusion --
+> "PPO fails completely," "PPO consistently collapses to idle-only behavior
+> regardless of hyperparameter settings" -- was true on 2026-08-07 but is NOT
+> the project's current finding. The idle-collapse was later traced
+> substantially to two real bugs (a capacity-reset leak and an A2C
+> `dict.get()` crash), not an algorithmic PPO limit -- see `PROGRESS.md`
+> Phase 1 (2026-08-09). By 2026-09-18, action-space-reduced PPO variants
+> (`Code/training/train_action_space_variant.py`, Options 1-3) reach weighted
+> tardiness within a few units of the best classical heuristic -- see
+> `Future/research/training-log.md`'s 2026-09-17/18 entries for the current,
+> maintained record. Kept here for historical record only; do not cite this
+> file's conclusions in the project report without checking `training-log.md`
+> first.
+
 # Hyperparameter Optimization Testing - Findings and Recommendations
 
 **Date:** 2026-08-07 (S2W3)
 **Tested by:** Claude (Autonomous Testing)
-**Status:** CRITICAL ISSUES FOUND
+**Status:** CRITICAL ISSUES FOUND (SUPERSEDED -- see banner above)
 
 ---
 

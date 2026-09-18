@@ -1,8 +1,19 @@
+> **⚠️ SUPERSEDED (2026-09-18, S2W9).** "PPO fails completely" (below) was true
+> on 2026-08-07 but is NOT the project's current finding -- the idle-collapse
+> was later traced substantially to two real bugs (a capacity-reset leak and
+> an A2C `dict.get()` crash), not an algorithmic PPO limit -- see
+> `PROGRESS.md` Phase 1 (2026-08-09). By 2026-09-18, action-space-reduced PPO
+> variants reach weighted tardiness within a few units of the best classical
+> heuristic -- see `Future/research/training-log.md`'s 2026-09-17/18 entries
+> for the current record. Kept here for historical record only; do not cite
+> this file's conclusions in the project report without checking
+> `training-log.md` first.
+
 # Final Implementation Report - Optuna Hyperparameter Optimization
 
 **Date:** 2026-08-07 (S2W3)
 **Project:** Neural Knapsack Research - RL for Cloud Scheduling
-**Status:** Framework Complete, Fundamental Issues Identified
+**Status:** Framework Complete, Fundamental Issues Identified (SUPERSEDED -- see banner above)
 
 ---
 
