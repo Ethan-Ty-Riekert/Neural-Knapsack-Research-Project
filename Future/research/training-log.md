@@ -145,9 +145,31 @@ mechanisms), ending point is 11.00 -- roughly a 118x improvement, via action-spa
 reduction (Option 1) + dense-tardiness reward + real job weights, each contributing a
 distinct, separately-verified piece of the fix.
 
-**Conclusion / next step:** Full offline priority queue and full-scale validation
-complete. Remaining: Option 3 online dense+weighted (running) -- the last open item from
-tonight's queue.
+**Follow-up: Option 3 online rho~0.75, dense+weighted -- the one result that did NOT
+improve, completing tonight's full queue.**
+```
+Option 3 (dense+weighted): tardiness=210.00  late=20  scheduled=818/866
+Option 3 (dense, unweighted): tardiness=199.00  (SLIGHTLY WORSE with weights added)
+EDF: 147.00   ATC: 167.00   SPT: 177.00   WSPT+BestFit: 178.00
+```
+Unlike every other combination tonight (Option 1 offline/online, Option 2 offline,
+Option 3 offline all improved substantially with dense+weighted), **Option 3 online got
+marginally worse**, and remains behind every heuristic. Honest, unresolved finding, not
+investigated further tonight -- Option 3's raw-feature-priority-learning approach may
+simply need more training online (it has had only one 300k-timestep pass, vs. Option 1's
+multiple passes and the full-scale 1.2M offline validation), or there may be a genuine
+architectural mismatch between its continuous-scoring design and the online case's
+harder credit-assignment problem. Flagged for review rather than chased further
+autonomously -- a case where more training vs. a different fix isn't obvious from the
+data alone, the kind of judgment call worth a second opinion rather than guessing.
+
+**Conclusion / next step:** Full priority queue (offline + online, all three options,
+dense+weighted, plus the 1.2M full-scale validation) now complete. Session summary:
+Option 1 offline beats EDF (11.00 vs 16.00) and Option 1 online beats every heuristic
+including ATC (136.00 vs 147.00) -- both firsts this session. Option 2/3 offline both
+improve 4-20x. Option 3 online is the one open thread, flagged above rather than
+resolved. Results artifact updated to reflect all of this
+(https://claude.ai/artifact/Y1AFGzyT6P6jUWmbcwT1uc).
 
 ---
 
