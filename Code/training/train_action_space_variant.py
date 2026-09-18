@@ -47,7 +47,9 @@ from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
 from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
 from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
 from Code.env.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
+from Code.env.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
 from Code.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
+from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
 from Code.training.train_optimized import make_online_resampler, make_random_instance_resampler
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 
@@ -162,23 +164,42 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
     return OnlineGymSchedulingEnv(base_env, max_jobs=max_jobs, job_resampler=job_resampler)
 
 
-def build_env_and_policy(option: str, full_gym_env=None):
+def build_env_and_policy(option: str, full_gym_env=None, window_size=None):
+    """window_size (2026-09-18, S2W10, user-approved): only meaningful for
+    option in ("2", "3") -- DeepRM-style bounded action-space window
+    (Code/env/windowed_priority_gym_wrapper.py), Discrete(window_size+1)
+    instead of Discrete(max_jobs+1). See that module's docstring for the
+    design choices (EDF-ordered window, backlog scalar). None (default)
+    keeps the existing unwindowed Options 2/3 behaviour unchanged."""
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
     if option == "1":
+        if window_size is not None:
+            raise ValueError("--window-size only applies to --option 2/3 (Option 1's action "
+                              "space is already the 8-choice rule menu, not job-slot selection).")
         env = RuleSelectionGymSchedulingEnv(full_gym_env)
         policy, policy_kwargs = "MlpPolicy", {}
     elif option in ("2", "3"):
         use_atc = option == "3"
-        env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
-        policy = PriorityPointerMaskableActorCriticPolicy
-        policy_kwargs = dict(
-            max_jobs=env.max_jobs,
-            num_machines=env.num_machines,
-            num_resources=env.num_resources,
-            use_atc=use_atc,
-        )
+        if window_size is not None:
+            env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc)
+            policy = WindowedPriorityPointerMaskableActorCriticPolicy
+            policy_kwargs = dict(
+                window_size=window_size,
+                num_machines=env.num_machines,
+                num_resources=env.num_resources,
+                use_atc=use_atc,
+            )
+        else:
+            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
+            policy = PriorityPointerMaskableActorCriticPolicy
+            policy_kwargs = dict(
+                max_jobs=env.max_jobs,
+                num_machines=env.num_machines,
+                num_resources=env.num_resources,
+                use_atc=use_atc,
+            )
     else:
         raise ValueError(f"Unknown option {option!r} (expected '1', '2', or '3')")
 
@@ -206,6 +227,12 @@ def main():
                               "Future/research/2026-09-17-retrospective-cpsat-oracle-and-"
                               "rho-testing.md Section 3.")
     parser.add_argument("--job-size-distribution", choices=["uniform", "lognormal"], default="uniform")
+    parser.add_argument("--window-size", type=int, default=None,
+                         help="2026-09-18, user-approved: DeepRM-style bounded action-space "
+                              "window for --option 2/3 -- Discrete(window_size+1) instead of "
+                              "Discrete(max_jobs+1). EDF-ordered window + backlog scalar, see "
+                              "Code/env/windowed_priority_gym_wrapper.py. Default None keeps "
+                              "the existing unwindowed behaviour.")
     parser.add_argument("--reward-mode", choices=["legacy", "dense_tardiness"], default="legacy",
                          help="2026-09-17 follow-up: dense_tardiness was only tested against the "
                               "old (huge) action space and ruled out there -- untested against "
@@ -264,7 +291,8 @@ def main():
             randomize_instances=args.randomize_instances, job_weight_range=job_weight_range,
         )
 
-    env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env)
+    env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env,
+                                                       window_size=args.window_size)
 
     model = MaskablePPO(
         policy, env,
