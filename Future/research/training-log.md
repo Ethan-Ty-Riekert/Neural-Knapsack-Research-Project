@@ -32,6 +32,58 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-18 (S2W9) -- Week-label correction + windowed Option 3 offline result
+
+**Note on week labels:** recomputing `((2026-09-18 - 2026-07-20).days // 7) + 1` gives
+`60 // 7 + 1 = 9` -> **S2W9**, not S2W10 as every entry/doc from today and yesterday
+in this log has used. That was an arithmetic error made early in tonight's session
+and repeated since. Per this file's "never edit past entries" rule, not going back to
+fix already-written S2W10 labels -- just using the correct S2W9 from here on. If this
+matters for citation/organization purposes, past S2W10 labels dated 2026-09-17/18
+should be read as S2W9.
+
+**Config:** Windowed Option 3 offline (DeepRM-style bounded action-space window,
+`--window-size 15`, EDF-ordered + backlog scalar -- see
+`Code/env/windowed_priority_gym_wrapper.py`), 300k timesteps (first-pass filter
+scale, matching this session's own established precedent), `--reward-mode
+dense_tardiness --job-weight-min 1 --job-weight-max 6`, save-tag
+`window15_offline_dense_weighted`. Evaluated on the full 50-instance randomized
+protocol (seeds 500000-500049), newly wired through
+`Code/utils/results_log.py::append_eval_result()` (see this session's separate
+CSV-persistence commit) -- this is the first result recorded there instead of only
+in this file.
+
+**Stats:**
+```
+Option 3 (window=15)   tardiness=   55.14+/- 70.66  weighted_tardiness=  105.86+/-137.35  late= 9.20  scheduled=98.22/100
+EDF                    tardiness=   37.30+/- 60.43  weighted_tardiness=  109.36+/-175.73  late=12.22  scheduled=96.84/100
+LST                    tardiness=   23.94+/- 56.02  weighted_tardiness=   68.62+/-159.10  late= 8.26  scheduled=97.76/100
+ATC                    tardiness=  221.24+/-129.98  weighted_tardiness=  298.80+/-184.13  late=11.10  scheduled=94.68/100
+```
+
+**Observation:** Windowed Option 3 (weighted_tardiness=105.86) is roughly tied with
+EDF (109.36) and clearly *worse* than LST (68.62) -- a real regression from the
+unwindowed Option 3 result reported earlier this session (weighted_tardiness=13.00,
+beating LST outright). Two confounds not yet separated: (1) the windowed run is only
+300k timesteps (first-pass filter scale) vs. the unwindowed "beats LST" result's
+larger/full-scale training, so this may just be an undertrained comparison, not a
+windowing regression; (2) restricting the visible candidate set to the 15
+EDF-nearest jobs structurally biases the learnable policy toward EDF-like behaviour
+(the window is EDF-ordered by construction -- see this module's own design-choices
+docstring), which is consistent with the observed near-tie with plain EDF.
+
+**Conclusion / next step:** Do not treat windowing as validated or as an improvement
+yet -- it needs a same-scale (matching timesteps) apples-to-apples comparison against
+unwindowed Option 3 before either confound can be ruled out. Next: once the
+currently-running windowed Option 3 *online* job (save-tag
+`window15_online_lognormal_rho075_dense_weighted`) finishes, evaluate it the same
+way; if both windowed results underperform their unwindowed counterparts at matched
+timesteps, the EDF-ordering design choice (flagged as untested in the wrapper's own
+docstring) is the first thing to revisit -- e.g. arrival-order or raw-priority-score
+windowing instead of EDF-order, so the window doesn't pre-bias toward one heuristic.
+
+---
+
 ## 2026-09-18 (S2W10) -- Weighted retrain results (overnight queue, best performers first)
 
 **Config:** Following the user's priority ("best performing models first"), weighted
