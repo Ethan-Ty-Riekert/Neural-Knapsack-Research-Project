@@ -101,6 +101,44 @@ at this training scale. Still not separated from the undertrained-vs-biased conf
 (both windowed runs are 300k vs. unwindowed Option 3's larger full-scale training) --
 same next step as above.
 
+**Update (same day): windowed Option 3 online is a clear negative result, not just a
+tie.** Save-tag `window15_online_lognormal_rho075_dense_weighted`, 300k timesteps,
+arrival_rate=9 (rho~0.75), lognormal, dense+weighted, 50-instance randomized online
+eval (seeds 500000-500049):
+```
+Option 3 (window=15)   tardiness=  309.74+/-117.71  weighted_tardiness=  952.74+/-370.59  late=28.16  scheduled=825.98/898
+ATC                    tardiness=  234.36+/-114.67  weighted_tardiness=  648.16+/-338.30  late=23.80  scheduled=835.92/898
+WSPT+BestFit           tardiness=  263.66+/-107.00  weighted_tardiness=  709.42+/-299.06  late=24.30  scheduled=836.88/898
+EDF+BestFit            tardiness=  245.46+/-139.84  weighted_tardiness=  736.44+/-430.41  late=26.82  scheduled=834.90/898
+SPT                    tardiness=  269.20+/-116.80  weighted_tardiness=  798.46+/-346.65  late=22.90  scheduled=833.42/898
+EDF                    tardiness=  263.16+/-126.71  weighted_tardiness=  800.90+/-404.57  late=28.78  scheduled=832.62/898
+LST                    tardiness=  304.32+/-172.91  weighted_tardiness=  918.92+/-551.65  late=31.12  scheduled=827.70/898
+FCFS+FirstFit          tardiness=  323.02+/-154.46  weighted_tardiness=  987.50+/-511.52  late=33.44  scheduled=835.50/898
+```
+Unlike the offline case (where windowing produced a near-tie with EDF), windowed
+Option 3 online is the **second-worst of all nine methods compared** -- only
+FCFS+FirstFit (987.50), Tetris (1235.04), and LPT+WorstFit (2370.06) are worse; it
+loses to every priority-rule heuristic including plain EDF and SPT, and ATC (648.16)
+beats it by ~32%. ATC's number here (648.16) is consistent with the earlier
+non-windowed online finding (644.20, different eval-seed set) -- ATC remains the
+online case's best live policy across both action-space designs tested so far.
+
+**Conclusion / next step:** Across all three windowed checkpoints trained tonight
+(Option 3 offline, Option 2 offline, Option 3 online), none beat the best available
+heuristic, and the online case is not just a tie but a clear regression below most
+heuristics -- windowing has not reproduced or improved on the unwindowed Options 2/3
+results at this (300k, first-pass-filter) training scale. Combined with the offline
+EDF-matching pattern above, the most likely explanation remains the EDF-ordered
+window-selection design (flagged as untested in
+`Code/env/windowed_priority_gym_wrapper.py`'s own docstring): online arrivals
+constantly reshuffle which jobs are EDF-nearest, so a bounded EDF-ordered window may
+be *more* disruptive to a learned policy online than offline, consistent with online
+being the worse of the two results here. Not treating windowing as a validated
+direction based on tonight's results -- recommend either a same-scale unwindowed
+comparison to properly isolate the undertrained-vs-biased confound, or revisiting the
+window-selection ordering itself, before investing further training budget in this
+design.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Weighted retrain results (overnight queue, best performers first)
