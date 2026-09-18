@@ -47,12 +47,25 @@ EVAL_RESULT_FIELDS = [
     # across runs), just swapping sum-per-run for P95-per-run. Blank for any
     # row logged before this date.
     "tardiness_p95_mean", "tardiness_p95_std",
+    # weighted_tardiness_*: added 2026-09-18 (S2W10) after finding
+    # tardiness_mean/std above (and every other numeric field in this
+    # schema) is RAW, unweighted tardiness -- SchedulingEnv.tardiness never
+    # multiplies by job_weights. Once job_weight_range makes weights
+    # non-trivial, raw tardiness is not the objective the reward function
+    # (lambda_2*sum(w_j*T_j)) or RL training actually optimizes -- see
+    # Future/research/training-log.md's matching entry and
+    # eval_action_space_variant.py::_weighted_tardiness(). Equal to
+    # tardiness_mean/std when every job's weight is 1.0 (the unweighted
+    # default) -- always log both rather than only one, so this can't
+    # silently go stale again. Blank for any row logged before this date.
+    "weighted_tardiness_mean", "weighted_tardiness_std",
     "heuristic_name",
     "heuristic_reward_mean", "heuristic_reward_std",
     "heuristic_tardiness_mean", "heuristic_tardiness_std",
     "heuristic_late_jobs_mean", "heuristic_late_jobs_std",
     "heuristic_jobs_scheduled_mean", "heuristic_jobs_scheduled_std",
     "heuristic_tardiness_p95_mean", "heuristic_tardiness_p95_std",
+    "heuristic_weighted_tardiness_mean", "heuristic_weighted_tardiness_std",
     "n_episodes",
 ]
 

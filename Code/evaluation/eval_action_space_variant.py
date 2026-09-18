@@ -24,29 +24,47 @@ from sb3_contrib.common.wrappers import ActionMasker
 from Code.training.train_action_space_variant import make_base_gym_env, make_online_base_gym_env, mask_fn
 from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
 from Code.env.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
+from Code.env.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
 from Code.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
+from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
 from Code.env.env_config import generate_env_config
 from Code.env.arrival_process import generate_poisson_arrivals
 from Code.evaluation.eval_rl_agent import run_heuristic
 from Code.baselines.registry import DEFAULT_HEURISTICS
 from Code.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
 from Code.utils.paths import MODELS_DIR
+from Code.utils.results_log import append_eval_result
 
 
-def build_eval_env(option: str, full_gym_env):
+def build_eval_env(option: str, full_gym_env, window_size=None):
+    """window_size (2026-09-18 follow-up): mirrors
+    train_action_space_variant.py::build_env_and_policy's windowed branch --
+    must be passed here too or a windowed checkpoint's obs/action-space shape
+    won't match what MaskablePPO.load() expects."""
     if option == "1":
+        if window_size is not None:
+            raise ValueError("--window-size only applies to --option 2/3.")
         env = RuleSelectionGymSchedulingEnv(full_gym_env)
     elif option in ("2", "3"):
-        env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=(option == "3"))
+        use_atc = option == "3"
+        if window_size is not None:
+            env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc)
+        else:
+            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
     else:
         raise ValueError(f"Unknown option {option!r}")
     return ActionMasker(env, mask_fn)
 
 
-def load_model(option: str, template_env, checkpoint_tag=None):
+def load_model(option: str, template_env, checkpoint_tag=None, window_size=None):
     tag_suffix = f"_{checkpoint_tag}" if checkpoint_tag else ""
     checkpoint = MODELS_DIR / f"action_space_option{option}_ppo{tag_suffix}.zip"
-    custom_objects = {"policy_class": PriorityPointerMaskableActorCriticPolicy} if option in ("2", "3") else None
+    if window_size is not None:
+        custom_objects = {"policy_class": WindowedPriorityPointerMaskableActorCriticPolicy}
+    elif option in ("2", "3"):
+        custom_objects = {"policy_class": PriorityPointerMaskableActorCriticPolicy}
+    else:
+        custom_objects = None
     return MaskablePPO.load(str(checkpoint), env=template_env, custom_objects=custom_objects)
 
 
@@ -100,6 +118,54 @@ def _print_aggregate_row(tag, tardiness_vals, weighted_tardiness_vals, late_vals
           f"late={np.mean(late_vals):5.2f}  scheduled={np.mean(scheduled_vals):5.2f}/{denom}")
 
 
+_POLICY_TYPE = {"1": "rule_selection", "2": "priority_pointer", "3": "priority_pointer_atc"}
+
+
+def _log_result(args, model_path, heuristic_name,
+                 variant_reward, variant_tardiness, variant_weighted, variant_late, variant_scheduled,
+                 heur_reward, heur_tardiness, heur_weighted, heur_late, heur_scheduled, n_episodes):
+    """Append one row to rl_training/eval_results.csv (Code/utils/results_log.py),
+    matching eval_rl_agent.py's own append_eval_result convention exactly (one row
+    per heuristic compared, --no-log to opt out). weighted_tardiness_mean/std are
+    logged alongside raw tardiness_mean/std per the 2026-09-18 metric-bug fix --
+    see EVAL_RESULT_FIELDS' matching comment in results_log.py."""
+    if args.no_log:
+        return
+    policy_type = _POLICY_TYPE[args.option]
+    if args.window_size is not None:
+        policy_type = f"windowed{args.window_size}_{policy_type}"
+    tag = ((args.checkpoint_tag or "") + ("_randomized_eval" if args.randomized_eval else "")
+           + ("_online_eval" if args.online else ""))
+    variant_reward = np.atleast_1d(variant_reward).astype(float)
+    variant_tardiness = np.atleast_1d(variant_tardiness).astype(float)
+    variant_weighted = np.atleast_1d(variant_weighted).astype(float)
+    variant_late = np.atleast_1d(variant_late).astype(float)
+    variant_scheduled = np.atleast_1d(variant_scheduled).astype(float)
+    heur_reward = np.atleast_1d(heur_reward).astype(float)
+    heur_tardiness = np.atleast_1d(heur_tardiness).astype(float)
+    heur_weighted = np.atleast_1d(heur_weighted).astype(float)
+    heur_late = np.atleast_1d(heur_late).astype(float)
+    heur_scheduled = np.atleast_1d(heur_scheduled).astype(float)
+    append_eval_result({
+        "algo": f"action_space_option{args.option}",
+        "policy_type": policy_type,
+        "tag": tag,
+        "model_path": str(model_path),
+        "reward_mean": variant_reward.mean(), "reward_std": variant_reward.std(),
+        "tardiness_mean": variant_tardiness.mean(), "tardiness_std": variant_tardiness.std(),
+        "weighted_tardiness_mean": variant_weighted.mean(), "weighted_tardiness_std": variant_weighted.std(),
+        "late_jobs_mean": variant_late.mean(), "late_jobs_std": variant_late.std(),
+        "jobs_scheduled_mean": variant_scheduled.mean(), "jobs_scheduled_std": variant_scheduled.std(),
+        "heuristic_name": heuristic_name,
+        "heuristic_reward_mean": heur_reward.mean(), "heuristic_reward_std": heur_reward.std(),
+        "heuristic_tardiness_mean": heur_tardiness.mean(), "heuristic_tardiness_std": heur_tardiness.std(),
+        "heuristic_weighted_tardiness_mean": heur_weighted.mean(), "heuristic_weighted_tardiness_std": heur_weighted.std(),
+        "heuristic_late_jobs_mean": heur_late.mean(), "heuristic_late_jobs_std": heur_late.std(),
+        "heuristic_jobs_scheduled_mean": heur_scheduled.mean(), "heuristic_jobs_scheduled_std": heur_scheduled.std(),
+        "n_episodes": n_episodes,
+    })
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--option", choices=["1", "2", "3"], required=True)
@@ -130,6 +196,14 @@ def main():
                               "what the checkpoint was TRAINED on (or deliberately not, to test "
                               "transfer). See train_action_space_variant.py's matching flag.")
     parser.add_argument("--job-weight-max", type=int, default=None)
+    parser.add_argument("--window-size", type=int, default=None,
+                         help="Must match --window-size the checkpoint was TRAINED with "
+                              "(train_action_space_variant.py) -- option 2/3 only.")
+    parser.add_argument("--no-log", action="store_true",
+                         help="Skip appending this run's aggregate result to "
+                              "rl_training/eval_results.csv (Code/utils/results_log.py). "
+                              "Logging is on by default so every eval run this script does "
+                              "is queryable later, not just printed to stdout.")
     args = parser.parse_args()
 
     if args.online and args.arrival_rate is None:
@@ -149,14 +223,18 @@ def main():
             template_env = build_eval_env(args.option, make_online_base_gym_env(
                 args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                 seed=RANDOM_INSTANCE_SEED_CEILING, use_resampler=False, job_weight_range=job_weight_range,
-            ))
+            ), window_size=args.window_size)
         else:
             template_env = build_eval_env(args.option, make_base_gym_env(
                 seed=RANDOM_INSTANCE_SEED_CEILING, job_weight_range=job_weight_range,
-            ))
-        model = load_model(args.option, template_env, checkpoint_tag=args.checkpoint_tag)
+            ), window_size=args.window_size)
+        model = load_model(args.option, template_env, checkpoint_tag=args.checkpoint_tag,
+                            window_size=args.window_size)
+        tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
+        model_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
 
-        variant_tardiness, variant_weighted, variant_late, variant_scheduled, denoms = [], [], [], [], []
+        variant_reward, variant_tardiness, variant_weighted, variant_late, variant_scheduled, denoms = \
+            [], [], [], [], [], []
         for i in range(args.eval_runs):
             seed = RANDOM_INSTANCE_SEED_CEILING + i
             if args.online:
@@ -168,11 +246,13 @@ def main():
                 env = build_eval_env(args.option, make_online_base_gym_env(
                     args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                     seed=seed, use_resampler=False, job_weight_range=job_weight_range,
-                ))
+                ), window_size=args.window_size)
             else:
                 denoms.append(100)
-                env = build_eval_env(args.option, make_base_gym_env(seed=seed, job_weight_range=job_weight_range))
+                env = build_eval_env(args.option, make_base_gym_env(seed=seed, job_weight_range=job_weight_range),
+                                      window_size=args.window_size)
             r = run_episode(model, env)
+            variant_reward.append(r["total_reward"])
             variant_tardiness.append(r["tardiness"].sum())
             variant_weighted.append(_weighted_tardiness(r))
             variant_late.append(r["late_jobs"])
@@ -182,7 +262,7 @@ def main():
                               variant_scheduled, f"{avg_denom:.0f}")
 
         for name in args.heuristics:
-            h_tardiness, h_weighted, h_late, h_scheduled = [], [], [], []
+            h_reward, h_tardiness, h_weighted, h_late, h_scheduled = [], [], [], [], []
             for i in range(args.eval_runs):
                 seed = RANDOM_INSTANCE_SEED_CEILING + i
                 if args.online:
@@ -194,11 +274,15 @@ def main():
                     cfg = generate_env_config(seed=seed, num_jobs=100, num_machines=10, horizon=100,
                                                job_weight_range=job_weight_range)
                 h = run_heuristic(name, config=cfg)
+                h_reward.append(h["total_reward"])
                 h_tardiness.append(h["tardiness"].sum())
                 h_weighted.append(float((h["tardiness"] * cfg["job_weights"]).sum()))
                 h_late.append(h["late_jobs"])
                 h_scheduled.append(h["jobs_scheduled"])
             _print_aggregate_row(name, h_tardiness, h_weighted, h_late, h_scheduled, f"{avg_denom:.0f}")
+            _log_result(args, model_path, name,
+                        variant_reward, variant_tardiness, variant_weighted, variant_late, variant_scheduled,
+                        h_reward, h_tardiness, h_weighted, h_late, h_scheduled, args.eval_runs)
         return
 
     if args.online:
@@ -223,8 +307,10 @@ def main():
         denom = 100
         variant_env = make_base_gym_env(job_weight_range=job_weight_range)
 
-    env = build_eval_env(args.option, variant_env)
-    model = load_model(args.option, env, checkpoint_tag=args.checkpoint_tag)
+    env = build_eval_env(args.option, variant_env, window_size=args.window_size)
+    model = load_model(args.option, env, checkpoint_tag=args.checkpoint_tag, window_size=args.window_size)
+    tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
+    model_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
     result = run_episode(model, env)
     trunc_note = " [TRUNCATED]" if result["truncated"] else ""
     _print_row(f"Option {args.option}", result, denom, trunc_note)
@@ -233,6 +319,11 @@ def main():
         h = run_heuristic(name, config=eval_config)
         h["job_weights"] = eval_config["job_weights"]
         _print_row(name, h, denom)
+        _log_result(args, model_path, name,
+                    result["total_reward"], result["tardiness"].sum(), _weighted_tardiness(result),
+                    result["late_jobs"], result["jobs_scheduled"],
+                    h["total_reward"], h["tardiness"].sum(), _weighted_tardiness(h),
+                    h["late_jobs"], h["jobs_scheduled"], 1)
 
 
 if __name__ == "__main__":
