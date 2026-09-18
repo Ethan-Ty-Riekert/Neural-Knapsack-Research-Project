@@ -191,6 +191,16 @@ the single-instance-noise risk flagged earlier tonight as a real gap in the onli
 protocol -- now caught in practice, not just in principle. Results artifact corrected to
 match.
 
+**Same check run on Option 3's online result, to see if its regression was also noise --
+it wasn't.** 20 held-out instances, same config:
+```
+ATC:      229.95+/- 99.28   EDF: 254.10+/-128.67   SPT: 266.70+/-138.92
+Option 3: 267.75+/-105.77  (worst of the four, consistent with the single-instance result)
+```
+Option 3's online underperformance is real and confirmed, not an artifact of one bad
+seed -- unlike Option 1's case, more rigorous evaluation did not overturn the earlier
+finding here.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Windowed action space (prepared, not trained) + Option 1 curriculum integration
