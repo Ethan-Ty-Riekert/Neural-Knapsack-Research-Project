@@ -286,6 +286,25 @@ behavior across a longer training run. Flagged for review rather than chased fur
 another case where the direction to try next isn't obvious from the data alone. The
 300k checkpoint remains the best online Option 1 result and is not superseded by this.
 
+**Root cause found: zero entropy regularization, confirmed from the training log
+itself.** `train_action_space_variant.py` never sets `ent_coef` on `MaskablePPO`, so it
+uses SB3's stock default of `0.0` -- nothing in the loss counteracts the policy becoming
+more deterministic over time. Sampled `entropy_loss` across the 900k run:
+```
+step ~2k:     -2.03   (high entropy, genuinely exploring)
+step ~100k:   -1.07
+step ~400k:   -0.55
+step ~700k:   -0.29
+step ~900k:   -0.019  (near-total collapse -- ~99%+ probability mass on one action)
+```
+A clean, monotonic decay to near-zero entropy -- exactly consistent with the SPT-only
+collapse. At 300k the policy hadn't yet fully collapsed (entropy_loss still meaningfully
+negative), which is why it retained the mixed SPT/LST behavior; by 900k it had. This
+project has hit and fixed an analogous collapse before: `2026-08-09-pointer-network-
+action-head.md` raised A2C's `ent_coef` from `0.0` to `0.01` for exactly this reason
+("no forcing function pushed exploration ... at a curriculum transition"). Testing the
+same fix here now: `--ent-coef 0.01`, online, dense+weighted.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Full-scale Option 3 offline validation (superseded numbers corrected above)

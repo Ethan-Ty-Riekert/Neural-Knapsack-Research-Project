@@ -213,6 +213,14 @@ def main():
     parser.add_argument("--use-potential-shaping", action="store_true",
                          help="Ng/Harada/Russell 1999 potential-based shaping -- same untested "
                               "status as --reward-mode dense_tardiness, see above.")
+    parser.add_argument("--ent-coef", type=float, default=0.0,
+                         help="2026-09-18 follow-up: SB3's MaskablePPO default (0.0) means no "
+                              "entropy regularization -- found to let the online case's policy "
+                              "entropy decay to near-zero over long runs, collapsing onto a "
+                              "single dominant action (see training-log.md's Option 1 online "
+                              "900k entry). This project's own precedent for the fix "
+                              "(2026-08-09-pointer-network-action-head.md): raised A2C's "
+                              "ent_coef 0.0 -> 0.01 for an analogous collapse.")
     parser.add_argument("--job-weight-min", type=int, default=None,
                          help="2026-09-18 follow-up: with --job-weight-max, draws each job's "
                               "weight i.i.d. Uniform{min,...,max-1} instead of the historic "
@@ -263,6 +271,7 @@ def main():
         policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log=str(MODELS_DIR / "tb_action_space"),
+        ent_coef=args.ent_coef,
     )
 
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
