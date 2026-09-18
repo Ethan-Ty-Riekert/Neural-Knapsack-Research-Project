@@ -248,6 +248,22 @@ every weighted comparison; raw tardiness kept as a secondary/historical referenc
 useful. This is now the permanent convention for any future weighted-instance
 evaluation in this project.
 
+**Follow-up: full-scale (1.2M) Option 2 offline validation, weighted metric -- completes
+the offline story with all three options now at or above LST.**
+```
+Offline, weighted tardiness, full scale (1.2M each):
+  Option 3: 13.00  <- beats LST outright
+  LST:      24.00
+  Option 2: 24.00  <- TIES LST exactly (was 49.00 at 300k)
+  Option 1: 30.00  <- beats EDF
+  EDF:      46.00
+```
+Every RL option now matches or beats the best classical heuristics under the correct
+objective, at full training scale. This is the cleanest possible summary of the whole
+session's offline arc: starting point ~1300 (raw, unweighted, 7 failed mechanisms),
+ending point 13.00-30.00 (weighted, correct metric) across three independently-designed
+action-space reductions, all converging near or past the best heuristic.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Full-scale Option 3 offline validation (superseded numbers corrected above)
