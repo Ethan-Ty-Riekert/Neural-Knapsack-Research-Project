@@ -82,6 +82,25 @@ timesteps, the EDF-ordering design choice (flagged as untested in the wrapper's 
 docstring) is the first thing to revisit -- e.g. arrival-order or raw-priority-score
 windowing instead of EDF-order, so the window doesn't pre-bias toward one heuristic.
 
+**Update (same day): windowed Option 2 offline lands in the same place.** Same
+protocol (`--window-size 15`, 300k timesteps, dense+weighted, 50-instance
+randomized eval), save-tag `window15_offline_dense_weighted`:
+```
+Option 2 (window=15)   tardiness=   55.10+/- 68.54  weighted_tardiness=  111.08+/-154.73  late=15.30  scheduled=98.18/100
+EDF                    tardiness=   37.30+/- 60.43  weighted_tardiness=  109.36+/-175.73  late=12.22  scheduled=96.84/100
+LST                    tardiness=   23.94+/- 56.02  weighted_tardiness=   68.62+/-159.10  late= 8.26  scheduled=97.76/100
+```
+weighted_tardiness=111.08 -- within 2% of windowed Option 3's 105.86, and again an
+almost-exact tie with plain EDF (109.36 for both). Two different learned policies
+(raw-feature-only vs. ATC-primed) converging on the *same* number, and that number
+matching EDF almost exactly, is a second independent data point for the EDF-ordering
+confound in §ablation above (2026-09-18, S2W9 windowed offline entry) rather than an
+architecture-specific fluke -- strengthens the case that the window's EDF-ordered
+candidate selection, not the learned scoring network, is what's determining outcomes
+at this training scale. Still not separated from the undertrained-vs-biased confound
+(both windowed runs are 300k vs. unwindowed Option 3's larger full-scale training) --
+same next step as above.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Weighted retrain results (overnight queue, best performers first)
