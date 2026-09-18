@@ -32,6 +32,31 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-19 (S2W9) -- `--ent-coef 0.01` test result: training-time entropy fixed, but the SPT-collapse itself was NOT -- earlier root-cause diagnosis was incomplete
+
+**Config:** Option 1, online, same protocol as the entropy-collapse finding below (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300 --job-size-distribution lognormal --reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`), 900k timesteps, `--ent-coef 0.01` (the fix this run was testing), save-tag `online_lognormal_rho075_dense_weighted_entcoef`. Evaluated on the 50-instance randomized protocol (larger than the 20-instance sample the original finding used).
+
+**Stats:**
+```
+Training-time entropy_loss (sampled across the run): -2.03 -> -1.46 -> -1.31 -> -1.34 -> -1.42 -> -1.51
+  (stayed in this band throughout -- did NOT decay to near-zero the way the uncorrected 900k run did)
+
+Eval (50 instances):
+  Option 1 (900k, ent_coef=0.01)   tardiness=  269.20+/-116.80  weighted_tardiness=  798.46+/-346.65  late=22.90  scheduled=833.42/898
+  SPT                              tardiness=  269.20+/-116.80  weighted_tardiness=  798.46+/-346.65  late=22.90  scheduled=833.42/898
+  ATC                              tardiness=  234.36+/-114.67  weighted_tardiness=  648.16+/-338.30  late=23.80  scheduled=835.92/898
+
+For comparison (2026-09-18 entry below, 20-instance sample):
+  Option 1 (900k, ent_coef=0.0, uncorrected)  weighted=788.20+/-389.26  -- also identical to SPT
+  Option 1 (300k, ent_coef=0.0)               weighted=730.30+/-306.91  -- genuinely mixed SPT+LST, best online Option 1 so far
+```
+
+**Observation:** The fix worked exactly as intended at the mechanism it targeted -- `entropy_loss` stayed in the -1.3 to -1.5 band for the whole 900k run instead of decaying to -0.019. But the deterministic (argmax) eval policy is, once again, numerically IDENTICAL to SPT -- same as the uncorrected 900k run this was meant to fix, and worse than the untouched 300k checkpoint. Maintaining training-time entropy did not prevent the deterministic policy from converging onto a single dominant rule. This means the earlier "root cause: zero entropy regularization" diagnosis was incomplete: the entropy decay observed in the original 900k run was a genuine, correctly-measured phenomenon, but it was a correlate of convergence, not the cause of the SPT-collapse itself -- a policy can retain healthy entropy over its full action distribution while still having SPT as the clear argmax-dominant choice in nearly every state it encounters. The real driver of "more online training converges toward SPT" remains unexplained.
+
+**Conclusion / next step:** Revert to treating the 300k checkpoint (`weighted=730.30`, mixed-rule behaviour) as the best available online Option 1 result -- neither 900k variant (with or without entropy regularization) has beaten it. Do not pursue further `ent_coef` tuning for this specific problem; it's now been tested and shown not to address the actual mechanism. Genuinely open questions for a future session: (a) whether the online case's credit-assignment problem itself (not entropy) makes sustained multi-rule switching hard to maintain over long training runs, (b) whether this is specific to Option 1's small `Discrete(8)` action space rather than a general online-training pathology, (c) whether an explicit stochastic (not deterministic) eval policy would show different behaviour than what argmax reveals here.
+
+---
+
 ## 2026-09-19 (S2W9) -- Option 1 randomized-instance full-scale (1.2M, dense+weighted): catastrophic collapse fixed, but still short of LST
 
 **Config:** Option 1, `--randomize-instances`, `--reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`, 1.2M timesteps (up from the 300k that produced the catastrophic-collapse result below), save-tag `offline_randomized_dense_weighted_fullscale`. Evaluated on the standard 50-instance randomized protocol (seeds 500000-500049).
