@@ -171,6 +171,26 @@ improve 4-20x. Option 3 online is the one open thread, flagged above rather than
 resolved. Results artifact updated to reflect all of this
 (https://claude.ai/artifact/Y1AFGzyT6P6jUWmbcwT1uc).
 
+**Important correction, same day: the online "beats ATC" claim doesn't fully survive a
+proper multi-instance check.** Ran the newly-built online `--randomized-eval` mode (20
+held-out instances, seeds 500000-500019, same rho~0.75/dense/weighted config) on the
+Option 1 checkpoint the single-seed result above was based on:
+```
+ATC:      tardiness=229.95+/- 99.28  late=24.10  scheduled=831.60/893  <- best, on average
+Option 1: tardiness=242.65+/-101.82  late=22.60  scheduled=829.45/893
+EDF:      tardiness=254.10+/-128.67  late=28.70  scheduled=827.90/893
+SPT:      tardiness=266.70+/-138.92  late=22.40  scheduled=829.70/893
+```
+Across 20 instances, **ATC is still slightly ahead on average** -- the single seed=0
+instance the earlier "Option 1 beats everyone" claim was based on happened to be one
+where Option 1 did unusually well (or ATC unusually poorly). Option 1 still clearly and
+consistently beats EDF and SPT, and the gap to ATC (242.65 vs 229.95, ~5%) is far smaller
+than before this session's fixes (was 163 vs 120, ~36%) -- so the real, defensible claim
+is "closed most of the gap to ATC, not fully closed it," not "beats ATC." This is exactly
+the single-instance-noise risk flagged earlier tonight as a real gap in the online eval
+protocol -- now caught in practice, not just in principle. Results artifact corrected to
+match.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Windowed action space (prepared, not trained) + Option 1 curriculum integration
