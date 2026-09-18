@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-19 (S2W9) -- Option 1 randomized-instance full-scale (1.2M, dense+weighted): catastrophic collapse fixed, but still short of LST
+
+**Config:** Option 1, `--randomize-instances`, `--reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`, 1.2M timesteps (up from the 300k that produced the catastrophic-collapse result below), save-tag `offline_randomized_dense_weighted_fullscale`. Evaluated on the standard 50-instance randomized protocol (seeds 500000-500049).
+
+**Stats:**
+```
+Option 1 (1.2M, dense+weighted)   tardiness=   38.88+/- 62.44  weighted_tardiness=  116.50+/-181.87  late=12.22  scheduled=99.00/100
+EDF                                tardiness=   37.30+/- 60.43  weighted_tardiness=  109.36+/-175.73  late=12.22  scheduled=96.84/100
+LST                                tardiness=   23.94+/- 56.02  weighted_tardiness=   68.62+/-159.10  late= 8.26  scheduled=97.76/100
+
+For comparison, the same randomized-instance case at legacy reward, 300k (2026-09-18 entry below):
+  Option 1 (legacy, 300k)          tardiness=1377.88+/-158.85  late=44.30  scheduled=99.22/100  (LPT-collapse, reward-hacking the flat completion bonus)
+```
+
+**Observation:** The combination of dense_tardiness reward, real job weights, and 4x more training timesteps fixes the catastrophic LPT-collapse found on 2026-09-18 (1377.88 -> 38.88 raw tardiness, a ~35x improvement) and brings the randomized-instance case to an almost-exact tie with EDF (38.88 vs 37.30 raw; 116.50 vs 109.36 weighted). It does not, however, close the gap to LST (68.62 weighted) the way the *fixed*-instance Option 1 result did earlier tonight -- the randomized-instance (must-generalize) case remains harder than the fixed-instance (can-memorize) case at the same reward design, consistent with the 2026-09-18 entry's original diagnosis that action-space size was necessary but not sufficient here.
+
+**Conclusion / next step:** This is the full-scale, "for completeness" run queued after the user's priority ordering (best performers first, offline prioritized) -- treat it as confirming the direction (dense+weighted+action-space-reduction generalizes, doesn't just memorize one instance) rather than a new state-of-the-art number. LST remains the bar Option 1 hasn't cleared on the randomized-instance case; Options 2/3 (not yet run at this full randomized-instance+weighted+full-scale combination) are the natural next comparison point if further budget is available.
+
+---
+
 ## 2026-09-18 (S2W9) -- Week-label correction + windowed Option 3 offline result
 
 **Note on week labels:** recomputing `((2026-09-18 - 2026-07-20).days // 7) + 1` gives
