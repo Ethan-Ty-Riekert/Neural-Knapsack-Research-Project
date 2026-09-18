@@ -264,6 +264,28 @@ session's offline arc: starting point ~1300 (raw, unweighted, 7 failed mechanism
 ending point 13.00-30.00 (weighted, correct metric) across three independently-designed
 action-space reductions, all converging near or past the best heuristic.
 
+**Follow-up: more training HURT Option 1 online, unlike every offline case tonight.**
+Tested whether more training (900k vs. 300k) would close the remaining online gap to ATC,
+mirroring the pattern that worked for every offline option (300k->1.2M monotonically
+improved all three). It didn't -- it regressed:
+```
+Online, weighted tardiness, 20 held-out instances:
+  Option 1 (900k): 788.20+/-389.26  -- IDENTICAL to SPT's numbers exactly (266.70 raw too)
+  Option 1 (300k): 730.30+/-306.91  -- better, and genuinely mixed SPT+LST (not a collapse)
+  ATC:              644.20+/-303.43  (still best)
+  EDF:               769.70+/-414.44
+```
+The 900k checkpoint collapsed onto a PURE SPT policy (byte-identical results, not just
+similar) -- worse than the 300k checkpoint's mixed rule-switching behavior. More
+training didn't refine the switching strategy, it un-learned it. This is a genuinely
+different failure mode from anything else tonight: more training was uniformly good
+offline, and uniformly bad (so far, n=1) for this specific online case. Possible causes
+not yet investigated: entropy decay over more updates locking onto the easiest-to-execute
+single rule, or the online credit-assignment problem being harder to sustain multi-rule
+behavior across a longer training run. Flagged for review rather than chased further --
+another case where the direction to try next isn't obvious from the data alone. The
+300k checkpoint remains the best online Option 1 result and is not superseded by this.
+
 ---
 
 ## 2026-09-18 (S2W10) -- Full-scale Option 3 offline validation (superseded numbers corrected above)
