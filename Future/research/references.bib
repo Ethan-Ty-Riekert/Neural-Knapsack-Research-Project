@@ -258,13 +258,23 @@
   number      = {1711.08946},
   year        = {2018},
   note        = {General factored/hierarchical action-space pattern: decouple
-                 one large joint action into sequential smaller
-                 per-dimension decisions (additive |A1|+|A2| instead of
-                 multiplicative |A1|x|A2|). Raised 2026-09-17 as the
-                 generalizable principle behind a possible future
-                 learned-placement-head follow-up to Options 1/2/3 (see
-                 2026-09-17-action-space-reduction.md Section 7) -- not yet
-                 implemented.}
+                 one large joint action into smaller per-dimension decisions
+                 (additive |A1|+|A2| instead of multiplicative |A1|x|A2|).
+                 Raised 2026-09-17 as the generalizable principle behind a
+                 possible future learned-placement-head follow-up to Options
+                 1/2/3 (see 2026-09-17-action-space-reduction.md Section 7).
+                 CORRECTION (2026-09-20, S2W9): this note previously said
+                 "sequential" per-dimension decisions -- Tavakoli et al.'s
+                 actual BDQ architecture is PARALLEL independent branches off
+                 a shared trunk, not sequential/autoregressive (verified
+                 directly against sb3_contrib's MaskableMultiCategoricalDistribution,
+                 which splits one shared forward pass's logits/mask into
+                 independent per-branch chunks with no hook for branch 2 to
+                 depend on branch 1's sampled value). Implemented as Option 4,
+                 Code/env/action_branching_gym_wrapper.py -- see that module's
+                 docstring for the full design discussion, including the
+                 honest limitation this parallel design implies for machine
+                 masking.}
 }
 
 @techreport{dulacarnold2015largeactionspaces,

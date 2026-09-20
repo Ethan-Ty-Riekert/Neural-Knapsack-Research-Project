@@ -48,8 +48,10 @@ from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
 from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
 from Code.env.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.env.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
+from Code.env.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
 from Code.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
 from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
+from Code.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
 from Code.training.train_optimized import make_online_resampler, make_random_instance_resampler
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 
@@ -200,8 +202,18 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None):
                 num_resources=env.num_resources,
                 use_atc=use_atc,
             )
+    elif option == "4":
+        if window_size is not None:
+            raise ValueError("--window-size only applies to --option 2/3.")
+        env = ActionBranchingGymSchedulingEnv(full_gym_env)
+        policy = ActionBranchingMaskableActorCriticPolicy
+        policy_kwargs = dict(
+            max_jobs=env.max_jobs,
+            num_machines=env.num_machines,
+            num_resources=env.num_resources,
+        )
     else:
-        raise ValueError(f"Unknown option {option!r} (expected '1', '2', or '3')")
+        raise ValueError(f"Unknown option {option!r} (expected '1', '2', '3', or '4')")
 
     monitored = Monitor(ActionMasker(env, mask_fn))
     return monitored, policy, policy_kwargs
@@ -209,9 +221,11 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--option", choices=["1", "2", "3"], required=True,
+    parser.add_argument("--option", choices=["1", "2", "3", "4"], required=True,
                          help="1=hyper-heuristic rule selection, 2=raw-feature priority "
-                              "learning, 3=ATC-primed priority learning.")
+                              "learning, 3=ATC-primed priority learning, 4=action-branching "
+                              "(learned placement, MultiDiscrete([max_jobs+1, num_machines]) "
+                              "-- see Code/env/action_branching_gym_wrapper.py).")
     parser.add_argument("--timesteps", type=int, default=300_000,
                          help="~30-min comparison scale by this session's own precedent "
                               "(the dense-tardiness-reward quick check used the same "

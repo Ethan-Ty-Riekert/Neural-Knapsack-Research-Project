@@ -25,8 +25,10 @@ from Code.training.train_action_space_variant import make_base_gym_env, make_onl
 from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
 from Code.env.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.env.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
+from Code.env.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
 from Code.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
 from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
+from Code.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
 from Code.env.env_config import generate_env_config
 from Code.env.arrival_process import generate_poisson_arrivals
 from Code.evaluation.eval_rl_agent import run_heuristic
@@ -51,6 +53,10 @@ def build_eval_env(option: str, full_gym_env, window_size=None):
             env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc)
         else:
             env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
+    elif option == "4":
+        if window_size is not None:
+            raise ValueError("--window-size only applies to --option 2/3.")
+        env = ActionBranchingGymSchedulingEnv(full_gym_env)
     else:
         raise ValueError(f"Unknown option {option!r}")
     return ActionMasker(env, mask_fn)
@@ -63,6 +69,8 @@ def load_model(option: str, template_env, checkpoint_tag=None, window_size=None)
         custom_objects = {"policy_class": WindowedPriorityPointerMaskableActorCriticPolicy}
     elif option in ("2", "3"):
         custom_objects = {"policy_class": PriorityPointerMaskableActorCriticPolicy}
+    elif option == "4":
+        custom_objects = {"policy_class": ActionBranchingMaskableActorCriticPolicy}
     else:
         custom_objects = None
     return MaskablePPO.load(str(checkpoint), env=template_env, custom_objects=custom_objects)
@@ -118,7 +126,8 @@ def _print_aggregate_row(tag, tardiness_vals, weighted_tardiness_vals, late_vals
           f"late={np.mean(late_vals):5.2f}  scheduled={np.mean(scheduled_vals):5.2f}/{denom}")
 
 
-_POLICY_TYPE = {"1": "rule_selection", "2": "priority_pointer", "3": "priority_pointer_atc"}
+_POLICY_TYPE = {"1": "rule_selection", "2": "priority_pointer", "3": "priority_pointer_atc",
+                 "4": "action_branching"}
 
 
 def _log_result(args, model_path, heuristic_name,
@@ -168,7 +177,7 @@ def _log_result(args, model_path, heuristic_name,
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--option", choices=["1", "2", "3"], required=True)
+    parser.add_argument("--option", choices=["1", "2", "3", "4"], required=True)
     parser.add_argument("--heuristics", nargs="*", default=DEFAULT_HEURISTICS)
     parser.add_argument("--online", action="store_true")
     parser.add_argument("--arrival-rate", type=float, default=None)
