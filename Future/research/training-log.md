@@ -32,6 +32,55 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-21 (S2W9) -- Option 4 detach-fix result: stability confirmed fixed, but still short of the original simplest design -- closing out this arc
+
+**Context:** Third and (for now) final Option 4 pooling variant this session. Same config as both prior attempts (300k, dense+weighted).
+
+**Stats -- all three variants, same protocol, side by side:**
+```
+                                         weighted_tardiness   std     late    scheduled
+Option 4 (original, flat-mean pooling)         355.64        358.80   31.74   96.10/100
+Option 4 (weighted, undetached)                795.48        495.38   40.46   92.26/100
+Option 4 (weighted, detached)                  558.64        197.53   35.88   94.80/100
+EDF                                             109.36        175.73   12.22   96.84/100
+ATC                                             298.80        184.13   11.10   94.68/100
+
+Training trajectory shape:
+  undetached: wildly oscillating (0 -> 5800 -> 0 -> 2930 ... ended at 1120)
+  detached:   smooth, steadily declining (3140 -> ... -> 538), std of the FINAL eval
+              (197.53) less than half the undetached version's (495.38)
+```
+
+**Observation:** The detach fix did exactly what it was designed to do -- training
+stability is unambiguously better (smooth monotonic-looking decline vs. wild
+oscillation, final eval std cut by more than half) -- confirming the hypothesis that
+the job_score_head dual-role gradient entanglement was a real source of instability,
+not a red herring. But stability alone wasn't enough: the detached run's best point
+across its entire trajectory (~517) never reached the ORIGINAL simplest design's final
+result (355.64), let alone the undetached run's brief mid-training peak of exactly 0.
+This suggests a real trade-off rather than a strictly-better fix: the entangled
+gradient path the detach removes was unstable, but it may also have been carrying real
+signal that helped reach better optima when it happened to work -- removing it
+stabilized training onto a WORSE ceiling, not just a safer path to the same one.
+
+**Conclusion / next step: closing out this specific investigation arc, not chasing a
+4th variant blind.** Three attempts (flat mean, weighted+undetached, weighted+detached)
+across 900k total offline timesteps have not produced a version of Option 4 that beats
+the simplest original design at matched budget, let alone the fixed-FirstFit Options
+1/3. The honest state of the evidence: action-branching's LEARNED placement has not yet
+demonstrated a real advantage over FirstFit in this project, across three genuinely
+different pooling designs, though the undetached run's mid-training peak (weighted=0)
+is a real existence proof that a much better optimum is reachable by SOME policy in
+this action space -- just not yet reliably found by training. Flagging this as a
+decision point for the user rather than unilaterally launching a fourth variant or a
+larger-scale run: is this thread worth more compute (e.g. a longer/larger-scale run to
+see if either weighted variant's ceiling rises with more budget, matching the pattern
+that worked for Options 1/2/3), or is "FirstFit-fixed placement beats learned placement
+at every budget/design tried so far" now well-evidenced enough to treat as this
+session's answer to the report.md Section 1.4 confound?
+
+---
+
 ## 2026-09-21 (S2W9) -- "More online training hurts" confirmed a 3rd independent time, now with the full mechanistic trajectory (not just start/end snapshots)
 
 **Context:** Direct use of the new training-diagnostics tooling (`Code/utils/training_diagnostics.py`, implemented 2026-09-20) on the exact protocol that first produced the "more training hurts" mystery -- Option 1 online, 900k timesteps, dense+weighted, `--diagnostics-interval 5000`. Goal: real visibility into WHAT happens over the course of training, not just comparing two endpoint numbers.
