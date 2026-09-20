@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-20 (S2W9) -- Real bug found and fixed: compute_theta() has been understating utilisation for this project's ENTIRE history
+
+**Context:** Direct follow-up to the previous entry's design discussion -- user asked "well is our machine utilization part of the objective correct?" Checked rather than assumed, per this project's rigor convention, and found a real, confirmed bug, not just a design gap.
+
+**Bug:** `SchedulingEnv.compute_theta()` (the hotspot-penalty term, `-lambda3*delta_theta`) used `self.capacity[:, :, 0]` as its "original capacity" reference. That is the LIVE, mutable capacity array at time-slot 0, not a fixed baseline -- the instant any job occupies time-slot 0 (true for nearly every real episode, since `self.time` starts at 0), that reference silently corrupts for the rest of the episode. The environment already had a correct pristine reference for exactly this purpose (`self.machine_capacity`, kept separate in `__init__` specifically "so reset() has an untouched value to restore from") -- `compute_theta()` never used it.
+
+**Verified empirically (`tests/test_compute_theta_bugfix.py`, all 3 checks pass):**
+```
+Check 2: 50%-used slot-0 job, then an 80%-used later job -> pre-fix theta=0.6 (wrong), post-fix theta=0.8 (true)
+Check 3: a single 90%-used job AT slot 0 -> pre-fix theta=0.0 (hidden entirely!), post-fix theta=0.9 (true)
+```
+
+**Observation:** Two distinct failure modes from the same root cause: (1) once anything is scheduled at slot 0, every LATER slot's computed utilisation is biased toward whatever was consumed at slot 0 specifically, generally UNDERSTATING true utilisation for the more heavily-loaded slots -- exactly the ones the hotspot penalty is meant to catch; (2) slot 0's own utilisation always read as exactly 0% by construction (the buggy reference self-cancels there), regardless of how full it actually was -- a fully-loaded slot 0 was invisible to this term for the entire project's history. Net effect: `-lambda3*delta_theta` (hardcoded `lambda_3=1.0` everywhere, never tuned) has been systematically WEAKER than intended, not absent -- it fired, just on understated numbers. This also softens (does not eliminate) the hotspot-vs-energy-consolidation tension flagged in the previous entry: the anti-consolidation force has in practice been weaker than lambda_3's nominal value implies.
+
+**Fix:** `compute_theta()` now uses `self.machine_capacity` (broadcast correctly across machines/time) instead of `self.capacity[:, :, 0]`. One-line semantic change, existing `tests/test_bugfixes.py` suite still passes unchanged (confirms no other mechanism depended on the buggy behaviour).
+
+**Conclusion / next step:** This is a real correctness bug in the environment's core reward computation, present since the hotspot penalty was first added and active in EVERY training run this project has ever done (dense_tardiness mode does not skip this term -- see `reward()`, it's unconditional). Given the magnitude is "systematically weaker penalty," not "term was completely absent" (unlike the job-weights precedent, where the term was fully dead), and `lambda_3=1.0` is one term among several rather than the dominant driver of any result reported so far, this is flagged here rather than unilaterally triggering a full retrain -- **explicitly deferring to the user on retraining scope**, per this project's own established process rule (CLAUDE.md "Follow-through on concrete requests," added after the job-weights incident) rather than assuming either "retrain everything" or "ignore it" on my own.
+
+---
+
 ## 2026-09-20 (S2W9) -- Design discussion: this project's reward does not model energy efficiency, and the existing hotspot penalty actively works against the literature's consolidation-based definition of it
 
 **Context:** User asked "how do we incentivise machine utilisation, or do we not explicitly?", then "how should we define it for the purpose of energy efficiency, or what do the papers say?" -- a design-grounding question, not a training run. No code changed; this is a literature check + honest gap statement.

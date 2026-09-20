@@ -528,13 +528,29 @@ class SchedulingEnv:
     def compute_theta(self) -> float:
         """Compute theta = max utilisation across all machines and resources and times
         up to the current time index.
-        
+
         This function penalises actions that create 'hotspots':
         if placing a job increases the usage on ANY machine-resource-time
-        combination, theta will increase, and the reward will include a larger penalty."""
-        initial_capacity = self.capacity[:, :, 0]
-        used = initial_capacity[:, :, None] - self.capacity
-        utilisation = used / (initial_capacity[:, :, None] + 1e-8)
+        combination, theta will increase, and the reward will include a larger penalty.
+
+        BUG FIX (2026-09-20, S2W9): this used to read `self.capacity[:, :, 0]` as the
+        "original capacity" reference -- but that is the LIVE, mutable capacity array
+        at time-slot 0, not a fixed baseline. The instant any job occupies time-slot 0
+        (true for nearly every real episode, since self.time starts at 0), that
+        reference silently corrupts for the rest of the episode: every later call
+        computes utilisation against whatever got consumed at slot 0, not the true
+        original capacity. Verified empirically: a 50%-used slot-0 job followed by an
+        80%-used later job made compute_theta() report 60%, not 80%. It also makes
+        slot 0's own utilisation always read as exactly 0% by construction (the buggy
+        reference self-cancels there), regardless of how full it actually is. Net
+        effect: the hotspot penalty (-lambda3*delta_theta) has been systematically
+        WEAKER than intended for this project's entire history, not absent -- see the
+        matching training-log.md entry. Fixed by using self.machine_capacity, the
+        already-existing pristine per-resource capacity vector (kept separately in
+        __init__ specifically so reset() has an untouched value to restore from --
+        the same value this function should always have used)."""
+        used = self.machine_capacity[None, :, None] - self.capacity
+        utilisation = used / (self.machine_capacity[None, :, None] + 1e-8)
         return np.max(utilisation)
 
     def get_state(self) -> Dict:
