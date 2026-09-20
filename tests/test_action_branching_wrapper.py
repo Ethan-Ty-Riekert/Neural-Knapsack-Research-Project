@@ -198,4 +198,46 @@ assert torch.allclose(machine_probs, torch.tensor([1., 0., 0.]), atol=1e-4), (
 print(f"  job branch probs={[round(p, 3) for p in job_probs.tolist()]} (mass on index 2)")
 print(f"  machine branch probs={[round(p, 3) for p in machine_probs.tolist()]} (mass on index 0)")
 
+# ============================================================
+# Check 10 (2026-09-20 fix validation, user-prompted -- "maybe we need to
+# do some more research into the decoupling"): _pool_job_context() must
+# concentrate on the job the job branch actually favours, must reduce to
+# the OLD flat-mean behaviour when the job branch is uniform (regression-
+# equivalence, not a silent behaviour change in the common early-training
+# case), and must not produce NaN when no job is active.
+# ============================================================
+print("=== Check 10: _pool_job_context weights by the job branch's own distribution ===")
+net10 = ActionBranchingActorCritic(max_jobs=4, num_machines=2, num_resources=1)
+job_emb10 = torch.stack([
+    torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0]),
+    torch.tensor([10.0, 10.0]), torch.tensor([-5.0, -5.0]),
+]).unsqueeze(0)  # (1, 4, 2) -- 4 distinguishable "embeddings"
+
+# Peaked: job branch overwhelmingly favours index 2 -> context should be
+# (near-)exactly that job's embedding, not a blend.
+peaked_logits = torch.tensor([[-100.0, -100.0, 100.0, -100.0]])
+active_all = torch.ones((1, 4, 1))
+ctx_peaked = net10._pool_job_context(job_emb10, peaked_logits, active_all)
+assert torch.allclose(ctx_peaked.squeeze(0), job_emb10[0, 2], atol=1e-3), (
+    f"expected context ~= job 2's embedding {job_emb10[0,2].tolist()}, got {ctx_peaked.tolist()}"
+)
+print(f"  peaked job branch -> context={ctx_peaked.squeeze(0).tolist()} ~= job 2's embedding (correct)")
+
+# Uniform: job branch has no preference -> must reduce to the flat mean
+# (the OLD pre-fix behaviour) over active jobs, not an arbitrary weighting.
+uniform_logits = torch.zeros((1, 4))
+ctx_uniform = net10._pool_job_context(job_emb10, uniform_logits, active_all)
+expected_flat_mean = job_emb10.mean(dim=1)
+assert torch.allclose(ctx_uniform, expected_flat_mean, atol=1e-4), (
+    f"expected flat mean {expected_flat_mean.tolist()}, got {ctx_uniform.tolist()}"
+)
+print(f"  uniform job branch -> context={ctx_uniform.squeeze(0).tolist()} == flat mean (regression-safe)")
+
+# No active jobs at all (edge case, e.g. right at episode end): must not
+# produce NaN.
+active_none = torch.zeros((1, 4, 1))
+ctx_none = net10._pool_job_context(job_emb10, peaked_logits, active_none)
+assert torch.isfinite(ctx_none).all(), f"expected finite output with no active jobs, got {ctx_none.tolist()}"
+print(f"  no active jobs -> context={ctx_none.squeeze(0).tolist()} (finite, no NaN)")
+
 print("\nALL ACTION-BRANCHING WRAPPER CHECKS PASSED")

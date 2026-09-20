@@ -959,3 +959,50 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
   note         = {Accessed: 2026-07-19},
   year         = {2026}
 }
+
+@misc{yu2022mappo,
+  author      = {Yu, Chao and Velu, Akash and Vinitsky, Eugene and Gao, Jiaxuan and Wang, Yu and Bayen, Alexandre and Wu, Yi},
+  title       = {The Surprising Effectiveness of PPO in Cooperative, Multi-Agent Games},
+  howpublished = {arXiv preprint arXiv:2103.01955},
+  year        = {2022},
+  note        = {Added 2026-09-20 (S2W9), optimisation-critique report: MAPPO --
+                 multi-agent PPO with a centralized critic / decentralized actors
+                 (CTDE). Cited as the lowest-lift multi-agent RL option for this
+                 project specifically because it needs minimal modification to the
+                 already-adopted PPO/MaskablePPO machinery, unlike QMIX's
+                 value-factorization architecture. See
+                 2026-09-20-optimisation-and-efficiency-critique.md Section 5.}
+}
+
+@inproceedings{rashid2018qmix,
+  author    = {Rashid, Tabish and Samvelyan, Mikayel and Schroeder, Christian and Farquhar, Gregory and Foerster, Jakob and Whiteson, Shimon},
+  title     = {QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  volume    = {80},
+  pages     = {4295--4304},
+  year      = {2018},
+  note      = {Added 2026-09-20 (S2W9), optimisation-critique report: value-based
+               CTDE multi-agent RL with monotonic mixing, cited as the alternative
+               (heavier-lift, since this project has no existing value-factorization
+               infrastructure) multi-agent decomposition mechanism to MAPPO. See
+               2026-09-20-optimisation-and-efficiency-critique.md Section 5.}
+}
+
+@article{hady2025marlsurvey,
+  author  = {Hady, Mahardhika Ahmad and Hu, Shu and Pratama, Mahardhika and Cao, Zehong and Kowalczyk, Ryszard},
+  title   = {Multi-Agent Reinforcement Learning for Resources Allocation Optimization: A Survey},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {11},
+  pages   = {354},
+  year    = {2025},
+  doi     = {10.1007/s10462-025-11340-5},
+  note    = {Added 2026-09-20 (S2W9), optimisation-critique report: general survey
+             grounding for MARL applied to resource-allocation problems (this
+             project's own cloud-resource-allocation framing), used to motivate
+             the multi-agent decomposition proposal rather than assert any single
+             method as proven for this problem class. Author list taken from a
+             web search result, not independently cross-checked against the
+             published article -- flagged per this project's own citation
+             convention for unconfirmed details.}
+}
