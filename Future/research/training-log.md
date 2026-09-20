@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-20 (S2W9) -- Option 3 online-longer (900k) result: more training hurt here too, same pattern as Option 1
+
+**Config:** Option 3, online, same protocol as the 300k dense+weighted baseline (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300 --job-size-distribution lognormal --reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`), 900k timesteps (up from 300k), save-tag `online_lognormal_rho075_dense_weighted_longer`. Evaluated on the 50-instance randomized protocol.
+
+**Stats:**
+```
+Option 3 (900k)   tardiness=  327.60+/-140.01  weighted_tardiness=  892.84+/-399.23  late=29.96  scheduled=829.20/898
+EDF               tardiness=  263.16+/-126.71  weighted_tardiness=  800.90+/-404.57  late=28.78  scheduled=832.62/898
+ATC               tardiness=  234.36+/-114.67  weighted_tardiness=  648.16+/-338.30  late=23.80  scheduled=835.92/898
+
+For comparison, Option 3 (300k, same config, 20-instance sample, entry above):
+  Option 3 (300k)  tardiness=267.75+/-105.77  (already the worst of 4 methods compared then)
+```
+
+**Observation:** More training made Option 3 online worse (267.75 -> 327.60 raw tardiness), not better -- it now loses to every heuristic listed, including EDF, by an even larger margin than at 300k. This is the same "more online training hurts" pattern already found for Option 1 (2026-09-18 entry: 730.30 -> 788.20 weighted, 300k->900k) and confirmed independently unresolved by entropy regularization (2026-09-19 entry above). Two different action-space designs (Option 1's rule-selection, Option 3's ATC-primed priority scoring) both regress with more online training -- this is evidence of a genuine property of online training in this environment, not something specific to one design's architecture.
+
+**Conclusion / next step:** The online case's "more training helps" assumption (which holds reliably offline -- every offline option improved monotonically from 300k to full-scale) does NOT hold online for either design tested so far. This is now a 2-for-2 pattern, not a single anomaly, and is a more fundamental open question than either individual result suggested -- worth investigating directly (e.g., tracking per-rule/per-job-score action distribution over the course of training, not just final entropy) before spending more compute on longer online training runs for any option. The 300k checkpoints remain the best available online results for both Option 1 (730.30 weighted) and Option 3 (267.75 raw, still behind ATC).
+
+---
+
 ## 2026-09-19 (S2W9) -- `--ent-coef 0.01` test result: training-time entropy fixed, but the SPT-collapse itself was NOT -- earlier root-cause diagnosis was incomplete
 
 **Config:** Option 1, online, same protocol as the entropy-collapse finding below (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300 --job-size-distribution lognormal --reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`), 900k timesteps, `--ent-coef 0.01` (the fix this run was testing), save-tag `online_lognormal_rho075_dense_weighted_entcoef`. Evaluated on the 50-instance randomized protocol (larger than the 20-instance sample the original finding used).
