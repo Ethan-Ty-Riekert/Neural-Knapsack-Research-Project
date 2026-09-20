@@ -208,7 +208,16 @@ class SchedulingEnv:
         self.episode_cost = 0.0
         self._episode_terminal_cost_added = False
 
-        return self.get_state()
+        # PERF (2026-09-20, S2W9, verified before applying -- see
+        # Future/research/2026-09-20-optimisation-and-efficiency-critique.md):
+        # get_state() deep-copies four arrays + converts a set to a list on
+        # every call. Every caller of reset()/step()/step_idle() across this
+        # entire codebase (every Code/env/*_gym_wrapper.py class, confirmed by
+        # grepping all of them) discards or immediately overwrites this
+        # return value -- it has never been read. Returning None here instead
+        # is a free, zero-behaviour-change fix; get_state() itself is left
+        # intact as a callable method for explicit snapshot use.
+        return None
 
     def _finalize_unscheduled_job_cost(self):
         """RCPO constraint-cost finalization (2026-08-28 fix): charge every
@@ -396,11 +405,11 @@ class SchedulingEnv:
 
         # Invalid if job already scheduled
         if job not in self.remaining_jobs:
-            return (self.get_state(), -self.invalidPenalty, False)
+            return (None, -self.invalidPenalty, False)  # PERF: see reset()'s comment
 
         # Feasibility check
         if not self.is_feasible(job, machine, self.time):
-            return (self.get_state(), -self.invalidPenalty, False)
+            return (None, -self.invalidPenalty, False)  # PERF: see reset()'s comment
 
         ## If made it up to this case the placement is valid ##
         # Machine activation.
@@ -473,7 +482,7 @@ class SchedulingEnv:
                 reward += self._finalize_dense_tardiness_running_jobs()
             self._finalize_unscheduled_job_cost()
 
-        return (self.get_state(), reward, done)
+        return (None, reward, done)  # PERF: see reset()'s comment
 
     def reward(self, j:int, m:int, ym:bool, delta_theta: float, idle: bool = False) -> float:
         """Reward function"""
@@ -591,5 +600,5 @@ class SchedulingEnv:
                 reward += self._finalize_dense_tardiness_running_jobs()
             self._finalize_unscheduled_job_cost()
 
-        return self.get_state(), reward, done
+        return None, reward, done  # PERF: see reset()'s comment
 

@@ -47,7 +47,7 @@ class OnlineSchedulingEnv(SchedulingEnv):
         self.remaining_jobs = set()
         self.revealed_jobs = set()
         self._reveal_arrivals()
-        return self.get_state()
+        return None  # PERF: see SchedulingEnv.reset()'s matching comment
 
     def set_jobs_and_arrivals(
         self,
@@ -79,10 +79,10 @@ class OnlineSchedulingEnv(SchedulingEnv):
         job, machine = action
 
         if job not in self.remaining_jobs:
-            return (self.get_state(), -self.invalidPenalty, False)
+            return (None, -self.invalidPenalty, False)  # PERF: see SchedulingEnv.reset()'s comment
 
         if not self.is_feasible(job, machine, self.time):
-            return (self.get_state(), -self.invalidPenalty, False)
+            return (None, -self.invalidPenalty, False)  # PERF: see SchedulingEnv.reset()'s comment
 
         machine_was_inactive = self.machine_active[machine] == 0
         if machine_was_inactive:
@@ -121,7 +121,7 @@ class OnlineSchedulingEnv(SchedulingEnv):
         # end is exclusively a step_idle()/horizon event in the online case.
         done = False
 
-        return (self.get_state(), reward, done)
+        return (None, reward, done)  # PERF: see SchedulingEnv.reset()'s comment
 
     def step_idle(self):
         reward = -self.idling_penalty
@@ -154,4 +154,4 @@ class OnlineSchedulingEnv(SchedulingEnv):
         if done:
             self._finalize_unscheduled_job_cost()
 
-        return self.get_state(), reward, done
+        return None, reward, done  # PERF: see SchedulingEnv.reset()'s comment
