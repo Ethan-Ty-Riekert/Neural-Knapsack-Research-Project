@@ -12,21 +12,38 @@ scores (job, machine) pairs jointly rather than picking a job first.
 """
 import numpy as np
 
-from Code.baselines.priority_rules import PRIORITY_RULES
+from Code.baselines.priority_rules import PRIORITY_RULES, atc_key, _atc_mean_p
 from Code.baselines.placement_rules import PLACEMENT_RULES, tetris_score
 
 
 def _make_priority_placement(priority_name, placement_name):
     priority_key = PRIORITY_RULES[priority_name]
     placement_rule = PLACEMENT_RULES[placement_name]
+    # PERF (2026-09-21, S2W9, from Future/research/2026-09-20-optimisation-
+    # and-efficiency-critique.md Section 1.5): ATC's priority_key recomputes
+    # an O(num_jobs) mean_p sum from scratch on every call, and sorted()
+    # below calls priority_key once per candidate job -- O(J*num_jobs) for
+    # one ranking otherwise. mean_p depends only on base_env's state (not on
+    # which job is being scored), and nothing mutates base_env's state
+    # between the J calls within one sorted() call, so it's safe to compute
+    # once here and pass it through -- unlike a naive "cache the whole
+    # mask/decision," which would be wrong (see rule_selection_gym_wrapper.py's
+    # module docstring for why that specific class of "fix" was investigated
+    # and rejected as unsafe there).
+    is_atc = priority_name == "ATC"
 
     def choose(base_env, job_actions, decode):
         t = base_env.time
         unique_jobs = {decode(a)[0] for a in job_actions}
+        if is_atc:
+            mean_p = _atc_mean_p(base_env)
+            key_fn = lambda j: (atc_key(base_env, j, mean_p=mean_p), j)
+        else:
+            key_fn = lambda j: (priority_key(base_env, j), j)
         # Secondary sort key on job index guarantees a deterministic,
         # reproducible tie-break (ascending job index) matching the
         # original inline dispatch's behaviour exactly for EDF/SPT/LST.
-        job = sorted(unique_jobs, key=lambda j: (priority_key(base_env, j), j))[0]
+        job = sorted(unique_jobs, key=key_fn)[0]
         feasible_machines = sorted({decode(a)[1] for a in job_actions if decode(a)[0] == job})
         machine = placement_rule(base_env, job, feasible_machines, t)
         return job * base_env.num_machines + machine

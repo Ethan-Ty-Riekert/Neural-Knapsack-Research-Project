@@ -88,9 +88,9 @@ class OnlineSchedulingEnv(SchedulingEnv):
         if machine_was_inactive:
             self.machine_active[machine] = 1
 
+        # PERF (2026-09-21, S2W9): see SchedulingEnv.step()'s matching comment.
         duration = self.job_durations[job]
-        for tau in range(self.time, self.time + duration):
-            self.capacity[machine, :, tau] -= self.job_resources[job]
+        self.capacity[machine, :, self.time:self.time + duration] -= self.job_resources[job][:, None]
 
         self.start_times[job] = self.time
         self.tardiness[job] = max(0, self.time + duration - self.job_deadlines[job])

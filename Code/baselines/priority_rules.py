@@ -75,7 +75,24 @@ def wspt_key(base_env, job):
     return base_env.job_durations[job] / max(base_env.job_weights[job], 1e-8)
 
 
-def atc_priority(base_env, job, k: float = 2.0):
+def _atc_mean_p(base_env):
+    """mean_p for the ATC formula -- see atc_priority()'s docstring for what
+    it means and why it's restricted to known_jobs online. Extracted as its
+    own function (2026-09-21, S2W9, from Future/research/2026-09-20-
+    optimisation-and-efficiency-critique.md Section 1.5) so callers that
+    invoke atc_priority()/atc_key() once per candidate job in a single sort
+    (Code/baselines/registry.py's choose()) can compute this ONCE (it
+    depends only on base_env's state, not on which job is being scored) and
+    pass it in, instead of each of the J calls recomputing the identical
+    O(num_jobs) sum from scratch -- O(J*num_jobs) collapsing to O(num_jobs)
+    for one ranking. Safe because nothing mutates base_env's state between
+    calls within a single sort (verified before this change, not assumed)."""
+    revealed = getattr(base_env, "revealed_jobs", None)
+    known_jobs = revealed if revealed else range(len(base_env.job_durations))
+    return max(1e-8, sum(base_env.job_durations[j] for j in known_jobs) / len(known_jobs))
+
+
+def atc_priority(base_env, job, k: float = 2.0, mean_p: float = None):
     """Raw Apparent Tardiness Cost priority I_j(t) (Vepsalainen & Morton,
     1987, "Priority Rules for Job Shops with Weighted Tardiness Costs,"
     Management Science 33(8)):
@@ -109,10 +126,15 @@ def atc_priority(base_env, job, k: float = 2.0):
     (Code/env/priority_only_gym_wrapper.py's Option 3, the ATC-primed
     priority-learning variant of the 2026-09-17 action-space-reduction work)
     -- rather than duplicating the formula for the second use.
+
+    mean_p: optional precomputed _atc_mean_p(base_env) -- pass this when
+    scoring multiple jobs against the SAME base_env state in one ranking
+    (e.g. registry.py's choose()) to avoid recomputing the identical
+    O(num_jobs) sum once per candidate job. None (default) computes it
+    internally, preserving the original single-call behaviour exactly.
     """
-    revealed = getattr(base_env, "revealed_jobs", None)
-    known_jobs = revealed if revealed else range(len(base_env.job_durations))
-    mean_p = max(1e-8, sum(base_env.job_durations[j] for j in known_jobs) / len(known_jobs))
+    if mean_p is None:
+        mean_p = _atc_mean_p(base_env)
 
     p_j = base_env.job_durations[job]
     w_j = base_env.job_weights[job]
@@ -121,7 +143,7 @@ def atc_priority(base_env, job, k: float = 2.0):
     return (w_j / max(p_j, 1e-8)) * urgency
 
 
-def atc_key(base_env, job, k: float = 2.0):
+def atc_key(base_env, job, k: float = 2.0, mean_p: float = None):
     """Apparent Tardiness Cost priority rule -- see atc_priority() for the
     formula and citation. Negated so that HIGHER priority (the usual ATC
     convention: maximize I_j) becomes a SMALLER key, matching every other
@@ -135,8 +157,10 @@ def atc_key(base_env, job, k: float = 2.0):
     small RL-training sub-project, not implemented here. This is the
     original, fixed-k ATC rule; the state-dependent extension remains future
     work.
+
+    mean_p: see atc_priority()'s matching parameter -- forwarded unchanged.
     """
-    return -atc_priority(base_env, job, k)
+    return -atc_priority(base_env, job, k, mean_p)
 
 
 PRIORITY_RULES = {

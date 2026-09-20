@@ -84,10 +84,14 @@ class SchedulingEnv:
         self.machine_capacity = np.array(machine_capacity, dtype=float).copy()
 
         # Machine capacity over time: shape (num_machines, num_resources, horizon)
-        self.capacity = np.zeros((self.num_machines, self.num_resources, self.horizon))
-        for m in range(self.num_machines):
-            for t in range(self.horizon):
-                self.capacity[m, :, t] = self.machine_capacity
+        # PERF (2026-09-21, S2W9, from Future/research/2026-09-20-optimisation-
+        # and-efficiency-critique.md Section 1.2): vectorized broadcast instead
+        # of a Python double-loop -- identical result, self.machine_capacity
+        # (shape (R,)) broadcasts against every (m, t) at once via
+        # [None, :, None]. Correct today either way; this changes only the
+        # constant-factor cost, run once per env construction.
+        self.capacity = np.broadcast_to(self.machine_capacity[None, :, None],
+                                         (self.num_machines, self.num_resources, self.horizon)).copy()
         # We have no need to store the entire capacity matrix as for everything we subtract
         # from this capacity over time matrix, we will eventually add back (- for job starting,+ for job finishing)
 
@@ -194,9 +198,10 @@ class SchedulingEnv:
         that diagnosis, not just a coincidental separate issue. See
         Future/research/2026-08-09-pointer-network-action-head.md.
         """
-        for m in range(self.num_machines):
-            for t in range(self.horizon):
-                self.capacity[m, :, t] = self.machine_capacity
+        # PERF (2026-09-21, S2W9): vectorized in-place fill, same as __init__'s
+        # matching comment -- identical result, run once per episode instead of
+        # a Python double-loop.
+        self.capacity[:, :, :] = self.machine_capacity[None, :, None]
 
         self.machine_active[:] = 0
         self.start_times[:] = -1
@@ -425,9 +430,11 @@ class SchedulingEnv:
             self.machine_active[machine] = 1
 
         # Apply resource usage
+        # PERF (2026-09-21, S2W9): vectorized slice op instead of a per-tick
+        # Python loop -- identical result (the same job_resources[job] vector
+        # subtracted at every occupied tick), run on every valid placement.
         duration = self.job_durations[job]
-        for tau in range(self.time, self.time + duration):
-            self.capacity[machine, :, tau] -= self.job_resources[job]
+        self.capacity[machine, :, self.time:self.time + duration] -= self.job_resources[job][:, None]
 
         # Update job timing
         self.start_times[job] = self.time

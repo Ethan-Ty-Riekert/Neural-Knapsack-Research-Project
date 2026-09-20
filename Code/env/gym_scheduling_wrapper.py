@@ -93,48 +93,55 @@ class GymSchedulingEnv(gym.Env):
         return 1 + (self.num_machines * self.num_resources) + self.max_jobs * (self.num_resources + 4)
 
     def _get_obs(self):
-        """Observation vector construction: Build the observation vector"""
-        obs = []
+        """Observation vector construction: Build the observation vector.
+
+        PERF (2026-09-21, S2W9, from Future/research/2026-09-20-optimisation-
+        and-efficiency-critique.md Section 1.3): vectorized numpy ops instead
+        of Python list.append()/.extend() + np.array() conversion -- this
+        runs on every single environment step, previously the second
+        highest-value hot-path finding after get_state() (already fixed).
+        Produces numerically identical values to the original per-element
+        loop, just without the Python-level looping cost."""
+        R, M, J, n = self.num_resources, self.num_machines, self.max_jobs, self.num_jobs
 
         # 1. Normalised time
         t = min(self.env.time, self.horizon)
-        obs.append(t/self.horizon)
 
-        # 2. Remaining capacity (normalised)
+        # 2. Remaining capacity (normalised) -- machine-major, resource-minor,
+        # matching the original nested "for m: for r:" append order exactly.
         t_idx = min(self.env.time, self.horizon - 1)
-        for m in range(self.num_machines):
-            for r in range(self.num_resources):
-                cap = self.env.capacity[m, r, t_idx] / (self.initial_capacity[m, r] + 1e-8) # for non zero division
-                obs.append(cap)
+        capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
 
         # Precompute normalisation constants
         max_dur = max(1.0, float(np.max(self.env.job_durations)))
         max_wgt = max(1.0, float(np.max(self.env.job_weights)))
         max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))
 
-        # 3. Job features (max_jobs fixed-size slots; slots beyond this instance's
-        # actual num_jobs are zero-padded and marked "scheduled" so the policy
-        # treats them as already-handled/irrelevant. Their actions are always
-        # masked out in get_action_mask().)
-        for j in range(self.max_jobs):
-            if j < self.num_jobs:
-                # duration, deadline, weights
-                obs.append(self.env.job_durations[j] / max_dur)
-                obs.append(self.env.job_deadlines[j] / self.horizon)
-                obs.append(self.env.job_weights[j] / max_wgt)
+        # 3. Job features (max_jobs fixed-size slots; slots beyond this
+        # instance's actual num_jobs are zero-padded and marked "scheduled" so
+        # the policy treats them as already-handled/irrelevant -- their
+        # actions are always masked out in get_action_mask()). job_feats
+        # starts all-zero, matching the original's padding-slot branch
+        # exactly; only the first n rows get filled with real values.
+        job_feats = np.zeros((J, R + 4), dtype=np.float32)
+        job_feats[:n, 0] = self.env.job_durations / max_dur
+        job_feats[:n, 1] = self.env.job_deadlines / self.horizon
+        job_feats[:n, 2] = self.env.job_weights / max_wgt
+        job_feats[:n, 3:3 + R] = self.env.job_resources / max_res
+        # scheduled mask: 1.0 everywhere by default (matches padding slots'
+        # hardcoded 1.0), then 0.0 for real jobs still in remaining_jobs --
+        # remaining_jobs only ever holds indices < n, so this can never touch
+        # a padding slot.
+        scheduled = np.ones(J, dtype=np.float32)
+        if self.env.remaining_jobs:
+            scheduled[list(self.env.remaining_jobs)] = 0.0
+        job_feats[:, -1] = scheduled
 
-                # resource requirements (R dims)
-                for r in range(self.num_resources):
-                    obs.append(self.env.job_resources[j, r] / max_res[r])
-
-                # scheduled mask
-                scheduled = 0.0 if j in self.env.remaining_jobs else 1.0
-                obs.append(scheduled)
-            else:
-                obs.extend([0.0] * (3 + self.num_resources))
-                obs.append(1.0)
-
-        return np.array(obs, dtype=np.float32) # use numpy for efficiency
+        return np.concatenate((
+            [t / self.horizon],
+            capacity_block.ravel(),
+            job_feats.ravel(),
+        )).astype(np.float32)
 
     def set_lambda2(self, value: float) -> None:
         """Set the underlying SchedulingEnv's tardiness weight (lambda2) at
@@ -180,12 +187,31 @@ class GymSchedulingEnv(gym.Env):
         # out-of-bounds read there.
         t = self.env.time
 
-        # Normal feasible scheduling actions
-        for j in self.env.remaining_jobs:
-            for m in range(self.num_machines):
-                action_id = j * self.num_machines + m
-                if self.env.is_feasible(j, m, t):
-                    mask[action_id] = 1
+        # Normal feasible scheduling actions.
+        # PERF (2026-09-21, S2W9, from Future/research/2026-09-20-
+        # optimisation-and-efficiency-critique.md Section 1.4): vectorized
+        # instead of a nested Python "for j: for m:" loop calling
+        # is_feasible() O(|remaining_jobs| * num_machines) times. Replicates
+        # is_feasible(j, m, t)'s exact two conditions (duration fits before
+        # the horizon; every resource dimension has enough remaining
+        # capacity) as one array comparison. Preserves the original's OOB
+        # safety at t >= horizon defensively (clamped t_idx for indexing
+        # only) rather than via short-circuit order, since every job has
+        # duration >= 1 -- duration_ok is already False for every row
+        # whenever t >= horizon, so the (otherwise out-of-range) capacity
+        # values at those rows never affect the final mask.
+        remaining = list(self.env.remaining_jobs)
+        if remaining:
+            remaining_idx = np.array(remaining, dtype=np.int64)
+            durations = self.env.job_durations[remaining_idx]                  # (Jr,)
+            duration_ok = (t + durations) <= self.horizon                      # (Jr,)
+            t_idx = min(t, self.horizon - 1)
+            cap_t = self.env.capacity[:, :, t_idx]                             # (M, R)
+            resources = self.env.job_resources[remaining_idx]                  # (Jr, R)
+            resource_ok = (cap_t[None, :, :] - resources[:, None, :] >= 0).all(axis=2)  # (Jr, M)
+            feasible = resource_ok & duration_ok[:, None]                      # (Jr, M)
+            action_ids = remaining_idx[:, None] * self.num_machines + np.arange(self.num_machines)[None, :]
+            mask[action_ids[feasible]] = 1
 
         # Idle action: allowed by default, unless restrict_idle is set and at
         # least one non-idle action is feasible this step (Solution 1a).
