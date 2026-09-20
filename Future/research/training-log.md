@@ -32,6 +32,56 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-21 (S2W9) -- Option 4 context-fix result: reached a much better optimum mid-training, but instability lost it by the end
+
+**Context:** Direct follow-up to the job-choice-weighted `_pool_job_context()` fix (`Code/policies/action_branching_policy.py`, committed the same evening -- see that commit for the full derivation grounded in Tavakoli et al. 2018). Same config as the original Option 4 result (300k, dense+weighted, `--diagnostics-interval 5000`), save-tag `offline_dense_weighted_ctxfix`, for a direct comparison.
+
+**Stats:**
+```
+Option 4 (ctxfix, 300k)    tardiness=  427.24+/-221.97  weighted_tardiness=  795.48+/-495.38  late=40.46  scheduled=92.26/100
+Option 4 (original, 300k)  tardiness=  172.74+/-159.61  weighted_tardiness=  355.64+/-358.80  late=31.74  scheduled=96.10/100  (2026-09-20 entry above)
+ATC                        tardiness=  221.24+/-129.98  weighted_tardiness=  298.80+/-184.13  late=11.10  scheduled=94.68/100
+
+eval_tardiness/mean_weighted_tardiness trajectory across the run (TensorBoard, sampled):
+  early (~2900-5800, noisy) -> mid-run: EXACTLY 0.0 for several consecutive readings (perfect
+  scheduling on the 5 fixed held-out instances) -> brief noise (10.8-2930) -> late-run climb
+  back into the 500-1500 range -> final reading before save: 1120.
+```
+
+**Observation:** At face value the final-checkpoint comparison looks like a regression
+(795.48 vs. 355.64) -- but the training-time trajectory tells a different story than a
+simple "the fix didn't work." This run reached a materially BETTER optimum (weighted
+tardiness = 0, i.e. perfect) than the original run ever got close to at any point,
+proving the underlying hypothesis (a job-choice-weighted machine-branch context beats a
+flat average) is directionally correct -- reachable, not wrong. What actually happened
+is instability: the original run's tardiness curve was comparatively smooth and
+steadily improving (1250->~65 by the end); this run oscillated by orders of magnitude
+throughout, and simply happened to be in a bad phase of that oscillation when training
+stopped at exactly 300k timesteps.
+
+**A concrete, testable hypothesis for the instability (not yet diagnosed further,
+flagged as the next step, not asserted as proven):** the fix makes `job_score_head`'s
+parameters serve two entangled roles that were previously fully decoupled -- picking a
+good job directly (via `job_logits`, unchanged) AND shaping what the machine branch
+sees (via `job_logits`-weighted pooling into `job_context`, the new part). Before this
+fix, `job_score_head`'s gradient signal came only from the job branch's own action
+loss; now it also indirectly affects the machine branch and value/idle heads through
+the pooling weights, a plausible source of the added optimization noise. A natural,
+minimal next test: detach `job_logits` before using them as pooling weights
+(`torch.softmax(job_logits.detach(), dim=-1)`), which keeps the core fix (weighted, not
+flat, pooling) while removing this specific gradient-coupling path, isolating whether
+it's actually the cause.
+
+**Conclusion / next step:** Neither "the fix works" nor "the fix doesn't work" is the
+correct takeaway -- the fix demonstrably unlocks a better achievable optimum but also
+destabilizes training around it. Given this project's own established discipline
+(diagnose mechanism before re-running blind), the `job_logits.detach()` variant is the
+next concrete, cheap (one-line change, no new training-scale commitment yet) thing to
+try before deciding whether this whole approach is worth a larger-scale validation run.
+Not implemented yet -- a genuine next-step decision, not assumed.
+
+---
+
 ## 2026-09-20 (S2W9) -- Option 4 (action-branching) first result: learned placement makes things WORSE at matched training budget, not better
 
 **Context:** First real training run for Option 4 (`Code/env/action_branching_gym_wrapper.py`, implemented earlier today -- see the entry below covering that implementation session) -- the direct test of the report.md Section 1.4 confound: is Options 1/2/3's win over the historic PPO band from the smaller action space, or from removing machine-placement-learning entirely (fixed FirstFit)? Option 4 gives placement back to the learner via `MultiDiscrete([max_jobs+1, num_machines])`.
