@@ -707,7 +707,39 @@ url         = {https://doi.org/10.1109/NUiCONE.2013.6780076}
   pages   = {755--768},
   year    = {2012},
   doi     = {10.1016/j.future.2011.04.017},
-  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub}
+  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub},
+  note    = {ADDED 2026-09-20 (S2W9): answers "how do we define utilization for
+             energy efficiency" -- substitutes fan2007powerprovisioning's
+             empirical k=0.7 idle-power constant into P=(P_MAX-P_MIN)*u+P_MIN
+             to get the simplified per-machine power model
+             P=P_MAX*(0.7+0.3*u_cpu). This project's environment (scheduling_env.py)
+             does NOT currently implement an energy term -- see the matching
+             2026-09-20 training-log.md entry for the design discussion and
+             why this conflicts with the existing hotspot penalty
+             (lambda3*delta_theta, which discourages exactly the load
+             consolidation this model says saves energy). Not yet cited in
+             code.}
+}
+
+@inproceedings{fan2007powerprovisioning,
+  author    = {Fan, Xiaobo and Weber, Wolf-Dietrich and Barroso, Luiz Andr\'{e}},
+  title     = {Power Provisioning for a Warehouse-sized Computer},
+  booktitle = {Proceedings of the 34th Annual International Symposium on Computer Architecture (ISCA)},
+  year      = {2007},
+  pages     = {13--23},
+  doi       = {10.1145/1250662.1250665},
+  url       = {https://www.barroso.org/publications/PowerProvisioning.pdf},
+  note      = {ADDED 2026-09-20 (S2W9): the primary source (Google) for the
+               empirical finding that an idle server consumes ~70% of its
+               peak power (k=0.7) -- energyaware2012 (Beloglazov et al.)
+               substitutes this constant into the linear power model
+               P=(P_MAX-P_MIN)*u_cpu+P_MIN to get P=P_MAX*(0.7+0.3*u_cpu).
+               Formula/constant confirmed via a secondary survey
+               (arXiv:2004.12335 Section 2.1.1) quoting this paper directly --
+               the primary PDF itself could not be text-extracted in this
+               session (binary/encoded), so cite this secondary confirmation
+               if the exact page/derivation is ever needed and this can't be
+               independently re-verified.}
 }
 
 @article{ranking2013,
