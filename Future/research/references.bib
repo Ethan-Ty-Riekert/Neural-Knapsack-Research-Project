@@ -1006,3 +1006,65 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
              published article -- flagged per this project's own citation
              convention for unconfirmed details.}
 }
+
+@article{burke2013hyperheuristicsurvey,
+  author  = {Burke, Edmund K. and Gendreau, Michel and Hyde, Matthew and Kendall, Graham and Ochoa, Gabriela and \"{O}zcan, Ender and Qu, Rong},
+  title   = {Hyper-heuristics: A Survey of the State of the Art},
+  journal = {Journal of the Operational Research Society},
+  volume  = {64},
+  number  = {12},
+  pages   = {1695--1724},
+  year    = {2013},
+  doi     = {10.1057/jors.2013.71},
+  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
+             work.md: the canonical selection-vs-generation hyper-heuristic
+             taxonomy -- Option 1 (and every Options-1-4 rule-selection design
+             in this project) is a SELECTION hyper-heuristic (picks among a
+             fixed set of existing low-level heuristics); it can never
+             generate a genuinely new priority function, only learn when to
+             defer to an existing one. Verified via a direct web search
+             (author list, venue, volume/issue/pages, and DOI all
+             cross-consistent across multiple independent listings), primary
+             text not opened/read in full.}
+}
+
+@article{xu2025learntooptimise,
+  author  = {Xu, Meng and Mei, Yi and Zhang, Fangfang and Zhang, Mengjie},
+  title   = {Learn to Optimise for Job Shop Scheduling: A Survey with Comparison Between Genetic Programming and Reinforcement Learning},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {6},
+  year    = {2025},
+  doi     = {10.1007/s10462-024-11059-9},
+  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
+             work.md: direct survey comparing the two paradigms Option 1 sits
+             between -- genetic-programming-evolved priority rules (a
+             GENERATION hyper-heuristic, can invent new rules) vs.
+             reinforcement-learning-selected/learned scheduling (what this
+             project's Options 1-4 all do, none of which generate novel rules).
+             Bibliographic details taken from a web search result (title/
+             authors/venue/DOI cross-consistent across multiple independent
+             listings), not independently opened/read in full -- the article
+             itself sits behind a Springer auth wall in this environment.}
+}
+
+@article{chen2024drlgphh,
+  author  = {Chen, Xinan and Bai, Ruibin and Qu, Rong and Dong, Jiawei and Jin, Yuan},
+  title   = {Deep Reinforcement Learning Assisted Genetic Programming Ensemble Hyper-Heuristics for Dynamic Scheduling of Container Port Trucks},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {29},
+  number  = {4},
+  year    = {2024},
+  doi     = {10.1109/TEVC.2024.3381042},
+  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
+             work.md: the precise generation+selection hybrid precedent
+             proposed as Option 1's natural next step -- genetic programming
+             evolves a POOL of novel, problem-tailored priority rules
+             (generation hyper-heuristic), then RL selects among that evolved
+             pool at each decision point (selection hyper-heuristic, exactly
+             Option 1's existing mechanism, just over a richer non-hand-picked
+             rule set). Different problem domain (container port trucks, not
+             cloud/machine scheduling) but the same DRL-GPHH architecture
+             pattern. Bibliographic details taken from a web search result, not
+             independently opened/read in full.}
+}

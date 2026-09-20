@@ -32,6 +32,45 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-21 (S2W9) -- Option 1 review + hyper-/meta-heuristic RL future work (research doc, no code changes)
+
+**Context:** User-requested review of Option 1's current status plus a literature-
+grounded look at future work in the hyper-heuristic/meta-heuristic-with-RL space.
+Full write-up: `2026-09-21-option1-hyperheuristic-future-work.md`.
+
+**Summary:** Option 1 offline (1.2M, dense+weighted, fixed instance) is the
+project's strongest result -- 11.00 tardiness, 3 units behind LST's proven-optimal-
+matching 8.00, solidly ahead of EDF's 16.00. Randomized-instance offline ties EDF
+(116.50 weighted) but doesn't beat LST. Online is unresolved: 300k (730.30
+weighted) is the best result found so far and has not been beaten by any longer
+run; 900k reliably regresses (confirmed 3x independently, see the 2026-09-21 entry
+above), root cause still open.
+
+Grounded Option 1's framing precisely via Burke et al. (2013)'s hyper-heuristic
+taxonomy: it is a SELECTION hyper-heuristic (picks among 7 fixed classical rules),
+never a GENERATION one (cannot invent new priority functions) -- confirming
+report.md's and this project's own earlier framing, now with the canonical
+citation behind it. Found two directly relevant precedents for the natural next
+mechanism (not yet built): Chen et al. (2024)'s DRL-GPHH pattern -- genetic
+programming evolves a pool of novel priority rules, RL selects among that pool at
+each decision point (structurally identical to Option 1's existing selection
+mechanism, just over a richer, machine-discovered rule set instead of 7
+hand-picked ones) -- and Xu et al. (2025)'s direct GP-vs-RL survey for job shop
+scheduling, grounding why these are the two dominant paradigms in this literature.
+
+**Conclusion / next step:** Not started -- explicitly scoped as needing user
+input before building (this project's established process for genuinely new
+infrastructure, here a GP rule-generation phase this project has never
+implemented). Recommended sequencing if pursued: target the offline case first
+(already near-optimal, no confounding instability), and likely resolve or better
+understand the online instability before extending Option 1 there, so a new
+generation phase isn't confounded with the still-open online mystery. Also named
+(less concretely scoped, no specific paper verified) RL-guided metaheuristic
+search as a second candidate direction, connecting to this project's existing
+but never-extended PSO baseline.
+
+---
+
 ## 2026-09-21 (S2W9) -- Option 4 detach-fix result: stability confirmed fixed, but still short of the original simplest design -- closing out this arc
 
 **Context:** Third and (for now) final Option 4 pooling variant this session. Same config as both prior attempts (300k, dense+weighted).
