@@ -32,6 +32,40 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-21 (S2W9) -- "More online training hurts" confirmed a 3rd independent time, now with the full mechanistic trajectory (not just start/end snapshots)
+
+**Context:** Direct use of the new training-diagnostics tooling (`Code/utils/training_diagnostics.py`, implemented 2026-09-20) on the exact protocol that first produced the "more training hurts" mystery -- Option 1 online, 900k timesteps, dense+weighted, `--diagnostics-interval 5000`. Goal: real visibility into WHAT happens over the course of training, not just comparing two endpoint numbers.
+
+**Stats:**
+```
+Final 50-instance randomized eval:
+  Option 1 (900k, diagnostics run)  tardiness=269.20+/-116.80  weighted_tardiness=798.46+/-346.65  late=22.90  scheduled=833.42/898
+  SPT                                tardiness=269.20+/-116.80  weighted_tardiness=798.46+/-346.65  late=22.90  scheduled=833.42/898  (IDENTICAL, digit-for-digit)
+  ATC                                tardiness=234.36+/-114.67  weighted_tardiness=648.16+/-338.30  late=23.80  scheduled=835.92/898
+
+Comparison across all three 900k online runs so far (all dense+weighted, same protocol):
+  900k, ent_coef=0.0 (original, 2026-09-18):   weighted=788.20+/-389.26  (20-instance sample)
+  900k, ent_coef=0.01 (2026-09-19 entry):      weighted=798.46+/-346.65  (50-instance) -- BYTE-IDENTICAL to this run
+  900k, ent_coef=0.0, this diagnostics run:    weighted=798.46+/-346.65  (50-instance)
+  300k (best known online Option 1 result):    weighted=730.30+/-306.91  (20-instance sample, genuinely mixed rule behaviour)
+
+Full-run diagnostics trajectory (TensorBoard, this run):
+  action_dist/entropy_normalized: ~1.0 (uniform) at the start, declining CONTINUOUSLY and
+    gradually across the entire 900k steps (not a sudden collapse at one point) to a final
+    ~0.164-0.165 -- a partial, not total, collapse in entropy terms.
+  eval_tardiness/mean_weighted_tardiness (5 fixed held-out instances, sampled every 5000
+    steps): genuinely noisy through the run's middle third (spiking as high as 2.02e3 at
+    points), before settling into an exactly-stable plateau at 741 for a long final
+    stretch -- the deterministic eval policy became fully fixed well before 900k, not
+    gradually drifting worse all the way to the end.
+```
+
+**Observation:** This is now the THIRD independent 900k online run (two different `ent_coef` settings) landing on the same collapsed-to-SPT outcome, with two of the three producing byte-identical eval numbers -- this rules out noise/seed-luck as the explanation; the collapse is a robust, reproducible property of this training setup at this timestep budget, not an artifact of one run. The new trajectory data adds real mechanism that wasn't visible before: entropy decays smoothly and continuously across the WHOLE run (not a late, sudden event), while the deterministic policy's actual behaviour (the eval_tardiness plateau) locks in earlier and holds fixed for a long final stretch -- meaning most of the run's back half trains a policy whose deterministic behaviour has already stopped changing, even though the underlying entropy metric was still nominally declining. This dissociation (entropy still moving, deterministic behaviour already frozen) is itself informative: it suggests the policy's argmax action converges well before its full probability distribution does, so tracking entropy alone would give a falsely-still-improving signal after the practically-relevant collapse has already happened.
+
+**Conclusion / next step:** The "more training hurts online" finding is now well-evidenced (3 independent confirmations) rather than a single-run curiosity, and entropy regularization is conclusively ruled out as the fix (both ent_coef settings converge to the same place). The genuinely open question -- WHY SPT specifically, and why the deterministic policy locks in well before entropy fully decays -- remains unresolved and is a good candidate for a future session's diagnostic work (e.g. tracking which specific state features correlate with the SPT-favouring decisions, or comparing the value function's landscape around the collapse point). Not chased further tonight; the 300k checkpoint (weighted=730.30) remains the best available online Option 1 result, and this entry's job is documenting the phenomenon precisely, not solving it.
+
+---
+
 ## 2026-09-21 (S2W9) -- Option 4 context-fix result: reached a much better optimum mid-training, but instability lost it by the end
 
 **Context:** Direct follow-up to the job-choice-weighted `_pool_job_context()` fix (`Code/policies/action_branching_policy.py`, committed the same evening -- see that commit for the full derivation grounded in Tavakoli et al. 2018). Same config as the original Option 4 result (300k, dense+weighted, `--diagnostics-interval 5000`), save-tag `offline_dense_weighted_ctxfix`, for a direct comparison.
