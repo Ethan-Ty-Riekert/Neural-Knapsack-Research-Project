@@ -52,8 +52,12 @@ from Code.env.action_branching_gym_wrapper import ActionBranchingGymSchedulingEn
 from Code.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
 from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
 from Code.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
-from Code.training.train_optimized import make_online_resampler, make_random_instance_resampler
+from Code.training.train_optimized import (
+    make_online_resampler, make_random_instance_resampler, RANDOM_INSTANCE_SEED_CEILING,
+)
+from Code.env.rule_selection_gym_wrapper import RULE_NAMES
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
+from Code.utils.training_diagnostics import build_diagnostics_callbacks
 
 
 def mask_fn(env):
@@ -280,6 +284,12 @@ def main():
                          help="Suffix for the saved checkpoint filename (e.g. 'online_lognormal') "
                               "so an online/heavy-tailed run doesn't overwrite the offline "
                               "fixed-instance checkpoint for the same --option.")
+    parser.add_argument("--diagnostics-interval", type=int, default=None,
+                         help="2026-09-20 follow-up: opt-in periodic training-time diagnostics "
+                              "(Code/utils/training_diagnostics.py) -- action-distribution "
+                              "entropy/frequency logged as TensorBoard scalars, plus a cheap "
+                              "held-out tardiness eval, every N timesteps. Default None keeps "
+                              "existing behaviour (no callback at all) unchanged.")
     args = parser.parse_args()
 
     if args.online and args.arrival_rate is None:
@@ -319,8 +329,47 @@ def main():
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
           f"obs_dim={env.observation_space.shape[0]}, timesteps={args.timesteps}")
 
+    callback = None
+    if args.diagnostics_interval is not None:
+        held_out_envs = []
+        for i in range(5):
+            seed = RANDOM_INSTANCE_SEED_CEILING + i
+            if args.online:
+                held_out_full = make_online_base_gym_env(
+                    args.arrival_rate, args.online_horizon, args.online_max_jobs,
+                    args.job_size_distribution, seed=seed, use_resampler=False,
+                    job_weight_range=job_weight_range,
+                )
+            else:
+                held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range)
+            held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
+                                                       window_size=args.window_size)
+            # build_env_and_policy wraps Monitor(ActionMasker(wrapper, mask_fn))
+            # for the TRAINING env (Monitor tracks episode completion for SB3's
+            # own info buffer) -- run_episode() (Code/evaluation/
+            # eval_action_space_variant.py) expects env.env.env to reach the
+            # RAW SchedulingEnv (matching build_eval_env()'s un-Monitor-wrapped
+            # ActionMasker(wrapper)), so strip the extra Monitor layer here.
+            held_out_envs.append(held_out_env.env)
+
+        # env is Monitor(ActionMasker(wrapper, mask_fn)) -- max_jobs/num_machines
+        # live on the innermost wrapper (RuleSelectionGymSchedulingEnv etc.),
+        # same chain-walk eval_action_space_variant.py's run_episode() uses
+        # (base_env = env.env.env).
+        inner_env = env.env.env
+        callback = build_diagnostics_callbacks(
+            args.option, held_out_envs=held_out_envs, diagnostics_interval=args.diagnostics_interval,
+            rule_names=RULE_NAMES, max_jobs=inner_env.max_jobs,
+            num_machines=inner_env.num_machines if args.option == "4" else None,
+        )
+        print(f"Option {args.option}: diagnostics enabled, interval={args.diagnostics_interval}, "
+              f"{len(held_out_envs)} held-out eval instances (seeds {RANDOM_INSTANCE_SEED_CEILING}.."
+              f"{RANDOM_INSTANCE_SEED_CEILING + len(held_out_envs) - 1})")
+
     t0 = time.time()
-    model.learn(total_timesteps=args.timesteps, tb_log_name=f"option{args.option}{'_' + args.save_tag if args.save_tag else ''}")
+    model.learn(total_timesteps=args.timesteps,
+                tb_log_name=f"option{args.option}{'_' + args.save_tag if args.save_tag else ''}",
+                callback=callback)
     elapsed_min = (time.time() - t0) / 60.0
 
     tag_suffix = f"_{args.save_tag}" if args.save_tag else ""
