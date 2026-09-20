@@ -240,4 +240,29 @@ ctx_none = net10._pool_job_context(job_emb10, peaked_logits, active_none)
 assert torch.isfinite(ctx_none).all(), f"expected finite output with no active jobs, got {ctx_none.tolist()}"
 print(f"  no active jobs -> context={ctx_none.squeeze(0).tolist()} (finite, no NaN)")
 
+# ============================================================
+# Check 11 (2026-09-21 follow-up fix, user-prompted after the ctxfix
+# instability result): job_logits must be DETACHED before use as pooling
+# weights, so job_score_head's parameters no longer get a second gradient
+# path through the machine branch/value/idle heads -- verify this directly
+# via autograd, not just by eyeballing the code, since detach() silently
+# doing nothing (e.g. if applied to the wrong tensor) would not show up in
+# any forward-pass value check above.
+# ============================================================
+print("=== Check 11: job_logits is detached before pooling (verified via autograd) ===")
+job_emb11 = job_emb10.clone().requires_grad_(True)
+job_logits11 = (job_emb11.sum(dim=-1) * 2.0)  # a differentiable function of job_emb11, requires_grad
+job_logits11.retain_grad()
+ctx11 = net10._pool_job_context(job_emb11, job_logits11, active_all)
+ctx11.sum().backward()
+assert job_logits11.grad is None or torch.allclose(job_logits11.grad, torch.zeros_like(job_logits11.grad)), (
+    f"expected job_logits to receive NO gradient from _pool_job_context (detached), "
+    f"got grad={job_logits11.grad}"
+)
+assert job_emb11.grad is not None and job_emb11.grad.abs().sum() > 0, (
+    "expected job_emb to still receive a real gradient through the (undetached) weighted-sum path"
+)
+print(f"  job_logits.grad={job_logits11.grad} (None/zero, correctly detached), "
+      f"job_emb.grad nonzero (still connected)")
+
 print("\nALL ACTION-BRANCHING WRAPPER CHECKS PASSED")

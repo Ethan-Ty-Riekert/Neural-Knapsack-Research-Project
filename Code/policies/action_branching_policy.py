@@ -37,8 +37,19 @@ still one shared forward pass, still no bypass of SB3's parallel-branch
 masking API (see the "honest limitation" in the wrapper's docstring, which
 this does NOT resolve -- the machine branch still can't condition on the
 job branch's actually-SAMPLED value, only on its predicted distribution).
-This is a genuine attempt at a fix, not yet validated -- see
-training-log.md for whichever result follows this change.
+
+SECOND RESULT AND FOLLOW-UP FIX (2026-09-21, S2W9): the weighted-pooling
+fix's first trained checkpoint reached weighted_tardiness=0 (perfect) at
+its training midpoint -- proving the underlying idea reachable -- but the
+run was far more unstable than the original design and regressed to a
+worse final checkpoint than not having the fix at all (training-log.md's
+matching entry). Hypothesis: `job_score_head`'s parameters now serve two
+entangled roles (job selection directly, AND -- via the pooling weights --
+shaping the machine branch/value/idle heads) that were previously fully
+decoupled. `_pool_job_context()` now detaches `job_logits` before using
+them as pooling weights, breaking that specific gradient-coupling path
+while keeping the core fix. Also not yet validated by a training run --
+see training-log.md.
 """
 from typing import Tuple
 
@@ -135,7 +146,21 @@ class ActionBranchingActorCritic(nn.Module):
         it's directly unit-testable -- see
         tests/test_action_branching_wrapper.py."""
         denom = active_mask.sum(dim=1).clamp(min=1.0)
-        masked_job_logits = job_logits.masked_fill(active_mask.squeeze(-1) < 0.5, float("-inf"))
+        # DETACHED (2026-09-21, S2W9 follow-up): the first version of this
+        # fix used `job_logits` (with gradients attached) as the pooling
+        # weights, making job_score_head's parameters serve two entangled
+        # roles -- job selection directly, AND (via these weights) shaping
+        # the machine branch's context and the value/idle heads -- where
+        # before this fix those roles were fully decoupled. The first
+        # trained checkpoint reached a much better optimum mid-training
+        # (weighted_tardiness=0) than ever achieved without this fix, but
+        # was far more unstable and regressed by the end -- see
+        # training-log.md's matching entry. Detaching breaks that specific
+        # gradient-coupling path (the WEIGHTING still reflects which job is
+        # likely, since it still reads the job branch's live logits forward,
+        # just doesn't backprop through them a second time via this path)
+        # while keeping the core fix (choice-weighted, not flat, pooling).
+        masked_job_logits = job_logits.detach().masked_fill(active_mask.squeeze(-1) < 0.5, float("-inf"))
         any_active = (active_mask.sum(dim=1).squeeze(-1) > 0).view(-1, 1, 1)  # (B, 1, 1)
         job_weights = torch.softmax(masked_job_logits, dim=-1).unsqueeze(-1)  # (B, J, 1)
         # Guard: softmax over an all "-inf" row (no active jobs this step,
