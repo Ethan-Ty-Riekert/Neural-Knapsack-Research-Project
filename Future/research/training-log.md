@@ -32,6 +32,68 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-20 (S2W9) -- Implementation session: Option 4 (action-branching) + training-time observability tooling
+
+**Context:** Following the compute_theta() bug discussion below, agreed direction for
+"lots of time" available: (1) action-branching to isolate the report.md Section 1.4
+confound (is Options 1/2/3's win from the smaller action space, or from removing
+machine-placement-learning entirely?), (2) examine the still-open "more online
+training hurts" mystery, (3) early-success-indicator tooling ("any ways to see if a
+certain model would be successful and worth training for a set amount of hours, or
+if there are any indications it will not perform"). (2) and (3) turned out to need
+the same underlying infrastructure. HPO remained explicitly deferred. Scoped via
+plan mode (2 parallel Explore passes + 1 Plan pass), with the single most
+load-bearing technical claim independently re-verified against the installed
+sb3_contrib source before committing to the design. Full plan:
+`C:\Users\ethan\.claude\plans\encapsulated-questing-cray.md`.
+
+**Option 4 implemented** (`Code/env/action_branching_gym_wrapper.py`,
+`Code/policies/action_branching_policy.py`,
+`Code/policies/action_branching_ppo_policy.py`): `MultiDiscrete([max_jobs+1,
+num_machines])` instead of Options 2/3's fixed-FirstFit placement. Design decision,
+verified directly against `sb3_contrib/common/maskable/distributions.py`:
+`MaskableMultiCategoricalDistribution` splits one shared forward pass's logits/mask
+into independent per-branch chunks, with no hook for the machine branch to condition
+on the job branch's sampled value -- built the parallel-independent-branches design
+(also the more faithful reading of Tavakoli et al. 2018's actual BDQ architecture;
+the `references.bib` note previously said "sequential", corrected). Machine mask is
+the union of feasible machines across all remaining jobs (a logged approximation);
+real constraint enforcement is a graceful idle-fallback in `step()` when a
+mask-legal pair turns out infeasible for the specific job chosen, flagged via a new
+`info["mask_mismatch"]` key. 9-check regression suite including a distribution-level
+masking sanity check (validates independent per-branch masking directly against the
+real library, not just trusted). Smoke-tested end-to-end (train -> save -> load ->
+eval).
+
+**Training-time observability implemented** (`Code/utils/training_diagnostics.py`):
+`ActionDistributionCallback` (periodic per-mode TensorBoard scalars --
+action_dist/entropy_normalized + per-rule frequency for Option 1, idle_frac/entropy/
+top1_frac for Options 2/3, plus machine-branch stats and
+`machine_mask_mismatch_frac` for Option 4 -- turns the entropy-collapse-style
+investigation into "read one TensorBoard scalar" instead of the ad-hoc
+stdout-eyeballing this project has done twice before) and `TardinessEvalCallback`
+(periodic held-out tardiness eval against 5 FIXED instances, reusing
+`eval_action_space_variant.py`'s `run_episode()`/`_weighted_tardiness()` via a
+deferred import to avoid a circular import). `build_diagnostics_callbacks()` also
+wires in `sb3_contrib.MaskableEvalCallback` (already installed, correctly threads
+`action_masks` through masked eval, unused anywhere in this repo before now) for
+free reward/episode-length logging. New `--diagnostics-interval` flag on
+`train_action_space_variant.py` (default off, existing behaviour unchanged).
+Smoke-tested end-to-end for all three modes via real short training runs -- every
+TensorBoard scalar group populated correctly, including a real nonzero
+`machine_mask_mismatch_frac` reading. 7-check regression suite.
+
+**Conclusion / next step:** Both pieces of infrastructure are implemented, tested,
+and committed but NOT yet used for a real finding -- no full-scale Option 4 training
+run has been launched yet, and the diagnostics tooling hasn't yet been pointed at a
+real multi-hour online run to actually chase the "more training hurts" mystery. Next
+session's natural first move: launch Option 4 at the same ~300k first-pass-filter
+scale this session's other options used, and launch (or relaunch) an online Option
+1/3 run with `--diagnostics-interval` on to get the first real TensorBoard trend
+data on the still-open mystery.
+
+---
+
 ## 2026-09-20 (S2W9) -- Real bug found and fixed: compute_theta() has been understating utilisation for this project's ENTIRE history
 
 **Context:** Direct follow-up to the previous entry's design discussion -- user asked "well is our machine utilization part of the objective correct?" Checked rather than assumed, per this project's rigor convention, and found a real, confirmed bug, not just a design gap.
