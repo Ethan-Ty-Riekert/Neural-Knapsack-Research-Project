@@ -32,6 +32,103 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-20 (S2W9) -- Option 4 (action-branching) first result: learned placement makes things WORSE at matched training budget, not better
+
+**Context:** First real training run for Option 4 (`Code/env/action_branching_gym_wrapper.py`, implemented earlier today -- see the entry below covering that implementation session) -- the direct test of the report.md Section 1.4 confound: is Options 1/2/3's win over the historic PPO band from the smaller action space, or from removing machine-placement-learning entirely (fixed FirstFit)? Option 4 gives placement back to the learner via `MultiDiscrete([max_jobs+1, num_machines])`.
+
+**Config:** 300k timesteps (matching every other option's first-pass-filter scale), `--reward-mode dense_tardiness --job-weight-min 1 --job-weight-max 6`, `--diagnostics-interval 5000` (new tooling's first real use). Evaluated on the standard 50-instance randomized protocol.
+
+**Stats:**
+```
+                                         raw tardiness   weighted tardiness
+Option 4 (action-branching, 300k)          172.74            355.64
+Option 3 (FirstFit, 300k, same entry above) 98.82              --
+Option 1 (FirstFit, 300k, same entry above)  49.32              --
+EDF                                          37.30            109.36
+LST                                          23.94             68.62
+ATC                                         221.24            298.80
+
+Diagnostics trend across the run (eval_tardiness/mean_tardiness, TensorBoard):
+  step ~15k: 1250 -> step ~150k: ~155 -> step ~300k: ~65-150 (noisy but converging)
+action_dist/entropy_normalized (job branch): stayed at 1.0 for the ENTIRE run -- never
+  specialized away from uniform.
+action_dist/machine_mask_mismatch_frac: consistently 0.7-1% throughout -- the parallel-
+  branch masking approximation (see the wrapper's design docstring) is cheap in
+  practice, not the bottleneck.
+```
+
+**Observation:** At the same 300k, dense+weighted, randomized-eval comparison, Option 4
+is WORSE than both Option 1 (49.32) and Option 3 (98.82) -- despite having a strictly
+more expressive action space that CAN learn placement, where those two are stuck with
+fixed FirstFit. This is the opposite of what "placement-learning was the missing piece"
+would predict. The job-branch entropy staying at 1.0 (never specializing) for the whole
+run is a plausible mechanism: adding a second thing to learn (even as an independent,
+additively-sized branch, not a multiplicative joint space) appears to dilute the
+optimization budget that would otherwise go into refining job selection, at this
+training scale -- consistent with, not contradicting, the original "action-space size
+governs sample efficiency" finding. The machine_mask_mismatch_frac staying low all run
+is a genuine methodological win regardless of the placement result itself: the parallel-
+branch design's approximation cost is empirically small, not the confound's explanation.
+
+**Conclusion / next step:** This is real evidence AGAINST the "confound" hypothesis
+report.md raised, not a validation of it -- at matched budget, removing placement-
+learning (Options 1/2/3) is better than restoring it (Option 4), suggesting the
+FirstFit-fixed designs' win genuinely is action-space-size, not an artifact of skipping
+placement-learning. Not fully settled: only one training budget tested, and the job
+branch's stuck-at-uniform entropy suggests this may be an undertrained result rather than
+a durable one (the same possibility flagged for Options 1/2/3 in earlier entries before
+their full-scale validation runs improved substantially). Natural next step if this
+thread is worth more compute: a full-scale (1.2M) Option 4 run to see whether the job
+branch ever specializes given more budget, mirroring the validation pattern already used
+for Options 1/2/3.
+
+---
+
+## 2026-09-20 (S2W9) -- Optimisation & efficiency critique (analysis session, no code behaviour changed)
+
+**Context:** User requested an "optimisation critique" distinct from `report.md`'s
+methodological review -- specifically computational/training inefficiencies, HPO
+methodology, and multi-agent training as a possible future direction. Two parallel
+code-reading passes (training/HPO pipeline; env/policy hot path), each finding
+spot-checked directly against source before being written up, per this project's
+verification standard.
+
+**Findings (full detail, file:line evidence, and References section):**
+`2026-09-20-optimisation-and-efficiency-critique.md`.
+
+**Headline finding:** `SchedulingEnv.get_state()` (`scheduling_env.py:556-565`) is
+called from both `step()` and `step_idle()` on every single environment step, deep-
+copying four arrays plus a set-to-list conversion -- and its return value is
+unconditionally overwritten/discarded by `gym_scheduling_wrapper.py` two lines later
+(verified directly, not inferred). This has run on every RL training step of every
+campaign this project has ever executed. Free, zero-behaviour-change fix.
+
+**Also found:** Optuna's configured `MedianPruner` cannot actually prune -- both
+PPO and (especially) A2C objectives report their pruning metric only after a
+trial's full compute is already spent, or (A2C) never report one at all
+(`optuna_tune.py`, `trial.report()` appears exactly once in the whole file).
+Combined with `n_jobs=1` (fully sequential 50-trial search on a 16-core machine)
+and HPO tuning under `n_envs=1` while deployment uses `n_envs=5`, this means the
+next HPO run (already deferred per the design-space-not-settled decision,
+`2026-09-19` entry below) would benefit from three fixes landing first, since they
+change what a fixed compute budget buys, not just how fast it runs.
+
+**Multi-agent training:** framed as a structurally motivated *next* mechanism on the
+same action-space-decomposition spectrum as Options 1-4 (per-machine agents shrink
+the action space per-agent to O(J) instead of the joint O(J*M)), not a generic
+suggestion -- MAPPO (Yu et al. 2022) named as the lowest-engineering-lift option
+given the project's existing PPO investment, QMIX (Rashid et al. 2018) as the
+heavier value-based alternative. Explicitly scoped as future work needing user
+input before building, same gate already applied to the two-critic Lagrangian
+rewrite and HPO itself -- not started today.
+
+**Conclusion / next step:** No code changed this session (pure analysis/report).
+The free env-hot-path fixes (§1 of the dated doc) can be applied anytime with no
+retraining implications. The Optuna pruning/parallelism fixes (§2) should land
+before the already-planned Options 1-4 HPO search, not after.
+
+---
+
 ## 2026-09-20 (S2W9) -- Implementation session: Option 4 (action-branching) + training-time observability tooling
 
 **Context:** Following the compute_theta() bug discussion below, agreed direction for
