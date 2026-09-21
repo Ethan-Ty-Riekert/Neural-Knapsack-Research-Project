@@ -32,6 +32,48 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Precise timing of the entropy_loss collapse -- refines (not reverses) the previous entry
+
+**Context:** The previous entry corrected the 2026-09-21 "argmax locks in before
+entropy fully decays" claim as conflating two different metrics. Checked the
+exact step-by-step SB3 entropy_loss trajectory from this run's log (not just
+start/end snapshots) before letting that correction stand as stated, since it's
+itself a precision claim worth verifying rather than asserting from two data
+points.
+
+**Stats (evenly-sampled entropy_loss readings across the full 900k-step run):**
+```
+step   4096: -2.040   step 262144: -0.160   step 605000: -0.0013
+step  90000: -1.040   step 348160: -0.100   step 720000: -0.0003
+step 175000: -0.196   step 462848: -0.066   step 835000: -0.00008
+step 233472: -0.118   step 548864: -0.018   step 900000: -0.00006  (final)
+```
+
+**Observation:** SB3's own per-state entropy_loss declines SMOOTHLY and
+essentially monotonically across the entire run -- this confirms the ORIGINAL
+2026-09-21 entry was right about the shape (a gradual, continuous decline, not
+a sudden late event). It crosses into near-total saturation (below -0.02 or so)
+around step ~550k-600k, and is numerically indistinguishable from exactly zero
+by 900k. What the previous entry's correction actually applies to is narrower
+and still stands: comparing THIS metric's trajectory against this project's
+own `action_dist/entropy_normalized` (a different quantity -- aggregate
+cross-state action diversity, not per-state uncertainty) to conclude something
+about "the argmax converging before the full distribution does" was not a valid
+comparison between the two metrics in the first place, independent of exactly
+when either one bottoms out. The precise, now-verified picture: per-state
+entropy declines gradually and smoothly for most of the run (consistent with
+the original framing), reaching near-complete saturation only in roughly the
+run's final third.
+
+**Conclusion / next step:** No change to the open questions already flagged
+(what drives the logits toward saturation in the first place; why the entropy
+bonus's diminishing gradient at saturation isn't caught earlier). This entry
+exists purely to make sure the corrected record is itself precise, not just
+directionally right -- matching this project's own rigor convention of
+distinguishing what was actually measured from what was inferred.
+
+---
+
 ## 2026-09-22 (S2W9) -- Policy-confidence diagnostic: per-state entropy collapsed to near-EXACTLY zero, not gradually -- corrects the earlier "argmax locks in before entropy decays" framing, and explains why ent_coef failed
 
 **Context:** Direct follow-up to the congestion-adaptivity negative result above,
