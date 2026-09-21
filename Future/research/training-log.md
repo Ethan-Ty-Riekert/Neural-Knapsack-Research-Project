@@ -32,6 +32,56 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- The "overfitting" hypothesis is REFUTED: training windowed Option 3 on randomized instances made generalization WORSE, not better -- but this matches an already-established project pattern
+
+**Context:** Direct test of the previous entry's hypothesis -- that windowed
+Option 3's modest (~10%) generalization gap vs. unwindowed was a
+mild-overfitting-to-one-instance effect, fixable by training on randomized
+instances instead. Trained windowed Option 3 with `--randomize-instances`
+(same 300k, dense+weighted, window_size=15) and evaluated on the same
+50-instance randomized protocol.
+
+**Stats:**
+```
+Option 3 windowed, RANDOMIZED-instance-trained (this run)  weighted_tardiness=151.04+/-122.61  late=11.18  scheduled=99.62/100
+Option 3 windowed, FIXED-instance-trained (previous entry) weighted_tardiness=105.86+/-137.35
+Option 3 unwindowed, FIXED-instance-trained (previous entry) weighted_tardiness= 96.34+/-130.03
+```
+
+**Observation: the hypothesis is refuted, in the wrong direction.** Training on
+randomized instances made the randomized-eval result WORSE (151.04), not
+better -- the opposite of what "more diverse training data fixes an
+overfitting gap" would predict. Rather than a windowing-specific finding,
+this matches an already-established, broader pattern in this project:
+randomized-instance training has repeatedly been found to be a genuinely
+HARDER learning problem than fixed-instance training at matched budget,
+independent of the action-space design (e.g. the original flat-MLP PPO's
+randomized-instance run matched its fixed-instance failure; Option 1's early
+legacy-reward randomized-instance run collapsed to 1377.88 tardiness). The
+earlier fixed-instance-trained windowed checkpoint's modest generalization
+gap (105.86 vs. unwindowed's 96.34) was apparently NOT primarily an
+overfitting artifact fixable by training-data diversity -- more likely the
+windowed design's smaller, EDF-pre-filtered action space is simply a somewhat
+harder representation to learn a robust cross-instance strategy from at this
+budget, consistent with (not contradicting) this project's standing pattern
+that randomized-instance training needs more budget or different handling
+across the board, not something specific to windowing.
+
+**Conclusion / next step:** Recording this as a genuine negative result for the
+specific hypothesis tested, not quietly dropping it. The windowed action
+space's small remaining generalization gap vs. unwindowed does not have a
+cheap, already-tested fix -- the two things that would be worth trying next
+(not done here) are matching the unwindowed design's own randomized-instance
+result at a LARGER training budget (the pattern that worked for every other
+randomized-instance option in this project), or accepting the current ~10%
+gap as a reasonable cost of the smaller action space and moving on. This
+closes out this specific investigation thread -- three concrete tests run
+tonight (EDF-vs-FIFO ordering, matched-protocol comparison, randomize-
+instances training), each with a real, sometimes counterintuitive answer,
+rather than leaving any of them as untested assumptions.
+
+---
+
 ## 2026-09-22 (S2W9) -- Properly matched windowed-vs-unwindowed comparison: the gap is real but modest, and windowed actually WINS on the fixed-instance eval -- a likely overfitting-to-one-instance story, refining the earlier framing
 
 **Context:** The windowed action-space's remaining open question (flagged when
