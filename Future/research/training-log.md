@@ -32,6 +32,31 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Launched: much higher ent_coef (0.1, 10x the earlier-tried 0.01) to test the vanishing-gradient-at-saturation mechanism directly
+
+**Context:** Direct follow-up to the policy-confidence diagnostic's finding that
+the entropy bonus's gradient vanishes as probability approaches 0/1 -- a
+plausible mechanistic reason `--ent-coef 0.01` failed to prevent saturation.
+Testing whether a substantially larger coefficient (0.1, 10x higher) provides
+enough residual gradient to meaningfully delay or prevent saturation, rather
+than concluding entropy regularization can't work at all from one (relatively
+small) value.
+
+**Config:** Option 1, online, same protocol as every other online run this
+session (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300
+--job-size-distribution lognormal --reward-mode dense_tardiness
+--job-weight-min 1 --job-weight-max 6`), `--ent-coef 0.1`, 900k timesteps,
+`--diagnostics-interval 5000`, save-tag `online_lognormal_rho075_dense_weighted_entcoef01`.
+
+**Conclusion / next step:** Launched, running uncontended (no other jobs
+active) at ~216 fps -- meaningfully faster than earlier contended runs, likely
+finishing in ~1-1.5h rather than the several hours some earlier online runs
+took. Will evaluate via the same 50-instance randomized protocol and the
+policy-confidence diagnostic (to check margin/entropy_loss directly, not just
+the final tardiness number) once it completes.
+
+---
+
 ## 2026-09-22 (S2W9) -- Windowed online FIFO-ordering result: confirms the offline finding -- EDF-ordering wins in both cases, confound question fully closed out
 
 **Context:** Completes the windowed-ordering confound investigation. Same config
