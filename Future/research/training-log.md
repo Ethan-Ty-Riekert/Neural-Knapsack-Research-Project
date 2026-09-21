@@ -32,6 +32,135 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Direct test of the congestion-adaptivity hypothesis: NOT supported -- collapse looks unconditional, not state-dependent
+
+**Context:** Immediate follow-up to the entry below, which proposed that the
+online SPT-collapse might be a congestion-ADAPTIVE local optimum (SPT chosen
+specifically under heavy load, per its flow-time-optimality). Built a direct
+test (`Code/evaluation/diagnose_rule_choice_congestion.py`) rather than leaving
+this as an untested hypothesis -- ran the SPT-collapsed checkpoint
+deterministically over 10 fresh online held-out episodes (9332 total decisions),
+logging the chosen rule and the congestion level (|remaining_jobs|) at every
+step.
+
+**Stats:**
+```
+Rule frequency: SPT 89.2% (8322/9332), idle 10.8% (1010/9332) -- EVERY OTHER
+  RULE (EDF/LST/FCFS/LPT/WSPT/ATC) chosen 0% of the time, zero exceptions
+  across all 10 episodes.
+Congestion range: min=0, max=97, mean=25.3, median=23.0 -- a genuinely wide
+  range of load levels sampled across the 10 episodes.
+Mean congestion when SPT chosen: 25.7 -- essentially indistinguishable from
+  the OVERALL mean (25.3), which is itself dominated by SPT-choice steps
+  since they're 89% of all decisions.
+```
+
+**Observation: the congestion-adaptivity hypothesis is NOT supported.** If SPT
+were being invoked specifically as a congestion-response strategy (the
+Little's-Law-based mechanism proposed below), rule choice should correlate with
+load level -- SPT more likely when congestion is high, something else (or idle)
+more likely when it's low. Instead, SPT dominates essentially UNCONDITIONALLY
+across the full observed congestion range (0 to 97) -- the policy shows no
+adaptive variation, just a near-total collapse onto one action regardless of
+state. This points back toward a genuine training-dynamics collapse (closer to
+the original entropy-decay framing) rather than the policy having discovered a
+real, state-conditioned scheduling strategy that happens to coincide with SPT's
+classical strength.
+
+**A flaw in this script's own secondary test, caught and corrected rather than
+left standing:** the script also checked whether PLACED jobs' weights exceed the
+feasible-job median (61.1% did, vs. 50% expected under a weight-blind rule) as a
+proposed "is the policy weight-aware" signal. This is not actually meaningful:
+Option 1's RL policy only selects a RULE, not an individual job -- once "SPT" is
+chosen, WHICH job gets placed is determined entirely by SPT's own fixed,
+duration-only formula (`priority_rules.py::spt_key`), which does not read job
+weight at all by construction. Any placed-job-weight-vs-median signal reflects
+incidental duration-weight correlation in this project's random instance
+generation, not anything the RL policy decided. The actually meaningful,
+already-visible evidence of weight-blindness is simpler and cleaner: WSPT and
+ATC (the two weight-aware rules in the menu) were chosen 0% of the time across
+9332 decisions -- not "partially," never.
+
+**Conclusion / next step:** The literature-grounded explanation proposed below
+does not survive direct testing in its strong ("SPT is adaptively invoked under
+congestion") form -- recording this as a genuine negative result, not quietly
+dropping the hypothesis. The online collapse looks more like an unconditional,
+state-independent training-dynamics failure than a coherent (if incomplete)
+congestion-management strategy. This narrows, not widens, the space of
+remaining explanations -- the next diagnostic worth trying is tracking the
+VALUE FUNCTION's landscape (does it assign similar values to SPT vs. non-SPT
+choices across the state space, or does it also show the same
+state-independence?) rather than further action-distribution analysis, which
+this entry and the two before it have now used to rule out several specific
+mechanisms (entropy regularization, congestion-adaptivity) without yet finding
+the actual cause. Not implemented -- flagged as the next step for whoever picks
+this up next, autonomous or otherwise.
+
+---
+
+## 2026-09-22 (S2W9) -- A partial, literature-grounded explanation for "why SPT specifically" in the online collapse (analysis of already-collected data, no new training)
+
+**Context:** Continuing the still-open online "more training hurts" mystery while
+the user is away -- specifically the unanswered question from the 2026-09-21
+entry: WHY does the online policy converge onto SPT specifically, not some other
+rule or a genuinely mixed strategy? This entry doesn't resolve the instability
+itself, but gives a grounded, testable partial answer to the "why SPT" half.
+
+**Hypothesis:** SPT is not an arbitrary rule to collapse onto -- it is the
+provably flow-time-optimal single-machine sequencing rule (Smith 1956,
+`smith1956wspt` in `references.bib`; unweighted SPT is the w_j=1 special case of
+Smith's more general weighted-completion-time result already cited in this
+project for WSPT). By Little's Law (L = lambda*W, mean-number-in-system equals
+arrival rate times mean waiting time), minimizing mean flow time also minimizes
+mean waiting time under a fixed arrival rate -- a real, if partial, mechanism for
+why a policy searching for high reward under SUSTAINED HEAVY LOAD (rho~0.75, this
+project's online hard-congestion regime) could find "clear the queue as fast as
+possible" (SPT-like behaviour) locally attractive, even though SPT ignores
+deadlines and weights entirely and is NOT tardiness-optimal.
+
+**Evidence check against data already collected tonight (2026-09-21 online eval,
+50-instance protocol) -- not new training, just re-reading what's already there:**
+```
+Option 1 (900k, SPT-collapsed)   weighted_tardiness=798.46
+SPT                                weighted_tardiness=798.46  (identical, as established)
+WSPT+BestFit                       weighted_tardiness=709.42  <- meaningfully better than SPT
+ATC                                weighted_tardiness=648.16  <- best (degenerates toward WSPT
+                                                                   under low slack, per its own
+                                                                   formula's documented design,
+                                                                   vepsalainen1987atc)
+```
+WSPT (weighted SPT) meaningfully beats plain SPT under the identical load
+conditions, and ATC -- which explicitly interpolates toward WSPT as slack shrinks
+-- beats both. This is a coherent picture, not just three arbitrary heuristic
+numbers: the RL policy appears to have found a real, theoretically-grounded local
+optimum (minimize queue length / congestion) but stopped short of the natural
+refinement (also weight that by job importance), landing on a worse-but-related
+strategy than the ones that add weight-awareness on top.
+
+**What this does NOT explain (flagged honestly, not glossed over):** why the
+deterministic (argmax) policy locks in and plateaus BEFORE the training-time
+entropy metric finishes decaying (the 2026-09-21 entry's other open finding);
+why more training pushes TOWARD this local optimum rather than past it to
+something closer to WSPT/ATC; and this is a plausibility argument from existing
+classical scheduling theory, not a mechanistic proof about THIS specific
+network's training dynamics -- it explains why SPT is a coherent thing to
+converge to, not why the specific optimization process converges there.
+
+**Conclusion / next step:** A concrete, directly testable follow-up if pursued:
+since job weights are the one ingredient distinguishing SPT from the
+better-performing WSPT/ATC, and the reward function already includes weighted
+tardiness, the gap suggests the policy isn't learning to CONDITION its urgency
+response on job weight under heavy load, specifically -- a diagnostic worth
+adding to the training-diagnostics tooling (e.g., correlating chosen-rule
+frequency against the current backlog/congestion level AND against the
+weight-distribution of jobs in the window, not just an aggregate entropy number)
+would directly test whether the policy's rule choice is congestion-dependent (as
+this hypothesis implies) or genuinely state-independent. Not implemented --
+flagged as the next diagnostic to build, not launched unsupervised given it's a
+new piece of instrumentation, not just a training-config variation.
+
+---
+
 ## 2026-09-21 (S2W9) -- Option 1 review + hyper-/meta-heuristic RL future work (research doc, no code changes)
 
 **Context:** User-requested review of Option 1's current status plus a literature-
