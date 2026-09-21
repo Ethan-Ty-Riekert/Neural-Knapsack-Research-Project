@@ -32,6 +32,53 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Windowed offline FIFO-ordering result: EDF-ordering is essential scaffolding, not a biasing ceiling -- the confound question answered decisively
+
+**Context:** Direct test of whether the windowed action space's EDF-ordering
+design was pre-biasing results toward EDF-like performance (the open question
+from the 2026-09-18/20 windowed-offline entries). Same config as the original
+EDF-ordered windowed Option 3 offline result (300k, dense+weighted, window_size
+=15), just `--window-order fifo` instead of the default `edf`.
+
+**Stats:**
+```
+Option 3 (window=15, FIFO order)  tardiness=1033.76+/-134.71  weighted_tardiness=2869.10+/-491.58  late=43.16  scheduled=97.10/100
+Option 3 (window=15, EDF order, 2026-09-18/20 entries)         weighted_tardiness=105.86+/-137.35   (for comparison)
+SPT (worst-case reference)        tardiness=1150.86+/-154.91  weighted_tardiness=3447.56+/-581.72
+EDF                                tardiness=  37.30+/- 60.43  weighted_tardiness=  109.36+/-175.73
+```
+
+**Observation: the opposite of what the original hypothesis predicted.**
+The framing going in was "EDF-ordering might be BIASING the policy toward
+mediocre, EDF-like performance -- worth testing whether removing it helps."
+Instead, removing it (FIFO/job-index order, which carries zero scheduling-
+relevant information by construction) caused the training run to collapse to
+near-SPT-level performance (2869.10 weighted vs. SPT's 3447.56) -- close to the
+WORST end of every method compared, not an improvement or even a neutral
+result. This flips the earlier framing: EDF-ordering was never primarily a
+biasing ceiling holding the policy back from doing better -- it was essential
+scaffolding. Bounding the visible window to the M EDF-nearest jobs hands the
+policy a genuinely informative, pre-filtered candidate set; bounding it to an
+arbitrary M-job window (FIFO/index order) instead removes that signal entirely,
+and the policy apparently cannot recover the equivalent information on its own
+within this training budget -- landing close to what a policy with NO priority
+signal at all would achieve.
+
+**Conclusion / next step:** The offline half of this confound question is now
+answered, not just narrowed: the windowed design's near-EDF-matching results
+found on 2026-09-18/20 were the GOOD outcome, not a ceiling imposed by the
+design -- removing the informative ordering makes things dramatically worse.
+This means the earlier "maybe an alternative ordering would let the policy do
+better" framing was based on an incorrect assumption; the real lesson is that
+the window's candidate-selection key needs to carry real scheduling
+information (EDF, or potentially a learned/raw-priority-score ordering, not
+FIFO) to be useful at all at this training budget. Not yet known whether the
+same holds online -- that run is still in progress (2026-09-22 entry above
+this one predates it; a follow-up entry will report the online FIFO result
+once it lands).
+
+---
+
 ## 2026-09-22 (S2W9) -- Direct test of the congestion-adaptivity hypothesis: NOT supported -- collapse looks unconditional, not state-dependent
 
 **Context:** Immediate follow-up to the entry below, which proposed that the
