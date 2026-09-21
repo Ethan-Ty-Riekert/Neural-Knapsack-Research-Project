@@ -32,6 +32,53 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Properly matched windowed-vs-unwindowed comparison: the gap is real but modest, and windowed actually WINS on the fixed-instance eval -- a likely overfitting-to-one-instance story, refining the earlier framing
+
+**Context:** The windowed action-space's remaining open question (flagged when
+the ordering confound was closed out): does windowing genuinely underperform
+unwindowed Options 2/3 at matched budget, or was the earlier comparison
+(windowed vs. EDF the heuristic) not actually testing the right thing? Checked
+carefully rather than assuming -- found the training log's existing "Option 3
+(dense+weighted, randomized): tardiness=98.82" figure was from a SEPARATELY
+TRAINED checkpoint (`offline_randomized_dense_weighted`, trained WITH
+`--randomize-instances`), not the fixed-instance-trained checkpoint the
+windowed comparison actually needs to be matched against -- re-ran the correct
+one directly rather than risk citing a mismatched number.
+
+**Stats -- properly matched (both checkpoints trained 300k, dense+weighted,
+FIXED single instance, no `--randomize-instances`):**
+```
+                                    single fixed instance      50-instance randomized-eval
+Option 3 unwindowed (300k)         tardiness=28.00 raw          tardiness=66.48  weighted=96.34
+Option 3 windowed=15 (300k)        tardiness=17.00  weighted=20.00   tardiness=55.14  weighted=105.86
+EDF (reference)                     tardiness=16.00  weighted=46.00   tardiness=37.30  weighted=109.36
+```
+
+**Observation: this REVERSES on the two eval protocols.** On the single fixed
+instance (the one both checkpoints were actually trained on), windowed clearly
+BEATS unwindowed (17.00 vs. 28.00 raw, 20.00 vs. presumably higher weighted).
+On the 50-instance randomized (generalization) protocol, unwindowed edges out
+windowed (96.34 vs. 105.86 weighted) -- a real gap, but a MODEST one (~10%
+relative), not the large gap implied by only comparing windowed against EDF in
+isolation (both windowed and unwindowed land close to EDF on this protocol,
+with unwindowed slightly ahead). This pattern -- windows-well on the trained
+instance, generalizes slightly worse to new ones -- is consistent with a mild
+overfitting-to-one-instance effect: the window's EDF-ordered candidate
+selection is itself a function of that one training instance's specific
+deadline distribution, giving the policy less incentive/opportunity to learn a
+generalizable selection strategy than the unwindowed design (which always sees
+the full max_jobs+1 action space regardless of instance).
+
+**Conclusion / next step:** Refines, doesn't overturn, the "windowed underperforms
+unwindowed" framing -- true on the generalization protocol, false on the
+memorization protocol, and the generalization gap is real but small. Directly
+testable: train the windowed design WITH `--randomize-instances` (a fresh
+random job set every episode, exactly the training-side fix designed for
+generalization) instead of on one fixed instance -- launched now (see next
+entry) rather than left as a suggestion.
+
+---
+
 ## 2026-09-22 (S2W9) -- Launched: much higher ent_coef (0.1, 10x the earlier-tried 0.01) to test the vanishing-gradient-at-saturation mechanism directly
 
 **Context:** Direct follow-up to the policy-confidence diagnostic's finding that
