@@ -32,6 +32,97 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Policy-confidence diagnostic: per-state entropy collapsed to near-EXACTLY zero, not gradually -- corrects the earlier "argmax locks in before entropy decays" framing, and explains why ent_coef failed
+
+**Context:** Direct follow-up to the congestion-adaptivity negative result above,
+which flagged "examine the value function's landscape" as the next step. Built
+`Code/evaluation/diagnose_policy_confidence.py` to extract the FULL masked
+probability distribution (not just the argmax action) and the value estimate
+V(s) at every step of 6 deterministic online rollouts (5591 decisions) against
+the same SPT-collapsed checkpoint.
+
+**Stats:**
+```
+SPT probability:  mean=0.8916, std=0.3109, min=0.0000, max=1.0000
+Margin (top1 - top2 probability): mean=1.0000, std=0.0000, min=1.0000, max=1.0000
+  -- EXACTLY 1.0 on every single one of 5591 decisions, zero exceptions.
+Value estimate V(s): mean=-6.81, std=1.44, min=-13.12, max=-1.99
+  -- a real, meaningful spread, not collapsed.
+corr(SPT probability, congestion)  = +0.073  (essentially no linear relationship)
+corr(value estimate, congestion)    = +0.306  (weak positive, not yet investigated further)
+
+Cross-checked against SB3's OWN entropy_loss metric (the standard PPO per-state
+policy-entropy term, distinct from this project's custom action_dist/
+entropy_normalized diagnostic -- see below) from this exact training run's log:
+  step ~2k:   -2.04   (healthy, high per-state entropy)
+  step ~900k: -6.0e-05  (essentially EXACTLY zero)
+```
+
+**Observation -- a real methodological correction, not just a new data point.**
+The margin being EXACTLY 1.0 on every single decision means the policy's
+distribution is fully deterministic (one-hot, p~1.0 on one action) at
+essentially every individual state it was evaluated on -- not "mostly
+confident," completely saturated. SB3's own entropy_loss confirms this
+independently: it collapsed to -6.0e-05 (not just small -- numerically
+indistinguishable from exactly zero) by 900k steps.
+
+This means the 2026-09-21 entry's framing -- "entropy decays smoothly across the
+whole run... the argmax action converges before the full distribution does" --
+was based on conflating two DIFFERENT quantities that this project's own
+`action_dist/entropy_normalized` diagnostic and SB3's `entropy_loss` measure.
+`entropy_normalized` (this project's custom callback) computes Shannon entropy
+over a HISTOGRAM of which actions get chosen, AGGREGATED across many different
+states within a logging window -- it stays non-trivial (~0.164-0.165 by the
+end) as long as DIFFERENT states still deterministically resolve to DIFFERENT
+actions (mostly SPT, sometimes idle), even if each individual state's own
+decision has zero uncertainty. SB3's entropy_loss is the PER-STATE distribution's
+own entropy, averaged across samples -- and that collapsed to essentially
+exactly zero. The earlier "argmax locks in before entropy fully decays" claim
+had this backwards: per-state entropy collapsed completely and fast, and what
+looked like "residual entropy" late in training was actually cross-state action
+diversity (the policy still picking DIFFERENT deterministic actions in
+DIFFERENT states), not within-state uncertainty. This entry doesn't edit that
+2026-09-21 entry (per this file's own rule) -- it supersedes that specific claim.
+
+**A mechanistic explanation this finding provides for why `--ent-coef 0.01`
+didn't fix the collapse (2026-09-19 entry):** the standard entropy bonus's
+gradient with respect to the policy's logits vanishes as the underlying
+probability approaches 0 or 1 (d(entropy)/d(logit) -> 0 at saturation) -- so
+entropy regularization becomes progressively LESS effective exactly as a
+policy approaches the kind of per-state determinism found here, and once
+several states' distributions saturate, the aggregate entropy bonus computed
+across a batch containing both saturated and unsaturated states has
+diminishing power to pull the saturated ones back. This is consistent with,
+not contradicting, the earlier finding that ent_coef=0.01 didn't prevent the
+collapse -- it's now clearer WHY a fixed-coefficient entropy bonus alone
+wouldn't be expected to, mechanistically, not just empirically.
+
+**Also notable, not yet chased further:** the value function (critic) is NOT
+collapsed -- V(s) has a real, substantial spread (std=1.44, range [-13.12,
+-1.99]) -- so this is specifically an ACTOR-head saturation, not a general
+"the network stopped learning" story. The weak positive value-vs-congestion
+correlation (+0.306) is also unexplained and worth a closer look if this thread
+is picked up again (a naive expectation would be higher congestion -> worse,
+more negative value, not better -- possibly confounded with time-within-episode
+rather than a direct congestion effect, not yet separated).
+
+**Conclusion / next step:** The "why does online training collapse" mystery now
+has a clearer mechanistic picture (per-state logit saturation, entropy bonus
+loses effectiveness exactly when needed) even though the ultimate root cause
+(what specifically drives the logits toward saturation in the first place,
+starting this early and this completely) remains open. A concrete, literature-
+groundable next step if pursued: techniques specifically designed to prevent
+policy saturation independent of the standard entropy bonus's vanishing-
+gradient problem -- e.g. KL-divergence trust-region penalties, logit
+clipping/max-entropy regularization applied directly to pre-softmax logits
+rather than the post-softmax entropy term, or simply a much larger ent_coef
+applied EARLY (before saturation begins) rather than throughout. Not
+implemented -- flagged for the next session or whoever picks this thread up,
+consistent with this project's process for design decisions with real
+training-budget cost.
+
+---
+
 ## 2026-09-22 (S2W9) -- Windowed offline FIFO-ordering result: EDF-ordering is essential scaffolding, not a biasing ceiling -- the confound question answered decisively
 
 **Context:** Direct test of whether the windowed action space's EDF-ordering
