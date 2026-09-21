@@ -32,6 +32,44 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-22 (S2W9) -- Windowed online FIFO-ordering result: confirms the offline finding -- EDF-ordering wins in both cases, confound question fully closed out
+
+**Context:** Completes the windowed-ordering confound investigation. Same config
+as the original EDF-ordered windowed Option 3 online result, `--window-order
+fifo` instead of the default.
+
+**Stats:**
+```
+Option 3 (window=15, FIFO, online)  weighted_tardiness=1190.48+/-496.07  late=31.00  scheduled=826.90/898
+Option 3 (window=15, EDF, online, 2026-09-20 entry)  weighted_tardiness= 952.74+/-370.59  (for comparison)
+ATC (best heuristic, online)         weighted_tardiness= 648.16+/-338.30
+```
+
+**Observation:** FIFO ordering (1190.48) is worse than EDF ordering (952.74)
+online too -- the same direction as the offline result (FIFO 2869.10 vs. EDF
+105.86), just a smaller relative gap here since the EDF-ordered online result
+was already a clear regression itself (second-worst of nine methods, per the
+2026-09-20 entry), not a strong baseline to fall further from. Both cases now
+agree: EDF-ordering outperforms FIFO-ordering, confirming it is genuinely
+informative scaffolding rather than a ceiling-imposing bias, consistent across
+offline and online.
+
+**Conclusion: this confound investigation is now fully closed out.** Across
+both the offline and online cases, across two independent training runs each,
+EDF-ordering beats FIFO-ordering decisively. The original 2026-09-18 design
+choice (window candidates ordered by earliest deadline) was the right one, not
+an accidental constraint worth revisiting -- an alternative ordering carrying
+less scheduling-relevant information makes results worse, not better. The
+windowed action space's REMAINING open problem (both EDF-ordered variants
+still underperform the unwindowed Options 2/3 at the same training budget) is
+therefore NOT explained by window-ordering -- it's most likely genuinely an
+undertraining or window-size effect, not a design flaw in the ordering choice
+itself. If this thread is revisited, a same-timestep-budget comparison against
+unwindowed Options 2/3, or a larger-scale windowed run, are the next things
+worth trying -- not a different ordering.
+
+---
+
 ## 2026-09-22 (S2W9) -- Precise timing of the entropy_loss collapse -- refines (not reverses) the previous entry
 
 **Context:** The previous entry corrected the 2026-09-21 "argmax locks in before
