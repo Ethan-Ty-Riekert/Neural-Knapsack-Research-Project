@@ -1,11 +1,16 @@
 # Plane notes -- read offline, no internet needed
 
-Companion to `report/main.tex`. Two jobs: (1) an offline **glossary/explainer** for every
-non-obvious term or method the report and supervisor document use, so if you're rereading
-either on the plane and think "wait, what does this actually mean?" you can look it up here
-instead of Googling it; and (2) project-specific reference material -- answers to the
-questions your draft left open, a plain-prose project summary, and a few things worth
-knowing before you touch git again. Not part of the report itself.
+Companion to `report/main.tex`, built to stand in for asking me questions directly while
+you have no internet and no chat access. Three jobs: (1) a **glossary** (Section 0) for
+every non-obvious term or method the report and supervisor document use; (2) project-
+specific reference material (Sections 1-8) -- answers to the questions your draft left open,
+a plain-prose project summary, citation notes, a "what belongs where" writing guide, and a
+LaTeX troubleshooting cheat-sheet; and (3) an extensive **knowledge dump** (Section 9) --
+design-decision FAQs, a codebase map, a cheat-sheet of every experiment tried, the reward
+function fully explained, anticipated marker/supervisor questions with suggested answers,
+and how the pipeline works end-to-end. Not part of the report itself. If you have a
+question and aren't sure where to look, start at Section 9 -- it's the closest thing to
+actually asking me.
 
 ---
 
@@ -370,3 +375,254 @@ Discussion = what it means.
   `comment` package is available, or just delete it temporarily) to confirm the rest of the
   document still compiles, then add your edit back in smaller pieces to isolate exactly which
   line broke it.
+
+---
+
+## 9. Anything else you might want to ask -- an extensive knowledge dump
+
+Everything below is the kind of thing you'd normally just ask me mid-conversation. Organised
+so you can jump straight to the category you need.
+
+### 9.1 Design-decision FAQ ("why did we do it this way, not that way")
+
+- **Why PPO and A2C, not DQN/SAC/TD3?** The action space is discrete (choose a job/machine
+  pair, or later a rule/priority score), which immediately rules out SAC and TD3 (both
+  require continuous actions). DQN works with discrete actions but is a value-based method,
+  generally considered less stable/scalable than policy-gradient actor-critic methods for
+  problems with structure like this one (see the glossary's "value-based vs policy-based"
+  distinction). PPO and A2C were chosen for being well-established, well-supported by
+  available libraries, and directly comparable to each other as two different actor-critic
+  training styles (clipped-trust-region vs. synchronous-parallel).
+- **Why these seven heuristics as baselines (EDF/SPT/LST/FCFS/LPT/WSPT/ATC)?** They're the
+  standard, literature-grounded dispatching rules for tardiness-focused scheduling (see the
+  glossary's Scheduling Terms section for what each does) -- using well-known named rules
+  rather than inventing ad hoc baselines makes every comparison citable and reproducible by
+  someone else.
+- **Why 100 jobs / 10 machines / horizon 100 as the "deployed" scale?** This is the scale
+  large enough to be a meaningful test (not trivially small) while still keeping training
+  times and CP-SAT solve times practical on this project's hardware (CPU-only, 16 cores, no
+  GPU). Smaller "curriculum" stages (15/30/60 jobs) were used during training to help the
+  agent learn incrementally before being evaluated at full scale.
+- **Why both a fixed instance AND a randomized-instance distribution?** A fixed instance lets
+  you get a clean CP-SAT proven-optimal comparison (CP-SAT only stays tractable at small/
+  single-instance scale) and isolates "did the agent learn scheduling skill at all" from "did
+  it also generalise." The randomized-instance results then separately test generalisation --
+  a model can do very well on the one instance it trained on and fall apart on a new one (this
+  is exactly what happened to the early A2C result), so testing both is what actually catches
+  that.
+- **Why $\gamma = 1$ (undiscounted return)?** The underlying optimisation objective
+  (Equation 2 in the report) sums costs uniformly across the whole planning horizon with no
+  built-in preference for early vs. late improvement -- so there's no principled reason to
+  discount future reward relative to immediate reward here. Discounting is mainly useful for
+  infinite-horizon problems (to keep the sum finite) or when you genuinely care more about
+  near-term outcomes, neither of which applies to this fixed-horizon offline case.
+- **Why a weighted-sum objective ($\lambda_1, \lambda_2, \lambda_3$), not a lexicographic
+  one?** A lexicographic objective (fully solve for machine count first, only then break ties
+  on tardiness, etc.) would mean the agent never trades off a small increase in one objective
+  for a large improvement in another -- unrealistic for a real operator, who genuinely does
+  care about relative magnitudes, not just priority order. The mathematical formulation
+  (`mathformulation.tex`, Section 1) documents the lexicographic alternative too, for
+  completeness, but the weighted-sum version is what was actually implemented and trained
+  against.
+- **Why action masking instead of just penalising invalid actions?** Penalising after the
+  fact still wastes a training step sampling an action that could never have been valid --
+  masking removes invalid actions from the probability distribution entirely, so every
+  sampled action is at least feasible, which is strictly more sample-efficient. It's also
+  directly supported by this project's RL library (Stable-Baselines3's `MaskablePPO`), so
+  there was no real reason not to use it.
+- **Why "wrap the environment, don't modify it" for every Option (1-4)?** Each Option changes
+  what the *action* means, not the underlying scheduling mechanics (feasibility, capacity,
+  reward computation). Implementing each as a Gym wrapper around the same unmodified
+  environment means the offline and online cases, and every heuristic baseline, stay
+  automatically correct and comparable for every Option, instead of needing the environment's
+  core logic re-verified separately for each one.
+- **Why CP-SAT / OR-Tools specifically as the exact solver?** It's a well-supported,
+  actively-maintained constraint-programming solver with native support for interval
+  variables and cumulative-resource constraints -- exactly the primitives a resource-
+  constrained scheduling problem needs -- and it's free/open-source, so anyone can reproduce
+  the exact-solver comparisons without a commercial license.
+- **Why 50 held-out instances specifically?** A compromise between statistical stability
+  (more instances = a more reliable average and a meaningful standard deviation) and
+  practical evaluation time (each instance requires running every method being compared, and
+  this project compares against many heuristics plus the trained agent every time). 50 was
+  found to give a stable enough mean/std to be trustworthy without evaluation becoming the
+  bottleneck.
+- **Why offline before online?** The offline case is the tractable starting point: it lets
+  the MDP formulation, the reward function, and the evaluation protocol all be validated
+  against a provable CP-SAT floor before adding the extra complexity of dynamic arrivals,
+  an unbounded-feeling horizon, and a stochastic arrival process on top. Online was always the
+  more realistic target (real cloud jobs do arrive live), attempted second by design, not
+  because it was an afterthought.
+- **Why not a graph neural network (GNN) or multi-agent approach from the start?** Both are
+  named as Future Work, not oversights -- they're reasonable next steps once the current
+  action-space-reduction findings are well-established, but neither was necessary to test the
+  project's core early hypotheses (does RL beat heuristics at all; is action-space size the
+  bottleneck), and both add real implementation/tuning complexity that would have made
+  diagnosing the actual bottleneck (action-space size) harder to isolate cleanly.
+
+### 9.2 Codebase map -- what's in each folder
+
+(As of this session; a few of these may have grown further by the time you're reading this,
+since research kept going in the background even while this report was being written.)
+
+- **`Code/env/`** -- the environment itself. `scheduling_env.py` is the core offline
+  environment (state/action/reward/transition mechanics); `online_scheduling_env.py` and
+  `arrival_process.py` add dynamic arrivals for the online case. `gym_scheduling_wrapper.py`
+  / `online_gym_wrapper.py` adapt these to the standard Gym interface RL libraries expect.
+  `rule_selection_gym_wrapper.py` (Option 1), `priority_only_gym_wrapper.py` (Options 2/3),
+  `windowed_priority_gym_wrapper.py` (Option 3's windowed variant), and
+  `action_branching_gym_wrapper.py` (Option 4) are the action-space-reduction wrappers --
+  each one changes what an "action" means without touching the underlying environment.
+  `env_config.py` generates job/machine configurations (including the `seed` parameter that
+  controls instance randomization).
+- **`Code/policies/`** -- the neural network architectures. `a2c_policy.py` is the hand-rolled
+  masked A2C implementation (with RCPO support). `pointer_policy.py` /
+  `priority_pointer_policy.py` / `windowed_priority_pointer_policy.py` are pointer-network-
+  style architectures (shared job/machine encoders) for different action-space designs, each
+  with a matching `*_ppo_policy.py` file wiring it into Stable-Baselines3's `MaskablePPO`.
+  `action_branching_policy.py` / `action_branching_ppo_policy.py` implement Option 4.
+  `ppo_lagrangian.py` extends the Lagrangian-constrained approach (RCPO's mechanism) to PPO.
+- **`Code/training/`** -- entry points for actually training a model. `train_optimized.py` is
+  the main offline/curriculum trainer (PPO via Stable-Baselines3, with Optuna hyperparameter
+  search support). `train_action_space_variant.py` is the separate, simpler trainer used for
+  Options 1-4 (deliberately not wired into the curriculum/Optuna machinery, for fast first-
+  pass comparisons). `train_a2c.py` trains the hand-rolled A2C. `train_rl_agent.py` is an
+  older, simpler variant kept for reference/comparison, not the current main path.
+- **`Code/baselines/`** -- classical, non-learned methods. `priority_rules.py` (which job
+  next: EDF/SPT/LST/etc., including the ATC formula) and `placement_rules.py` (which
+  machine: First-Fit/Best-Fit/Worst-Fit) are combined via `registry.py` into named
+  heuristics like `"EDF+FirstFit"`. `exact_solver.py` is the CP-SAT exact solver. `pso.py`
+  is a particle-swarm-optimisation metaheuristic baseline.
+- **`Code/evaluation/`** -- scripts that load a trained model and measure its performance.
+  `eval_rl_agent.py` is the main offline evaluator (implements the 50-held-out-instance
+  protocol). `eval_action_space_variant.py` is the equivalent for Options 1-4.
+  `diagnose_policy_confidence.py` and `diagnose_rule_choice_congestion.py` are targeted, one-
+  off diagnostic scripts built to investigate the online "more training hurts" mystery
+  specifically -- not part of the standard evaluation pipeline.
+- **`Code/utils/`** -- shared infrastructure. `results_log.py` auto-appends every evaluation
+  run's results to `rl_training/results/eval_results.csv` (the source of this project's
+  results CSV artefact). `training_diagnostics.py` provides the TensorBoard logging
+  callbacks used to investigate training dynamics (entropy, per-rule action frequency, etc.).
+  `paths.py` centralises where output files go. `plotting_utils.py` generates the matplotlib
+  plots the evaluation scripts produce.
+- **`Future/research/`** -- the project's documentation, not code. `training-log.md` is the
+  master chronological experiment log (append-only, newest entries first -- the single most
+  authoritative source for "what actually happened and when"). Dated files
+  (`YYYY-MM-DD-<topic>.md`) are deep-dive write-ups on one specific investigation.
+  `references.bib` is the shared bibliography.
+
+### 9.3 Every major experiment thread, one-line summaries
+
+A cheat-sheet of everything tried on the offline case, roughly in chronological order, so you
+don't have to reconstruct this from `training-log.md`'s hundreds of entries:
+
+| Thread | What it was | Outcome |
+|---|---|---|
+| PPO, raw action space, reward tuning | Adjust $\lambda_2$ (tardiness weight) | Failed -- stuck at ~1300 tardiness regardless of weight |
+| PPO-Lagrangian | Constrained variant, adaptive tardiness weight | Collapsed to zero jobs scheduled (multiplier ran away) |
+| PPO, tardiness-tuned hyperparameter search | Optuna search targeting tardiness directly | Helped at small tuning scale, didn't transfer to full scale |
+| PPO, pointer-network architecture | Shared job/machine encoders instead of per-index weights | No better than flat MLP -- ruled out architecture as the cause |
+| PPO, dense per-tick reward redesign | Reward every tick instead of only on completion | Better-behaved training dynamics, but no better final tardiness |
+| A2C, potential-based shaping | Provably policy-invariant reward shaping | Best early-project result on the fixed instance (27-31 tardiness) |
+| A2C, randomized-instance training | Train directly on shuffled instances | Much worse than fixed-instance training + held-out eval |
+| RCPO (constrained A2C) | Adaptive Lagrangian tardiness constraint | "Best-ever" result was reward hacking (job abandonment); fix didn't survive 3 seeds |
+| **Option 1** -- rule selection | Pick which of 7 heuristics to apply | **Best result overall: 11.00 tardiness vs. proven optimum 8.00** |
+| Option 2 -- raw-feature priority scoring | Pick a job directly from raw features | Works, but far behind Option 1 (525.00 at first-pass scale) |
+| Option 3 -- ATC-primed priority scoring | Like Option 2, plus the ATC score as a feature | Better than Option 2, still behind Option 1 (152.00) |
+| Option 4 -- action-branching | Restore learned machine placement | Worse than Options 1/3 at matched budget; unresolved training instability |
+
+Online case (separate thread, all built on the Options 1-4 action-space designs):
+
+| Thread | Outcome |
+|---|---|
+| Option 1, online, 300k timesteps | Best online result found so far (weighted tardiness 730.30, genuinely mixed rule behaviour) |
+| Option 1, online, 900k timesteps (x3 independent runs) | Consistently worse (~790-800), collapses toward SPT -- unresolved |
+| Option 3, online, 300k vs 900k | Same "more training hurts" pattern, independent confirmation with a different design |
+| Entropy regularisation as a fix | Tested directly, ruled out -- entropy stayed healthy but the collapse still happened |
+
+### 9.4 The reward function, fully explained
+
+The per-step reward (Equation in `mathformulation.tex`, Section on the MDP reward function)
+has four parts:
+1. **Machine activation penalty** ($-\lambda_1$ per newly-activated machine) -- discourages
+   spinning up more machines than necessary.
+2. **Tardiness penalty** ($-\lambda_2 \sum w_j T_j$ for jobs completing this step) -- the main
+   term, penalising weighted lateness.
+3. **Hotspot penalty** ($-\lambda_3 \Delta\theta$, the increase in peak utilisation) --
+   discourages concentrating load. **Known issue:** this term had a real bug (used a mutable
+   capacity reference instead of a fixed baseline) that silently understated utilisation for
+   this project's entire history until it was found and fixed in the last week of work --
+   see the report's Discussion and the Online Case section's Hotspot Redefinition
+   subsection. **Known open tension:** this term structurally discourages the kind of load
+   consolidation that the energy-efficiency literature says actually saves power -- i.e. the
+   hotspot term and a "proper" energy-efficiency term would currently pull in opposite
+   directions if both existed. Not resolved, named as future work.
+4. **Invalid-action penalty** ($-\lambda_4$, or handled via masking so this rarely fires in
+   practice) -- discourages/prevents infeasible placements.
+Plus a terminal penalty at the end of an episode for any job still unscheduled. All
+$\lambda$s were fixed by convention (not tuned via HPO) for most of this project's history,
+since HPO on the relative weighting between objectives was explicitly deferred as a decision
+needing more design input, not something to search blindly.
+
+### 9.5 Questions a marker or supervisor might realistically ask, and how to answer them
+
+These come from an independent, critical self-review the project generated
+(`report.md` in the repo root, not part of the report itself -- worth reading in full if you
+want the unfiltered version).
+
+- **"Is this really 'RL learned to schedule,' or did it just learn to pick a heuristic?"** --
+  Be direct: Option 1, the best result, is a *selection hyper-heuristic* -- it picks among 7
+  existing rules, it does not invent new scheduling behaviour. That's explicitly stated in
+  the report's Results and Discussion. Options 2/3 are the designs that *could* demonstrate
+  genuinely novel learned behaviour, and they're currently weaker -- say this plainly if
+  asked, don't let it be "discovered" by the marker instead.
+- **"How do you know your 50-instance result isn't just luck?"** -- Point to the 3-seed
+  verification practice used for the project's major claims (and the RCPO example where a
+  3-seed check specifically *overturned* an earlier single-run result) -- this project has
+  direct, in-report evidence that it takes this risk seriously, not just a claim that it does.
+- **"Why didn't you finish the online case?"** -- Because it surfaced a genuine, reproducible,
+  currently-unexplained instability (more training makes it worse) rather than because it
+  was deprioritised or ignored. This is presented as an honest open research finding in the
+  report, not a gap glossed over -- say so if asked.
+- **"How do you know PPO actually failed, and it's not just a bug in your implementation?"**
+  -- Two things to point to: (1) the same underlying environment, action-masking, and reward
+  computation is shared by A2C, which *did* learn well under the right configuration --
+  ruling out a broadly broken environment; (2) CP-SAT independently confirmed the fixed
+  instance's true optimum (8.00) and that all 100 jobs *could* be scheduled on time, ruling
+  out "the instance itself was impossible" as an excuse for PPO's ~1300 result.
+- **"What's your test coverage / how do you know the code is correct?"** -- Honest answer:
+  regression tests exist for specific historical bugs (run as plain scripts, e.g. `python -m
+  tests.test_bugfixes`, not a formal `pytest` suite), and this project has caught and fixed
+  roughly ten real bugs over its history purely through this kind of after-the-fact,
+  hypothesis-driven debugging (not a proactive CI/test-suite process) -- named as a real
+  structural gap in Future Work if you want to volunteer it, rather than claim more rigor
+  here than actually exists.
+- **"Did you tune your hyperparameters properly?"** -- Mostly no, and say so: Options 1-4
+  (the project's best results) are currently running on un-tuned library defaults, not a
+  searched configuration -- named explicitly as next-step work. Where HPO *was* done
+  (earlier PPO/A2C variants), it sometimes didn't transfer from the scale it was tuned at to
+  full deployment scale (a documented, citable phenomenon -- Eimer et al. 2023), which is
+  itself a real finding, not just an excuse.
+
+### 9.6 How the pipeline works end-to-end, if you need to explain or re-run it
+
+1. **Configure**: `Code/env/env_config.py::generate_env_config(seed=...)` produces a job/
+   machine instance (or, online, `arrival_process.py` produces a Poisson arrival stream).
+2. **Train**: `Code/training/train_optimized.py` (or `train_action_space_variant.py` for
+   Options 1-4) builds the (possibly wrapped) Gym environment, attaches a policy from
+   `Code/policies/`, and runs Stable-Baselines3's training loop, optionally logging
+   diagnostics via `Code/utils/training_diagnostics.py`. Produces a saved model checkpoint
+   under `rl_training/models/` (gitignored -- these are regenerable, not committed).
+3. **Evaluate**: `Code/evaluation/eval_rl_agent.py` (or `eval_action_space_variant.py`) loads
+   a checkpoint, runs it against the 50-held-out-instance (or 50-arrival-sequence) protocol,
+   and compares it against every heuristic in `Code/baselines/registry.py` and, where
+   tractable, `exact_solver.py`.
+4. **Log**: every evaluation run auto-appends its results to
+   `rl_training/results/eval_results.csv` via `Code/utils/results_log.py`, and (by
+   convention, not automatically) a corresponding dated entry is added to
+   `Future/research/training-log.md` describing the run, its config, and what was concluded.
+5. **Plot**: `Code/utils/plotting_utils.py` generates the matplotlib figures used in earlier
+   evaluation runs (training curves, per-heuristic comparison bars, machine-utilisation
+   plots) -- note Options 1-4's own trainer/evaluator do *not* currently call this, which is
+   why this session had to generate this report's figures from the CSV data directly instead
+   of reusing existing plot files.
