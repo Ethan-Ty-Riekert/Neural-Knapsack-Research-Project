@@ -130,4 +130,57 @@ for use_atc in (False, True):
     assert value.shape == (6, 1), f"use_atc={use_atc}: expected value (6,1), got {value.shape}"
     print(f"  use_atc={use_atc}: logits.shape={tuple(logits.shape)}, value.shape={tuple(value.shape)}")
 
+# ============================================================
+# Check 8 (2026-09-21, S2W9 follow-up): window_order="fifo" for the OFFLINE
+# case sorts candidates by job index (every job "arrives" at t=0
+# simultaneously, so index order is the natural FIFO analogue) -- must
+# differ from the "edf" ordering on the same instance/deadlines used in
+# Check 2, proving the parameter actually changes behaviour, not just
+# accepted and ignored.
+# ============================================================
+print("=== Check 8: window_order='fifo' (offline) orders by job index, not deadline ===")
+full8 = make_base_gym_env(num_jobs=10, num_machines=2, horizon=20,
+                           deadlines=[19, 5, 12, 3, 17, 8, 15, 2, 11, 6])
+env8 = WindowedPriorityGymSchedulingEnv(full8, window_size=4, use_atc=False, window_order="fifo")
+obs, info = env8.reset()
+assert env8._window_jobs == [0, 1, 2, 3], f"expected index-ordered window [0,1,2,3], got {env8._window_jobs}"
+assert env8._window_jobs != [7, 3, 1, 9], "fifo window must differ from Check 2's edf window on the same instance"
+print(f"  window={env8._window_jobs} (job-index order, differs from Check 2's EDF-ordered [7,3,1,9])")
+
+# ============================================================
+# Check 9 (2026-09-21, S2W9 follow-up): window_order="fifo" for the ONLINE
+# case sorts candidates by job_arrival_times[j], matching DeepRM's own
+# literal FIFO queue design intent.
+# ============================================================
+print("=== Check 9: window_order='fifo' (online) orders by arrival time ===")
+from Code.env.online_scheduling_env import OnlineSchedulingEnv
+from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
+
+num_jobs9 = 6
+durations9 = np.array([2] * num_jobs9)
+resources9 = np.array([[3]] * num_jobs9)
+# Arrival order (2,4,0,5,1,3) deliberately scrambled relative to job index AND
+# deadline, so fifo/edf/index orderings are all mutually distinguishable.
+arrival_times9 = np.array([2, 4, 0, 5, 1, 3])
+deadlines9 = np.array([arrival_times9[j] + 10 for j in range(num_jobs9)])
+weights9 = np.array([1.0] * num_jobs9)
+base9 = OnlineSchedulingEnv(
+    job_durations=durations9, job_resources=resources9, job_deadlines=deadlines9,
+    job_weights=weights9, num_machines=2, machine_capacity=np.array([10.0]), horizon=20,
+    job_arrival_times=arrival_times9,
+)
+full9 = OnlineGymSchedulingEnv(base9, max_jobs=num_jobs9)
+env9 = WindowedPriorityGymSchedulingEnv(full9, window_size=6, use_atc=False, window_order="fifo")
+obs, info = env9.reset()
+# All 6 jobs have arrived by t=5 -- advance time via idle steps until every job
+# is revealed, then check the window is sorted by arrival time (job 2 arrives
+# at t=0 first, then job 4 at t=1, ... job 3 last at t=5).
+for _ in range(6):
+    env9.step(env9.window_size)  # idle
+expected_fifo_order = [2, 4, 0, 5, 1, 3]  # argsort of arrival_times9
+assert env9._window_jobs == expected_fifo_order, (
+    f"expected arrival-time-ordered window {expected_fifo_order}, got {env9._window_jobs}"
+)
+print(f"  window={env9._window_jobs} (arrival-time order, matches argsort({arrival_times9.tolist()}))")
+
 print("\nALL WINDOWED-PRIORITY-WRAPPER CHECKS PASSED")

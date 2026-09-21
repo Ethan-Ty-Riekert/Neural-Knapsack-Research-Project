@@ -170,13 +170,19 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
     return OnlineGymSchedulingEnv(base_env, max_jobs=max_jobs, job_resampler=job_resampler)
 
 
-def build_env_and_policy(option: str, full_gym_env=None, window_size=None):
+def build_env_and_policy(option: str, full_gym_env=None, window_size=None, window_order="edf"):
     """window_size (2026-09-18, S2W10, user-approved): only meaningful for
     option in ("2", "3") -- DeepRM-style bounded action-space window
     (Code/env/windowed_priority_gym_wrapper.py), Discrete(window_size+1)
     instead of Discrete(max_jobs+1). See that module's docstring for the
-    design choices (EDF-ordered window, backlog scalar). None (default)
-    keeps the existing unwindowed Options 2/3 behaviour unchanged."""
+    design choices (window_order, backlog scalar). None (default) keeps the
+    existing unwindowed Options 2/3 behaviour unchanged.
+
+    window_order (2026-09-21, S2W9 follow-up): "edf" (default, unchanged) or
+    "fifo" -- see windowed_priority_gym_wrapper.py's module docstring for why
+    "fifo" was added (testing whether the window's EDF-ordering itself, not
+    just undertraining, explains the earlier windowed results landing at
+    EDF-like performance)."""
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
@@ -189,7 +195,8 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None):
     elif option in ("2", "3"):
         use_atc = option == "3"
         if window_size is not None:
-            env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc)
+            env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc,
+                                                     window_order=window_order)
             policy = WindowedPriorityPointerMaskableActorCriticPolicy
             policy_kwargs = dict(
                 window_size=window_size,
@@ -248,9 +255,15 @@ def main():
     parser.add_argument("--window-size", type=int, default=None,
                          help="2026-09-18, user-approved: DeepRM-style bounded action-space "
                               "window for --option 2/3 -- Discrete(window_size+1) instead of "
-                              "Discrete(max_jobs+1). EDF-ordered window + backlog scalar, see "
-                              "Code/env/windowed_priority_gym_wrapper.py. Default None keeps "
+                              "Discrete(max_jobs+1). EDF/FIFO-ordered window + backlog scalar, "
+                              "see Code/env/windowed_priority_gym_wrapper.py. Default None keeps "
                               "the existing unwindowed behaviour.")
+    parser.add_argument("--window-order", choices=["edf", "fifo"], default="edf",
+                         help="2026-09-21 follow-up: only meaningful with --window-size set. "
+                              "Tests whether the window's EDF-ordering itself (not just "
+                              "undertraining) explains earlier windowed results landing at "
+                              "EDF-like performance -- see windowed_priority_gym_wrapper.py's "
+                              "module docstring.")
     parser.add_argument("--reward-mode", choices=["legacy", "dense_tardiness"], default="legacy",
                          help="2026-09-17 follow-up: dense_tardiness was only tested against the "
                               "old (huge) action space and ruled out there -- untested against "
@@ -316,7 +329,8 @@ def main():
         )
 
     env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env,
-                                                       window_size=args.window_size)
+                                                       window_size=args.window_size,
+                                                       window_order=args.window_order)
 
     model = MaskablePPO(
         policy, env,
@@ -343,7 +357,8 @@ def main():
             else:
                 held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range)
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
-                                                       window_size=args.window_size)
+                                                       window_size=args.window_size,
+                                                       window_order=args.window_order)
             # build_env_and_policy wraps Monitor(ActionMasker(wrapper, mask_fn))
             # for the TRAINING env (Monitor tracks episode completion for SB3's
             # own info buffer) -- run_episode() (Code/evaluation/
