@@ -33,11 +33,14 @@ top to bottom, edit anything that doesn't sound like you, and expand Discussion 
 own reflections if you want to use some of the report's remaining word-count headroom (see
 `plane-notes.md` §6 for the current count).
 
-**`plane-notes.md`** -- read this *alongside* the report, not instead of it. It's where I
-put things that would clutter the report itself: a plain-English recap of where the project
-actually stands (so you're not starting cold), direct answers to the specific questions your
-own draft left open, notes on which citations I resolved and how, and a git heads-up for
-when you're back online. If something in the report confuses you, check here first.
+**`plane-notes.md`** -- your offline reference for everything you'd normally just ask me.
+Two halves: (1) a **glossary** explaining every non-obvious term/method the report and
+supervisor document use (MDP, PPO, hyper-heuristics, Little's Law, the works) so you're not
+stuck Googling a definition mid-flight, and (2) project-specific reference material -- a
+plain-English recap of where the project stands, direct answers to the questions your own
+draft left open, which citations I resolved and how, a section-by-section "what belongs
+where" guide for extending the report yourself, and a small LaTeX troubleshooting
+cheat-sheet. If something confuses you and you can't ask me, check here first.
 
 **`portfolio-artefacts/`** -- this is for your *other* assignment (the yearly portfolio's
 "Selection of Artefacts" section), not the NPSC3000 report. It has its own `README.md`
