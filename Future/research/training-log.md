@@ -32,6 +32,68 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-23 (S2W9) -- Observation-informativeness probe: the online observation only weakly encodes ATC-vs-SPT disagreement -- points toward a representation limit, not just an optimization gap
+
+**Context:** Direct follow-up to the previous entry's closing question -- does
+the online observation vector (`OnlineGymSchedulingEnv._get_obs()`, unchanged
+through `RuleSelectionGymSchedulingEnv`) actually contain enough information to
+distinguish states where ATC's job choice would differ from SPT's, i.e. states
+where "clear the queue fast" and "respect weight/urgency" genuinely disagree
+-- exactly where an SPT-collapsed (or SPT-dominant) policy pays for it. New
+script: `Code/evaluation/diagnose_observation_informativeness.py`.
+
+**Method:** rolled out the `ent_coef=0.1` checkpoint deterministically over 20
+online episodes (same instance family as every other diagnostic this week:
+arrival_rate=9, horizon=100, lognormal, job_weight_range=(1,6)). At every
+decision step with >=1 feasible job, computed SPT's and ATC's job choice among
+the SAME feasible candidate set (reusing `priority_rules.py`'s key functions
+directly, matching `registry.py`'s own tie-break convention exactly), labelled
+the state `disagree=1` if they differ. Fit two probes on a held-out 25% test
+split, predicting `disagree` from the raw observation alone: a linear probe
+(logistic regression, `class_weight="balanced"`) and a small nonlinear probe
+(1-hidden-layer, 32-unit MLP) -- reporting both specifically to separate "the
+information isn't linearly accessible" from "the information mostly isn't
+there," which a linear probe alone can't distinguish.
+
+**Stats:**
+```
+16594 decision states across 20 episodes. SPT-vs-ATC disagreement rate: 0.668.
+
+Linear probe (logistic regression):  test ROC-AUC = 0.620  (balanced acc 0.594)
+Nonlinear probe (32-unit MLP):        test ROC-AUC = 0.645
+Gap (MLP - linear):                   +0.024
+```
+
+**Observation:** both probes land well above chance (0.5) but well below a
+strong result (0.85+) -- there IS real, non-trivial signal in the raw
+observation for this distinction, so it is not entirely uninformative. But the
+gap between the linear and nonlinear probe is small (+0.024), meaning giving
+the classifier more capacity to combine features nonlinearly barely helped --
+the ceiling looks like it comes from what the raw features encode, not from
+linear-readout weakness. Since the actual policy network is far more expressive
+than either probe, this doesn't prove the policy network itself is bottlenecked
+the same way, but it weakens the "it's purely an exploration/optimization
+problem and the network could learn this if trained differently" reading:
+there is a real information gap between "the observation, read any reasonable
+way" and "clean ATC-vs-SPT discrimination."
+
+**Conclusion / next step:** This tempers the previous entry's re-scoping
+without reversing it. The evidence now points more specifically toward a
+*representation* issue than a pure optimization one -- the online observation
+vector likely lacks an explicit summary feature for slack/urgency-weighted
+priority (the closest analogue would be adding an ATC-priority-like scalar
+feature directly to the observation, mirroring what `priority_only_gym_wrapper.py`'s
+Option 3 already does for its own purposes, but for Option 1's rule-selection
+observation instead). This is a concrete, scoped follow-up (one new observation
+feature + retrain) rather than a new architecture decision, so it does not need
+the same user-scoping GP+RL hyper-heuristic work was flagged as needing -- but
+is being logged here rather than started unprompted, since it's a real design
+choice (which feature(s) to add, and whether to also backfill it to the
+`ActionDistributionCallback` diagnostics) worth a quick steer before spending a
+training run on it.
+
+---
+
 ## 2026-09-23 (S2W9) -- ent_coef=0.1 result: completely fixed the saturation mechanism, but tardiness performance barely moved -- decouples "entropy collapse" from "why online RL underperforms ATC"
 
 **Context:** Direct test of whether a substantially higher entropy coefficient
