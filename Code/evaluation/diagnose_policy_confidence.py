@@ -25,6 +25,8 @@ Run from the repo root:
     python -m Code.evaluation.diagnose_policy_confidence
 """
 import numpy as np
+import argparse
+
 import torch
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
@@ -34,7 +36,7 @@ from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, R
 from Code.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
 from Code.utils.paths import MODELS_DIR
 
-CHECKPOINT = MODELS_DIR / "action_space_option1_ppo_online_lognormal_rho075_dense_weighted_diagnostics.zip"
+DEFAULT_CHECKPOINT_TAG = "online_lognormal_rho075_dense_weighted_diagnostics"
 N_EPISODES = 6
 ARRIVAL_RATE, HORIZON, MAX_JOBS, DIST = 9, 100, 1300, "lognormal"
 JOB_WEIGHT_RANGE = (1, 6)
@@ -75,13 +77,21 @@ def run_episode_with_logging(model, env):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--checkpoint-tag", type=str, default=DEFAULT_CHECKPOINT_TAG,
+                         help="Must match --save-tag used when training the checkpoint "
+                              "(train_action_space_variant.py, Option 1 online only).")
+    args = parser.parse_args()
+    checkpoint = MODELS_DIR / f"action_space_option1_ppo_{args.checkpoint_tag}.zip"
+    print(f"Loading checkpoint: {checkpoint}")
+
     all_records = []
     template_full = make_online_base_gym_env(
         ARRIVAL_RATE, HORIZON, MAX_JOBS, DIST, seed=RANDOM_INSTANCE_SEED_CEILING,
         use_resampler=False, job_weight_range=JOB_WEIGHT_RANGE,
     )
     template_env = ActionMasker(RuleSelectionGymSchedulingEnv(template_full), mask_fn)
-    model = MaskablePPO.load(str(CHECKPOINT), env=template_env)
+    model = MaskablePPO.load(str(checkpoint), env=template_env)
 
     for i in range(N_EPISODES):
         seed = RANDOM_INSTANCE_SEED_CEILING + i
