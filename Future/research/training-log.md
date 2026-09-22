@@ -32,6 +32,67 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-23 (S2W9) -- ent_coef=0.1 result: completely fixed the saturation mechanism, but tardiness performance barely moved -- decouples "entropy collapse" from "why online RL underperforms ATC"
+
+**Context:** Direct test of whether a substantially higher entropy coefficient
+(0.1, 10x the earlier-tried 0.01) prevents the per-state policy saturation
+found by the policy-confidence diagnostic. Same protocol as every other online
+Option 1 run this session, 900k timesteps.
+
+**Stats -- the mechanism was fixed, cleanly and completely:**
+```
+entropy_loss (SB3's own per-state metric): stayed flat at -1.75 to -1.83 for
+  the ENTIRE 900k run -- no decay trend at all (vs. the baseline run's smooth
+  decline to -0.00006 by the end).
+
+Policy-confidence diagnostic (6 episodes, 5587 decisions):
+                          ent_coef=0.1        ent_coef=0.0 (original, for comparison)
+  SPT probability          mean=0.135          mean=0.892
+  Margin (top1-top2)       mean=0.144           mean=1.000 (EXACTLY, every decision)
+  Value estimate V(s)      mean=-5.43, std=1.35  mean=-6.81, std=1.44 (both healthy)
+```
+The policy is now genuinely uncertain and state-dependent again -- SPT is no
+longer dominant (13.5% average probability, down from 89.2%), and the
+decision margin shows real variance instead of universal 1.0 saturation.
+
+**Stats -- but the actual tardiness outcome barely changed:**
+```
+Option 1 (ent_coef=0.1, 900k)   weighted_tardiness=798.74+/-449.64
+Option 1 (SPT-collapsed, 900k)  weighted_tardiness=798.46+/-346.65   (statistically indistinguishable)
+ATC (still the best heuristic)  weighted_tardiness=648.16+/-338.30
+```
+
+**Observation: this is a genuinely important, somewhat sobering decoupling.**
+Completely preventing the saturation mechanism (confirmed at both the SB3
+entropy_loss level and the direct per-state distribution level) did NOT
+translate into better task performance -- the two checkpoints achieve
+essentially the same weighted tardiness despite being mechanistically very
+different policies underneath (one deterministic and SPT-locked, one
+genuinely diverse and state-dependent). This means entropy/logit saturation,
+while real and now well-characterized, was likely a SYMPTOM correlated with
+this task's online training difficulty, not the ROOT CAUSE of why online RL
+doesn't reach ATC-level performance. Fixing the symptom left the underlying
+performance gap to ATC (648.16) exactly where it was.
+
+**Conclusion / next step:** This significantly re-scopes the remaining online-
+case mystery. The entropy-collapse investigation (four entries across
+2026-09-19 through 2026-09-23: entropy regularization tried and failed at
+0.01, mechanism diagnosed precisely via the confidence diagnostic, mechanism
+now fully fixed at 0.1) is closed out as a thread -- the collapse is real,
+well-understood, and fixable, but fixing it doesn't solve the actual open
+problem. The genuinely remaining question is a different one: WHY does this
+project's online RL setup top out around 798-810 weighted tardiness across
+multiple very different policies (SPT-collapsed, genuinely-diverse-with-high-
+entropy, and the earlier 300k mixed-strategy checkpoint), when ATC
+demonstrably achieves 648? This looks less like an optimization/exploration
+problem now and more like a genuine capability or representation limit at
+this training budget/architecture -- worth investigating directly (e.g.,
+whether the observation the policy receives actually contains enough
+information to distinguish ATC-favourable states, rather than assuming more
+training or better exploration would eventually find it).
+
+---
+
 ## 2026-09-22 (S2W9) -- The "overfitting" hypothesis is REFUTED: training windowed Option 3 on randomized instances made generalization WORSE, not better -- but this matches an already-established project pattern
 
 **Context:** Direct test of the previous entry's hypothesis -- that windowed
