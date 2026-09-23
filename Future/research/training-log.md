@@ -32,6 +32,42 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-24 (S2W9) -- Restarted the ATC-feature run at 300k (first-pass-filter scale), not 900k -- background compute throttling made the original 900k budget impractical in this session
+
+**Context:** direct follow-up to the entry immediately below (the 900k
+ATC-feature launch). Discovered mid-run that this session's background
+process does not progress at a steady rate unattended -- confirmed via
+`Get-Process`/`ps`: after ~18.5 hours of wall-clock time the process had
+consumed only ~1946 CPU-seconds (~2.9% utilization) and completed ~29k/900k
+steps, despite the system overall being ~8% loaded (no external contention).
+Progress resumed at a roughly normal rate only while actively watched via a
+`Monitor`-armed `tail -f` on the log, and even that only partially closed the
+gap (~2.3 steps/sec sustained with a Monitor alone but no direct active
+engagement, vs. ~36 steps/sec fully engaged, vs. ~0.7 steps/sec fully idle).
+This looks like a property of the session's execution environment (background
+child processes appear to get deprioritized while the orchestrating agent
+session is dormant), not a bug in this project's training code -- logged
+here because it changes what's actually achievable unattended, not because
+anything about the ATC-feature implementation itself is suspect.
+
+**Decision:** rather than gamble on a multi-day run that may also be exposed
+to session/VM reclaim risk while mostly idle, killed the 900k run at ~41k
+steps (PowerShell `Stop-Process`) and relaunched with everything unchanged
+except `--timesteps 300000` (save-tag
+`online_lognormal_rho075_dense_weighted_atcfeature_300k`) -- matching this
+project's own established first-pass-filter convention (see e.g. the
+300k-timestep entropy-collapse investigation entries, "matching every other
+option's first-pass-filter scale"), rather than the 900k the diagnostics
+baseline checkpoint used. This is NOT a directly matched-protocol comparison
+to `online_lognormal_rho075_dense_weighted_diagnostics` (900k) -- flagging
+that explicitly now so the eventual result is interpreted at the right scale,
+per this project's matched-protocol discipline. If the 300k result looks
+promising, extending to 900k with sustained active monitoring (or across
+several shorter monitored sessions) is the natural follow-up, not a blocked
+question.
+
+---
+
 ## 2026-09-23 (S2W9) -- Launched: Option 1 online with an explicit ATC-priority observation feature, direct test of the observation-informativeness-probe finding
 
 **Context:** Direct follow-up to the observation-informativeness-probe entry
