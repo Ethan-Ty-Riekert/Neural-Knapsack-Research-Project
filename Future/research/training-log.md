@@ -32,6 +32,61 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-23 (S2W9) -- Launched: Option 1 online with an explicit ATC-priority observation feature, direct test of the observation-informativeness-probe finding
+
+**Context:** Direct follow-up to the observation-informativeness-probe entry
+immediately below. That probe found the raw online observation only weakly
+encodes SPT-vs-ATC job-choice disagreement (linear AUC 0.62, nonlinear MLP AUC
+0.65, small gap between them -- consistent with a real but limited
+information gap in the raw features). The natural, low-risk next test:
+give Option 1's observation the same explicit per-job ATC-priority feature
+Option 3 already uses, and see whether the gap to ATC's tardiness performance
+narrows.
+
+**Implementation:** added an opt-in `use_atc_feature` flag to
+`RuleSelectionGymSchedulingEnv` (`Code/env/rule_selection_gym_wrapper.py`),
+appending the same per-job ATC-priority feature Option 3's `use_atc=True`
+already computes. Factored the shared slot-layout logic out of
+`priority_only_gym_wrapper.py` into a new `Code/env/obs_atc_feature.py`
+(`append_atc_priority_feature()`) so both options call one implementation
+instead of duplicating it -- Option 3's own behaviour is unchanged by this
+refactor (verified: `tests/test_action_space_wrappers.py`'s existing Option 3
+check and the new Option 1 check produce identical ATC feature values on the
+same synthetic instance). Threaded `use_atc_feature`/`--use-atc-feature`
+through `build_env_and_policy()`/`train_action_space_variant.py` and
+`build_eval_env()`/`eval_action_space_variant.py`, with explicit `ValueError`
+guards for every other option (mirrors the existing `--window-size` guard
+style). Default `False` preserves every existing Option 1 checkpoint's
+observation_space shape unchanged. New test coverage: obs_dim growth by
+exactly `max_jobs`, feature range/non-degeneracy, and that `step()` mechanics
+are unaffected by the extra feature -- all in
+`tests/test_action_space_wrappers.py`. Full existing suite
+(`test_action_space_wrappers.py`, `test_efficiency_fixes.py`,
+`test_training_diagnostics.py`) re-run clean, no regressions. Smoke-tested
+both the training and eval CLI paths at tiny scale (512 timesteps) before
+this launch, matching this project's established discipline.
+
+**Config:** Option 1, online, same protocol as the entropy-collapse/ATC-probe
+runs (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300
+--job-size-distribution lognormal --reward-mode dense_tardiness
+--job-weight-min 1 --job-weight-max 6`), 900k timesteps,
+`--diagnostics-interval 5000`, new `--use-atc-feature` flag, save-tag
+`online_lognormal_rho075_dense_weighted_atcfeature`. Directly comparable to
+the `online_lognormal_rho075_dense_weighted_diagnostics` checkpoint (used by
+both the policy-confidence and observation-informativeness diagnostics) --
+same protocol, only the added feature differs.
+
+**Conclusion / next step:** Launched in the background (single env, ~35 fps
+observed at tiny scale on this obs_dim -- CPU-bound, expect several hours for
+900k timesteps). Will evaluate on the 50-instance randomized protocol and
+append a result entry once complete. If weighted tardiness moves meaningfully
+toward ATC's 648.16, that's evidence for the representation-limit reading; if
+it stays near the 798-810 band regardless, that would argue the earlier
+probe's "modest but real" signal wasn't the practical bottleneck after all
+(a genuinely informative negative result either way, not just a null run).
+
+---
+
 ## 2026-09-23 (S2W9) -- Observation-informativeness probe: the online observation only weakly encodes ATC-vs-SPT disagreement -- points toward a representation limit, not just an optimization gap
 
 **Context:** Direct follow-up to the previous entry's closing question -- does

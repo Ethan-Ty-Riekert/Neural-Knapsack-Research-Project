@@ -20,6 +20,19 @@ decodes that into a real (job, machine) placement, executed on the SAME
 underlying SchedulingEnv/OnlineSchedulingEnv unchanged. Action space shrinks
 from 1000+ choices to len(PRIORITY_RULES)+1 = 8.
 
+use_atc_feature (added 2026-09-23, S2W9, direct follow-up to Future/research/
+training-log.md's observation-informativeness-probe entry): optional,
+default-off flag that appends the same per-job ATC-priority feature Option 3
+already uses (Code/env/obs_atc_feature.py, extracted from
+priority_only_gym_wrapper.py so both options share one implementation) to
+this option's observation. Motivation: a linear/nonlinear probe found the
+raw observation only weakly encodes SPT-vs-ATC job-choice disagreement (AUC
+0.62/0.65) -- this gives the rule-selection policy an explicit signal for
+exactly that distinction, testing whether the gap to ATC's tardiness
+performance narrows once the feature doesn't have to be re-derived from raw
+duration/deadline/weight/time features. Default False preserves every
+existing Option 1 checkpoint's observation_space shape unchanged.
+
 Wraps an already-constructed GymSchedulingEnv or OnlineGymSchedulingEnv
 instance (composition, not subclassing) so this one file is correct for
 both the offline and online case without duplicating either's _get_obs()
@@ -35,6 +48,7 @@ import numpy as np
 
 from Code.baselines.priority_rules import PRIORITY_RULES
 from Code.baselines.registry import HEURISTICS
+from Code.env.obs_atc_feature import append_atc_priority_feature
 
 RULE_NAMES = list(PRIORITY_RULES.keys())
 
@@ -42,7 +56,7 @@ RULE_NAMES = list(PRIORITY_RULES.keys())
 class RuleSelectionGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, full_gym_env):
+    def __init__(self, full_gym_env, use_atc_feature: bool = False):
         super().__init__()
         self._full = full_gym_env
         self.env = full_gym_env.env
@@ -50,14 +64,32 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         self.num_machines = full_gym_env.num_machines
         self.num_resources = full_gym_env.num_resources
         self.horizon = full_gym_env.horizon
+        self.use_atc_feature = use_atc_feature
 
         self.rule_names = RULE_NAMES
         self.num_rules = len(self.rule_names)
         self.action_space = gym.spaces.Discrete(self.num_rules + 1)  # +1 idle
-        self.observation_space = full_gym_env.observation_space
+
+        if use_atc_feature:
+            # Must match GymSchedulingEnv._get_obs()'s per-job-slot layout:
+            # [duration, deadline, weight, resource_0..R-1, scheduled].
+            self._job_slot_width = self.num_resources + 4
+            self._machine_block_end = 1 + self.num_machines * self.num_resources
+            obs_dim = full_gym_env.observation_space.shape[0] + self.max_jobs
+            self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(obs_dim,), dtype=np.float32)
+        else:
+            self.observation_space = full_gym_env.observation_space
 
         self._invalid_action_count = 0
         self._max_invalid_actions = 2 * (self.num_rules + 1)
+
+    def _get_obs(self):
+        base_obs = self._full._get_obs()
+        if not self.use_atc_feature:
+            return base_obs
+        return append_atc_priority_feature(
+            base_obs, self.env, self.max_jobs, self._job_slot_width, self._machine_block_end,
+        )
 
     def _decode(self, a):
         return a // self.num_machines, a % self.num_machines
@@ -81,8 +113,9 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         return mask
 
     def reset(self, *, seed=None, options=None):
-        obs, _ = self._full.reset(seed=seed, options=options)
+        self._full.reset(seed=seed, options=options)
         self._invalid_action_count = 0
+        obs = self._get_obs()
         info = {"action_mask": self.get_action_mask()}
         return obs, info
 
@@ -119,7 +152,7 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
             else:
                 self._invalid_action_count += 1
 
-        obs = self._full._get_obs()
+        obs = self._get_obs()
         info = {"action_mask": self.get_action_mask(), "episode_cost": self.env.episode_cost}
 
         terminated = done

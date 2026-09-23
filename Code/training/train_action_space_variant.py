@@ -170,7 +170,8 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
     return OnlineGymSchedulingEnv(base_env, max_jobs=max_jobs, job_resampler=job_resampler)
 
 
-def build_env_and_policy(option: str, full_gym_env=None, window_size=None, window_order="edf"):
+def build_env_and_policy(option: str, full_gym_env=None, window_size=None, window_order="edf",
+                          use_atc_feature=False):
     """window_size (2026-09-18, S2W10, user-approved): only meaningful for
     option in ("2", "3") -- DeepRM-style bounded action-space window
     (Code/env/windowed_priority_gym_wrapper.py), Discrete(window_size+1)
@@ -182,7 +183,14 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     "fifo" -- see windowed_priority_gym_wrapper.py's module docstring for why
     "fifo" was added (testing whether the window's EDF-ordering itself, not
     just undertraining, explains the earlier windowed results landing at
-    EDF-like performance)."""
+    EDF-like performance).
+
+    use_atc_feature (2026-09-23, S2W9 follow-up): only meaningful for
+    option == "1" -- appends the same per-job ATC-priority feature Option 3
+    already uses (Code/env/obs_atc_feature.py) to Option 1's observation. See
+    rule_selection_gym_wrapper.py's module docstring for the motivation
+    (observation-informativeness-probe result). Default False keeps existing
+    Option 1 checkpoints' observation_space shape unchanged."""
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
@@ -190,9 +198,12 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3 (Option 1's action "
                               "space is already the 8-choice rule menu, not job-slot selection).")
-        env = RuleSelectionGymSchedulingEnv(full_gym_env)
+        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature)
         policy, policy_kwargs = "MlpPolicy", {}
     elif option in ("2", "3"):
+        if use_atc_feature:
+            raise ValueError("--use-atc-feature only applies to --option 1 (Options 2/3 already "
+                              "have their own --use-atc flag via option == '3').")
         use_atc = option == "3"
         if window_size is not None:
             env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc,
@@ -216,6 +227,8 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     elif option == "4":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3.")
+        if use_atc_feature:
+            raise ValueError("--use-atc-feature only applies to --option 1.")
         env = ActionBranchingGymSchedulingEnv(full_gym_env)
         policy = ActionBranchingMaskableActorCriticPolicy
         policy_kwargs = dict(
@@ -297,6 +310,13 @@ def main():
                          help="Suffix for the saved checkpoint filename (e.g. 'online_lognormal') "
                               "so an online/heavy-tailed run doesn't overwrite the offline "
                               "fixed-instance checkpoint for the same --option.")
+    parser.add_argument("--use-atc-feature", action="store_true",
+                         help="2026-09-23 follow-up: only meaningful with --option 1. Appends the "
+                              "same per-job ATC-priority feature Option 3 already uses to Option "
+                              "1's observation -- see rule_selection_gym_wrapper.py's module "
+                              "docstring (observation-informativeness-probe result) for the "
+                              "motivation. Default off keeps existing Option 1 checkpoints' "
+                              "observation_space shape unchanged.")
     parser.add_argument("--diagnostics-interval", type=int, default=None,
                          help="2026-09-20 follow-up: opt-in periodic training-time diagnostics "
                               "(Code/utils/training_diagnostics.py) -- action-distribution "
@@ -330,7 +350,8 @@ def main():
 
     env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env,
                                                        window_size=args.window_size,
-                                                       window_order=args.window_order)
+                                                       window_order=args.window_order,
+                                                       use_atc_feature=args.use_atc_feature)
 
     model = MaskablePPO(
         policy, env,
@@ -358,7 +379,8 @@ def main():
                 held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range)
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
-                                                       window_order=args.window_order)
+                                                       window_order=args.window_order,
+                                                       use_atc_feature=args.use_atc_feature)
             # build_env_and_policy wraps Monitor(ActionMasker(wrapper, mask_fn))
             # for the TRAINING env (Monitor tracks episode completion for SB3's
             # own info buffer) -- run_episode() (Code/evaluation/

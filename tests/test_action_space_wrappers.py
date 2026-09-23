@@ -77,6 +77,39 @@ obs, reward, term, trunc, info = env1b.step(idle_id)
 assert 1 in env1b.env.remaining_jobs, "idle step must not have scheduled job 1"
 print("  idle action left job 1 unscheduled, as expected")
 
+print("=== Option 1: use_atc_feature=False (default) leaves obs_dim unchanged ===")
+full1d = make_base_gym_env(num_jobs=4, num_machines=2, horizon=10)
+env1d = RuleSelectionGymSchedulingEnv(full1d)
+assert not env1d.use_atc_feature
+assert env1d.observation_space.shape[0] == full1d.observation_space.shape[0], (
+    "default Option 1 must not change the observation dimension -- existing checkpoints "
+    "depend on this"
+)
+print(f"  obs_dim unchanged at {env1d.observation_space.shape[0]}")
+
+print("=== Option 1: use_atc_feature=True grows obs_dim by exactly max_jobs, feature in range ===")
+full1e = make_base_gym_env(num_jobs=4, num_machines=2, horizon=10)
+env1e = RuleSelectionGymSchedulingEnv(full1e, use_atc_feature=True)
+assert env1e.observation_space.shape[0] == full1e.observation_space.shape[0] + full1e.max_jobs, (
+    f"Option 1 with use_atc_feature obs_dim should be base+max_jobs, got base="
+    f"{full1e.observation_space.shape[0]}, actual={env1e.observation_space.shape[0]}"
+)
+obs1e, info = env1e.reset()
+job_slot_width = env1e.num_resources + 5  # +1 over the base R+4 for the appended ATC feature
+job_block = obs1e[env1e._machine_block_end:]
+atc_values = job_block.reshape(env1e.max_jobs, job_slot_width)[:, -1]
+assert np.all((atc_values >= 0.0) & (atc_values <= 1.0)), f"ATC feature out of [0,1] range: {atc_values}"
+assert np.any(atc_values > 0.0), "expected at least one real (non-padding) job's ATC feature to be > 0"
+print(f"  obs_dim grew by exactly max_jobs ({full1e.max_jobs}); ATC features in range: {atc_values}")
+
+print("=== Option 1: use_atc_feature=True still steps/masks/decodes correctly (feature is additive-only) ===")
+obs1e, reward1e, term1e, trunc1e, info1e = env1e.step(RULE_NAMES.index("EDF"))
+assert len(env1e.env.remaining_jobs) == 3, (
+    f"use_atc_feature must not change step() decision mechanics, remaining={env1e.env.remaining_jobs}"
+)
+assert obs1e.shape[0] == env1e.observation_space.shape[0]
+print("  step() with use_atc_feature=True still schedules exactly one job per rule choice")
+
 
 # ============================================================
 # Options 2/3: action space size, obs dim, FirstFit placement, ATC feature

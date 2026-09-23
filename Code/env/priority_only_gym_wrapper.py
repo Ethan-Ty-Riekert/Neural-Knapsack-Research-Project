@@ -27,8 +27,8 @@ duplicating either's _get_obs().
 import gymnasium as gym
 import numpy as np
 
-from Code.baselines.priority_rules import atc_priority
 from Code.baselines.placement_rules import first_fit
+from Code.env.obs_atc_feature import append_atc_priority_feature
 
 
 class PriorityOnlyGymSchedulingEnv(gym.Env):
@@ -60,19 +60,9 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
         base_obs = self._full._get_obs()
         if not self.use_atc:
             return base_obs
-
-        head = base_obs[:self._machine_block_end]
-        job_block = base_obs[self._machine_block_end:]
-        slots = job_block.reshape(self.max_jobs, self._job_slot_width)
-
-        revealed = getattr(self.env, "revealed_jobs", None)
-        out_slots = np.empty((self.max_jobs, self._job_slot_width + 1), dtype=np.float32)
-        for j in range(self.max_jobs):
-            out_slots[j, :self._job_slot_width] = slots[j]
-            is_real = (j < self.env.num_jobs) if revealed is None else (j in revealed)
-            out_slots[j, -1] = float(np.clip(atc_priority(self.env, j), 0.0, 1.0)) if is_real else 0.0
-
-        return np.concatenate([head, out_slots.reshape(-1)]).astype(np.float32)
+        return append_atc_priority_feature(
+            base_obs, self.env, self.max_jobs, self._job_slot_width, self._machine_block_end,
+        )
 
     def _feasible_machines(self, job):
         t = self.env.time
