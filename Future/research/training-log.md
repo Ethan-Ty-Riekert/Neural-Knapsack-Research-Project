@@ -32,6 +32,40 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-24 (S2W9) -- Correction/refinement: the 300k restart does not fix the throttling either -- this is a session-environment characteristic, not something to engineer around
+
+**Context:** direct correction to the entry immediately below, which
+hypothesized that an actively-armed `Monitor` (`tail -f` on the log) was
+sufficient to keep the background training process at normal throughput, and
+that reducing the timestep budget from 900k to 300k would make the run
+complete in a practical timeframe.
+
+**What actually happened:** left a 30-minute `Monitor` run to its natural
+expiry without immediately re-arming it. Over the resulting ~5h14m real
+gap (30 min actively monitored + ~4h44m with no monitor and no direct tool
+calls), the 300k run completed only 14336 steps -- an average of ~0.76
+steps/sec across the whole window, statistically indistinguishable from the
+earlier fully-idle stall rate. This means the Monitor's background `tail -f`
+pipe, by itself, is NOT what kept things moving during the earlier recovery
+-- that recovery most likely coincided with (and was probably caused by) the
+agent's own direct, frequent tool calls during that period.
+
+**Conclusion / next step:** this is a property of the session's background-
+compute execution environment, not something fixable by tooling choices
+(Monitor granularity, timestep budget, etc.) -- the effective throughput hit
+looks roughly constant in wall-clock terms regardless of job size, so
+shrinking the target further would not reliably fix completion time either.
+Decision: stop trying to engineer around it. Let the current 300k run
+continue as-is (killing and restarting a third time would only waste the
+steps already invested without addressing the root cause). Checking in at
+reasonable, not tight, intervals going forward, and treating multi-day
+wall-clock completion for what would normally be an hours-long job as the
+realistic expectation while unattended. See also the matching memory note
+(`feedback_background_jobs_need_active_monitor.md`, product feedback queued
+but not yet sent) for the full investigation.
+
+---
+
 ## 2026-09-24 (S2W9) -- Restarted the ATC-feature run at 300k (first-pass-filter scale), not 900k -- background compute throttling made the original 900k budget impractical in this session
 
 **Context:** direct follow-up to the entry immediately below (the 900k
