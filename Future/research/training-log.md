@@ -32,6 +32,65 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-26 (S2W10) -- ATC-feature result: a small, real improvement over the SPT-collapsed baseline, but the gap to ATC is NOT closed -- weakens the representation-limit reading
+
+**Context:** result of the 300k ATC-feature run (`online_lognormal_rho075_
+dense_weighted_atcfeature_300k`), which finished after ~64.2 hours of
+wall-clock time (severely throttled per the entries above -- not indicative
+of real compute cost, see the memory note
+`feedback_background_jobs_need_active_monitor.md`). Evaluated on the
+standard 50-instance randomized protocol (seeds 500000-500049), matching
+every other Option 1 result in this thread.
+
+**Stats:**
+```
+Option 1 + ATC feature (300k)   weighted_tardiness=776.42+/-331.15
+Option 1 (SPT-collapsed, 900k)  weighted_tardiness=798.46+/-346.65   (from the 2026-09-23 entcoef entry)
+ATC (heuristic)                 weighted_tardiness=648.16+/-338.30
+WSPT+BestFit (heuristic)        weighted_tardiness=709.42+/-299.06
+EDF+BestFit (heuristic)         weighted_tardiness=736.44+/-430.41
+```
+
+**IMPORTANT CAVEAT (matched-protocol discipline):** this is NOT a clean
+apples-to-apples comparison -- the ATC-feature run is 300k timesteps
+(first-pass-filter scale, forced by the throttling above), while the
+SPT-collapsed reference is 900k. No matched-budget (300k, no-ATC-feature)
+checkpoint currently exists to isolate the feature's effect from the
+budget difference. The ~22-point improvement (798.46 -> 776.42) could
+partly or wholly reflect the smaller budget landing at a different point in
+an otherwise-noisy training trajectory, not the feature itself -- flagged
+here rather than presented as a clean causal result.
+
+**Observation:** even taking the improvement at face value, it is small
+(~2.8%) relative to the ATC gap (776.42 vs. 648.16 is still a 128-point,
+~19.8% gap), and Option 1 + ATC feature is still worse than two off-the-shelf
+heuristics (WSPT+BestFit, EDF+BestFit) that need no learning at all. This
+weakens (does not refute) the observation-informativeness probe's
+representation-limit reading: giving the policy an explicit, correctly-
+computed ATC-priority signal did not meaningfully close the gap, which is
+more consistent with the gap being dominated by something other than "the
+raw features don't linearly/simply encode this" -- e.g. genuine optimization
+difficulty in this action space/reward setup, or a capability limit deeper
+than a single missing feature.
+
+**Conclusion / next step:** this closes out the ATC-feature thread as
+inconclusive-but-informative rather than a clean win. A matched-budget
+(300k, no feature) control run would be needed to confirm even the small
+improvement is real and not budget noise -- not run yet, given the multi-day
+throttled cost of a single run in this session; left as an open follow-up
+requiring a user steer on whether it's worth the wall-clock cost. Reverting
+to the earlier capability/representation-limit question in its original,
+more open form: the online case's ~150-point gap to ATC remains unexplained
+by (a) entropy/logit saturation (ruled out 2026-09-23), or (b) a simple
+missing-observation-feature story (this entry). Future work should probably
+look at a stronger nonlinear representation-adequacy test (e.g. can a
+larger, purpose-trained supervised probe predict ATC's full RANKING, not
+just the binary SPT-vs-ATC-disagreement label) or reconsider whether Option
+1's rule-selection action space itself (discrete rule per tick, not a
+continuous priority score) is the bottleneck.
+
+---
+
 ## 2026-09-24 (S2W9) -- Correction/refinement: the 300k restart does not fix the throttling either -- this is a session-environment characteristic, not something to engineer around
 
 **Context:** direct correction to the entry immediately below, which
