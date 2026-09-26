@@ -32,6 +32,64 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-26 (S2W10) -- A candidate mechanistic hypothesis for WHY PPO prefers SPT/WSPT over ATC, grounded in reading the reward code (not yet empirically tested)
+
+**Context:** direct follow-up to the entry immediately below (PPO learns away
+from the zero-cost ATC action). That entry established the WHAT (an
+optimization/exploration problem) but not the WHY. Read
+`SchedulingEnv.reward()`/`_dense_tardiness_tick_charge()`
+(`Code/env/scheduling_env.py:300-346,494-542`) directly to check whether the
+`dense_tardiness` reward mode's per-tick structure gives any reason to
+expect this specific SPT/WSPT-over-ATC bias, rather than treating it as an
+unexplained black box. No training or new compute involved -- pure code
+inspection, flagged as a HYPOTHESIS per CLAUDE.md's rigor rule, not a proven
+mechanism.
+
+**What the code shows:** `_dense_tardiness_tick_charge()` only accrues a
+non-zero cost for a job `j` once `self.time >= job_deadlines[j]` AND `j` is
+not yet complete -- i.e. the per-tick reward signal is EXACTLY ZERO for
+every job that still has slack remaining, regardless of which rule chose to
+schedule it or in what order. There is no positive reward for early
+completion, no differential signal between "scheduled now" vs. "scheduled
+later" as long as neither choice has yet caused a job to cross its deadline.
+This is not a bug -- it's confirmed to reproduce the true objective
+`sum_j(w_j*T_j/horizon)` exactly (see that method's own correctness
+argument, already tested in `tests/test_dense_tardiness_reward.py`) -- but
+it does mean the reward signal is genuinely SPARSE/flat across every
+low-congestion decision, which is plausibly the common case for most of an
+episode.
+
+**Hypothesis:** ATC's real advantage over WSPT is specifically in the
+narrow, state-dependent regime where a job's slack is shrinking but it
+hasn't yet crossed its deadline (the formula's own
+`exp(-slack/(k*mean_p))` term is exactly this urgency ramp -- see
+`atc_priority()`'s docstring). But the reward signal for a wrong call in
+that regime only actually fires LATER, once the job has already gone late --
+by which point PPO's credit assignment has to reach back through several
+ticks (via GAE/the value function) to find the earlier rule-choice
+responsible. SPT/WSPT's benefit, by contrast, is more immediate and locally
+visible: clearing short/high-value jobs fast has a direct, nearby effect on
+how many jobs are ever at risk of lateness at all. If PPO's local
+policy-gradient updates are more sensitive to this kind of immediate, dense
+local signal than to a longer, thinner delayed-credit chain, that would
+mechanistically explain a systematic bias toward SPT/WSPT over ATC even when
+ATC is informationally available and directly selectable -- independent of
+(and consistent with, not contradicting) the "optimization problem" framing
+in the entry below.
+
+**Status: NOT yet empirically tested -- flagged as the honest next
+diagnostic, not assumed true.** A cheap, no-new-training way to test this
+directly: log, per episode, the tick-distance between each rule choice and
+the nearest subsequent per-tick tardiness charge it plausibly caused, and
+check whether ATC-favorable states are systematically further from their
+associated reward signal than SPT/WSPT-favorable ones -- reusing
+`diagnose_rule_choice_congestion.py`'s existing rollout-and-log pattern
+rather than a new script from scratch. Left unstarted pending a steer on
+whether it's worth pursuing before or alongside the training-heavy options
+already listed below.
+
+---
+
 ## 2026-09-26 (S2W10) -- Sharper finding, no new training needed: PPO actively LEARNS AWAY from the ATC action even though it's directly available and the observation gives an explicit ATC-priority feature -- this is an optimization problem, not a representation one
 
 **Context:** direct follow-up to the entry immediately below (the ATC-feature
