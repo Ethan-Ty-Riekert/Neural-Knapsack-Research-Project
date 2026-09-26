@@ -32,6 +32,75 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-26 (S2W10) -- Sharper finding, no new training needed: PPO actively LEARNS AWAY from the ATC action even though it's directly available and the observation gives an explicit ATC-priority feature -- this is an optimization problem, not a representation one
+
+**Context:** direct follow-up to the entry immediately below (the ATC-feature
+result). That entry left the representation-vs-optimization question
+ambiguous. Re-examining the just-completed 300k run's own
+`ActionDistributionCallback` diagnostics (already logged during training,
+no new compute needed) resolves it much more sharply, because of a fact
+worth stating explicitly: **"ATC" is not merely encodable in the
+observation -- it is literally one of Option 1's 8 discrete actions.** A
+policy that always selected the ATC action every tick would, by
+construction, reproduce ATC's exact heuristic behaviour and its exact
+648.16 weighted-tardiness score. No feature engineering or representation
+capacity is needed for that -- it only requires PPO's policy optimization to
+converge on "pick ATC."
+
+**Stats -- ATC's selection frequency over the course of this exact run:**
+```
+Start of training (first action_dist block, ~2048 steps):
+  ATC=0.106  EDF=0.111  FCFS=0.131  LPT=0.129  LST=0.133  SPT=0.132  WSPT=0.129  entropy_normalized=0.999
+  (near-uniform across all 7 rules + idle, as expected from an untrained policy)
+
+End of training (final action_dist blocks, ~295-300k steps):
+  ATC=0.009-0.012   EDF=0.09-0.14   SPT=0.23-0.48   WSPT=0.18-0.44   entropy_normalized=0.71-0.76
+  (SPT/WSPT dominate; ATC's share has fallen to ~1%, well below even a
+  uniform 12.5% baseline -- not "failed to discover ATC," but "moved AWAY
+  from it as training progressed")
+```
+This is with the explicit ATC-priority feature present in the observation
+the whole time (this run's whole point), and with entropy_normalized never
+collapsing to nearly this run's near-zero online-collapse precedent (stays
+in a healthy 0.7-0.76 range) -- so this isn't the entropy-saturation
+mechanism from the 2026-09-23 entries either. PPO explored broadly early on,
+then its own policy-gradient updates consistently pushed away from the one
+action that would have matched the best available heuristic exactly.
+
+**Observation:** this is much stronger evidence than the previous entry's
+"gap not closed" framing suggested. Since (a) ATC is a zero-representation-
+cost action already in the policy's repertoire, and (b) the observation
+literally contains a precomputed, correctly-verified ATC-priority value per
+job this whole run, the only remaining explanation for why the trained
+policy still ends up ~20% worse than ATC is that PPO's optimization
+landscape for this MDP has a more attractive (higher local, if not global,
+return) basin around SPT/WSPT than around ATC -- plausibly because SPT/WSPT
+are simpler, lower-variance strategies that are easier for policy-gradient
+methods to exploit reliably step-to-step, while ATC's benefit is a longer-
+horizon, state-dependent trade-off (only diverging from WSPT when slack is
+small, per the formula) that a locally-greedy policy-gradient process may
+systematically under-explore or discount.
+
+**Conclusion / next step:** this REVERSES (not just tempers) the previous
+entry's tentative "weakens representation-limit reading" framing into a
+positive, evidenced claim: the observation-informativeness probe's original
+"maybe it's a representation limit" hypothesis is now well-evidenced as
+WRONG for this specific gap -- the online case's shortfall vs. ATC is an
+optimization/exploration problem, full stop, given ATC's zero-cost
+availability as an action. Natural next steps (none started, all would need
+a user steer given the throttling-driven compute cost of any further
+training in this session): (1) an entropy bonus SPECIFICALLY biased or
+warm-started toward under-selected actions (not just a uniform higher
+ent_coef, already ruled out on 2026-09-23 for a different, now-superseded
+reason); (2) reward shaping or curriculum that makes ATC's longer-horizon
+payoff easier for PPO's credit assignment to detect; (3) simply a lot more
+timesteps at a budget large enough to escape the SPT/WSPT basin, which
+hasn't been cleanly tested since every online run to date has been
+resource-constrained by this session's throttling, not by a principled
+timestep-budget decision.
+
+---
+
 ## 2026-09-26 (S2W10) -- ATC-feature result: a small, real improvement over the SPT-collapsed baseline, but the gap to ATC is NOT closed -- weakens the representation-limit reading
 
 **Context:** result of the 300k ATC-feature run (`online_lognormal_rho075_
