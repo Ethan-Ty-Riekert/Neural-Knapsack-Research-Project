@@ -32,6 +32,45 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-26 (S2W10) -- Credit-assignment-lag hypothesis test: the diagnostic as built is DEGENERATE, not a real null result -- correcting the record
+
+**Context:** built and ran `Code/evaluation/diagnose_credit_assignment_lag.py`
+to test the credit-assignment-lag hypothesis from the entry immediately
+below, using the "any job anywhere late" proxy described there (ticks until
+the next tick, anywhere in the episode, where >=1 job is late-and-
+incomplete).
+
+**Result as first run:** mean_lag=0.00 (EXACTLY) for both disagree (SPT!=ATC)
+and agree states, n=16615 decisions across 20 episodes.
+
+**Why this is NOT a real null result:** investigated directly rather than
+taking the 0.00/0.00 at face value -- checked `_charged_ticks()`'s output
+for a single rollout and found EVERY tick in the episode (101/101, horizon=
+100) is "charged" (fraction=1.0). This environment (arrival_rate=9,
+horizon=100, online_max_jobs=1300 -> ~900 realized arrivals, only ~835
+ever scheduled per the eval numbers) is persistently over capacity -- some
+job somewhere is essentially always late-and-incomplete at every tick. The
+"any job anywhere" proxy is therefore trivially 0 almost everywhere by
+construction, regardless of the true hypothesis -- it measures system-wide
+congestion, not the causal link between a specific decision and its own
+consequence. This is a flawed instrument, not evidence against the
+hypothesis: **retracting the previous entry's "no meaningful difference ...
+does not support" conclusion** -- it was drawn from a degenerate metric and
+should not be read as informative either way.
+
+**Conclusion / next step:** a real test of this hypothesis needs a
+PER-DECISION, not per-episode-global, notion of lag -- e.g. tracking the
+specific job(s) SPT vs. ATC would prioritize differently at a given step,
+and measuring how many ticks until THAT job's own fate (late vs. on-time)
+is determined, which requires either counterfactual replay (what would have
+happened to that job under each rule) or a narrower congestion regime where
+"any job late" isn't already saturated at 1.0. Non-trivial design work, not
+a quick fix -- left as an open, unstarted follow-up rather than attempted
+under time/compute pressure. The hypothesis itself (below) remains neither
+supported nor refuted.
+
+---
+
 ## 2026-09-26 (S2W10) -- A candidate mechanistic hypothesis for WHY PPO prefers SPT/WSPT over ATC, grounded in reading the reward code (not yet empirically tested)
 
 **Context:** direct follow-up to the entry immediately below (PPO learns away
