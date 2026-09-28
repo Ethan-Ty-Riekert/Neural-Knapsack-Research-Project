@@ -1,0 +1,61 @@
+Resuming: training pointer_paretoknee from trial 7 params: {'embed_dim': 256, 'hidden': 128, 'learning_rate': 0.0003695942531122324, 'n_steps': 5, 'gamma': 0.9530229176334087, 'gae_lambda': 0.9762990918221373, 'ent_coef': 0.005452571368828834, 'value_coef': 0.42786770877985325, 'max_grad_norm': 0.6217269138713168, 'lambda_1': 1.7633651725846429, 'lambda_2': 1.2634415874299239, 'lambda_3': 0.5285849440300567, 'idle_penalty': 0.7193376309662026, 'invalid_penalty': 4.991942979632348}
+
+======================================================================
+Training model: pointer_paretoknee (60000 timesteps)
+======================================================================
+  [pointer_paretoknee] episode 1, t=51, mean reward (last 1): 129.65
+  [pointer_paretoknee] episode 25, t=1155, mean reward (last 25): 176.56
+  [pointer_paretoknee] episode 50, t=2304, mean reward (last 25): 177.17
+  [pointer_paretoknee] episode 75, t=3435, mean reward (last 25): 184.04
+  [pointer_paretoknee] episode 100, t=4578, mean reward (last 25): 179.46
+  [pointer_paretoknee] episode 125, t=5703, mean reward (last 25): 186.30
+  [pointer_paretoknee] episode 150, t=6846, mean reward (last 25): 179.27
+  [pointer_paretoknee] episode 175, t=7995, mean reward (last 25): 177.14
+  [pointer_paretoknee] episode 200, t=9138, mean reward (last 25): 179.39
+  [pointer_paretoknee] episode 225, t=10269, mean reward (last 25): 184.03
+  [pointer_paretoknee] episode 250, t=11406, mean reward (last 25): 181.81
+  [pointer_paretoknee] episode 275, t=12543, mean reward (last 25): 181.72
+  [pointer_paretoknee] episode 300, t=13692, mean reward (last 25): 177.39
+  [pointer_paretoknee] episode 325, t=14829, mean reward (last 25): 181.65
+  [pointer_paretoknee] episode 350, t=15966, mean reward (last 25): 181.79
+  [pointer_paretoknee] episode 375, t=17109, mean reward (last 25): 179.40
+  [pointer_paretoknee] episode 400, t=18234, mean reward (last 25): 186.04
+  [pointer_paretoknee] episode 425, t=19365, mean reward (last 25): 183.74
+  [pointer_paretoknee] episode 450, t=20490, mean reward (last 25): 186.43
+  [pointer_paretoknee] episode 475, t=21639, mean reward (last 25): 176.97
+  [pointer_paretoknee] episode 500, t=22782, mean reward (last 25): 179.33
+  [pointer_paretoknee] episode 525, t=23919, mean reward (last 25): 181.75
+  [pointer_paretoknee] episode 550, t=25050, mean reward (last 25): 183.97
+  [pointer_paretoknee] episode 575, t=26193, mean reward (last 25): 179.38
+  [pointer_paretoknee] episode 600, t=27324, mean reward (last 25): 184.34
+  [pointer_paretoknee] episode 625, t=28467, mean reward (last 25): 179.41
+  [pointer_paretoknee] episode 650, t=29616, mean reward (last 25): 177.43
+  [pointer_paretoknee] episode 675, t=30765, mean reward (last 25): 176.96
+  [pointer_paretoknee] episode 700, t=31902, mean reward (last 25): 181.81
+  [pointer_paretoknee] episode 725, t=33057, mean reward (last 25): 174.88
+  [pointer_paretoknee] episode 750, t=34200, mean reward (last 25): 179.27
+  [pointer_paretoknee] episode 775, t=35355, mean reward (last 25): 174.89
+  [pointer_paretoknee] episode 800, t=36486, mean reward (last 25): 184.16
+  [pointer_paretoknee] episode 825, t=37635, mean reward (last 25): 177.14
+  [pointer_paretoknee] episode 850, t=38772, mean reward (last 25): 181.77
+  [pointer_paretoknee] episode 875, t=39909, mean reward (last 25): 181.86
+  [pointer_paretoknee] episode 900, t=41046, mean reward (last 25): 181.81
+  [pointer_paretoknee] episode 925, t=42189, mean reward (last 25): 179.23
+  [pointer_paretoknee] episode 950, t=43332, mean reward (last 25): 179.33
+  [pointer_paretoknee] episode 975, t=44499, mean reward (last 25): 170.17
+  [pointer_paretoknee] episode 1000, t=45642, mean reward (last 25): 179.39
+  [pointer_paretoknee] episode 1025, t=46791, mean reward (last 25): 176.95
+  [pointer_paretoknee] episode 1050, t=47934, mean reward (last 25): 179.61
+  [pointer_paretoknee] episode 1075, t=49077, mean reward (last 25): 179.72
+  [pointer_paretoknee] episode 1100, t=50238, mean reward (last 25): 172.65
+  [pointer_paretoknee] episode 1125, t=51375, mean reward (last 25): 181.80
+  [pointer_paretoknee] episode 1150, t=52524, mean reward (last 25): 177.11
+  [pointer_paretoknee] episode 1175, t=53673, mean reward (last 25): 177.23
+  [pointer_paretoknee] episode 1200, t=54822, mean reward (last 25): 177.14
+  [pointer_paretoknee] episode 1225, t=55953, mean reward (last 25): 184.10
+  [pointer_paretoknee] episode 1250, t=57090, mean reward (last 25): 181.65
+  [pointer_paretoknee] episode 1275, t=58239, mean reward (last 25): 177.09
+  [pointer_paretoknee] episode 1300, t=59370, mean reward (last 25): 184.20
+  Saved: Results\reduced_budget_2026-09-04_v2\models\pointer_paretoknee.pt
+  Saved: Results\reduced_budget_2026-09-04_v2\models\pointer_paretoknee_hyperparams.json
+DONE

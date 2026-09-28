@@ -1,0 +1,361 @@
+[I 2026-09-04 13:44:07,827] A new study created in memory with name: a2c_pointer_v2_pareto_scale15x4x25_scheduling_optimization
+
+######################################################################
+# Step 1: Combined Optuna Pareto search (15 trials x 6000 timesteps)
+######################################################################
+
+================================================================================
+Starting Optuna optimization for A2C (pointer) [optimize_for=pareto] [shaping=True, randinst=False]
+Number of trials: 15
+Parallel jobs: 1
+Study name: a2c_pointer_v2_pareto_scale15x4x25_scheduling_optimization
+================================================================================
+
+  0%|          | 0/15 [00:00<?, ?it/s]                                        0%|          | 0/15 [00:14<?, ?it/s]  7%|6         | 1/15 [00:14<03:22, 14.49s/it]                                                7%|6         | 1/15 [00:26<03:22, 14.49s/it] 13%|#3        | 2/15 [00:26<02:52, 13.23s/it]                                               13%|#3        | 2/15 [00:39<02:52, 13.23s/it] 20%|##        | 3/15 [00:39<02:32, 12.75s/it]                                               20%|##        | 3/15 [00:59<02:32, 12.75s/it] 27%|##6       | 4/15 [00:59<02:52, 15.70s/it]                                               27%|##6       | 4/15 [01:16<02:52, 15.70s/it] 33%|###3      | 5/15 [01:16<02:43, 16.32s/it]                                               33%|###3      | 5/15 [01:35<02:43, 16.32s/it] 40%|####      | 6/15 [01:35<02:35, 17.32s/it]                                               40%|####      | 6/15 [01:57<02:35, 17.32s/it] 47%|####6     | 7/15 [01:57<02:30, 18.78s/it]                                               47%|####6     | 7/15 [02:14<02:30, 18.78s/it] 53%|#####3    | 8/15 [02:14<02:06, 18.01s/it]                                               53%|#####3    | 8/15 [02:36<02:06, 18.01s/it] 60%|######    | 9/15 [02:36<01:55, 19.27s/it]                                               60%|######    | 9/15 [02:55<01:55, 19.27s/it] 67%|######6   | 10/15 [02:55<01:37, 19.44s/it]                                                67%|######6   | 10/15 [03:24<01:37, 19.44s/it] 73%|#######3  | 11/15 [03:24<01:28, 22.23s/it]                                                73%|#######3  | 11/15 [03:43<01:28, 22.23s/it] 80%|########  | 12/15 [03:43<01:04, 21.36s/it]                                                80%|########  | 12/15 [04:01<01:04, 21.36s/it] 87%|########6 | 13/15 [04:01<00:40, 20.11s/it]                                                87%|########6 | 13/15 [04:20<00:40, 20.11s/it] 93%|#########3| 14/15 [04:20<00:20, 20.01s/it]                                                93%|#########3| 14/15 [04:41<00:20, 20.01s/it]100%|##########| 15/15 [04:41<00:00, 20.20s/it]100%|##########| 15/15 [04:41<00:00, 18.77s/it]
+[I 2026-09-04 13:44:22,322] Trial 0 finished with values: [93.87792601664391, 1.8] and parameters: {'embed_dim': 64, 'hidden': 64, 'learning_rate': 1.6031281201383088e-05, 'n_steps': 5, 'gamma': 0.9566469255530702, 'gae_lambda': 0.9411030111396474, 'ent_coef': 0.011513104839804821, 'value_coef': 0.3169759695295419, 'max_grad_norm': 0.3552043355158296, 'lambda_1': 1.356226842386412, 'lambda_2': 0.6735706315882166, 'lambda_3': 1.915423952327169, 'idle_penalty': 0.543977596381915, 'invalid_penalty': 9.997968992037208}.
+[I 2026-09-04 13:44:34,676] Trial 1 finished with values: [93.28601058608058, 2.44] and parameters: {'embed_dim': 128, 'hidden': 32, 'learning_rate': 0.00011190997017959504, 'n_steps': 10, 'gamma': 0.9799209759792176, 'gae_lambda': 0.981987807530082, 'ent_coef': 0.009753572201265374, 'value_coef': 0.2772885000380661, 'max_grad_norm': 0.5862987390292269, 'lambda_1': 1.6157658291822248, 'lambda_2': 0.5773868237553945, 'lambda_3': 0.6247994856811324, 'idle_penalty': 0.672553808753122, 'invalid_penalty': 7.5784293605140896}.
+[I 2026-09-04 13:44:46,843] Trial 2 finished with values: [-18.809708947568826, 0.0] and parameters: {'embed_dim': 64, 'hidden': 128, 'learning_rate': 0.0003012222727984814, 'n_steps': 20, 'gamma': 0.9766677643345888, 'gae_lambda': 0.9211256006510998, 'ent_coef': 0.002493060017300971, 'value_coef': 0.7389454324466265, 'max_grad_norm': 0.31185343296648543, 'lambda_1': 1.158019743585942, 'lambda_2': 0.7673258565404154, 'lambda_3': 1.1255094322186188, 'idle_penalty': 0.6778388566695985, 'invalid_penalty': 6.741928591903017}.
+[I 2026-09-04 13:45:07,075] Trial 3 finished with values: [90.7258178268942, 0.88] and parameters: {'embed_dim': 128, 'hidden': 64, 'learning_rate': 2.711780636906285e-05, 'n_steps': 10, 'gamma': 0.9763767732475918, 'gae_lambda': 0.9452781367591316, 'ent_coef': 0.005240934673749352, 'value_coef': 0.9140476777769968, 'max_grad_norm': 0.6621673450548322, 'lambda_1': 0.7007663046193737, 'lambda_2': 3.8705448726926606, 'lambda_3': 1.2264568206442925, 'idle_penalty': 2.999420675856972, 'invalid_penalty': 6.002945679152047}.
+[I 2026-09-04 13:45:24,479] Trial 4 finished with values: [78.4891621333103, 2.08] and parameters: {'embed_dim': 128, 'hidden': 64, 'learning_rate': 0.0009789872663681705, 'n_steps': 20, 'gamma': 0.9657238172655289, 'gae_lambda': 0.9476725940957877, 'ent_coef': 0.0012765579057894, 'value_coef': 0.9457483449637332, 'max_grad_norm': 0.4029698559065142, 'lambda_1': 1.0110068292849395, 'lambda_2': 8.593345685239326, 'lambda_3': 0.8686648256269427, 'idle_penalty': 0.562046811190215, 'invalid_penalty': 6.887743516116595}.
+[I 2026-09-04 13:45:43,741] Trial 5 finished with values: [93.15871837577983, 1.08] and parameters: {'embed_dim': 128, 'hidden': 32, 'learning_rate': 1.3843162736446195e-05, 'n_steps': 10, 'gamma': 0.9636534538057393, 'gae_lambda': 0.9988046533315948, 'ent_coef': 0.010780219197469111, 'value_coef': 0.5997908549409963, 'max_grad_norm': 0.42046369245625986, 'lambda_1': 1.4465593262602623, 'lambda_2': 0.6386304938534988, 'lambda_3': 0.5993747891883318, 'idle_penalty': 1.8220089323593207, 'invalid_penalty': 4.283369619468719}.
+[I 2026-09-04 13:46:05,522] Trial 6 finished with values: [92.36753032054371, 0.64] and parameters: {'embed_dim': 64, 'hidden': 32, 'learning_rate': 6.584969343010897e-05, 'n_steps': 5, 'gamma': 0.9519956922619714, 'gae_lambda': 0.9536692780020005, 'ent_coef': 0.013592405905283699, 'value_coef': 0.9099199533801463, 'max_grad_norm': 0.5491238190504385, 'lambda_1': 1.5676842536283426, 'lambda_2': 0.9667914721189488, 'lambda_3': 1.034310205609536, 'idle_penalty': 1.6137127404154108, 'invalid_penalty': 6.803548886737023}.
+[I 2026-09-04 13:46:21,891] Trial 7 finished with values: [81.81760564543116, 2.04] and parameters: {'embed_dim': 64, 'hidden': 128, 'learning_rate': 1.3650413392946234e-05, 'n_steps': 20, 'gamma': 0.9861539912204214, 'gae_lambda': 0.927834489197897, 'ent_coef': 0.0022816087677167605, 'value_coef': 0.6713933244550166, 'max_grad_norm': 0.5677762331176617, 'lambda_1': 1.6177377914928142, 'lambda_2': 4.826547517878325, 'lambda_3': 1.32931884503125, 'idle_penalty': 0.759110483302451, 'invalid_penalty': 9.929573883636637}.
+[I 2026-09-04 13:46:43,934] Trial 8 finished with values: [80.69559811236478, 2.28] and parameters: {'embed_dim': 64, 'hidden': 32, 'learning_rate': 4.802058357516755e-05, 'n_steps': 5, 'gamma': 0.9943324384584183, 'gae_lambda': 0.9258478216909563, 'ent_coef': 0.005343821201888283, 'value_coef': 0.2658879134674762, 'max_grad_norm': 0.5245111493923895, 'lambda_1': 0.9846563569394737, 'lambda_2': 5.783875547381951, 'lambda_3': 1.7419952337552538, 'idle_penalty': 0.8147537724545793, 'invalid_penalty': 4.435557751780785}.
+[I 2026-09-04 13:47:03,766] Trial 9 finished with values: [96.2829773012938, 0.88] and parameters: {'embed_dim': 256, 'hidden': 32, 'learning_rate': 2.6499854937582197e-05, 'n_steps': 20, 'gamma': 0.9674512461163356, 'gae_lambda': 0.9565066954323789, 'ent_coef': 0.006851164155312636, 'value_coef': 0.8974441532479882, 'max_grad_norm': 0.6242201787231559, 'lambda_1': 0.6909276462616007, 'lambda_2': 0.5047183622422683, 'lambda_3': 1.1562774363263404, 'idle_penalty': 2.541503761589304, 'invalid_penalty': 6.812470795070154}.
+[I 2026-09-04 13:47:32,310] Trial 10 finished with values: [95.36459593793992, 0.48] and parameters: {'embed_dim': 256, 'hidden': 64, 'learning_rate': 1.515715877800997e-05, 'n_steps': 5, 'gamma': 0.9626943607849204, 'gae_lambda': 0.9944225410288108, 'ent_coef': 0.09725799140824085, 'value_coef': 0.8549491828186763, 'max_grad_norm': 0.34439254734310903, 'lambda_1': 0.5513417942571317, 'lambda_2': 0.8101930173107494, 'lambda_3': 0.745010573887892, 'idle_penalty': 2.4309124711256107, 'invalid_penalty': 7.75983203838018}.
+[I 2026-09-04 13:47:51,692] Trial 11 finished with values: [86.00497194387985, 1.92] and parameters: {'embed_dim': 256, 'hidden': 64, 'learning_rate': 0.00018705617180256515, 'n_steps': 50, 'gamma': 0.992541657651164, 'gae_lambda': 0.9489158717345855, 'ent_coef': 0.006438479546707698, 'value_coef': 0.8201264157825748, 'max_grad_norm': 0.39948745364795324, 'lambda_1': 1.9545593654379294, 'lambda_2': 1.8757673650873734, 'lambda_3': 1.7394805142102552, 'idle_penalty': 2.7424032523658015, 'invalid_penalty': 7.139095276139726}.
+[I 2026-09-04 13:48:08,904] Trial 12 finished with values: [92.77933503674163, 0.92] and parameters: {'embed_dim': 128, 'hidden': 32, 'learning_rate': 6.500055564195396e-05, 'n_steps': 50, 'gamma': 0.987531628409133, 'gae_lambda': 0.9689637858712975, 'ent_coef': 0.047944494933376956, 'value_coef': 0.8556715636897989, 'max_grad_norm': 0.8437268764701555, 'lambda_1': 0.7148210356807286, 'lambda_2': 0.7132690932172983, 'lambda_3': 1.4701403890172138, 'idle_penalty': 2.3388513464365905, 'invalid_penalty': 8.543963804325832}.
+[I 2026-09-04 13:48:28,700] Trial 13 finished with values: [65.90425395269908, 2.24] and parameters: {'embed_dim': 64, 'hidden': 128, 'learning_rate': 2.0287677030441825e-05, 'n_steps': 10, 'gamma': 0.9603201844409095, 'gae_lambda': 0.9447315160306619, 'ent_coef': 0.05319162087505328, 'value_coef': 0.6748588812891441, 'max_grad_norm': 0.6403998341290296, 'lambda_1': 1.9507292833492986, 'lambda_2': 12.446109664688656, 'lambda_3': 0.8788807255840427, 'idle_penalty': 2.046334301963688, 'invalid_penalty': 8.53106894833561}.
+[I 2026-09-04 13:48:49,339] Trial 14 finished with values: [73.73649326786165, 1.44] and parameters: {'embed_dim': 128, 'hidden': 128, 'learning_rate': 4.560902153925766e-05, 'n_steps': 10, 'gamma': 0.9843138411688263, 'gae_lambda': 0.9949068286641737, 'ent_coef': 0.009089179078275122, 'value_coef': 0.29746303939054486, 'max_grad_norm': 0.6727755677582665, 'lambda_1': 0.5235775459437234, 'lambda_2': 15.320991491287378, 'lambda_3': 0.9582476498968008, 'idle_penalty': 2.7877136709872654, 'invalid_penalty': 9.637622682355795}.
+
+================================================================================
+Optimization completed!
+================================================================================
+
+Pareto front: 3 non-dominated trials (of 15 total)
+  trial 9: reward=96.28  tardiness_norm=0.8800
+  trial 10: reward=95.36  tardiness_norm=0.4800
+  trial 2: reward=-18.81  tardiness_norm=0.0000
+
+Pareto front saved to: C:\Coding\University\NPSC3001\NeuralKnapsacking\Neural-Knapsack-Research-Project\rl_training\optuna_results\a2c_pointer_pareto_scale15x4x25_pareto_front.json
+All trials saved to: C:\Coding\University\NPSC3001\NeuralKnapsacking\Neural-Knapsack-Research-Project\rl_training\optuna_results\a2c_pointer_pareto_scale15x4x25_trials.csv
+Could not create visualizations: Tried to import 'plotly' but failed. Please make sure that the package is installed correctly to use this feature. Actual error: No module named 'plotly'.
+
+Pareto front: 3 non-dominated trial(s)
+  trial 9: reward=96.28 tardiness_norm=0.8800
+  trial 10: reward=95.36 tardiness_norm=0.4800
+  trial 2: reward=-18.81 tardiness_norm=0.0000
+
+######################################################################
+# Step 2: Train model A (Pointer + shaping)
+######################################################################
+
+======================================================================
+Training model: pointer_shaped (35000 timesteps)
+======================================================================
+  [pointer_shaped] episode 1, t=16, mean reward (last 1): 91.25
+  [pointer_shaped] episode 25, t=390, mean reward (last 25): 92.25
+  [pointer_shaped] episode 50, t=773, mean reward (last 25): 92.97
+  [pointer_shaped] episode 75, t=1164, mean reward (last 25): 92.14
+  [pointer_shaped] episode 100, t=1553, mean reward (last 25): 92.38
+  [pointer_shaped] episode 125, t=1933, mean reward (last 25): 93.24
+  [pointer_shaped] episode 150, t=2311, mean reward (last 25): 93.45
+  [pointer_shaped] episode 175, t=2689, mean reward (last 25): 93.46
+  [pointer_shaped] episode 200, t=3066, mean reward (last 25): 93.55
+  [pointer_shaped] episode 225, t=3443, mean reward (last 25): 93.60
+  [pointer_shaped] episode 250, t=3819, mean reward (last 25): 93.66
+  [pointer_shaped] episode 275, t=4194, mean reward (last 25): 93.77
+  [pointer_shaped] episode 300, t=4569, mean reward (last 25): 93.80
+  [pointer_shaped] episode 325, t=4945, mean reward (last 25): 93.66
+  [pointer_shaped] episode 350, t=5321, mean reward (last 25): 93.69
+  [pointer_shaped] episode 375, t=5696, mean reward (last 25): 93.79
+  [pointer_shaped] episode 400, t=6071, mean reward (last 25): 93.78
+  [pointer_shaped] episode 425, t=6447, mean reward (last 25): 93.70
+  [pointer_shaped] episode 450, t=6822, mean reward (last 25): 93.83
+  [pointer_shaped] episode 475, t=7197, mean reward (last 25): 93.82
+  [pointer_shaped] episode 500, t=7572, mean reward (last 25): 93.77
+  [pointer_shaped] episode 525, t=7947, mean reward (last 25): 93.79
+  [pointer_shaped] episode 550, t=8322, mean reward (last 25): 93.81
+  [pointer_shaped] episode 575, t=8697, mean reward (last 25): 93.81
+  [pointer_shaped] episode 600, t=9072, mean reward (last 25): 93.82
+  [pointer_shaped] episode 625, t=9447, mean reward (last 25): 93.81
+  [pointer_shaped] episode 650, t=9822, mean reward (last 25): 93.79
+  [pointer_shaped] episode 675, t=10197, mean reward (last 25): 93.77
+  [pointer_shaped] episode 700, t=10572, mean reward (last 25): 93.80
+  [pointer_shaped] episode 725, t=10947, mean reward (last 25): 93.81
+  [pointer_shaped] episode 750, t=11322, mean reward (last 25): 93.78
+  [pointer_shaped] episode 775, t=11697, mean reward (last 25): 93.82
+  [pointer_shaped] episode 800, t=12073, mean reward (last 25): 93.69
+  [pointer_shaped] episode 825, t=12448, mean reward (last 25): 93.78
+  [pointer_shaped] episode 850, t=12823, mean reward (last 25): 93.79
+  [pointer_shaped] episode 875, t=13198, mean reward (last 25): 93.85
+  [pointer_shaped] episode 900, t=13573, mean reward (last 25): 93.81
+  [pointer_shaped] episode 925, t=13948, mean reward (last 25): 93.81
+  [pointer_shaped] episode 950, t=14323, mean reward (last 25): 93.80
+  [pointer_shaped] episode 975, t=14698, mean reward (last 25): 93.75
+  [pointer_shaped] episode 1000, t=15074, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1025, t=15449, mean reward (last 25): 93.75
+  [pointer_shaped] episode 1050, t=15824, mean reward (last 25): 93.77
+  [pointer_shaped] episode 1075, t=16199, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1100, t=16575, mean reward (last 25): 93.66
+  [pointer_shaped] episode 1125, t=16950, mean reward (last 25): 93.81
+  [pointer_shaped] episode 1150, t=17325, mean reward (last 25): 93.79
+  [pointer_shaped] episode 1175, t=17701, mean reward (last 25): 93.66
+  [pointer_shaped] episode 1200, t=18076, mean reward (last 25): 93.79
+  [pointer_shaped] episode 1225, t=18451, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1250, t=18826, mean reward (last 25): 93.85
+  [pointer_shaped] episode 1275, t=19201, mean reward (last 25): 93.74
+  [pointer_shaped] episode 1300, t=19576, mean reward (last 25): 93.74
+  [pointer_shaped] episode 1325, t=19953, mean reward (last 25): 93.45
+  [pointer_shaped] episode 1350, t=20328, mean reward (last 25): 93.70
+  [pointer_shaped] episode 1375, t=20703, mean reward (last 25): 93.78
+  [pointer_shaped] episode 1400, t=21078, mean reward (last 25): 93.81
+  [pointer_shaped] episode 1425, t=21454, mean reward (last 25): 93.63
+  [pointer_shaped] episode 1450, t=21829, mean reward (last 25): 93.77
+  [pointer_shaped] episode 1475, t=22204, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1500, t=22580, mean reward (last 25): 93.68
+  [pointer_shaped] episode 1525, t=22955, mean reward (last 25): 93.77
+  [pointer_shaped] episode 1550, t=23330, mean reward (last 25): 93.80
+  [pointer_shaped] episode 1575, t=23705, mean reward (last 25): 93.74
+  [pointer_shaped] episode 1600, t=24080, mean reward (last 25): 93.78
+  [pointer_shaped] episode 1625, t=24455, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1650, t=24830, mean reward (last 25): 93.79
+  [pointer_shaped] episode 1675, t=25205, mean reward (last 25): 93.72
+  [pointer_shaped] episode 1700, t=25580, mean reward (last 25): 93.78
+  [pointer_shaped] episode 1725, t=25955, mean reward (last 25): 93.80
+  [pointer_shaped] episode 1750, t=26330, mean reward (last 25): 93.75
+  [pointer_shaped] episode 1775, t=26705, mean reward (last 25): 93.74
+  [pointer_shaped] episode 1800, t=27080, mean reward (last 25): 93.78
+  [pointer_shaped] episode 1825, t=27455, mean reward (last 25): 93.81
+  [pointer_shaped] episode 1850, t=27830, mean reward (last 25): 93.80
+  [pointer_shaped] episode 1875, t=28205, mean reward (last 25): 93.80
+  [pointer_shaped] episode 1900, t=28580, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1925, t=28955, mean reward (last 25): 93.78
+  [pointer_shaped] episode 1950, t=29330, mean reward (last 25): 93.76
+  [pointer_shaped] episode 1975, t=29705, mean reward (last 25): 93.85
+  [pointer_shaped] episode 2000, t=30080, mean reward (last 25): 93.75
+  [pointer_shaped] episode 2025, t=30455, mean reward (last 25): 93.72
+  [pointer_shaped] episode 2050, t=30830, mean reward (last 25): 93.74
+  [pointer_shaped] episode 2075, t=31205, mean reward (last 25): 93.74
+  [pointer_shaped] episode 2100, t=31580, mean reward (last 25): 93.74
+  [pointer_shaped] episode 2125, t=31955, mean reward (last 25): 93.75
+  [pointer_shaped] episode 2150, t=32330, mean reward (last 25): 93.69
+  [pointer_shaped] episode 2175, t=32705, mean reward (last 25): 93.72
+  [pointer_shaped] episode 2200, t=33080, mean reward (last 25): 93.74
+  [pointer_shaped] episode 2225, t=33455, mean reward (last 25): 93.71
+  [pointer_shaped] episode 2250, t=33830, mean reward (last 25): 93.77
+  [pointer_shaped] episode 2275, t=34205, mean reward (last 25): 93.82
+  [pointer_shaped] episode 2300, t=34580, mean reward (last 25): 93.74
+  [pointer_shaped] episode 2325, t=34955, mean reward (last 25): 93.77
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_shaped.pt
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_shaped_hyperparams.json
+
+######################################################################
+# Step 3: Derive rcpo_alpha from model A's held-out eval
+######################################################################
+
+Derived rcpo_alpha from model A's held-out mean episode_cost: 0.9800 (over 8 instances, costs=[np.float64(1.12), np.float64(0.36), np.float64(1.32), np.float64(1.04), np.float64(0.72), np.float64(1.24), np.float64(0.68), np.float64(1.36)])
+
+######################################################################
+# Step 4: Train model B (Pointer + RCPO fixed)
+######################################################################
+
+======================================================================
+Training model: pointer_rcpo (35000 timesteps)
+======================================================================
+  [pointer_rcpo] episode 1, t=17, mean reward (last 1): 88.73
+  [pointer_rcpo] episode 25, t=407, mean reward (last 25): 90.58
+  [pointer_rcpo] episode 50, t=803, mean reward (last 25): 91.79
+  [pointer_rcpo] episode 75, t=1205, mean reward (last 25): 91.25
+  [pointer_rcpo] episode 100, t=1608, mean reward (last 25): 91.15
+  [pointer_rcpo] episode 125, t=2013, mean reward (last 25): 91.03
+  [pointer_rcpo] episode 150, t=2400, mean reward (last 25): 92.82
+  [pointer_rcpo] episode 175, t=2783, mean reward (last 25): 93.24
+  [pointer_rcpo] episode 200, t=3161, mean reward (last 25): 93.83
+  [pointer_rcpo] episode 225, t=3543, mean reward (last 25): 93.30
+  [pointer_rcpo] episode 250, t=3933, mean reward (last 25): 92.57
+  [pointer_rcpo] episode 275, t=4314, mean reward (last 25): 93.44
+  [pointer_rcpo] episode 300, t=4693, mean reward (last 25): 93.63
+  [pointer_rcpo] episode 325, t=5069, mean reward (last 25): 93.89
+  [pointer_rcpo] episode 350, t=5447, mean reward (last 25): 93.74
+  [pointer_rcpo] episode 375, t=5823, mean reward (last 25): 93.98
+  [pointer_rcpo] episode 400, t=6198, mean reward (last 25): 94.09
+  [pointer_rcpo] episode 425, t=6573, mean reward (last 25): 94.04
+  [pointer_rcpo] episode 450, t=6948, mean reward (last 25): 94.08
+  [pointer_rcpo] episode 475, t=7323, mean reward (last 25): 94.07
+  [pointer_rcpo] episode 500, t=7698, mean reward (last 25): 94.03
+  [pointer_rcpo] episode 525, t=8073, mean reward (last 25): 94.07
+  [pointer_rcpo] episode 550, t=8448, mean reward (last 25): 94.04
+  [pointer_rcpo] episode 575, t=8823, mean reward (last 25): 94.07
+  [pointer_rcpo] episode 600, t=9198, mean reward (last 25): 94.03
+  [pointer_rcpo] episode 625, t=9573, mean reward (last 25): 94.10
+  [pointer_rcpo] episode 650, t=9948, mean reward (last 25): 94.07
+  [pointer_rcpo] episode 675, t=10323, mean reward (last 25): 94.02
+  [pointer_rcpo] episode 700, t=10698, mean reward (last 25): 94.02
+  [pointer_rcpo] episode 725, t=11073, mean reward (last 25): 94.15
+  [pointer_rcpo] episode 750, t=11448, mean reward (last 25): 94.02
+  [pointer_rcpo] episode 775, t=11823, mean reward (last 25): 94.11
+  [pointer_rcpo] episode 800, t=12198, mean reward (last 25): 93.95
+  [pointer_rcpo] episode 825, t=12573, mean reward (last 25): 94.03
+  [pointer_rcpo] episode 850, t=12948, mean reward (last 25): 93.98
+  [pointer_rcpo] episode 875, t=13324, mean reward (last 25): 93.92
+  [pointer_rcpo] episode 900, t=13700, mean reward (last 25): 93.90
+  [pointer_rcpo] episode 925, t=14076, mean reward (last 25): 93.83
+  [pointer_rcpo] episode 950, t=14454, mean reward (last 25): 93.63
+  [pointer_rcpo] episode 975, t=14829, mean reward (last 25): 93.93
+  [pointer_rcpo] episode 1000, t=15204, mean reward (last 25): 93.95
+  [pointer_rcpo] episode 1025, t=15579, mean reward (last 25): 93.96
+  [pointer_rcpo] episode 1050, t=15956, mean reward (last 25): 93.62
+  [pointer_rcpo] episode 1075, t=16331, mean reward (last 25): 93.94
+  [pointer_rcpo] episode 1100, t=16707, mean reward (last 25): 93.82
+  [pointer_rcpo] episode 1125, t=17082, mean reward (last 25): 93.88
+  [pointer_rcpo] episode 1150, t=17457, mean reward (last 25): 93.89
+  [pointer_rcpo] episode 1175, t=17833, mean reward (last 25): 93.80
+  [pointer_rcpo] episode 1200, t=18209, mean reward (last 25): 93.64
+  [pointer_rcpo] episode 1225, t=18584, mean reward (last 25): 93.84
+  [pointer_rcpo] episode 1250, t=18959, mean reward (last 25): 93.90
+  [pointer_rcpo] episode 1275, t=19334, mean reward (last 25): 93.92
+  [pointer_rcpo] episode 1300, t=19709, mean reward (last 25): 93.98
+  [pointer_rcpo] episode 1325, t=20084, mean reward (last 25): 93.89
+  [pointer_rcpo] episode 1350, t=20459, mean reward (last 25): 93.92
+  [pointer_rcpo] episode 1375, t=20834, mean reward (last 25): 93.93
+  [pointer_rcpo] episode 1400, t=21209, mean reward (last 25): 93.94
+  [pointer_rcpo] episode 1425, t=21584, mean reward (last 25): 93.96
+  [pointer_rcpo] episode 1450, t=21959, mean reward (last 25): 93.94
+  [pointer_rcpo] episode 1475, t=22334, mean reward (last 25): 93.93
+  [pointer_rcpo] episode 1500, t=22709, mean reward (last 25): 93.89
+  [pointer_rcpo] episode 1525, t=23084, mean reward (last 25): 93.85
+  [pointer_rcpo] episode 1550, t=23459, mean reward (last 25): 93.90
+  [pointer_rcpo] episode 1575, t=23834, mean reward (last 25): 93.91
+  [pointer_rcpo] episode 1600, t=24209, mean reward (last 25): 93.84
+  [pointer_rcpo] episode 1625, t=24586, mean reward (last 25): 93.66
+  [pointer_rcpo] episode 1650, t=24961, mean reward (last 25): 93.92
+  [pointer_rcpo] episode 1675, t=25336, mean reward (last 25): 93.81
+  [pointer_rcpo] episode 1700, t=25711, mean reward (last 25): 93.90
+  [pointer_rcpo] episode 1725, t=26086, mean reward (last 25): 93.90
+  [pointer_rcpo] episode 1750, t=26461, mean reward (last 25): 93.75
+  [pointer_rcpo] episode 1775, t=27059, mean reward (last 25): -23.65
+  [pointer_rcpo] episode 1800, t=27704, mean reward (last 25): -39.75
+  [pointer_rcpo] episode 1825, t=28115, mean reward (last 25): 87.36
+  [pointer_rcpo] episode 1850, t=28498, mean reward (last 25): 92.53
+  [pointer_rcpo] episode 1875, t=28875, mean reward (last 25): 93.26
+  [pointer_rcpo] episode 1900, t=29250, mean reward (last 25): 93.52
+  [pointer_rcpo] episode 1925, t=29628, mean reward (last 25): 93.20
+  [pointer_rcpo] episode 1950, t=30150, mean reward (last 25): 46.93
+  [pointer_rcpo] episode 1975, t=30752, mean reward (last 25): 30.83
+  [pointer_rcpo] episode 2000, t=31274, mean reward (last 25): 60.28
+  [pointer_rcpo] episode 2025, t=31651, mean reward (last 25): 93.45
+  [pointer_rcpo] episode 2050, t=32026, mean reward (last 25): 93.75
+  [pointer_rcpo] episode 2075, t=32401, mean reward (last 25): 93.83
+  [pointer_rcpo] episode 2100, t=32776, mean reward (last 25): 93.82
+  [pointer_rcpo] episode 2125, t=33151, mean reward (last 25): 93.71
+  [pointer_rcpo] episode 2150, t=33540, mean reward (last 25): 92.28
+  [pointer_rcpo] episode 2175, t=33918, mean reward (last 25): 93.33
+  [pointer_rcpo] episode 2200, t=34341, mean reward (last 25): 86.64
+  [pointer_rcpo] episode 2225, t=34857, mean reward (last 25): 63.28
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_rcpo.pt
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_rcpo_hyperparams.json
+
+######################################################################
+# Step 5: Train model C (Pointer + Pareto-knee)
+######################################################################
+
+======================================================================
+Training model: pointer_paretoknee (35000 timesteps)
+======================================================================
+  [pointer_paretoknee] episode 1, t=15, mean reward (last 1): 95.10
+  [pointer_paretoknee] episode 25, t=389, mean reward (last 25): 93.22
+  [pointer_paretoknee] episode 50, t=771, mean reward (last 25): 93.87
+  [pointer_paretoknee] episode 75, t=1148, mean reward (last 25): 94.40
+  [pointer_paretoknee] episode 100, t=1528, mean reward (last 25): 94.04
+  [pointer_paretoknee] episode 125, t=1907, mean reward (last 25): 94.12
+  [pointer_paretoknee] episode 150, t=2282, mean reward (last 25): 94.51
+  [pointer_paretoknee] episode 175, t=2660, mean reward (last 25): 94.22
+  [pointer_paretoknee] episode 200, t=3036, mean reward (last 25): 94.50
+  [pointer_paretoknee] episode 225, t=3412, mean reward (last 25): 94.41
+  [pointer_paretoknee] episode 250, t=3790, mean reward (last 25): 94.23
+  [pointer_paretoknee] episode 275, t=4174, mean reward (last 25): 93.65
+  [pointer_paretoknee] episode 300, t=4555, mean reward (last 25): 93.97
+  [pointer_paretoknee] episode 325, t=4933, mean reward (last 25): 94.20
+  [pointer_paretoknee] episode 350, t=5318, mean reward (last 25): 93.54
+  [pointer_paretoknee] episode 375, t=5704, mean reward (last 25): 93.47
+  [pointer_paretoknee] episode 400, t=6084, mean reward (last 25): 94.07
+  [pointer_paretoknee] episode 425, t=6462, mean reward (last 25): 94.19
+  [pointer_paretoknee] episode 450, t=6842, mean reward (last 25): 94.01
+  [pointer_paretoknee] episode 475, t=7223, mean reward (last 25): 93.98
+  [pointer_paretoknee] episode 500, t=7603, mean reward (last 25): 94.01
+  [pointer_paretoknee] episode 525, t=7983, mean reward (last 25): 94.03
+  [pointer_paretoknee] episode 550, t=8362, mean reward (last 25): 94.13
+  [pointer_paretoknee] episode 575, t=8741, mean reward (last 25): 94.10
+  [pointer_paretoknee] episode 600, t=9122, mean reward (last 25): 93.93
+  [pointer_paretoknee] episode 625, t=9503, mean reward (last 25): 93.95
+  [pointer_paretoknee] episode 650, t=9884, mean reward (last 25): 93.95
+  [pointer_paretoknee] episode 675, t=10264, mean reward (last 25): 94.00
+  [pointer_paretoknee] episode 700, t=10646, mean reward (last 25): 93.81
+  [pointer_paretoknee] episode 725, t=11025, mean reward (last 25): 94.14
+  [pointer_paretoknee] episode 750, t=11403, mean reward (last 25): 94.21
+  [pointer_paretoknee] episode 775, t=11787, mean reward (last 25): 93.61
+  [pointer_paretoknee] episode 800, t=12167, mean reward (last 25): 94.05
+  [pointer_paretoknee] episode 825, t=12546, mean reward (last 25): 94.16
+  [pointer_paretoknee] episode 850, t=12928, mean reward (last 25): 93.78
+  [pointer_paretoknee] episode 875, t=13306, mean reward (last 25): 94.29
+  [pointer_paretoknee] episode 900, t=13686, mean reward (last 25): 93.97
+  [pointer_paretoknee] episode 925, t=14068, mean reward (last 25): 93.84
+  [pointer_paretoknee] episode 950, t=14453, mean reward (last 25): 93.54
+  [pointer_paretoknee] episode 975, t=14834, mean reward (last 25): 93.87
+  [pointer_paretoknee] episode 1000, t=15217, mean reward (last 25): 93.71
+  [pointer_paretoknee] episode 1025, t=15599, mean reward (last 25): 93.85
+  [pointer_paretoknee] episode 1050, t=15983, mean reward (last 25): 93.64
+  [pointer_paretoknee] episode 1075, t=16364, mean reward (last 25): 93.93
+  [pointer_paretoknee] episode 1100, t=16743, mean reward (last 25): 94.13
+  [pointer_paretoknee] episode 1125, t=17123, mean reward (last 25): 94.02
+  [pointer_paretoknee] episode 1150, t=17506, mean reward (last 25): 93.76
+  [pointer_paretoknee] episode 1175, t=17884, mean reward (last 25): 94.21
+  [pointer_paretoknee] episode 1200, t=18265, mean reward (last 25): 93.95
+  [pointer_paretoknee] episode 1225, t=18646, mean reward (last 25): 93.92
+  [pointer_paretoknee] episode 1250, t=19031, mean reward (last 25): 93.51
+  [pointer_paretoknee] episode 1275, t=19413, mean reward (last 25): 93.84
+  [pointer_paretoknee] episode 1300, t=19798, mean reward (last 25): 93.50
+  [pointer_paretoknee] episode 1325, t=20183, mean reward (last 25): 93.50
+  [pointer_paretoknee] episode 1350, t=20563, mean reward (last 25): 94.00
+  [pointer_paretoknee] episode 1375, t=20947, mean reward (last 25): 93.69
+  [pointer_paretoknee] episode 1400, t=21328, mean reward (last 25): 93.87
+  [pointer_paretoknee] episode 1425, t=21715, mean reward (last 25): 93.30
+  [pointer_paretoknee] episode 1450, t=22097, mean reward (last 25): 93.77
+  [pointer_paretoknee] episode 1475, t=22486, mean reward (last 25): 93.11
+  [pointer_paretoknee] episode 1500, t=22873, mean reward (last 25): 93.30
+  [pointer_paretoknee] episode 1525, t=23262, mean reward (last 25): 93.19
+  [pointer_paretoknee] episode 1550, t=23643, mean reward (last 25): 93.91
+  [pointer_paretoknee] episode 1575, t=24025, mean reward (last 25): 93.81
+  [pointer_paretoknee] episode 1600, t=24412, mean reward (last 25): 93.35
+  [pointer_paretoknee] episode 1625, t=24794, mean reward (last 25): 93.86
+  [pointer_paretoknee] episode 1650, t=25177, mean reward (last 25): 93.70
+  [pointer_paretoknee] episode 1675, t=25557, mean reward (last 25): 94.00
+  [pointer_paretoknee] episode 1700, t=25938, mean reward (last 25): 93.93
+  [pointer_paretoknee] episode 1725, t=26323, mean reward (last 25): 93.49
+  [pointer_paretoknee] episode 1750, t=26710, mean reward (last 25): 93.34
+  [pointer_paretoknee] episode 1775, t=27093, mean reward (last 25): 93.77
+  [pointer_paretoknee] episode 1800, t=27475, mean reward (last 25): 93.85
+  [pointer_paretoknee] episode 1825, t=27860, mean reward (last 25): 93.48
+  [pointer_paretoknee] episode 1850, t=28245, mean reward (last 25): 93.50
+  [pointer_paretoknee] episode 1875, t=28628, mean reward (last 25): 93.68
+  [pointer_paretoknee] episode 1900, t=29011, mean reward (last 25): 93.71
+  [pointer_paretoknee] episode 1925, t=29397, mean reward (last 25): 93.41
+  [pointer_paretoknee] episode 1950, t=29779, mean reward (last 25): 93.83
+  [pointer_paretoknee] episode 1975, t=30163, mean reward (last 25): 93.62
+  [pointer_paretoknee] episode 2000, t=30544, mean reward (last 25): 93.97
+  [pointer_paretoknee] episode 2025, t=30929, mean reward (last 25): 93.52
+  [pointer_paretoknee] episode 2050, t=31314, mean reward (last 25): 93.51
+  [pointer_paretoknee] episode 2075, t=31695, mean reward (last 25): 93.89
+  [pointer_paretoknee] episode 2100, t=32075, mean reward (last 25): 94.02
+  [pointer_paretoknee] episode 2125, t=32462, mean reward (last 25): 93.32
+  [pointer_paretoknee] episode 2150, t=32845, mean reward (last 25): 93.77
+  [pointer_paretoknee] episode 2175, t=33234, mean reward (last 25): 93.13
+  [pointer_paretoknee] episode 2200, t=33613, mean reward (last 25): 94.16
+  [pointer_paretoknee] episode 2225, t=33994, mean reward (last 25): 93.93
+  [pointer_paretoknee] episode 2250, t=34382, mean reward (last 25): 93.24
+  [pointer_paretoknee] episode 2275, t=34764, mean reward (last 25): 93.85
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_paretoknee.pt
+  Saved: Results\reduced_budget_2026-09-04\models\pointer_paretoknee_hyperparams.json
+
+All models trained. Outputs in: Results\reduced_budget_2026-09-04\models

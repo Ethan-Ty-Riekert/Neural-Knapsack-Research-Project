@@ -1,9 +1,3 @@
-% references.bib -- shared bibliography for the Neural-Knapsack-Research-Project.
-% Rule (CLAUDE.md, added 2026-09-17 S2W10): every new research resource or
-% paper found gets an entry here, whether or not it also appears in a dated
-% doc's own References section. Keys: <firstauthor><year><shortslug>.
-% Backfilled 2026-09-17 from every existing Future/research/*.md References
-% section; add new entries going forward rather than starting a second file.
 
 % ---------------------------------------------------------------------
 % Scheduling / RL-for-scheduling
@@ -225,19 +219,19 @@
 }
 
 @article{hu2021attend2pack,
-  author  = {Zhang, Jingwei and Zi, Bin and Ge, Xiaoyu},
+  author  = {Hu, Ruizhen and others},
   title   = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with Attention},
   journal = {arXiv preprint arXiv:2107.04333},
   year    = {2021},
   note    = {Self-attention item encoder + pointer-style masked selection,
              action-space decomposition into a sequence policy + placement
              policy. Cited in the 2026-08-09 pointer-network-action-head doc.
-             RESOLVED 2026-09-18: author field was wrong ("Hu, Ruizhen") in an
-             earlier pass -- corrected to Zhang/Zi/Ge, confirmed against
-             reference [35] in NotesForAI/Ty_Riekert_s_Project (1).pdf (the
-             user's own pre-research doc, extracted via pypdf). RESOLVED
-             2026-09-18: the duplicate DBLP:journals/corr/abs-2107-04333 entry
-             for this same paper has been removed -- cite this key.}
+             Full author list not re-verified since original citation.
+             DUPLICATE WARNING (added 2026-09-17): same arXiv:2107.04333 paper
+             as DBLP:journals/corr/abs-2107-04333 below (merged in from
+             ethansreferences.bib, author list there is Zhang/Zi/Ge per DBLP --
+             conflicts with "Hu, Ruizhen" here). Resolve which author list is
+             correct and cite with one key only before submission.}
 }
 
 @article{gnn2024jsspsurvey,
@@ -258,24 +252,15 @@
   number      = {1711.08946},
   year        = {2018},
   note        = {General factored/hierarchical action-space pattern: decouple
-                 one large joint action into smaller per-dimension decisions
-                 (additive |A1|+|A2| instead of multiplicative |A1|x|A2|).
-                 Raised 2026-09-17 as the generalizable principle behind a
-                 possible future learned-placement-head follow-up to Options
-                 1/2/3 (see 2026-09-17-action-space-reduction.md Section 7).
-                 CORRECTION (2026-09-20, S2W9): this note previously said
-                 "sequential" per-dimension decisions -- Tavakoli et al.'s
-                 actual BDQ architecture is PARALLEL independent branches off
-                 a shared trunk, not sequential/autoregressive (verified
-                 directly against sb3_contrib's MaskableMultiCategoricalDistribution,
-                 which splits one shared forward pass's logits/mask into
-                 independent per-branch chunks with no hook for branch 2 to
-                 depend on branch 1's sampled value). Implemented as Option 4,
-                 Code/env/action_branching_gym_wrapper.py -- see that module's
-                 docstring for the full design discussion, including the
-                 honest limitation this parallel design implies for machine
-                 masking.}
+                 one large joint action into sequential smaller
+                 per-dimension decisions (additive |A1|+|A2| instead of
+                 multiplicative |A1|x|A2|). Raised 2026-09-17 as the
+                 generalizable principle behind a possible future
+                 learned-placement-head follow-up to Options 1/2/3 (see
+                 2026-09-17-action-space-reduction.md Section 7) -- not yet
+                 implemented.}
 }
+
 
 @techreport{dulacarnold2015largeactionspaces,
   author      = {Dulac-Arnold, Gabriel and Evans, Richard and van Hasselt, Hado and Sunehag, Peter and Lillicrap, Timothy and Hunt, Jonathan and Mann, Timothy and Weber, Theophane and Degris, Thomas and Coppin, Ben},
@@ -294,37 +279,6 @@
                  huang2020invalidmasking. Not implemented here.}
 }
 
-@article{sutton1999options,
-  author  = {Sutton, Richard S. and Precup, Doina and Singh, Satinder},
-  title   = {Between MDPs and Semi-MDPs: A Framework for Temporal Abstraction in Reinforcement Learning},
-  journal = {Artificial Intelligence},
-  volume  = {112},
-  number  = {1-2},
-  pages   = {181--211},
-  year    = {1999},
-  note    = {The options/hierarchical-RL framework: a high-level policy
-             selects among temporally-extended macro-actions/sub-policies.
-             Formal grounding for what Option 1's hyper-heuristic rule
-             selection actually is (Code/env/rule_selection_gym_wrapper.py)
-             -- a real, well-studied RL paradigm, though still fundamentally
-             bounded by its option set's own capability (see
-             2026-09-17-action-space-reduction.md Section 6.1). Raised
-             2026-09-18.}
-}
-
-@inproceedings{huang2020invalidmasking,
-  author    = {Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
-  title     = {A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
-  booktitle = {Proceedings of the International FLAIRS Conference},
-  year      = {2020},
-  note      = {arXiv:2006.14171. Formal study validating invalid-action
-               masking (what sb3\_contrib's MaskablePPO, used throughout
-               this project, implements) -- reduces the effective per-step
-               branching factor without redesigning the action space
-               itself, distinct from and complementary to every
-               space-shrinking technique above. Raised 2026-09-18.}
-}
-
 % ---------------------------------------------------------------------
 % RL theory / reward shaping / constrained RL
 % ---------------------------------------------------------------------
@@ -337,7 +291,7 @@
   note      = {Proves shaped\_reward = reward + gamma*Phi(s') - Phi(s) has the
                same optimal policies as the unshaped reward, for any bounded
                potential Phi. Grounds
-               SchedulingEnv.__init__'s use\_potential\_shaping option. Cited
+               SchedulingEnv.\_\_init\_\_'s use\_potential\_shaping option. Cited
                in the 2026-08-09 pointer-network-action-head and 2026-09-16
                online-arrival-mdp-design docs, and CLAUDE.md's own rigor-rule
                example.}
@@ -460,21 +414,6 @@
   note      = {The hyperparameter-tuning framework used throughout this
                project. Cited in the 2026-08-28 multi-objective-optuna-pareto
                doc.}
-}
-
-@misc{alkhalifa2025comparative,
-  title         = {A Comparative Review of Parallel Exact, Heuristic, Metaheuristic, and Hybrid Optimization Techniques for the Traveling Salesman Problem},
-  author        = {Alkhalifa, Rabab and Alkhomayes, Fatima and Almazroua, Boushra and Alhaidan, Dana and Alothman, Maryam and Almuhaidib, Jumana},
-  year          = {2025},
-  eprint        = {2505.18278},
-  archiveprefix = {arXiv},
-  primaryclass  = {cs.DC},
-  url           = {https://arxiv.org/abs/2505.18278},
-  note          = {Added 2026-09-18 at the user's request; not yet cited in a
-                   dated doc or report section -- relevant to this project's
-                   exact (CP-SAT)/heuristic/metaheuristic (PSO) baseline suite
-                   as a comparative survey of the same technique families
-                   applied to a different NP-hard combinatorial problem (TSP).}
 }
 
 % ---------------------------------------------------------------------
@@ -732,39 +671,7 @@ url         = {https://doi.org/10.1109/NUiCONE.2013.6780076}
   pages   = {755--768},
   year    = {2012},
   doi     = {10.1016/j.future.2011.04.017},
-  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub},
-  note    = {ADDED 2026-09-20 (S2W9): answers "how do we define utilization for
-             energy efficiency" -- substitutes fan2007powerprovisioning's
-             empirical k=0.7 idle-power constant into P=(P_MAX-P_MIN)*u+P_MIN
-             to get the simplified per-machine power model
-             P=P_MAX*(0.7+0.3*u_cpu). This project's environment (scheduling_env.py)
-             does NOT currently implement an energy term -- see the matching
-             2026-09-20 training-log.md entry for the design discussion and
-             why this conflicts with the existing hotspot penalty
-             (lambda3*delta_theta, which discourages exactly the load
-             consolidation this model says saves energy). Not yet cited in
-             code.}
-}
-
-@inproceedings{fan2007powerprovisioning,
-  author    = {Fan, Xiaobo and Weber, Wolf-Dietrich and Barroso, Luiz Andr\'{e}},
-  title     = {Power Provisioning for a Warehouse-sized Computer},
-  booktitle = {Proceedings of the 34th Annual International Symposium on Computer Architecture (ISCA)},
-  year      = {2007},
-  pages     = {13--23},
-  doi       = {10.1145/1250662.1250665},
-  url       = {https://www.barroso.org/publications/PowerProvisioning.pdf},
-  note      = {ADDED 2026-09-20 (S2W9): the primary source (Google) for the
-               empirical finding that an idle server consumes ~70% of its
-               peak power (k=0.7) -- energyaware2012 (Beloglazov et al.)
-               substitutes this constant into the linear power model
-               P=(P_MAX-P_MIN)*u_cpu+P_MIN to get P=P_MAX*(0.7+0.3*u_cpu).
-               Formula/constant confirmed via a secondary survey
-               (arXiv:2004.12335 Section 2.1.1) quoting this paper directly --
-               the primary PDF itself could not be text-extracted in this
-               session (binary/encoded), so cite this secondary confirmation
-               if the exact page/derivation is ever needed and this can't be
-               independently re-verified.}
+  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub}
 }
 
 @article{ranking2013,
@@ -822,14 +729,25 @@ abstract = {The convergence of Reinforcement Learning (RL) and Bin Packing Probl
   doi={10.1109/LRA.2025.3534070}
   }
 
-% RESOLVED (2026-09-18, S2W9): this was a DBLP-exported duplicate of
-% hu2021attend2pack above (same paper, arXiv:2107.04333). The "conflicting
-% author lists" note that used to justify keeping both was itself stale --
-% hu2021attend2pack's author field was already corrected to Zhang/Zi/Ge
-% (matching this entry exactly) earlier the same day, so there was no longer
-% any actual conflict, just a pure duplicate under a raw DBLP export key
-% (violating this file's own <author><year><slug> key convention). Removed;
-% cite hu2021attend2pack for this paper.
+% RL approach to bin packing (not cloud related). NOTE: same arXiv:2107.04333
+% paper as hu2021attend2pack above -- author lists conflict (Hu, Ruizhen vs.
+% Zhang/Zi/Ge per DBLP). Unresolved, flagged above; pick one before submission.
+@article{DBLP:journals/corr/abs-2107-04333,
+  author       = {Jingwei Zhang and
+                  Bin Zi and
+                  Xiaoyu Ge},
+  title        = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with
+                  Attention},
+  journal      = {CoRR},
+  volume       = {abs/2107.04333},
+  year         = {2021},
+  url          = {https://arxiv.org/abs/2107.04333},
+  eprinttype    = {arXiv},
+  eprint       = {2107.04333},
+  timestamp    = {Tue, 20 Jul 2021 15:08:33 +0200},
+  biburl       = {https://dblp.org/rec/journals/corr/abs-2107-04333.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
 
 % Used the system implementation section
 @ARTICLE{7039233,
@@ -942,44 +860,6 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
   url          = {https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf}
 }
 
-@article{schulman2017ppo,
-  author  = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
-  title   = {Proximal Policy Optimization Algorithms},
-  journal = {arXiv preprint arXiv:1707.06347},
-  year    = {2017},
-  note    = {The foundational PPO paper (clipped surrogate objective) -- the
-             algorithm this project's flat, pointer, and windowed-action-space
-             policies are all trained with via sb3\_contrib's MaskablePPO.
-             Gap found and filled 2026-09-18 while writing the Methodology
-             section's Mathematical Overview -- PPO was cited only indirectly
-             (via huang2020invalidmasking, the invalid-action-masking paper)
-             before this.}
-}
-
-@inproceedings{schulman2015trpo,
-  author    = {Schulman, John and Levine, Sergey and Abbeel, Pieter and Jordan, Michael and Moritz, Philipp},
-  title     = {Trust Region Policy Optimization},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {2015},
-  note      = {TRPO -- the KL-constrained trust-region method PPO was designed
-               to approximate with a cheaper first-order clipped objective.
-               Discussed in NotesForAI/Ty\_Riekert\_s\_Project (1).pdf Section
-               7.4 as part of the algorithm-selection comparison, but not
-               previously in this bib file. Gap found and filled 2026-09-18.}
-}
-
-@inproceedings{mnih2016a3c,
-  author    = {Mnih, Volodymyr and Badia, Adri{\`a} Puigdom{\`e}nech and Mirza, Mehdi and Graves, Alex and Lillicrap, Timothy and Harley, Tim and Silver, David and Kavukcuoglu, Koray},
-  title     = {Asynchronous Methods for Deep Reinforcement Learning},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {2016},
-  note      = {Introduces A3C; A2C (used throughout this project's A2C policy,
-               Code/policies/a2c\_policy.py) is the synchronous variant of the
-               same paper's algorithm, following the convention in
-               NotesForAI/Ty\_Riekert\_s\_Project (1).pdf Section 7.3/8.4.
-               Gap found and filled 2026-09-18.}
-}
-
 @article{lehmann2024policygradients,
   title={The Definitive Guide to Policy Gradients in Deep Reinforcement Learning: Theory, Algorithms and Implementations},
   author={Lehmann, Matthias},
@@ -1013,167 +893,21 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
   year         = {2026}
 }
 
-@misc{yu2022mappo,
-  author      = {Yu, Chao and Velu, Akash and Vinitsky, Eugene and Gao, Jiaxuan and Wang, Yu and Bayen, Alexandre and Wu, Yi},
-  title       = {The Surprising Effectiveness of PPO in Cooperative, Multi-Agent Games},
-  howpublished = {arXiv preprint arXiv:2103.01955},
-  year        = {2022},
-  note        = {Added 2026-09-20 (S2W9), optimisation-critique report: MAPPO --
-                 multi-agent PPO with a centralized critic / decentralized actors
-                 (CTDE). Cited as the lowest-lift multi-agent RL option for this
-                 project specifically because it needs minimal modification to the
-                 already-adopted PPO/MaskablePPO machinery, unlike QMIX's
-                 value-factorization architecture. See
-                 2026-09-20-optimisation-and-efficiency-critique.md Section 5.}
-}
 
-@inproceedings{rashid2018qmix,
-  author    = {Rashid, Tabish and Samvelyan, Mikayel and Schroeder, Christian and Farquhar, Gregory and Foerster, Jakob and Whiteson, Shimon},
-  title     = {QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning},
-  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
-  volume    = {80},
-  pages     = {4295--4304},
-  year      = {2018},
-  note      = {Added 2026-09-20 (S2W9), optimisation-critique report: value-based
-               CTDE multi-agent RL with monotonic mixing, cited as the alternative
-               (heavier-lift, since this project has no existing value-factorization
-               infrastructure) multi-agent decomposition mechanism to MAPPO. See
-               2026-09-20-optimisation-and-efficiency-critique.md Section 5.}
-}
 
-@article{hady2025marlsurvey,
-  author  = {Hady, Mahardhika Ahmad and Hu, Shu and Pratama, Mahardhika and Cao, Zehong and Kowalczyk, Ryszard},
-  title   = {Multi-Agent Reinforcement Learning for Resources Allocation Optimization: A Survey},
-  journal = {Artificial Intelligence Review},
-  volume  = {58},
-  number  = {11},
-  pages   = {354},
-  year    = {2025},
-  doi     = {10.1007/s10462-025-11340-5},
-  note    = {Added 2026-09-20 (S2W9), optimisation-critique report: general survey
-             grounding for MARL applied to resource-allocation problems (this
-             project's own cloud-resource-allocation framing), used to motivate
-             the multi-agent decomposition proposal rather than assert any single
-             method as proven for this problem class. Author list taken from a
-             web search result, not independently cross-checked against the
-             published article -- flagged per this project's own citation
-             convention for unconfirmed details.}
-}
 
-@article{burke2013hyperheuristicsurvey,
-  author  = {Burke, Edmund K. and Gendreau, Michel and Hyde, Matthew and Kendall, Graham and Ochoa, Gabriela and \"{O}zcan, Ender and Qu, Rong},
-  title   = {Hyper-heuristics: A Survey of the State of the Art},
-  journal = {Journal of the Operational Research Society},
-  volume  = {64},
-  number  = {12},
-  pages   = {1695--1724},
-  year    = {2013},
-  doi     = {10.1057/jors.2013.71},
-  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
-             work.md: the canonical selection-vs-generation hyper-heuristic
-             taxonomy -- Option 1 (and every Options-1-4 rule-selection design
-             in this project) is a SELECTION hyper-heuristic (picks among a
-             fixed set of existing low-level heuristics); it can never
-             generate a genuinely new priority function, only learn when to
-             defer to an existing one. Verified via a direct web search
-             (author list, venue, volume/issue/pages, and DOI all
-             cross-consistent across multiple independent listings), primary
-             text not opened/read in full.}
-}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MORE RECENT %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-@article{xu2025learntooptimise,
-  author  = {Xu, Meng and Mei, Yi and Zhang, Fangfang and Zhang, Mengjie},
-  title   = {Learn to Optimise for Job Shop Scheduling: A Survey with Comparison Between Genetic Programming and Reinforcement Learning},
-  journal = {Artificial Intelligence Review},
-  volume  = {58},
-  number  = {6},
-  year    = {2025},
-  doi     = {10.1007/s10462-024-11059-9},
-  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
-             work.md: direct survey comparing the two paradigms Option 1 sits
-             between -- genetic-programming-evolved priority rules (a
-             GENERATION hyper-heuristic, can invent new rules) vs.
-             reinforcement-learning-selected/learned scheduling (what this
-             project's Options 1-4 all do, none of which generate novel rules).
-             Bibliographic details taken from a web search result (title/
-             authors/venue/DOI cross-consistent across multiple independent
-             listings), not independently opened/read in full -- the article
-             itself sits behind a Springer auth wall in this environment.}
-}
 
-@article{chen2024drlgphh,
-  author  = {Chen, Xinan and Bai, Ruibin and Qu, Rong and Dong, Jiawei and Jin, Yuan},
-  title   = {Deep Reinforcement Learning Assisted Genetic Programming Ensemble Hyper-Heuristics for Dynamic Scheduling of Container Port Trucks},
-  journal = {IEEE Transactions on Evolutionary Computation},
-  volume  = {29},
-  number  = {4},
-  year    = {2024},
-  doi     = {10.1109/TEVC.2024.3381042},
-  note    = {Added 2026-09-21 (S2W9), 2026-09-21-option1-hyperheuristic-future-
-             work.md: the precise generation+selection hybrid precedent
-             proposed as Option 1's natural next step -- genetic programming
-             evolves a POOL of novel, problem-tailored priority rules
-             (generation hyper-heuristic), then RL selects among that evolved
-             pool at each decision point (selection hyper-heuristic, exactly
-             Option 1's existing mechanism, just over a richer non-hand-picked
-             rule set). Different problem domain (container port trucks, not
-             cloud/machine scheduling) but the same DRL-GPHH architecture
-             pattern. Bibliographic details taken from a web search result, not
-             independently opened/read in full.}
-}
 
-@misc{alkhalifa2025comparative,
-  author = {Alkhalifa, {\relax and others (unconfirmed)}},
-  title  = {{Comparative study of heuristic and metaheuristic optimisation methods (title/venue unconfirmed)}},
-  year   = {2025},
-  note   = {UNVERIFIED (added 2026-09-22): cited in the report's Background
-             section (heuristics-vs-metaheuristics classification) from
-             Ethan's own draft; WebSearch (both a general query and a
-             cloud-RA-specific one) did not surface a matching paper under
-             this author/year. Left in per this file's own convention (record
-             that the source exists rather than silently drop the citation),
-             but Ethan should confirm the actual title/venue/author spelling
-             from wherever he originally found it before submission -- this
-             entry's bibliographic details are placeholders, not verified
-             facts.}
-}
-
-% ---------------------------------------------------------------------
-% Single-machine RL scheduling precedents (Online Case section)
-% ---------------------------------------------------------------------
-
-@article{wang2005reinforcement,
-  author  = {Wang, Yi-Chi and Usher, John M.},
-  title   = {Application of Reinforcement Learning for Agent-Based Production Scheduling},
-  journal = {Engineering Applications of Artificial Intelligence},
-  volume  = {18},
-  number  = {1},
-  pages   = {73--82},
-  year    = {2005},
-  doi     = {10.1016/j.engappai.2004.08.018},
-  note    = {Added 2026-09-22 while writing the report's Online Case section.
-             Q-learning applied to a single-machine agent learning to SELECT a
-             dispatching rule -- direct precedent for this project's own
-             Option 1 (rule-selection hyper-heuristic), at the single-machine
-             scale rather than this project's multi-machine setting. Verified
-             via WebSearch; bibliographic details not independently re-checked
-             against the original PDF.}
-}
-
-@article{chen2013flexible,
-  author  = {Chen, Bo and Matis, Timothy I.},
-  title   = {A Flexible Dispatching Rule for Minimizing Tardiness in Job Shop Scheduling},
-  journal = {International Journal of Production Economics},
-  volume  = {141},
-  number  = {1},
-  pages   = {360--365},
-  year    = {2013},
-  doi     = {10.1016/j.ijpe.2012.08.017},
-  note    = {Added 2026-09-22 while writing the report's Online Case section.
-             A flexible (state-adaptive) dispatching rule for minimizing
-             tardiness -- cited alongside wang2005reinforcement as motivation
-             for starting the online case's rule-adaptivity investigation at
-             single-machine scale before generalizing. Verified via WebSearch;
-             bibliographic details not independently re-checked against the
-             original PDF.}
-}
+ @misc{alkhalifa2025comparative,
+        title={A Comparative Review of Parallel Exact, Heuristic, Metaheuristic, and Hybrid Optimization Techniques for the Traveling Salesman Problem},
+        author={Rabab Alkhalifa and Fatima Alkhomayes and Boushra Almazroua and Dana Alhaidan and Maryam Alothman and Jumana Almuhaidib},
+        year={2025},
+        eprint={2505.18278},
+        archivePrefix={arXiv},
+        primaryClass={cs.DC},
+        url={https://arxiv.org/abs/2505.18278}
+  }

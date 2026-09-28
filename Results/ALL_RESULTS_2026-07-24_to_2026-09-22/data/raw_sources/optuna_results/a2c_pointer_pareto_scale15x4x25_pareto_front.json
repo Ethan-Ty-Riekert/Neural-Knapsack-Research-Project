@@ -1,0 +1,71 @@
+[
+  {
+    "trial": 9,
+    "mean_reward": 96.2829773012938,
+    "mean_tardiness_norm": 0.88,
+    "mean_tardiness": 22.0,
+    "mean_late_jobs": 5.0,
+    "params": {
+      "embed_dim": 256,
+      "hidden": 32,
+      "learning_rate": 2.6499854937582197e-05,
+      "n_steps": 20,
+      "gamma": 0.9674512461163356,
+      "gae_lambda": 0.9565066954323789,
+      "ent_coef": 0.006851164155312636,
+      "value_coef": 0.8974441532479882,
+      "max_grad_norm": 0.6242201787231559,
+      "lambda_1": 0.6909276462616007,
+      "lambda_2": 0.5047183622422683,
+      "lambda_3": 1.1562774363263404,
+      "idle_penalty": 2.541503761589304,
+      "invalid_penalty": 6.812470795070154
+    }
+  },
+  {
+    "trial": 10,
+    "mean_reward": 95.36459593793992,
+    "mean_tardiness_norm": 0.48,
+    "mean_tardiness": 12.0,
+    "mean_late_jobs": 5.0,
+    "params": {
+      "embed_dim": 256,
+      "hidden": 64,
+      "learning_rate": 1.515715877800997e-05,
+      "n_steps": 5,
+      "gamma": 0.9626943607849204,
+      "gae_lambda": 0.9944225410288108,
+      "ent_coef": 0.09725799140824085,
+      "value_coef": 0.8549491828186763,
+      "max_grad_norm": 0.34439254734310903,
+      "lambda_1": 0.5513417942571317,
+      "lambda_2": 0.8101930173107494,
+      "lambda_3": 0.745010573887892,
+      "idle_penalty": 2.4309124711256107,
+      "invalid_penalty": 7.75983203838018
+    }
+  },
+  {
+    "trial": 2,
+    "mean_reward": -18.809708947568826,
+    "mean_tardiness_norm": 0.0,
+    "mean_tardiness": 0.0,
+    "mean_late_jobs": 0.0,
+    "params": {
+      "embed_dim": 64,
+      "hidden": 128,
+      "learning_rate": 0.0003012222727984814,
+      "n_steps": 20,
+      "gamma": 0.9766677643345888,
+      "gae_lambda": 0.9211256006510998,
+      "ent_coef": 0.002493060017300971,
+      "value_coef": 0.7389454324466265,
+      "max_grad_norm": 0.31185343296648543,
+      "lambda_1": 1.158019743585942,
+      "lambda_2": 0.7673258565404154,
+      "lambda_3": 1.1255094322186188,
+      "idle_penalty": 0.6778388566695985,
+      "invalid_penalty": 6.741928591903017
+    }
+  }
+]
