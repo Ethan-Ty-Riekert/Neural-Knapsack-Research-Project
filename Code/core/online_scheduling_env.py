@@ -47,6 +47,10 @@ class OnlineSchedulingEnv(SchedulingEnv):
         self.remaining_jobs = set()
         self.revealed_jobs = set()
         self._reveal_arrivals()
+        if self.objective is not None:
+            # re-reset now that remaining_jobs holds only the t=0 arrivals (super().reset()
+            # ran it against the offline "all jobs" set)
+            self.objective.reset(self)
         return None  # PERF: see SchedulingEnv.reset()'s matching comment
 
     def set_jobs_and_arrivals(
@@ -97,6 +101,10 @@ class OnlineSchedulingEnv(SchedulingEnv):
 
         self.remaining_jobs.remove(job)
 
+        if self.objective is not None:
+            # placement without a tick: only the shaping potential changes (job leaves the risk set)
+            return (None, self.objective.transition(self, elapsed_tick=None), False)
+
         new_theta = self.compute_theta()
         delta_theta = max(0, new_theta - self.prev_theta)
         self.prev_theta = new_theta
@@ -124,6 +132,17 @@ class OnlineSchedulingEnv(SchedulingEnv):
         return (None, reward, done)  # PERF: see SchedulingEnv.reset()'s comment
 
     def step_idle(self):
+        if self.objective is not None:
+            elapsed = self.time
+            self.time += 1
+            if self.time <= self.horizon:  # same padding-sentinel guard as below
+                self._reveal_arrivals()
+            reward = self.objective.transition(self, elapsed_tick=elapsed)  # after reveal: drops of
+            done = self.time > self.horizon                                 # infeasible arrivals
+            if done:
+                reward += self.objective.finalize(self)
+            return None, reward, done
+
         reward = -self.idling_penalty
         if self.reward_mode != "legacy":
             # Charge the elapsing tick's dense tardiness accrual using

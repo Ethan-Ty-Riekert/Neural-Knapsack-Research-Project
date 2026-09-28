@@ -47,7 +47,7 @@ def _decode_priorities(position, num_jobs, num_machines):
     return job_rank, machine_rank
 
 
-def _simulate(position, config, num_jobs, num_machines):
+def _simulate(position, config, num_jobs, num_machines, env_kwargs=None):
     """Replay one episode under the priority order `position` decodes to,
     via the same SchedulingEnv/GymSchedulingEnv every other baseline uses.
     Action selection follows exactly the same "pick min-priority feasible
@@ -58,7 +58,7 @@ def _simulate(position, config, num_jobs, num_machines):
     impossible here too (only ever chosen among mask-feasible actions)."""
     job_rank, machine_rank = _decode_priorities(position, num_jobs, num_machines)
 
-    env = make_env(config)
+    env = make_env(config, env_kwargs)
     obs, info = env.reset()
     base_env = env.env.env
     idle_action = env.env.max_jobs * base_env.num_machines
@@ -103,7 +103,7 @@ def _simulate(position, config, num_jobs, num_machines):
 
 
 def optimize_and_run(config, num_jobs, num_machines, swarm_size=15, iterations=30,
-                      w=0.7, c1=1.5, c2=1.5, v_max=4.0, seed=None, fitness="reward"):
+                      w=0.7, c1=1.5, c2=1.5, v_max=4.0, seed=None, fitness="reward", env_kwargs=None):
     """Run PSO to find a good (job-priority, machine-priority) encoding for
     one problem instance, then return the best solution found's episode
     stats (same schema as run_model()/run_heuristic()) plus search
@@ -149,7 +149,7 @@ def optimize_and_run(config, num_jobs, num_machines, swarm_size=15, iterations=3
     start = time.time()
     for _ in range(iterations):
         for i in range(swarm_size):
-            sim_result = _simulate(positions[i], config, num_jobs, num_machines)
+            sim_result = _simulate(positions[i], config, num_jobs, num_machines, env_kwargs)
             fitness_value = (
                 sim_result["total_reward"] if fitness == "reward"
                 else -float(sim_result["tardiness"].sum())
@@ -173,7 +173,7 @@ def optimize_and_run(config, num_jobs, num_machines, swarm_size=15, iterations=3
         fitness_curve.append(float(gbest_fitness))
 
     wall_clock_seconds = time.time() - start
-    result = _simulate(gbest_pos, config, num_jobs, num_machines)
+    result = _simulate(gbest_pos, config, num_jobs, num_machines, env_kwargs)
     result["wall_clock_seconds"] = wall_clock_seconds
     result["fitness_curve"] = fitness_curve
     result["swarm_size"] = swarm_size

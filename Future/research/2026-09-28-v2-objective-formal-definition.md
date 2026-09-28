@@ -1,8 +1,19 @@
 # Formal Definition: v2 Objective Reward (for review before implementation)
 
 **Date:** 2026-09-28 (S2W11)
-**Status:** DRAFT for user review. Nothing here is implemented yet. Decisions and reasoning are in
-`2026-09-28-objective-redesign-discussion.md`. Items marked **OPEN** need a decision.
+**Status:** Accepted by the user on 2026-09-29. Build step 1 (sections 2, 3, 5 and 6) is **implemented** in
+`Code/core/objectives.py` (`reward_mode="objective"`) and **verified numerically** in
+`tests/test_objective_reward.py`. Energy (section 4) is build step 3. Decisions and reasoning are in
+`2026-09-28-objective-redesign-discussion.md`. **B = H was decided on 2026-09-29.**
+
+**The objective, in one line (default configuration):**
+J = Σ_{finished j} w_j T_j + Σ_{dropped j} w_j (max(0, H − d_j) + H). This is weighted lateness, where a dropped job
+counts as finishing at the horizon plus a further H ticks late. The reward is −J / (number of jobs), paid
+out as costs occur. Optional extras: + λ_U Σ w_j U_j (late count), and later + λ_E × (active machine-ticks)
+(energy).
+
+**Implementation note: unequal λ.** When λ_T ≠ λ_D, the drop charge is ρ_j = λ_D K_j − λ_T accrued_j. The job's
+total is then exactly λ_D K_j, and ρ_j >= 0 whenever λ_D >= λ_T (Claim 3). The default is λ_T = λ_D = 1.
 
 Goal: each reward component is defined so that its **episode sum equals a stated objective exactly**, with a
 proof. Nothing is included that isn't part of a selected objective.
@@ -169,7 +180,7 @@ giving it directly makes the shaping potential visible to the policy.
 | λ_T | 1 |
 | λ_E (if energy on) | user-chosen exchange rate; report a sweep and the Pareto front |
 | λ_U (if late count on) | user-chosen |
-| B | **OPEN** (section 3: regime a or b) |
+| B | **H** (decided 2026-09-29): a strong push to complete jobs, but not lexicographic |
 | c | number of jobs |
 | Shaping | on, γ = the algorithm's γ |
 

@@ -14,6 +14,8 @@ Future/research/2026-08-09-fixed-instance-bugfix-and-reward-rescale.md."""
 import numpy as np
 from typing import Tuple, List, Dict, Union
 
+from .objectives import ObjectiveConfig, ObjectiveReward
+
 class SchedulingEnv:
     """Time-indexed scheduling environment for cloud resource allocation"""
     def __init__(
@@ -32,7 +34,8 @@ class SchedulingEnv:
         idle_penalty: float = 0.5,        # penalty for idling (doing nothing)
         use_potential_shaping: bool = False,  # Solution 3: optional potential-based reward shaping
         shaping_gamma: float = 0.99,      # discount factor used in the shaping term; should match the RL algorithm's gamma
-        reward_mode: str = "legacy",      # "legacy" (default, unchanged) or "dense_tardiness" (see reward()/docstring below)
+        reward_mode: str = "legacy",      # "legacy" (default, unchanged), "dense_tardiness", or "objective" (v2)
+        objective: ObjectiveConfig = None,  # reward_mode="objective" only; None -> ObjectiveConfig() defaults
     ):
         """Initiate the scheduling environment
 
@@ -147,7 +150,26 @@ class SchedulingEnv:
         # step_idle() is ever called again after done=True.
         self._episode_terminal_cost_added = False
 
+        # reward_mode="objective" (v2, 2026-09-29): reward = exactly the selected objectives --
+        # see Code/core/objectives.py and Future/research/2026-09-28-v2-objective-formal-
+        # definition.md. Bypasses reward(), the +3/+50 bonuses, the idle penalty and the legacy
+        # shaping entirely; the legacy and dense_tardiness paths below are untouched.
+        if reward_mode not in ("legacy", "dense_tardiness", "objective"):
+            raise ValueError(f"unknown reward_mode {reward_mode!r}")
+        self.objective = ObjectiveReward(objective) if reward_mode == "objective" else None
+        if self.objective is not None:
+            self.objective.reset(self)
 
+    def _objective_tick(self):
+        """reward_mode="objective": advance one tick and return (reward, done). Shared by
+        step() and step_idle() in the offline case."""
+        elapsed = self.time
+        self.time += 1
+        reward = self.objective.transition(self, elapsed_tick=elapsed)
+        done = len(self.remaining_jobs) == 0 or self.time > self.horizon
+        if done:
+            reward += self.objective.finalize(self)
+        return reward, done
 
     def set_jobs(
         self,
@@ -212,6 +234,8 @@ class SchedulingEnv:
         self.prev_potential = self._compute_potential()
         self.episode_cost = 0.0
         self._episode_terminal_cost_added = False
+        if getattr(self, "objective", None) is not None:
+            self.objective.reset(self)
 
         # PERF (2026-09-20, S2W9, verified before applying -- see
         # Future/research/2026-09-20-optimisation-and-efficiency-critique.md):
@@ -443,6 +467,10 @@ class SchedulingEnv:
         # Remove job from remaining set
         self.remaining_jobs.remove(job)
 
+        if self.objective is not None:
+            reward, done = self._objective_tick()
+            return (None, reward, done)
+
         # Check if a hotspot has been created with delta theta (incremental change in hotspot)
         new_theta = self.compute_theta()
         delta_theta = max(0, new_theta - self.prev_theta)
@@ -582,6 +610,10 @@ class SchedulingEnv:
 
     def step_idle(self):
         """Idle step: advance time without scheduling a job."""
+        if self.objective is not None:
+            reward, done = self._objective_tick()
+            return None, reward, done
+
         reward = -self.idling_penalty
         if self.reward_mode != "legacy":
             # Charge the elapsing tick's dense tardiness accrual using

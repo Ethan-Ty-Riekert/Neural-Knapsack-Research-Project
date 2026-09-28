@@ -46,6 +46,11 @@ PRESETS = {
 }
 
 
+def env_kwargs(args) -> dict:
+    """No overrides: the base env's defaults ARE the legacy reward."""
+    return {}
+
+
 def instances(preset_name: str):
     """Yield (seed, config dict) for every instance of a preset, generated
     exactly as the original evaluation scripts did."""

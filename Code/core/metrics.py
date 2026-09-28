@@ -57,7 +57,13 @@ def schedule_metrics(env) -> dict:
     def _stat(fn, x, default=0.0):
         return float(fn(x)) if len(x) else default
 
+    objective = {}
+    if getattr(env, "objective", None) is not None:  # v2 reward: report the objective J itself
+        objective = {"objective_J": env.objective.objective_value(),
+                     "infeasible_on_arrival": int(env.objective.infeasible_on_arrival.sum())}
+
     return {
+        **objective,
         # QoS / SLA
         "jobs_total": n,
         "jobs_scheduled": int(sched.sum()),

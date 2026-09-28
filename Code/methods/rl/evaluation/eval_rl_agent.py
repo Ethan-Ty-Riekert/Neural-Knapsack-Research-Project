@@ -36,7 +36,7 @@ def mask_fn(env: GymSchedulingEnv):
 # ============================================================
 # Environment factory
 # ============================================================
-def make_env(config=None):
+def make_env(config=None, env_kwargs=None):
     """config=None (default): load the single saved instance from
     ENV_CONFIG_PATH, matching every prior eval in this project (fixed
     seed=0 instance). Pass an explicit config dict (from generate_env_config())
@@ -49,6 +49,10 @@ def make_env(config=None):
     OnlineSchedulingEnv/OnlineGymSchedulingEnv instead -- no separate
     make_env() signature needed, since a config dict already unambiguously
     says which case it's for.
+
+    env_kwargs (2026-09-29): optional overrides for the base env constructor, e.g.
+    {"reward_mode": "objective", "objective": ObjectiveConfig(...)} for variant v2
+    (Code/variants/v2_objectives). None keeps the legacy reward exactly as before.
     """
     if config is None:
         data = np.load(ENV_CONFIG_PATH)
@@ -67,10 +71,7 @@ def make_env(config=None):
             machine_capacity=config["machine_capacity"],
             horizon=int(config["horizon"]),
             job_arrival_times=config["job_arrival_times"],
-            lambda_1=1.0,
-            lambda_2=1.0,
-            lambda_3=1.0,
-            invalid_penalty=5.0,
+            **{**dict(lambda_1=1.0, lambda_2=1.0, lambda_3=1.0, invalid_penalty=5.0), **(env_kwargs or {})},
         )
         gym_env = OnlineGymSchedulingEnv(base_env, max_jobs=max_jobs)
     else:
@@ -82,10 +83,7 @@ def make_env(config=None):
             num_machines=int(config["num_machines"]),
             machine_capacity=config["machine_capacity"],
             horizon=int(config["horizon"]),
-            lambda_1=1.0,
-            lambda_2=1.0,
-            lambda_3=1.0,
-            invalid_penalty=5.0,
+            **{**dict(lambda_1=1.0, lambda_2=1.0, lambda_3=1.0, invalid_penalty=5.0), **(env_kwargs or {})},
         )
         # max_jobs (padding capacity) must match what the model was trained with -- see
         # gym_scheduling_wrapper.py and train_rl_agent.py's curriculum for why.
@@ -98,14 +96,14 @@ def make_env(config=None):
 # ============================================================
 # Run one model evaluation episode (PPO or A2C, flat or pointer)
 # ============================================================
-def run_model(model, config=None):
+def run_model(model, config=None, env_kwargs=None):
     # BUG FIX (this session): this was named run_ppo() and unconditionally
     # printed "Running PPO episode..." even when evaluating A2C (flat or
     # pointer) -- the function has always handled both via the
     # hasattr(model, "predict") branch below, so the name/print were
     # misleading leftovers from when it was PPO-only. Caused user confusion
     # (mistook an A2C flat eval run for a PPO run with bad tardiness).
-    env = make_env(config)
+    env = make_env(config, env_kwargs)
     obs, info = env.reset()
 
     done = False
@@ -161,9 +159,9 @@ def run_model(model, config=None):
 # ============================================================
 # Run heuristic
 # ============================================================
-def run_heuristic(name, config=None):
+def run_heuristic(name, config=None, env_kwargs=None):
 
-    env = make_env(config)
+    env = make_env(config, env_kwargs)
     base_env = env.env.env
 
     obs, info = env.reset()

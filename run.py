@@ -20,6 +20,7 @@ alone hides dropped jobs (see Future/research/2026-09-28-objective-redesign-
 discussion.md section 1).
 """
 import argparse
+import dataclasses
 import csv
 import json
 import subprocess
@@ -52,7 +53,7 @@ def _metrics(stats, config):
     return {"reward": float(stats["total_reward"]), **stats["metrics"]}
 
 
-def run_one_instance(method, config, args):
+def run_one_instance(method, config, args, env_kwargs=None):
     from Code.methods.rl.evaluation.eval_rl_agent import run_heuristic
     t0 = time.time()
     extra = {}
@@ -60,16 +61,17 @@ def run_one_instance(method, config, args):
         from Code.methods.metaheuristic.pso import optimize_and_run
         n_jobs = len(config["job_durations"])
         stats = optimize_and_run(config, n_jobs, int(config["num_machines"]), swarm_size=args.pso_swarm,
-                                 iterations=args.pso_iterations, seed=args.seed, fitness=args.pso_fitness)
+                                 iterations=args.pso_iterations, seed=args.seed, fitness=args.pso_fitness,
+                                 env_kwargs=env_kwargs)
     elif method == "cpsat":
         from Code.methods.exact.exact_solver import solve, replay_schedule
         res = solve(config, time_limit_seconds=args.time_limit)
         extra = {"cpsat_status": res["status"], "cpsat_objective": res["objective"]}
         if res["schedule"] is None:
             return dict(extra, seconds=time.time() - t0)
-        stats = replay_schedule(config, res["schedule"])
+        stats = replay_schedule(config, res["schedule"], env_kwargs)
     else:
-        stats = run_heuristic(method, config=config)
+        stats = run_heuristic(method, config=config, env_kwargs=env_kwargs)
     return dict(_metrics(stats, config), **extra, seconds=round(time.time() - t0, 3))
 
 
@@ -89,11 +91,12 @@ def _git_commit():
 def evaluate(variant_name, preset_name, method, args):
     variant = get_variant(variant_name)
     preset = variant.PRESETS[preset_name]
+    env_kwargs = variant.env_kwargs(args)
     rows = []
     for k, (seed, config) in enumerate(variant.instances(preset_name)):
         if args.limit and k >= args.limit:
             break
-        row = dict(seed=seed, **run_one_instance(method, config, args))
+        row = dict(seed=seed, **run_one_instance(method, config, args, env_kwargs))
         rows.append(row)
         shown = {key: (round(v, 2) if isinstance(v, float) else v) for key, v in row.items()}
         print(f"  [{k + 1}] {shown}", flush=True)
@@ -113,6 +116,8 @@ def evaluate(variant_name, preset_name, method, args):
         "seeds": [r["seed"] for r in rows],
         "method_args": {k: getattr(args, k) for k in ("pso_swarm", "pso_iterations", "pso_fitness",
                                                         "time_limit", "seed")},
+        "env_kwargs": {k: (dataclasses.asdict(v) if dataclasses.is_dataclass(v) else v)
+                       for k, v in env_kwargs.items()},
         "git_commit": _git_commit(), "machine": MACHINE_NAME, "timestamp": stamp,
         "mean": means,
     }
@@ -166,6 +171,8 @@ def dispatch(variant_name, preset_name, method, args):
         raise SystemExit(f"unknown method {method!r}; see --list")
     print(f"== {variant_name} / {preset_name} / {method} ==\n   {variant.PRESETS[preset_name]['desc']}")
     if method.startswith("rl-"):
+        if variant_name != "v1_legacy_reward":
+            raise SystemExit("RL under the v2 objective is build step 5 -- not wired into the training scripts yet.")
         cmd = rl_command(variant_name, preset_name, method, args)
         print("   running:", " ".join(cmd[1:]))
         return subprocess.run(cmd, cwd=REPO_ROOT).returncode
@@ -221,6 +228,10 @@ def main():
     ap.add_argument("--pso-swarm", type=int, default=15)
     ap.add_argument("--pso-iterations", type=int, default=30)
     ap.add_argument("--pso-fitness", choices=["reward", "tardiness"], default="reward")
+    ap.add_argument("--objectives", default="tardiness",
+                    help="v2 only: comma list from tardiness,late_count (dropped-job cost is always on)")
+    ap.add_argument("--drop-surcharge", type=float, default=None, help="v2 only: B in ticks (default H)")
+    ap.add_argument("--lambda-late", type=float, default=1.0, help="v2 only: weight of late_count")
     ap.add_argument("--time-limit", type=float, default=60.0, help="CP-SAT seconds per instance")
     ap.add_argument("--timesteps", type=int, default=None, help="rl-train only")
     ap.add_argument("--checkpoint-tag", default=None, help="rl-eval: tag to load; rl-train: tag to save")

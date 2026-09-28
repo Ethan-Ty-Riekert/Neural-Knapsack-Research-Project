@@ -138,7 +138,11 @@ the cause, and won't it distort the current decision?**
    - an explicit per-job "slack to latest start" observation feature
      (`Code/env/gym_scheduling_wrapper.py::_get_obs` currently has time/duration/deadline only).
 
-**Status: OPEN** — user is still weighing this explanation; revisit before the formal definitions (§12)
+**Status: DECIDED (2026-09-29).** The user accepted the formal definition and chose **B = H** over B = H/10
+(a cheap rejection price) and over a lexicographic "finish-first" B. With B = H, dropping costs an extra
+full horizon of lateness, a strong push towards completion that keeps the lateness signal at a usable
+scale. It's implemented and verified (`tests/test_objective_reward.py`). The original note follows.
+Previously: user is still weighing this explanation; revisit before the formal definitions (§12)
 are finalised.
 
 ## 5. Activation penalty → energy

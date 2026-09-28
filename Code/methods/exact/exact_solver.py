@@ -205,14 +205,14 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     return result
 
 
-def replay_schedule(config, schedule):
+def replay_schedule(config, schedule, env_kwargs=None):
     """Replay a CP-SAT schedule (list of (job, machine, start_time), sorted
     by start_time) through the real SchedulingEnv/GymSchedulingEnv, so its
     reward/tardiness/late-jobs are computed the exact same way as every
     other baseline in this comparison, and any accidental infeasibility in
     the CP-SAT model is caught for real rather than trusted blindly.
     """
-    env = make_env(config)
+    env = make_env(config, env_kwargs)
     obs, info = env.reset()
     base_env = env.env.env
     num_machines = base_env.num_machines

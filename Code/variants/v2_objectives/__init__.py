@@ -1,15 +1,49 @@
-"""Variant v2 -- selectable objectives + difficulty (the "objective program").
+"""Variant v2 -- reward = exactly the selected objectives (the "objective program").
 
-Not implemented yet: the formal definitions come first (Step 4 of
-Future/research/2026-09-28-objective-redesign-discussion.md section 12), then
-Code/core/objectives.py, difficulty.py and factory.py (Step 5). Until then this
-variant has no presets, and run.py reports it as planned.
+Definition: Future/research/2026-09-28-v2-objective-formal-definition.md; implementation:
+Code/core/objectives.py (reward_mode="objective"). Build status (2026-09-29):
+  step 1 DONE  weighted tardiness + dropped jobs (always on) + optional weighted late count
+  step 3       energy objective                 -- not yet
+  step 4       difficulty settings              -- not yet (presets below reuse v1's instances)
+  step 5       RL training under v2              -- not yet
+
+Presets are v1's instance protocols, unchanged, so v1 and v2 results are always on identical
+instances. The objectives are chosen per run (run.py --objectives), not per preset.
 """
+from Code.core.objectives import ObjectiveConfig
+from Code.variants.v1_legacy_reward import PRESETS as _V1_PRESETS, instances as _v1_instances
 
-DESCRIPTION = "Reward = exactly the selected objectives (tardiness, late count, energy, drops) at a chosen difficulty."
-STATUS = "planned (formal definitions pending user review)"
-PRESETS = {}
+DESCRIPTION = ("Reward = exactly the selected objectives: weighted tardiness + dropped-job cost "
+               "(+ optional weighted late count). Energy and difficulty settings: later build steps.")
+STATUS = "in progress (tardiness, drops, late count implemented)"
+
+PRESETS = {name: dict(p) for name, p in _V1_PRESETS.items()}
+
+OBJECTIVES = ("tardiness", "late_count")  # drops are always on (formal doc sec. 3-4)
 
 
 def instances(preset_name: str):
-    raise NotImplementedError("v2_objectives has no presets yet -- see this module's docstring.")
+    return _v1_instances(preset_name)
+
+
+def objective_config(objectives=("tardiness",), drop_surcharge=None, lambda_late=1.0,
+                     drop_shaping=False) -> ObjectiveConfig:
+    """Build the ObjectiveConfig for a run. drop_shaping defaults to False for evaluating fixed
+    policies (heuristics/PSO/CP-SAT): then reward = -J/c exactly. RL training turns it on."""
+    unknown = set(objectives) - set(OBJECTIVES)
+    if unknown:
+        raise ValueError(f"unknown objectives {sorted(unknown)}; choose from {OBJECTIVES}")
+    return ObjectiveConfig(
+        tardiness=1.0 if "tardiness" in objectives else 0.0,
+        late_count=lambda_late if "late_count" in objectives else 0.0,
+        drop_surcharge=drop_surcharge,
+        drop_shaping=drop_shaping,
+    )
+
+
+def env_kwargs(args) -> dict:
+    """Base-env constructor overrides for this variant, from run.py's arguments."""
+    objectives = tuple(o.strip() for o in (getattr(args, "objectives", None) or "tardiness").split(","))
+    cfg = objective_config(objectives, getattr(args, "drop_surcharge", None),
+                           getattr(args, "lambda_late", 1.0))
+    return {"reward_mode": "objective", "objective": cfg}

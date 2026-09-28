@@ -1,29 +1,43 @@
-# Variant v2: selectable objectives + difficulty
+# Variant v2: reward = the selected objectives
 
-**Status:** planned. The formal definitions come first and need user review; implementation follows.
-**Design record:** `Future/research/2026-09-28-objective-redesign-discussion.md`
+**Status:** in progress. Build step 1 (lateness + drops + late count) is done and verified.
+**Definition and proofs:** `Future/research/2026-09-28-v2-objective-formal-definition.md`
+**Decisions:** `Future/research/2026-09-28-objective-redesign-discussion.md`
+**Code:** `Code/core/objectives.py`, switched on with `reward_mode="objective"` in the environments.
 
-## Idea
+## The objective (default)
 
-1. **Select objectives**: any of
-   - weighted tardiness ΣwT
-   - weighted late-job count ΣwU
-   - energy: active machine-ticks by default, or a SPECpower curve
-   - dropped jobs (always included)
-2. **Select difficulty**: load factor (arrival rate), deadline tightness (tardiness factor TF and due-date
-   range RDD), weight range, size distribution, and later DAG depth.
-3. **Compare every method** (heuristics, PSO, CP-SAT, RL) on that configuration, through `run.py`.
+J = Σ_{finished j} w_j T_j + Σ_{dropped j} w_j (max(0, H − d_j) + H)
 
-## Decided so far
+This is weighted lateness, where a dropped job counts as if it finished at the horizon plus a further H ticks late. The reward is
+−J / (number of jobs), charged as the costs happen:
+- each tick a job is overdue;
+- the moment a job can no longer start (latest start H − P_j) it counts as dropped.
 
-- The reward is exactly the selected objectives. No +3/+50 bonuses, activation, hotspot, flat idle or
-  invalid-action terms.
-- A dropped job costs ρ_j, charged at its latest start (H − P_j). ρ_j is set above the largest late-cost
-  that job could incur, so dropping never beats finishing late. Potential-based shaping and a slack
-  observation feature help with credit assignment. **OPEN:** the user is still weighing this.
-- Energy: under the linear power model, minimising energy is the same as minimising active machine-ticks.
-  A SPECpower curve is optional.
-- Hotspot term removed. Overload slowdown comes later, as a difficulty setting.
-- Each objective stays in its physical units, with λ as an explicit exchange rate between objectives. One
-  global constant scales the whole reward (which provably doesn't change the optimal policy).
-- Idle stays a legal action, with no flat penalty.
+Option: `--objectives tardiness,late_count` adds λ_U · Σ w_j U_j (weighted late-job count, the SLA violation
+rate).
+
+Removed compared with v1: the +3/+50 bonuses, the machine-activation, hotspot and idle penalties.
+
+## Build steps
+
+| Step | What | Status |
+|---|---|---|
+| 1 | v2 reward: lateness, drops, late count; offline and online; proofs checked by tests | **done** |
+| 2 | Run heuristics, PSO and CP-SAT under v2 through `run.py` and compare | next |
+| 3 | Energy objective (active machine-ticks) and an energy-aware heuristic | |
+| 4 | Difficulty settings (load, deadline tightness) | |
+| 5 | Retrain RL under v2 | |
+
+## Presets
+
+The presets are the same instances as v1 (`python run.py --list`), so v1 and v2 numbers are always on identical
+instances. Example:
+
+```
+python run.py --variant v2_objectives --preset off_c_15 --method EDF
+python run.py --variant v2_objectives --preset on_r_50 --method ATC --objectives tardiness,late_count
+```
+
+For heuristics, PSO and CP-SAT, shaping is off, so reward = −J / (number of jobs) exactly, and `objective_J` is
+reported with every run.
