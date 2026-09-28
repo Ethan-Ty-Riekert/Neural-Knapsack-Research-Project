@@ -244,6 +244,23 @@ factory, metrics), `Code/variants/{v1_legacy_reward,v2_objectives}/`, `Code/meth
 metaheuristic,exact,rl}/`, `Results/{v1_legacy_reward,v2_objectives}/…`, `run.py` + `experiments/*.yaml`;
 old import paths kept as re-export shims so existing checkpoints and commands still work.
 
+**Two-machine artefact storage (decided 2026-09-28).** The user works on two machines: this laptop and the
+machine with `D:\University\Year3\...`, which holds all the gitignored `rl_training/` outputs to date.
+- *Git* holds code, docs, and the curated result tables and figures. *A cloud-synced folder* (OneDrive or
+  Google Drive, not yet chosen) holds models, logs, `results_by_setting` and Optuna databases.
+  Git LFS was rejected because the free quota is 1 GB. DVC was considered but deferred as too much overhead
+  for now.
+- `Code/utils/paths.py` reads an `NK_ARTIFACTS_DIR` environment variable per machine and falls back to
+  `REPO_ROOT/rl_training`, so existing commands keep working.
+- Each machine writes only to `artifacts/<machine-name>/…`. Sync tools corrupt SQLite (`optuna.db`) and
+  fork appended files (`eval_results.csv`, `env_config.npz`) when both machines write them. Either machine
+  can read everything.
+- Every run writes a `run.json` manifest: git commit, machine, date, full config, final metrics.
+- A merge script combines both machines' eval CSVs into the git `Results/`.
+- **Timing:** the user is back at the D: machine in about one week (around 2026-10-05). Only then can the D:
+  outputs be copied into the synced folder. Until that copy is made, they have no backup.
+- **OPEN:** which sync service, and what each machine is called.
+
 ## 12. Order of work
 
 1. This record.
