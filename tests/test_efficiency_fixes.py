@@ -15,9 +15,9 @@ Run from the repo root: python -m tests.test_efficiency_fixes
 """
 import numpy as np
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.baselines.priority_rules import atc_key, atc_priority, _atc_mean_p
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.heuristics.priority_rules import atc_key, atc_priority, _atc_mean_p
 
 
 def make_env(num_jobs=5, num_machines=2, horizon=20, capacity=10.0):

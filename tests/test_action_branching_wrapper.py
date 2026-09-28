@@ -1,6 +1,6 @@
 """test_action_branching_wrapper.py - Regression/validation checks for
 Option 4 (action-branching, learned placement,
-Code/env/action_branching_gym_wrapper.py, 2026-09-20, S2W9).
+Code/methods/rl/action_spaces/action_branching_gym_wrapper.py, 2026-09-20, S2W9).
 
 Follows this project's existing tests/ convention (runnable script with
 assert invariants, not a pytest suite) -- see test_windowed_priority_wrapper.py.
@@ -10,11 +10,11 @@ Run from the repo root: python -m tests.test_action_branching_wrapper
 import numpy as np
 import torch
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.env.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
-from Code.policies.action_branching_policy import ActionBranchingActorCritic
-from Code.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.rl.action_spaces.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
+from Code.methods.rl.policies.action_branching_policy import ActionBranchingActorCritic
+from Code.methods.rl.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
 
 
 def make_base_gym_env(num_jobs=4, num_machines=2, horizon=20, capacity=10.0,

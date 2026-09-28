@@ -2,7 +2,7 @@
 generate_env_config()/generate_poisson_arrivals()'s job_weight_range option
 (2026-09-18, S2W10 -- job_weights was uniformly 1.0 in every instance this
 project ever generated, making WSPT/ATC's w_j/p_j term dead code; see
-Code/baselines/priority_rules.py::wspt_key's own docstring).
+Code/methods/heuristics/priority_rules.py::wspt_key's own docstring).
 
 Follows this project's existing tests/ convention (runnable script with
 assert invariants, not a pytest suite) -- see test_heavy_tailed_arrivals.py.
@@ -11,10 +11,10 @@ Run from the repo root: python -m tests.test_job_weights
 """
 import numpy as np
 
-from Code.env.env_config import generate_env_config
-from Code.env.arrival_process import generate_poisson_arrivals
-from Code.baselines.priority_rules import wspt_key, atc_key
-from Code.env.scheduling_env import SchedulingEnv
+from Code.core.env_config import generate_env_config
+from Code.core.arrival_process import generate_poisson_arrivals
+from Code.methods.heuristics.priority_rules import wspt_key, atc_key
+from Code.core.scheduling_env import SchedulingEnv
 
 
 # ============================================================

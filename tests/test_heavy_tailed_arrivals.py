@@ -10,7 +10,7 @@ Run from the repo root: python -m tests.test_heavy_tailed_arrivals
 """
 import numpy as np
 
-from Code.env.arrival_process import generate_poisson_arrivals
+from Code.core.arrival_process import generate_poisson_arrivals
 
 HORIZON = 200
 MAX_JOBS = 2000

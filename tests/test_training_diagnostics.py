@@ -23,11 +23,11 @@ from stable_baselines3.common.logger import configure
 from Code.utils.training_diagnostics import (
     ActionDistributionCallback, TardinessEvalCallback, build_diagnostics_callbacks, _entropy_normalized,
 )
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, RULE_NAMES
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, RULE_NAMES
 from sb3_contrib.common.wrappers import ActionMasker
-from Code.training.train_action_space_variant import mask_fn
+from Code.methods.rl.training.train_action_space_variant import mask_fn
 
 
 class _LoggerOnlyModel:

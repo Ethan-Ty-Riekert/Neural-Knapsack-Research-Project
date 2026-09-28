@@ -11,11 +11,11 @@ Run from the repo root: python -m tests.test_action_space_wrappers
 import numpy as np
 import torch
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.env.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, RULE_NAMES
-from Code.env.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
-from Code.policies.priority_pointer_policy import PriorityPointerActorCritic
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, RULE_NAMES
+from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
+from Code.methods.rl.policies.priority_pointer_policy import PriorityPointerActorCritic
 
 
 def make_base_gym_env(num_jobs=4, num_machines=2, horizon=10, capacity=10.0):

@@ -1,6 +1,6 @@
 """test_windowed_priority_wrapper.py - Regression/validation checks for the
 DeepRM-style bounded-window action space
-(Code/env/windowed_priority_gym_wrapper.py, 2026-09-18, S2W10 -- PREPARED
+(Code/methods/rl/action_spaces/windowed_priority_gym_wrapper.py, 2026-09-18, S2W10 -- PREPARED
 FOR REVIEW, NOT YET WIRED INTO ANY TRAINING RUN).
 
 Follows this project's existing tests/ convention (runnable script with
@@ -11,10 +11,10 @@ Run from the repo root: python -m tests.test_windowed_priority_wrapper
 import numpy as np
 import torch
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.env.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
-from Code.policies.windowed_priority_pointer_policy import WindowedPriorityPointerActorCritic
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.rl.action_spaces.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
+from Code.methods.rl.policies.windowed_priority_pointer_policy import WindowedPriorityPointerActorCritic
 
 
 def make_base_gym_env(num_jobs=10, num_machines=2, horizon=20, capacity=10.0, deadlines=None):
@@ -153,8 +153,8 @@ print(f"  window={env8._window_jobs} (job-index order, differs from Check 2's ED
 # literal FIFO queue design intent.
 # ============================================================
 print("=== Check 9: window_order='fifo' (online) orders by arrival time ===")
-from Code.env.online_scheduling_env import OnlineSchedulingEnv
-from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
+from Code.core.online_scheduling_env import OnlineSchedulingEnv
+from Code.core.online_gym_wrapper import OnlineGymSchedulingEnv
 
 num_jobs9 = 6
 durations9 = np.array([2] * num_jobs9)

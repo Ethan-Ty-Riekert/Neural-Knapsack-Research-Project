@@ -8,9 +8,9 @@ Run from the repo root: python -m tests.test_online_env
 """
 import numpy as np
 
-from Code.env.arrival_process import generate_poisson_arrivals
-from Code.env.online_scheduling_env import OnlineSchedulingEnv
-from Code.env.online_gym_wrapper import OnlineGymSchedulingEnv
+from Code.core.arrival_process import generate_poisson_arrivals
+from Code.core.online_scheduling_env import OnlineSchedulingEnv
+from Code.core.online_gym_wrapper import OnlineGymSchedulingEnv
 
 
 def make_env(arrival_times, num_jobs=4, num_machines=2, horizon=10):

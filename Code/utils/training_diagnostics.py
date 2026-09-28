@@ -1,7 +1,7 @@
 """training_diagnostics.py - Reusable training-time observability tooling,
 added 2026-09-20 (S2W9). Answers two things this project previously had NO
 standing tool for (both confirmed via direct exploration of
-Code/training/train_action_space_variant.py and the whole Code/ tree before
+Code/methods/rl/training/train_action_space_variant.py and the whole Code/ tree before
 building this -- see this session's plan file / training-log.md entry):
 
 1. Diagnosing the still-open "more online training hurts" mystery (two
@@ -23,7 +23,7 @@ building this -- see this session's plan file / training-log.md entry):
 
 Both are plain sb3 BaseCallback subclasses, following the exact pattern
 already proven twice in this codebase (Code/utils/plotting_utils.py's
-LiveTrainingPlotter, Code/policies/ppo_lagrangian.py's
+LiveTrainingPlotter, Code/methods/rl/policies/ppo_lagrangian.py's
 PPOLagrangianCallback) -- self.locals (populated every step by SB3's
 OnPolicyAlgorithm.collect_rollouts() via callback.update_locals(locals()),
 verified directly against the installed stable_baselines3 package: actions
@@ -197,7 +197,7 @@ class TardinessEvalCallback(BaseCallback):
         # Deferred import -- see module docstring for why this can't be a
         # top-level import (eval_action_space_variant.py imports FROM
         # train_action_space_variant.py, which imports this module).
-        from Code.evaluation.eval_action_space_variant import run_episode, _weighted_tardiness
+        from Code.methods.rl.evaluation.eval_action_space_variant import run_episode, _weighted_tardiness
 
         tardiness_vals, weighted_vals, late_vals = [], [], []
         for env in self.held_out_envs:

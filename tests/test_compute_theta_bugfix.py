@@ -1,5 +1,5 @@
 """test_compute_theta_bugfix.py - Regression check for the 2026-09-20 (S2W9)
-compute_theta() bug fix in Code/env/scheduling_env.py.
+compute_theta() bug fix in Code/core/scheduling_env.py.
 
 Finding: compute_theta() used to read self.capacity[:, :, 0] as its "original
 capacity" reference -- the LIVE, mutable capacity array at time-slot 0, not a
@@ -19,7 +19,7 @@ Run from the repo root: python -m tests.test_compute_theta_bugfix
 """
 import numpy as np
 
-from Code.env.scheduling_env import SchedulingEnv
+from Code.core.scheduling_env import SchedulingEnv
 
 # ============================================================
 # Check 1: theta before anything is scheduled must be 0 (no usage anywhere).

@@ -4,9 +4,9 @@ from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.env.env_config import generate_env_config
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.core.env_config import generate_env_config
 
 
 def mask_fn(env):

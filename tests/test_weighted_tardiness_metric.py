@@ -18,7 +18,7 @@ Run from the repo root: python -m tests.test_weighted_tardiness_metric
 """
 import numpy as np
 
-from Code.evaluation.eval_action_space_variant import _weighted_tardiness
+from Code.methods.rl.evaluation.eval_action_space_variant import _weighted_tardiness
 
 # ============================================================
 # Check 1: weighted_tardiness == raw tardiness when every weight is 1.0
@@ -46,8 +46,8 @@ print(f"  weighted_tardiness={_weighted_tardiness(result)} == expected {expected
 # numbers found the day this fix was made (seed=0, job_weight_range=(1,6)).
 # ============================================================
 print("=== Check 3: end-to-end sanity check against known values ===")
-from Code.env.env_config import generate_env_config
-from Code.evaluation.eval_rl_agent import run_heuristic
+from Code.core.env_config import generate_env_config
+from Code.methods.rl.evaluation.eval_rl_agent import run_heuristic
 
 cfg = generate_env_config(seed=0, num_jobs=100, num_machines=10, horizon=100, job_weight_range=(1, 6))
 h = run_heuristic("EDF", config=cfg)

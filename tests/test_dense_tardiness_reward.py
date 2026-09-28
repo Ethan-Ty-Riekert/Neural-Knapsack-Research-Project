@@ -1,5 +1,5 @@
 """test_dense_tardiness_reward.py - Regression checks for reward_mode=
-"dense_tardiness" (Code/env/scheduling_env.py): verifies the per-tick
+"dense_tardiness" (Code/core/scheduling_env.py): verifies the per-tick
 decomposition is algebraically exact against the legacy lump-sum charge, that
 the flat completion bonuses are actually gone, and that legacy mode is
 completely unaffected by the new code paths.
@@ -11,7 +11,7 @@ Run from the repo root: python -m tests.test_dense_tardiness_reward
 """
 import numpy as np
 
-from Code.env.scheduling_env import SchedulingEnv
+from Code.core.scheduling_env import SchedulingEnv
 
 
 def make_env(reward_mode):
