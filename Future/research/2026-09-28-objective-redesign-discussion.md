@@ -317,7 +317,7 @@ machine with `D:\University\Year3\...`, which holds all the gitignored `rl_train
 1. This record.
 2. Backup / tag.
 3. Restructure + launcher, no behaviour change; verify v1 presets reproduce EDF 346.34 / 50.87.
-4. Formal objective definitions and proofs (for user review; §4 is OPEN).
+4. Formal objective definitions and proofs: `2026-09-28-v2-objective-formal-definition.md` (for user review; §4 is OPEN).
 5. Implement the objective program.
 6. Later: comprehensive scientific review of all results (separate plan).
 
