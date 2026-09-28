@@ -1,0 +1,50 @@
+{
+  "variant": "v1_legacy_reward",
+  "preset": "off_c_15",
+  "method": "EDF",
+  "preset_config": {
+    "case": "offline",
+    "num_jobs": 100,
+    "num_machines": 10,
+    "horizon": 100,
+    "weights": null,
+    "desc": "15 held-out instances (PSO study)"
+  },
+  "seeds": [
+    500000,
+    500001,
+    500002,
+    500003,
+    500004,
+    500005,
+    500006,
+    500007,
+    500008,
+    500009,
+    500010,
+    500011,
+    500012,
+    500013,
+    500014
+  ],
+  "method_args": {
+    "pso_swarm": 15,
+    "pso_iterations": 30,
+    "pso_fitness": "reward",
+    "time_limit": 60.0,
+    "seed": 0
+  },
+  "git_commit": "1dab035",
+  "machine": "Ducks_Laptop",
+  "timestamp": "20260928-161244",
+  "mean": {
+    "reward": 285.9967,
+    "tardiness": 50.3333,
+    "weighted_tardiness": 50.3333,
+    "late_jobs": 14.2,
+    "jobs_scheduled": 97.2,
+    "jobs_total": 100.0,
+    "dropped": 2.8,
+    "seconds": 0.1057
+  }
+}
