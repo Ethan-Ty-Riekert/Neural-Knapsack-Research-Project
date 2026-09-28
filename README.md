@@ -47,48 +47,67 @@ move it. Energy usage and SLA/QoS modelling are not yet implemented -- see Plann
 Extensions.
 
 ## Repository Structure
+
+Reorganised 2026-09-28 (S2W11) by **problem variant** and **method family** -- see
+`Future/research/2026-09-28-objective-redesign-discussion.md` section 11. Old module paths
+(`Code.env.*`, `Code.baselines.*`, `Code.policies.*`, `Code.training.*`, `Code.evaluation.*`)
+still work as compatibility shims, so older commands and checkpoints keep loading.
+
 ```
 Neural-Knapsack-Research-Project/
-│
-├── Code/
-│   ├── env/                    # scheduling_env.py, gym_scheduling_wrapper.py, env_config.py
-│   ├── policies/                # ppo_policy.py, a2c_policy.py, pointer_policy.py
-│   ├── training/                 # train_rl_agent.py, train_a2c.py, train_optimized.py, optuna_tune.py
-│   ├── evaluation/                # eval_rl_agent.py
-│   └── utils/                      # plotting_utils.py, paths.py (canonical rl_training/ locations)
-│
-├── tests/                      # test_env.py, test_diagnostic.py, test_high_entropy.py,
-│                                # test_bugfixes.py (regression checks for env/reward bug fixes)
-├── docs/                       # OPTUNA_GUIDE.md, QUICK_START.md, and dated session reports
-├── Future/                     # planned extensions + Future/research/ (training-log.md,
-│                                # dated investigation write-ups -- check here first for
-│                                # "what have we tried and what happened")
-│
-├── PROGRESS.md                 # narrative story of the project so far (what was tried,
-│                                # what broke, how it was diagnosed) -- links back to
-│                                # Future/research/ for the detailed run-by-run record
-│
-├── rl_training/                 # generated, gitignored -- single canonical output location
-│   ├── models/                 # Saved model checkpoints + env config snapshots (latest
-│   │   └── archive/            # run only -- overwritten each run). archive/ keeps a
-│   │                            # dated/tagged copy per run so past runs aren't lost;
-│   │                            # see Code/utils/results_log.py::archive_checkpoint_files
-│   ├── results/                 # eval_results.csv -- one row per eval run (reward/
-│   │                            # tardiness/late-jobs, model vs heuristic), appended
-│   │                            # across the whole project's history, never overwritten
-│   ├── logs/                   # TensorBoard logs
-│   ├── optuna_results/         # Optuna optimization results and visualizations
-│   └── plots/                  # Live-plotting output: training/<run>/ and eval/<run>/
-│
-├── README.md
-└── requirements.txt
+|
+|-- run.py                     # ONE launcher: variant -> preset -> method (see below)
+|-- experiments/               # saved run configurations (YAML) for run.py --experiment
+|
+|-- Code/
+|   |-- core/                  # the shared problem: SchedulingEnv, OnlineSchedulingEnv,
+|   |                          #   instance generators (env_config, arrival_process),
+|   |                          #   base gym wrappers + action masking
+|   |-- variants/              # one package per problem/reward definition, each with
+|   |   |-- v1_legacy_reward/  #   PRESETS = exactly reproducible evaluation protocols
+|   |   `-- v2_objectives/     #   selectable objectives + difficulty (planned)
+|   |-- methods/               # every solution method, one package per family
+|   |   |-- heuristics/        #   priority rule x placement rule registry (EDF, ATC, ...)
+|   |   |-- metaheuristic/     #   PSO
+|   |   |-- exact/             #   CP-SAT
+|   |   `-- rl/                #   policies/, action_spaces/ (Options 1-4), training/, evaluation/
+|   `-- utils/                 # paths (artefact locations), results_log, plotting, diagnostics
+|
+|-- Results/                   # curated results, one folder per variant (see Results/README.md)
+|   |-- v1_legacy_reward/      #   everything up to 2026-09-28 + runs/ from run.py
+|   `-- v2_objectives/
+|-- tests/                     # regression scripts: python -m tests.<name>
+|-- Future/research/           # training-log.md + dated design/investigation docs + references.bib
+|-- PROGRESS.md                # narrative story of the project
+`-- rl_training/               # generated, gitignored (or NK_ARTIFACTS_DIR/<machine>/, see below)
 ```
 
-**Running any script**: invoke as a module from the repo root, e.g.
-`python -m Code.training.train_rl_agent --algo a2c` -- not
-`python Code/training/train_rl_agent.py`. Script mode puts the script's own
-directory on `sys.path[0]` rather than the repo root, which breaks the `Code.*`
-absolute imports used throughout (`from Code.env.scheduling_env import ...`, etc.).
+### Running things
+
+```
+python run.py                  # interactive menu
+python run.py --list           # variants, presets, methods
+python run.py --variant v1_legacy_reward --preset off_c_15 --method EDF
+python run.py --variant v1_legacy_reward --preset off_c_small --method cpsat
+python run.py --variant v1_legacy_reward --preset on_r_50 --method rl-eval:3
+python run.py --experiment experiments/pso_vs_edf_off_c_15.yaml
+```
+
+Heuristic / PSO / CP-SAT runs are saved to `Results/<variant>/runs/<timestamp>_<preset>_<method>/`
+(`run.json` with git commit, machine, full config and metrics, plus `per_instance.csv`). Every run
+reports **jobs scheduled and dropped next to tardiness**, because tardiness alone hides dropped jobs.
+RL methods delegate to the training/evaluation scripts with the preset's exact flags.
+
+Individual modules can still be run directly as modules from the repo root, e.g.
+`python -m Code.methods.rl.training.train_action_space_variant --option 1` -- not as script files,
+which breaks the `Code.*` absolute imports.
+
+### Two machines: artefact storage
+
+Set `NK_ARTIFACTS_DIR` to a cloud-synced folder and (optionally) `NK_MACHINE` to a machine name;
+generated artefacts then go to `NK_ARTIFACTS_DIR/<machine>/` instead of `rl_training/`. Each machine
+writes only its own subfolder (sync tools corrupt `optuna.db` and fork appended CSVs otherwise).
+Unset = the original `rl_training/` behaviour.
 
 ## Components
 

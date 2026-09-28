@@ -98,7 +98,7 @@ genuine research-methodology skill, not just an engineering one.
 
 ## 4. Potential-based reward shaping: the first RL result to beat the heuristic baseline (2026-08-19)
 
-**Image:** `Results/reduced_budget_2026-09-04/figures/gantt_pointer_shaped.png`
+**Image:** `Results/v1_legacy_reward/reduced_budget_2026-09-04/figures/gantt_pointer_shaped.png`
 
 **Caption:** After several results tied tardiness improvements to reward hacking,
 potential-based shaping (Ng, Harada & Russell, 1999 — provably policy-invariant, so it
@@ -299,7 +299,7 @@ checking whether the experimental scale itself could be hiding the effect.
 
 ## 10. A full-suite comparison table, not just an RL-vs-one-baseline number (2026-09-04)
 
-**Image:** `Results/reduced_budget_2026-09-04_v2/figures/comparison_tardiness.png`
+**Image:** `Results/v1_legacy_reward/reduced_budget_2026-09-04_v2/figures/comparison_tardiness.png`
 
 **Caption:** A single evaluation run comparing six methods side by side on 8 held-out
 instances (45 jobs / 6 machines / horizon 50), each reported as mean ± standard

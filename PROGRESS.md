@@ -412,12 +412,13 @@ doesn't yet have a validated way to turn that structure into a better deployed c
 that needs a full-training-budget search, a substantially larger compute commitment left
 for a future session.
 
-## Phase 13 — Objective redesign decided: reward must equal the objective (2026-09-28)
+## Phase 13 — Objective redesign decided: reward must equal the objective (2026-09-28, S2W11)
 
 Re-checking the PSO-vs-EDF anomaly (PSO reward 329 > EDF 286 with 20x the tardiness) on current
-code showed EDF schedules all 100 jobs on every held-out instance and now scores 346.34: the
-August gap came mostly from the since-fixed hotspot bug, and the +3/+50 bonuses are constant for
-any full schedule. A full reward audit found tardiness is the smallest term, dropped jobs are
+code, at the protocol's horizon of 100, reproduces EDF's 286.00 / 50.33 exactly. EDF drops about 3
+jobs per instance (97.2/100 scheduled), so it never earns the +50 completion bonus. A schedule that
+fits every job in, however late, beats it on reward. A first re-check at horizon 110 wrongly
+suggested otherwise; the correction is recorded in the decision doc. A full reward audit found tardiness is the smallest term, dropped jobs are
 nearly free and invisible to the metrics, the activation penalty isn't energy, and the hotspot and
 idle terms have no objective meaning. Decisions (remove non-objective terms, drop penalty at each
 job's latest start, energy as active machine-ticks / SPECpower curve, physical-unit exchange rates,

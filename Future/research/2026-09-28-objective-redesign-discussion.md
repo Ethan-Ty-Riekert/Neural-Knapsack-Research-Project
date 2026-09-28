@@ -1,6 +1,6 @@
 # Decision Record: Objective / Reward Redesign Discussion
 
-**Date:** 2026-09-28
+**Date:** 2026-09-28 (S2W11)
 **Type:** Design discussion + decisions (no code changed by this document)
 **Status:** Decisions recorded below; items marked **OPEN** are still being weighed by the user.
 **Supersedes nothing** — every result produced under the legacy and dense rewards stays valid *as a result
@@ -20,18 +20,40 @@ The PSO baseline study (`2026-08-28-pso-metaheuristic-baseline.md`) reported, on
 
 User question: *how can PSO have the better reward while being worse on everything else?*
 
-**Re-check (2026-09-28, current code):** EDF on the same 15 instances →
-reward **346.34**, tardiness **50.87**, late **14.53**, jobs scheduled **100/100 on every instance**
-(5 of 15 instances with zero tardiness, i.e. EDF hits the reward ceiling of 347).
+**Re-check (2026-09-28, current code), and a correction made during this same session.**
+- *First re-check (wrong horizon).* This used `generate_env_config`'s default horizon of 110, but the
+  protocol uses **H = 100** (see `results_data.py` `PROTOCOLS["off_c_15"]`). It gave reward 346.34,
+  tardiness 50.87 and 100/100 jobs scheduled. From that I concluded the gap was the hotspot bug and that EDF
+  never drops jobs. **Both conclusions were wrong and are retracted.**
+- *Correct re-check (H = 100).* EDF gives reward **286.00**, tardiness **50.33**, late **14.20**. That is an
+  exact reproduction of August, so the reward code for this path hasn't changed since. EDF schedules only
+  **97.2 / 100 jobs on average (worst case 95)**, so it **drops about 3 jobs per instance** and never earns
+  the +50 completion bonus.
 
-Findings:
-- Tardiness reproduces (50.87 vs 50.33) → same instances, same schedules.
-- Reward does not (346 vs 286): ~60 points came from bugs fixed since August, most plausibly the
-  `compute_theta` hotspot bug (fixed 2026-09-20). The August PSO "win" was mostly PSO exploiting that term.
-- EDF does **not** drop jobs, so its low tardiness is genuine (an initial hypothesis that it did was wrong
-  and is retracted).
-- The PSO-vs-EDF reward comparison is therefore not evidence PSO schedules better; PSO has not been rerun
-  on current code.
+**Explanation of the anomaly.** Take a schedule that fits all 100 jobs in, even very late ones. Compared with
+EDF it earns +50 (completion) and about 3 × 2.8 ≈ +8.4 (per-job bonus), and pays only about −(1012 − 50)/100
+≈ −9.6 in extra tardiness. That nets roughly +49, against the observed gap of +43.7. So PSO most likely wins
+by **finishing every job** and ignoring lateness. That is exactly the "flat bonuses dominate the bounded
+tardiness penalty" defect. (Confirmation run of PSO's jobs-scheduled count: see §1a.)
+
+Two consequences:
+- EDF's low tardiness is **partly bought by dropping jobs**. The tardiness metric doesn't count dropped jobs,
+  so EDF's 50.33 and PSO's 1012 aren't measured on the same set of jobs. Neither number is a fair comparison
+  on its own; jobs scheduled must be reported alongside tardiness.
+- The horizon itself changes the conclusion. At H = 110 EDF fits every job in and earns the bonus. Any
+  comparison must pin the protocol's exact dimensions, and the launcher presets do this (§11).
+
+### 1a. Confirmation run (2026-09-28, current code, H = 100, PSO swarm 15 × 30 iterations, seed 0)
+
+| Instance | PSO reward | PSO tard | PSO sched | EDF reward | EDF tard | EDF sched |
+|---|---|---|---|---|---|---|
+| 500000 | 337.65 | 935 | **100** | 286.00 | **0** | **97** |
+| 500001 | 335.66 | 1134 | **100** | 277.42 | 58 | **95** |
+
+Confirmed. PSO wins on reward by scheduling every job and ignoring lateness. On instance 500000, EDF has
+zero tardiness because it **drops the 3 jobs that would have been late** rather than finishing them late.
+Neither behaviour is what the project wants. The legacy reward favours the first, and the legacy tardiness
+metric makes the second look perfect.
 
 ## 2. Audit of the current reward (both modes)
 

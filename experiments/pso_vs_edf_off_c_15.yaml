@@ -1,0 +1,9 @@
+# Reproduces the 2026-08-28 PSO baseline on the 15 held-out instances (legacy reward).
+# Compare against: python run.py --variant v1_legacy_reward --preset off_c_15 --method EDF
+variant: v1_legacy_reward
+preset: off_c_15
+method: pso
+pso_swarm: 15
+pso_iterations: 30
+pso_fitness: reward
+seed: 0

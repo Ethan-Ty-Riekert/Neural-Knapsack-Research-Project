@@ -1,6 +1,6 @@
 """build_folder.py - export the master dataset and regenerate every comparison figure.
 
-Run from the repo root:  python Results/ALL_RESULTS_2026-07-24_to_2026-09-22/scripts/build_folder.py
+Run from the repo root:  python Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scripts/build_folder.py
 """
 import csv
 import json
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-REPO = ROOT.parents[1]
+REPO = ROOT.parents[2]  # <repo>/Results/v1_legacy_reward/<this folder>  (moved 2026-09-28)
 sys.path.insert(0, str(HERE))
 from results_data import R, PROTOCOLS, FAMILIES, NO_METRIC_NOTES  # noqa: E402
 
@@ -104,8 +104,8 @@ def copy_surviving():
     """Copy every figure/data file that still exists anywhere in the working tree."""
     dst = ROOT / "figures" / "original_surviving"
     copied = []
-    for src_dir, tag in [(REPO / "Results" / "reduced_budget_2026-09-04" / "figures", "reduced_budget_v1"),
-                         (REPO / "Results" / "reduced_budget_2026-09-04_v2" / "figures", "reduced_budget_v2"),
+    for src_dir, tag in [(REPO / "Results" / "v1_legacy_reward" / "reduced_budget_2026-09-04" / "figures", "reduced_budget_v1"),
+                         (REPO / "Results" / "v1_legacy_reward" / "reduced_budget_2026-09-04_v2" / "figures", "reduced_budget_v2"),
                          (REPO / "EthanTravelDocs" / "portfolio-artefacts" / "figures", "portfolio")]:
         for f in sorted(src_dir.glob("*.png")):
             (dst / tag).mkdir(parents=True, exist_ok=True)
@@ -114,8 +114,8 @@ def copy_surviving():
     raw = ROOT / "data" / "raw_sources"
     raw.mkdir(parents=True, exist_ok=True)
     for f, name in [(REPO / "EthanTravelDocs/portfolio-artefacts/data/key_results_excerpt.csv", "eval_results_excerpt_2026-09-18_to_22.csv"),
-                    (REPO / "Results/reduced_budget_2026-09-04/raw_eval_results.csv", "reduced_budget_v1_raw_eval_results.csv"),
-                    (REPO / "Results/reduced_budget_2026-09-04_v2/raw_eval_results.csv", "reduced_budget_v2_raw_eval_results.csv")]:
+                    (REPO / "Results/v1_legacy_reward/reduced_budget_2026-09-04/raw_eval_results.csv", "reduced_budget_v1_raw_eval_results.csv"),
+                    (REPO / "Results/v1_legacy_reward/reduced_budget_2026-09-04_v2/raw_eval_results.csv", "reduced_budget_v2_raw_eval_results.csv")]:
         shutil.copy2(f, raw / name)
     for f in (REPO / "rl_training" / "optuna_results").glob("*"):
         (raw / "optuna_results").mkdir(exist_ok=True)

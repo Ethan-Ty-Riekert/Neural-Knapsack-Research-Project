@@ -94,7 +94,7 @@ This project is held to a research standard, not a "ship it" standard.
 
 ## Practical quirks
 
-- Run modules via `python -m Code.training.train_rl_agent` (etc.), not by
+- Run modules via `python -m Code.methods.rl.training.train_rl_agent` (etc., or the `run.py` launcher), not by
   executing the script file directly — direct execution breaks the package's
   relative imports. See `README.md` / `docs/QUICK_START.md`.
 - The Windows console defaults to cp1252. Avoid non-ASCII characters (e.g.

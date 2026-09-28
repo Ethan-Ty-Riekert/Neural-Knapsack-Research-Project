@@ -32,6 +32,36 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-28 (S2W11) -- PSO-vs-EDF reward anomaly explained: EDF drops ~3 jobs/instance, PSO finishes all 100
+
+**Config:** no training. Re-evaluation on current code: EDF on `off_c_15` (seeds 500000-500014,
+100 jobs / 10 machines / H=100, legacy reward); PSO (swarm 15, 30 iterations, seed 0, reward fitness)
+vs EDF on seeds 500000-500001. Now reproducible via
+`python run.py --experiment experiments/edf_off_c_15.yaml` / `pso_vs_edf_off_c_15.yaml`.
+
+**Stats:**
+```
+EDF off_c_15 (H=100): reward 286.00  tardiness 50.33  late 14.20  scheduled 97.2/100 (min 95)
+EDF off_c_15 (H=110, WRONG horizon): reward 346.34  tardiness 50.87  scheduled 100/100
+seed 500000: PSO 337.65 / tard 935 / sched 100   EDF 286.00 / tard 0  / sched 97
+seed 500001: PSO 335.66 / tard 1134 / sched 100  EDF 277.42 / tard 58 / sched 95
+```
+
+**Observation:** EDF's recorded 286.00 / 50.33 / 14.20 reproduces exactly at H=100, so the reward path
+hasn't changed since 2026-08-28. EDF drops about 3 jobs per instance and so never earns the +50 completion
+bonus. PSO schedules every job, however late: +50 + ~8.4 in per-job bonuses, against only about -9.6 of
+bounded tardiness, nets roughly +49 (observed gap +43.7). On seed 500000, EDF's zero tardiness comes from
+dropping exactly the 3 jobs that would have been late. The tardiness metric doesn't count dropped jobs.
+A first re-check this session used `generate_env_config`'s default H=110 and wrongly concluded that EDF
+never drops jobs and that the hotspot bug explained the gap. That conclusion is retracted.
+
+**Conclusion / next step:** neither "finish everything late" (rewarded by the legacy reward) nor "drop the
+jobs that would be late" (flattered by the tardiness metric) is the intended behaviour. This drove the
+objective redesign in `2026-09-28-objective-redesign-discussion.md` (reward = objective, explicit drop
+penalty, dropped jobs always reported). All tools now report jobs scheduled and dropped next to tardiness.
+
+---
+
 ## 2026-09-22 (S2W9) -- The "overfitting" hypothesis is REFUTED: training windowed Option 3 on randomized instances made generalization WORSE, not better -- but this matches an already-established project pattern
 
 **Context:** Direct test of the previous entry's hypothesis -- that windowed
