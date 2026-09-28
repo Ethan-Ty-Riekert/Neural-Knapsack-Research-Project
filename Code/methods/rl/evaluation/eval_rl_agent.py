@@ -14,6 +14,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
 from Code.core.scheduling_env import SchedulingEnv
+from Code.core.metrics import schedule_metrics
 from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
 from Code.core.env_config import generate_env_config
 from Code.core.online_scheduling_env import OnlineSchedulingEnv
@@ -151,6 +152,7 @@ def run_model(model, config=None):
         # now (a hidden completion-rate gap explained two separate
         # misleading-looking results this session).
         "jobs_scheduled": int((base_env.start_times != -1).sum()),
+        "metrics": schedule_metrics(base_env),  # reward-independent, see Code/core/metrics.py
         "utilisation_over_time": utilisation_over_time,
     }
 
@@ -226,6 +228,7 @@ def run_heuristic(name, config=None):
         # now (a hidden completion-rate gap explained two separate
         # misleading-looking results this session).
         "jobs_scheduled": int((base_env.start_times != -1).sum()),
+        "metrics": schedule_metrics(base_env),  # reward-independent, see Code/core/metrics.py
         "utilisation_over_time": utilisation_over_time,
     }
 

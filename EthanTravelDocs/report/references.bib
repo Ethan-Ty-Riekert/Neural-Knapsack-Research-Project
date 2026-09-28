@@ -1,486 +1,3 @@
-
-% ---------------------------------------------------------------------
-% Scheduling / RL-for-scheduling
-% ---------------------------------------------------------------------
-
-@inproceedings{mao2016deeprm,
-  author    = {Mao, Hongzi and Alizadeh, Mohammad and Menache, Ishai and Kandula, Srikanth},
-  title     = {Resource Management with Deep Reinforcement Learning},
-  booktitle = {Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets)},
-  year      = {2016},
-  note      = {DeepRM. Action space {\O, job\_slot\_1, ..., job\_slot\_M} (M~10-20,
-               bounded visible window + backlog count), reward $r_t=\sum_j -1/T_j$
-               per tick. Cited in Code/policies/pointer_policy.py, the 2026-09-17
-               action-space-reduction and dense-tardiness-reward docs, and the
-               2026-09-16 online-arrival-mdp-design doc.}
-}
-
-@inproceedings{mao2019decima,
-  author    = {Mao, Hongzi and Schwarzkopf, Malte and Venkatakrishnan, Shaileshh Bojja and Meng, Zili and Alizadeh, Mohammad},
-  title     = {Learning Scheduling Algorithms for Data Processing Clusters},
-  booktitle = {Proceedings of the ACM Special Interest Group on Data Communication (SIGCOMM)},
-  year      = {2019},
-  note      = {Decima. GNN over per-job DAG stages; action = pick a schedulable
-               stage (analogous to DeepRM's job-slot pick) + a small bounded
-               executor-count choice. Reports 19-45\% improvement over baselines.
-               Cited in the 2026-09-17 action-space-reduction and
-               dense-tardiness-reward docs.}
-}
-
-@article{vepsalainen1987atc,
-  author  = {Vepsalainen, Ari P. J. and Morton, Thomas E.},
-  title   = {Priority Rules for Job Shops with Weighted Tardiness Costs},
-  journal = {Management Science},
-  volume  = {33},
-  number  = {8},
-  pages   = {1035--1047},
-  year    = {1987},
-  note    = {ATC (Apparent Tardiness Cost) rule. Cited in
-             Code/baselines/priority_rules.py::atc\_priority/atc\_key, the
-             2026-09-16 online-arrival-mdp-design doc, and the 2026-09-17
-             heavy-tailed-arrivals / action-space-reduction docs (Option 3's
-             ATC-primed feature).}
-}
-
-@article{min2022atctuning,
-  author  = {Min, Boae and Kim, Chang Ouk},
-  title   = {State-Dependent Parameter Tuning of the Apparent Tardiness Cost Dispatching Rule Using Deep Reinforcement Learning},
-  journal = {IEEE Access},
-  volume  = {10},
-  pages   = {20187--20198},
-  year    = {2022},
-  note    = {DDPG-tuned state-dependent ATC parameter k -- NOT what this
-             project implements (fixed k=2.0); named as the extension this
-             project's ATC rule does not attempt. Cited in
-             priority_rules.py::atc\_key and the 2026-09-16
-             online-arrival-mdp-design doc.}
-}
-
-@book{pinedo2016scheduling,
-  author    = {Pinedo, Michael L.},
-  title     = {Scheduling: Theory, Algorithms, and Systems},
-  edition   = {5th},
-  publisher = {Springer},
-  year      = {2016},
-  note      = {Standard reference for EDF/SPT/LST priority-rule scheduling
-               theory. Cited in the 2026-08-28 classical-heuristic-baselines
-               doc.}
-}
-
-@article{graham1969lpt,
-  author  = {Graham, Ronald L.},
-  title   = {Bounds on Multiprocessing Timing Anomalies},
-  journal = {SIAM Journal on Applied Mathematics},
-  volume  = {17},
-  number  = {2},
-  pages   = {416--429},
-  year    = {1969},
-  note    = {LPT's (4/3 - 1/(3m)) makespan approximation bound on identical
-             parallel machines. Cited in priority_rules.py::lpt\_key and the
-             2026-08-28 classical-heuristic-baselines doc.}
-}
-
-@article{smith1956wspt,
-  author  = {Smith, Wayne E.},
-  title   = {Various Optimizers for Single-Stage Production},
-  journal = {Naval Research Logistics Quarterly},
-  volume  = {3},
-  number  = {1-2},
-  pages   = {59--66},
-  year    = {1956},
-  note    = {Smith's rule / WSPT, optimal for minimizing total weighted
-             completion time on a single machine. Cited in
-             priority_rules.py::wspt\_key and the 2026-08-28
-             classical-heuristic-baselines doc.}
-}
-
-@article{johnson1973binpacking,
-  author  = {Johnson, David S.},
-  title   = {Near-Optimal Bin Packing Algorithms},
-  journal = {Journal of the ACM},
-  year    = {1973},
-  note    = {First-Fit / Best-Fit / Worst-Fit classical bin-packing placement
-             rules. Cited in Code/baselines/placement_rules.py and the
-             2026-08-28 classical-heuristic-baselines doc.}
-}
-
-@article{grandl2014tetris,
-  author  = {Grandl, Robert and Ananthanarayanan, Ganesh and Kandula, Srikanth and Rao, Sriram and Akella, Aditya},
-  title   = {Multi-Resource Packing for Cluster Schedulers},
-  journal = {ACM SIGCOMM Computer Communication Review},
-  volume  = {44},
-  number  = {4},
-  pages   = {455--466},
-  year    = {2014},
-  note    = {Tetris: multi-resource dot-product alignment score. Cited in
-             Code/baselines/placement_rules.py::tetris\_score and the
-             2026-08-28 classical-heuristic-baselines doc.}
-}
-
-@article{lenstra1977complexity,
-  author  = {Lenstra, Jan Karel and Rinnooy Kan, Alexander H. G. and Brucker, Peter},
-  title   = {Complexity of Machine Scheduling Problems},
-  journal = {Annals of Discrete Mathematics},
-  volume  = {1},
-  pages   = {343--362},
-  year    = {1977},
-  note    = {NP-hardness of resource-constrained scheduling with tardiness
-             objectives -- grounds why Code/baselines/exact_solver.py's
-             CP-SAT baseline (offline and the 2026-09-17 retrospective
-             online oracle) is restricted to small/time-limited instances.
-             Cited in the 2026-08-28 exact-solver-baseline doc.}
-}
-
-@misc{ortools,
-  author       = {Perron, Laurent and Furnon, Vincent},
-  title        = {OR-Tools},
-  howpublished = {Google},
-  url          = {https://developers.google.com/optimization/cp/cp_solver},
-  note         = {CP-SAT solver and its interval-variable/cumulative-constraint
-                  modelling primitives, used throughout
-                  Code/baselines/exact_solver.py. Cited in the 2026-08-28
-                  exact-solver-baseline doc.}
-}
-
-@article{lassoued2026hyperheuristic,
-  author  = {Lassoued, Sofiene and Gobachew, Asrat and Lier, Stefan and Schwung, Andreas},
-  title   = {Policy-Based Deep Reinforcement Learning Hyperheuristics for Job-Shop Scheduling Problems},
-  journal = {arXiv preprint arXiv:2601.11189},
-  year    = {2026},
-  note    = {Submitted 16 Jan 2026. RL hyper-heuristic agent learns to switch
-             scheduling rules dynamically based on system state, with action
-             prefiltering (restrict to feasible low-level actions) and a
-             commitment mechanism (regulates switching frequency) -- directly
-             analogous to Option 1's rule-selection design
-             (Code/env/rule_selection_gym_wrapper.py, 2026-09-17
-             action-space-reduction). Verified via WebSearch 2026-09-17;
-             found during this session's earlier (pre-compaction) research
-             but never previously recorded in a doc References section --
-             a gap this bib file exists to prevent recurring.}
-}
-
-@article{cie2025dispatchruleselection,
-  title   = {Dynamic Dispatching Rule Selection for the Job Shop Scheduling Problem},
-  journal = {Computers and Industrial Engineering},
-  doi     = {10.1016/j.cie.2025.111471},
-  year    = {2025},
-  note    = {Author list not yet confirmed (unresolved via WebSearch
-             2026-09-17 -- title/journal/DOI confirmed, authors were not
-             surfaced by search results). Periodic and real-time dispatching
-             rule selection systems (supervised/RL) outperform the single
-             best fixed rule by >10\%, periodic more robust than real-time.
-             Directly motivates Option 1's hyper-heuristic framing
-             (2026-09-17 action-space-reduction doc). Found during this
-             session's earlier (pre-compaction) research but never
-             previously recorded -- see lassoued2026hyperheuristic's note.}
-}
-
-% ---------------------------------------------------------------------
-% Neural network architecture (pointer / attention)
-% ---------------------------------------------------------------------
-
-@inproceedings{vinyals2015pointernet,
-  author    = {Vinyals, Oriol and Fortunato, Meire and Jaitly, Navdeep},
-  title     = {Pointer Networks},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2015},
-  note      = {arXiv:1506.03134. Foundational query/key compatibility-as-logit
-               mechanism for selecting one element of a variable-size input
-               set -- the architectural lineage Code/policies/pointer_policy.py
-               is drawn from. Cited in the 2026-08-09
-               pointer-network-action-head and 2026-09-16 pointer-network-ppo
-               docs.}
-}
-
-@inproceedings{kool2019attention,
-  author    = {Kool, Wouter and van Hoof, Herke and Welling, Max},
-  title     = {Attention, Learn to Solve Routing Problems!},
-  booktitle = {International Conference on Learning Representations (ICLR)},
-  year      = {2019},
-  note      = {arXiv:1803.08475. Scaled dot-product + tanh-clipping
-               compatibility scoring, used unchanged by
-               PointerActorCritic.CompatibilityScorer and
-               PriorityPointerActorCritic.JobScoreHead. Cited in the
-               2026-08-09 pointer-network-action-head, 2026-09-16
-               pointer-network-ppo, and 2026-09-17 action-space-reduction
-               docs.}
-}
-
-@article{song2023daniel,
-  author  = {Song, Wen and others},
-  title   = {Flexible Job Shop Scheduling via Dual Attention Network Based Reinforcement Learning},
-  journal = {arXiv preprint arXiv:2305.05119},
-  year    = {2023},
-  note    = {DANIEL. Closest structural analog to this project's pointer
-             architecture: separate operation/job and machine embeddings, a
-             pairwise decision network. Cited in the 2026-08-09
-             pointer-network-action-head doc. Full author list not
-             re-verified since original citation.}
-}
-
-@article{hu2021attend2pack,
-  author  = {Hu, Ruizhen and others},
-  title   = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with Attention},
-  journal = {arXiv preprint arXiv:2107.04333},
-  year    = {2021},
-  note    = {Self-attention item encoder + pointer-style masked selection,
-             action-space decomposition into a sequence policy + placement
-             policy. Cited in the 2026-08-09 pointer-network-action-head doc.
-             Full author list not re-verified since original citation.
-             DUPLICATE WARNING (added 2026-09-17): same arXiv:2107.04333 paper
-             as DBLP:journals/corr/abs-2107-04333 below (merged in from
-             ethansreferences.bib, author list there is Zhang/Zi/Ge per DBLP --
-             conflicts with "Hu, Ruizhen" here). Resolve which author list is
-             correct and cite with one key only before submission.}
-}
-
-@article{gnn2024jsspsurvey,
-  title   = {Graph Neural Networks for Job Shop Scheduling Problems: A Survey},
-  journal = {arXiv preprint arXiv:2406.14096},
-  year    = {2024},
-  note    = {Recency citation; GNN message-passing between job and machine
-             nodes as the natural next architectural step beyond this
-             project's independent (non-message-passing) job/machine
-             encoders. Cited in the 2026-08-09 pointer-network-action-head
-             doc.}
-}
-
-@techreport{tavakoli2018actionbranching,
-  author      = {Tavakoli, Arash and Pardo, Fabio and Kormushev, Petar},
-  title       = {Action Branching Architectures for Deep Reinforcement Learning},
-  institution = {arXiv},
-  number      = {1711.08946},
-  year        = {2018},
-  note        = {General factored/hierarchical action-space pattern: decouple
-                 one large joint action into sequential smaller
-                 per-dimension decisions (additive |A1|+|A2| instead of
-                 multiplicative |A1|x|A2|). Raised 2026-09-17 as the
-                 generalizable principle behind a possible future
-                 learned-placement-head follow-up to Options 1/2/3 (see
-                 2026-09-17-action-space-reduction.md Section 7) -- not yet
-                 implemented.}
-}
-
-
-@techreport{dulacarnold2015largeactionspaces,
-  author      = {Dulac-Arnold, Gabriel and Evans, Richard and van Hasselt, Hado and Sunehag, Peter and Lillicrap, Timothy and Hunt, Jonathan and Mann, Timothy and Weber, Theophane and Degris, Thomas and Coppin, Ben},
-  title       = {Deep Reinforcement Learning in Large Discrete Action Spaces},
-  institution = {arXiv},
-  number      = {1512.07679},
-  year        = {2015},
-  note        = {Wolpertinger architecture: actor outputs a continuous
-                 "proto-action" embedding, k-NN lookup over an embedding
-                 table maps it to a small candidate set of real discrete
-                 actions, a critic ranks the candidates. Scales to
-                 million-action spaces without ever materializing a full
-                 softmax output layer. Raised 2026-09-18 as the general
-                 (non-scheduling-specific) large-discrete-action-space
-                 literature answer, alongside sutton1999options and
-                 huang2020invalidmasking. Not implemented here.}
-}
-
-% ---------------------------------------------------------------------
-% RL theory / reward shaping / constrained RL
-% ---------------------------------------------------------------------
-
-@inproceedings{ng1999shaping,
-  author    = {Ng, Andrew Y. and Harada, Daishi and Russell, Stuart},
-  title     = {Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {1999},
-  note      = {Proves shaped\_reward = reward + gamma*Phi(s') - Phi(s) has the
-               same optimal policies as the unshaped reward, for any bounded
-               potential Phi. Grounds
-               SchedulingEnv.\_\_init\_\_'s use\_potential\_shaping option. Cited
-               in the 2026-08-09 pointer-network-action-head and 2026-09-16
-               online-arrival-mdp-design docs, and CLAUDE.md's own rigor-rule
-               example.}
-}
-
-@inproceedings{tessler2019rcpo,
-  author    = {Tessler, Chen and Mankowitz, Daniel J. and Mannor, Shie},
-  title     = {Reward Constrained Policy Optimization},
-  booktitle = {International Conference on Learning Representations (ICLR)},
-  year      = {2019},
-  note      = {arXiv:1805.11074. RCPO -- basis for the A2C constrained-tardiness
-               training path (Code/policies/a2c_policy.py). Cited in the
-               2026-08-21 rcpo-constrained-tardiness and 2026-09-14
-               ppo-lagrangian-and-reward-structure docs.}
-}
-
-@techreport{borkar2008stochasticapprox,
-  author      = {Borkar, Vivek S.},
-  title       = {Stochastic Approximation: A Dynamical Systems Viewpoint},
-  institution = {Cambridge University Press / Hindustan Book Agency},
-  year        = {2008},
-  note        = {Two-timescale stochastic approximation convergence theory
-                 underlying RCPO's Theorem 1 -- grounds the
-                 update\_every\_episodes timescale separation between the
-                 policy update and the Lagrange multiplier update. Cited in
-                 the 2026-08-21 rcpo-constrained-tardiness and 2026-09-14
-                 ppo-lagrangian-and-reward-structure docs.}
-}
-
-@article{roijers2013morl,
-  author  = {Roijers, Diederik M. and Vamplew, Peter and Whiteson, Shimon and Dazeley, Richard},
-  title   = {A Survey of Multi-Objective Sequential Decision-Making},
-  journal = {Journal of Artificial Intelligence Research},
-  volume  = {48},
-  pages   = {67--113},
-  year    = {2013},
-  note    = {arXiv:1402.0590. Motivates why a fixed linear scalarization
-               weight cannot reliably target a specific point on a
-               multi-objective trade-off. Cited in the 2026-08-21
-               rcpo-constrained-tardiness and 2026-08-28
-               multi-objective-optuna-pareto docs.}
-}
-
-@techreport{eimer2023hyperparams,
-  author      = {Eimer, Theresa and Lindauer, Marius and Raileanu, Roberta},
-  title       = {Hyperparameters in Reinforcement Learning and How To Tune Them},
-  institution = {arXiv},
-  number      = {2306.01324},
-  year        = {2023},
-  note        = {Explains why a fixed-weight tardiness-focused hyperparameter
-                 search tuned at small scale failed to transfer to full
-                 deployment scale. Cited in the 2026-08-21
-                 rcpo-constrained-tardiness doc.}
-}
-
-@techreport{ray2019safeexploration,
-  author      = {Ray, Alex and Achiam, Joshua and Amodei, Dario},
-  title       = {Benchmarking Safe Exploration in Deep Reinforcement Learning},
-  institution = {arXiv},
-  number      = {1910.01708},
-  year        = {2019},
-  note        = {Cited in the 2026-09-14 ppo-lagrangian-and-reward-structure
-                 doc alongside the PPO-Lagrangian constrained-RL literature.}
-}
-
-@inproceedings{stooke2020pidlagrangian,
-  author    = {Stooke, Adam and Achiam, Joshua and Abbeel, Pieter},
-  title     = {Responsive Safety in Reinforcement Learning by PID Lagrangian Methods},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  year      = {2020},
-  note      = {PMLR v119. Cited in the 2026-09-14
-               ppo-lagrangian-and-reward-structure doc -- PID-Lagrangian as
-               an alternative to the plain dual-ascent Lagrange multiplier
-               update this project uses.}
-}
-
-@techreport{amodei2016concreteproblems,
-  author      = {Amodei, Dario and Olah, Chris and Steinhardt, Jacob and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
-  title       = {Concrete Problems in AI Safety},
-  institution = {arXiv},
-  number      = {1606.06565},
-  year        = {2016},
-  note        = {Cited in the 2026-09-14 ppo-lagrangian-and-reward-structure
-                 doc as general constrained/safe-RL framing.}
-}
-
-@article{skalse2022rewardhacking,
-  author  = {Skalse, Joar and Howe, Nikolaus and Krasheninnikov, Dmitrii and Krueger, David},
-  title   = {Defining and Characterizing Reward Hacking},
-  journal = {arXiv preprint arXiv:2209.13085},
-  year    = {2022},
-  note    = {Formal grounding for classifying a reward-function misalignment
-             as reward hacking rather than ordinary sub-optimality. Cited in
-             the 2026-08-28 multi-objective-optuna-pareto doc, originally
-             from this project's Phase 7 literature review.}
-}
-
-% ---------------------------------------------------------------------
-% Optimization / multi-objective tooling
-% ---------------------------------------------------------------------
-
-@article{deb2002nsga2,
-  author  = {Deb, Kalyanmoy and Pratap, Amrit and Agarwal, Sameer and Meyarivan, T.},
-  title   = {A Fast and Elitist Multiobjective Genetic Algorithm: NSGA-II},
-  journal = {IEEE Transactions on Evolutionary Computation},
-  volume  = {6},
-  number  = {2},
-  pages   = {182--197},
-  year    = {2002},
-  note    = {Algorithm Optuna uses internally once a multi-objective study is
-             created. Cited in the 2026-08-28 multi-objective-optuna-pareto
-             doc.}
-}
-
-@inproceedings{akiba2019optuna,
-  author    = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru and Koyama, Masanori},
-  title     = {Optuna: A Next-Generation Hyperparameter Optimization Framework},
-  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining (KDD)},
-  year      = {2019},
-  note      = {The hyperparameter-tuning framework used throughout this
-               project. Cited in the 2026-08-28 multi-objective-optuna-pareto
-               doc.}
-}
-
-% ---------------------------------------------------------------------
-% Queueing theory (online / dynamic-arrival case)
-% ---------------------------------------------------------------------
-
-@book{kleinrock1975queueing,
-  author    = {Kleinrock, Leonard},
-  title     = {Queueing Systems, Volume 1: Theory},
-  publisher = {Wiley},
-  year      = {1975},
-  note      = {Standard construction for Poisson-process arrivals
-               (Code/env/arrival_process.py). Cited in the 2026-09-16
-               online-arrival-mdp-design doc.}
-}
-
-@article{little1961law,
-  author  = {Little, John D. C.},
-  title   = {A Proof for the Queuing Formula: L = lambda W},
-  journal = {Operations Research},
-  volume  = {9},
-  number  = {3},
-  pages   = {383--387},
-  year    = {1961},
-  note    = {Little's Law -- underlies this project's rho = arrival\_rate/12
-             utilisation derivation for the online case's default
-             machine/resource parameters. Cited in the 2026-09-16
-             online-arrival-mdp-design doc.}
-}
-
-% ---------------------------------------------------------------------
-% Real-world cloud workload characterization (heavy-tailed arrivals, S2W10)
-% ---------------------------------------------------------------------
-
-@inproceedings{reiss2012googletrace,
-  author    = {Reiss, Charles and Tumanov, Alexey and Ganger, Gregory R. and Katz, Randy H. and Kozuch, Michael A.},
-  title     = {Heterogeneity and Dynamicity of Clouds at Scale: Google Trace Analysis},
-  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
-  year      = {2012},
-  note      = {Google cluster trace: heavily right-skewed job-size /
-               resource-demand distributions ("mostly mice, occasionally
-               elephants"). Grounds
-               Code/env/arrival_process.py::job\_size\_distribution=
-               "lognormal". Cited in the 2026-09-17 heavy-tailed-arrivals
-               doc.}
-}
-
-@inproceedings{cortez2017resourcecentral,
-  author    = {Cortez, Eli and Bonde, Anand and Muzio, Alexandre and Russinovich, Mark and Fontoura, Marcus and Bianchini, Ricardo},
-  title     = {Resource Central: Understanding and Predicting Workloads for Improved Resource Management in Large Cloud Platforms},
-  booktitle = {Proceedings of the 26th ACM Symposium on Operating Systems Principles (SOSP)},
-  year      = {2017},
-  note      = {Microsoft Azure trace analysis: heavy-tailed VM lifetime/size
-               distributions, independently corroborating
-               reiss2012googletrace's finding. Cited in the 2026-09-17
-               heavy-tailed-arrivals doc.}
-}
-
-% ---------------------------------------------------------------------
-% Cloud resource allocation background / literature review
-% Merged 2026-09-17 from NotesForAI/ethansreferences.bib (the user's own
-% collection, mostly cited in the paper's abstract/introduction rather than
-% a Future/research dated doc). No key collisions with the sections above at
-% merge time -- see hu2021attend2pack's note above for the one semantic
-% duplicate (same arXiv ID, conflicting author lists, not yet resolved).
-% ---------------------------------------------------------------------
-
 @book{huawei2022,
   author    = {Huawei Technologies},
   title     = {Introduction to Cloud Computing Computing},
@@ -701,7 +218,7 @@ url         = {https://doi.org/10.1109/NUiCONE.2013.6780076}
 }
 
 % Good on understanding RL for bin packing and the advancements.
-% VERY VERY VERY GOOD PAPER
+$ VERY VERY VERY GOOD PAPER
 @article{DAHMANI2025100616,
 title = {Reinforcement learning based intelligent optimisation for bin packing problems: A review},
 journal = {Array},
@@ -729,9 +246,7 @@ abstract = {The convergence of Reinforcement Learning (RL) and Bin Packing Probl
   doi={10.1109/LRA.2025.3534070}
   }
 
-% RL approach to bin packing (not cloud related). NOTE: same arXiv:2107.04333
-% paper as hu2021attend2pack above -- author lists conflict (Hu, Ruizhen vs.
-% Zhang/Zi/Ge per DBLP). Unresolved, flagged above; pick one before submission.
+% RL approach to bin packing (not cloud related)
 @article{DBLP:journals/corr/abs-2107-04333,
   author       = {Jingwei Zhang and
                   Bin Zi and
@@ -896,18 +411,712 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% MORE RECENT %%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%% THE AI Decided to exclude all of my references I found myself %%%%%%%%%%%%%%%%%%%%%
 
 
 
- @misc{alkhalifa2025comparative,
-        title={A Comparative Review of Parallel Exact, Heuristic, Metaheuristic, and Hybrid Optimization Techniques for the Traveling Salesman Problem},
-        author={Rabab Alkhalifa and Fatima Alkhomayes and Boushra Almazroua and Dana Alhaidan and Maryam Alothman and Jumana Almuhaidib},
-        year={2025},
-        eprint={2505.18278},
-        archivePrefix={arXiv},
-        primaryClass={cs.DC},
-        url={https://arxiv.org/abs/2505.18278}
-  }
+
+
+@unknown{cloud_rco,
+author = {Anayat, Rakshanda},
+year = {2024},
+month = {11},
+pages = {},
+title = {Cloud-Based Reinforcement Learning in Resource-Constrained Environments: Real-Time Performance Optimization in Autonomous Systems},
+doi = {10.13140/RG.2.2.24832.24326}
+}
+
+
+% Proposes a new metric to use for RL in cloud computing %
+@article{CHEN2026129081,
+title = {A deep reinforcement learning approach to cloud resource optimization with response time distributions},
+journal = {Expert Systems with Applications},
+volume = {296},
+pages = {129081},
+year = {2026},
+issn = {0957-4174},
+doi = {https://doi.org/10.1016/j.eswa.2025.129081},
+url = {https://www.sciencedirect.com/science/article/pii/S0957417425026983},
+author = {Liwen Chen and Chunmao Jiang and Qiaoping Zhong},
+keywords = {Machine learning, Cloud resource management, Adaptive resource orchestration, Probabilistic modeling, SLO-aware computing, Deep reinforcement learning, Quality of service (QoS)},
+abstract = {Cloud computing systems depend on elasticity to adapt resource allocation to fluctuating workload. Although traditional metrics effectively measure resource scaling, they fail to capture how these adjustments impact user-perceived service quality, which is a critical gap for providers and consumers alike. To bridge this gap, we introduce a novel performance metric that uses the probability distribution of task response times to complement the existing elasticity measures. This metric defines service quality as the likelihood that response times meet preset service-level objectives (SLOs) within a given timeframe. We developed a framework linking resource allocation, workload patterns, and this metric to optimize performance in various scenarios. We propose a decision-making algorithm to improve service quality without sacrificing cost efficiency. The experiments show that integrating this user-focused metric improves resource utilization by 23 % and reduces SLO violations by 31 % in the tested e-commerce workloads.}
+}
+
+
+% Survey looking at a variety of algorithms and how they perform on a multitude of metrics
+@article{survey_energy_optimisation,
+year={2025},
+month={10},
+title={Energizing the fog: a systematic survey on task scheduling strategies for energy optimization},
+journal={Cluster Computing},
+volume={28},
+number={6},
+pages={375},
+note={Copyright - Copyright Springer Nature B.V. Oct 2025; Last updated - 2025-06-17},
+abstract={Fog computing is an emerging paradigm that brings computation closer to data sources, reducing latency, enhancing data privacy, and conserving network bandwidth. However, it also introduces challenges related to energy efficiency due to the increased frequency of local processing. This study conducts a comprehensive survey of task-scheduling algorithms focused on optimizing energy usage within this paradigm. We review 51 research articles published over the past six years, categorizing the algorithms into heuristic, meta-heuristic, AI-driven, and hybrid approaches. Each algorithm is critically evaluated based on its objectives, strategies, and energy management capabilities, with a focus on key performance metrics such as energy consumption, computational latency, task completion time, and quality of service. Furthermore, this study highlights potential research gaps and suggests future directions for improving energy efficiency in fog computing. This survey offers valuable guidance to researchers designing and implementing energy-efficient task scheduling algorithms within fog computing environments by synthesizing these insights and presenting practical recommendations.},
+keywords={Computers--Computer Networks; Fog computing; Energy-efficient task scheduling; Heuristic algorithms; Metaheuristic techniques; AI-driven scheduling; Hybrid scheduling approaches; Quality of service (QoS); Green computing; Future trends in fog computing; Energy management; Scheduling; Heuristic; Performance measurement; Task scheduling; Infrastructure; Bandwidths; Optimization; Edge computing; Network latency; Fines & penalties; Algorithms; Quality of service; Energy consumption; Cloud computing; Completion time; Workloads; Pareto optimum; Traffic congestion; Heuristic methods},
+doi={https://doi.org/10.1007/s10586-025-05200-8},
+isbn={13867857},
+language={English},
+url={https://www.proquest.com/scholarly-journals/energizing-fog-systematic-survey-on-task/docview/3219141522/se-2},
+}
+
+
+
+
+%%%%%%%%%%% References from the wider project research %%%%%%%%%%%
+
+
+% ---------------------------------------------------------------------
+% Scheduling heuristics and RL for scheduling
+% ---------------------------------------------------------------------
+% DeepRM: RL for cluster resource management. Small action space (~10-20 job slots) used as the comparison that motivated action-space reduction
+@inproceedings{mao2016deeprm,
+  author    = {Mao, Hongzi and Alizadeh, Mohammad and Menache, Ishai and Kandula, Srikanth},
+  title     = {Resource Management with Deep Reinforcement Learning},
+  booktitle = {Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets)},
+  year      = {2016}
+}
+
+% Decima: RL scheduling for data-processing clusters (GNN). Another small-action-space RL success, used alongside DeepRM to motivate action-space reduction
+@inproceedings{mao2019decima,
+  author    = {Mao, Hongzi and Schwarzkopf, Malte and Venkatakrishnan, Shaileshh Bojja and Meng, Zili and Alizadeh, Mohammad},
+  title     = {Learning Scheduling Algorithms for Data Processing Clusters},
+  booktitle = {Proceedings of the ACM Special Interest Group on Data Communication (SIGCOMM)},
+  year      = {2019}
+}
+
+% ATC (Apparent Tardiness Cost) dispatching rule. Used as a baseline heuristic and as the extra feature in Option 3
+@article{vepsalainen1987atc,
+  author  = {Vepsalainen, Ari P. J. and Morton, Thomas E.},
+  title   = {Priority Rules for Job Shops with Weighted Tardiness Costs},
+  journal = {Management Science},
+  volume  = {33},
+  number  = {8},
+  pages   = {1035--1047},
+  year    = {1987}
+}
+
+% Deep RL tuning the ATC rule's parameter. Related work; this project keeps ATC's parameter fixed
+@article{min2022atctuning,
+  author  = {Min, Boae and Kim, Chang Ouk},
+  title   = {State-Dependent Parameter Tuning of the Apparent Tardiness Cost Dispatching Rule Using Deep Reinforcement Learning},
+  journal = {IEEE Access},
+  volume  = {10},
+  pages   = {20187--20198},
+  year    = {2022}
+}
+
+% Standard scheduling textbook. Reference for the EDF / SPT / LST priority-rule baselines
+@book{pinedo2016scheduling,
+  author    = {Pinedo, Michael L.},
+  title     = {Scheduling: Theory, Algorithms, and Systems},
+  edition   = {5th},
+  publisher = {Springer},
+  year      = {2016}
+}
+
+% LPT (longest processing time) rule and its approximation bound. Used for the LPT baseline
+@article{graham1969lpt,
+  author  = {Graham, Ronald L.},
+  title   = {Bounds on Multiprocessing Timing Anomalies},
+  journal = {SIAM Journal on Applied Mathematics},
+  volume  = {17},
+  number  = {2},
+  pages   = {416--429},
+  year    = {1969}
+}
+
+% Smith's rule (SPT / WSPT) is optimal for weighted completion time. Used for the WSPT baseline and to explain the online collapse toward SPT
+@article{smith1956wspt,
+  author  = {Smith, Wayne E.},
+  title   = {Various Optimizers for Single-Stage Production},
+  journal = {Naval Research Logistics Quarterly},
+  volume  = {3},
+  number  = {1-2},
+  pages   = {59--66},
+  year    = {1956}
+}
+
+% Classical bin-packing placement rules (First-Fit, Best-Fit). Used for the placement baselines and Option 1-3's First-Fit placement
+@article{johnson1973binpacking,
+  author  = {Johnson, David S.},
+  title   = {Near-Optimal Bin Packing Algorithms},
+  journal = {Journal of the ACM},
+  year    = {1973}
+}
+
+% Tetris: multi-resource packing for cluster schedulers. Used for the Tetris placement baseline
+@article{grandl2014tetris,
+  author  = {Grandl, Robert and Ananthanarayanan, Ganesh and Kandula, Srikanth and Rao, Sriram and Akella, Aditya},
+  title   = {Multi-Resource Packing for Cluster Schedulers},
+  journal = {ACM SIGCOMM Computer Communication Review},
+  volume  = {44},
+  number  = {4},
+  pages   = {455--466},
+  year    = {2014}
+}
+
+% NP-hardness of machine scheduling. Justifies why the exact CP-SAT solver only works on small instances
+@article{lenstra1977complexity,
+  author  = {Lenstra, Jan Karel and Rinnooy Kan, Alexander H. G. and Brucker, Peter},
+  title   = {Complexity of Machine Scheduling Problems},
+  journal = {Annals of Discrete Mathematics},
+  volume  = {1},
+  pages   = {343--362},
+  year    = {1977}
+}
+
+% Google OR-Tools CP-SAT solver. Used as the exact (proven-optimal) baseline
+@misc{ortools,
+  author       = {Perron, Laurent and Furnon, Vincent},
+  title        = {OR-Tools},
+  howpublished = {Google},
+  url          = {https://developers.google.com/optimization/cp/cp_solver}
+}
+
+% RL hyper-heuristic that learns to switch scheduling rules. Closest precedent for Option 1 (rule selection)
+@article{lassoued2026hyperheuristic,
+  author  = {Lassoued, Sofiene and Gobachew, Asrat and Lier, Stefan and Schwung, Andreas},
+  title   = {Policy-Based Deep Reinforcement Learning Hyperheuristics for Job-Shop Scheduling Problems},
+  journal = {arXiv preprint arXiv:2601.11189},
+  year    = {2026}
+}
+
+% Dynamic dispatching-rule selection beats the single best fixed rule. Supports Option 1's hyper-heuristic framing (author list unconfirmed)
+@article{cie2025dispatchruleselection,
+  title   = {Dynamic Dispatching Rule Selection for the Job Shop Scheduling Problem},
+  journal = {Computers and Industrial Engineering},
+  doi     = {10.1016/j.cie.2025.111471},
+  year    = {2025}
+}
+
+% ---------------------------------------------------------------------
+% Neural network architecture (pointer / attention) and action spaces
+% ---------------------------------------------------------------------
+% Pointer Networks: selecting an element from a variable-size input set. Basis of the pointer-network policy
+@inproceedings{vinyals2015pointernet,
+  author    = {Vinyals, Oriol and Fortunato, Meire and Jaitly, Navdeep},
+  title     = {Pointer Networks},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2015}
+}
+
+% Attention model for routing problems. Scoring mechanism used in the pointer-network policy
+@inproceedings{kool2019attention,
+  author    = {Kool, Wouter and van Hoof, Herke and Welling, Max},
+  title     = {Attention, Learn to Solve Routing Problems!},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+% DANIEL: dual-attention RL for flexible job-shop scheduling. Closest structural analogue to the pointer-network policy
+@article{song2023daniel,
+  author  = {Song, Wen and others},
+  title   = {Flexible Job Shop Scheduling via Dual Attention Network Based Reinforcement Learning},
+  journal = {arXiv preprint arXiv:2305.05119},
+  year    = {2023}
+}
+
+% Survey of GNNs for job-shop scheduling. Future work: replacing the pointer-network encoders with a GNN
+@article{gnn2024jsspsurvey,
+  title   = {Graph Neural Networks for Job Shop Scheduling Problems: A Survey},
+  journal = {arXiv preprint arXiv:2406.14096},
+  year    = {2024}
+}
+
+% Action branching: splitting one large joint action into smaller per-dimension decisions. Used for Option 4
+@techreport{tavakoli2018actionbranching,
+  author      = {Tavakoli, Arash and Pardo, Fabio and Kormushev, Petar},
+  title       = {Action Branching Architectures for Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1711.08946},
+  year        = {2018}
+}
+
+% Wolpertinger architecture for very large discrete action spaces. Future work
+@techreport{dulacarnold2015largeactionspaces,
+  author      = {Dulac-Arnold, Gabriel and Evans, Richard and van Hasselt, Hado and Sunehag, Peter and Lillicrap, Timothy and Hunt, Jonathan and Mann, Timothy and Weber, Theophane and Degris, Thomas and Coppin, Ben},
+  title       = {Deep Reinforcement Learning in Large Discrete Action Spaces},
+  institution = {arXiv},
+  number      = {1512.07679},
+  year        = {2015}
+}
+
+% Options framework (hierarchical RL). Formal grounding for Option 1 choosing among fixed sub-policies (rules)
+@article{sutton1999options,
+  author  = {Sutton, Richard S. and Precup, Doina and Singh, Satinder},
+  title   = {Between MDPs and Semi-MDPs: A Framework for Temporal Abstraction in Reinforcement Learning},
+  journal = {Artificial Intelligence},
+  volume  = {112},
+  number  = {1-2},
+  pages   = {181--211},
+  year    = {1999}
+}
+
+% Invalid action masking in policy-gradient methods. Justifies masking infeasible job/machine actions
+@inproceedings{huang2020invalidmasking,
+  author    = {Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
+  title     = {A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+  booktitle = {Proceedings of the International FLAIRS Conference},
+  year      = {2020}
+}
+
+% ---------------------------------------------------------------------
+% RL theory, reward shaping and constrained RL
+% ---------------------------------------------------------------------
+% Potential-based reward shaping preserves the optimal policy. Used for the A2C reward shaping
+@inproceedings{ng1999shaping,
+  author    = {Ng, Andrew Y. and Harada, Daishi and Russell, Stuart},
+  title     = {Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {1999}
+}
+
+% RCPO (Reward Constrained Policy Optimisation). Used for the constrained-tardiness A2C / PPO variants
+@inproceedings{tessler2019rcpo,
+  author    = {Tessler, Chen and Mankowitz, Daniel J. and Mannor, Shie},
+  title     = {Reward Constrained Policy Optimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+% Two-timescale stochastic approximation. Convergence theory behind RCPO's multiplier update
+@techreport{borkar2008stochasticapprox,
+  author      = {Borkar, Vivek S.},
+  title       = {Stochastic Approximation: A Dynamical Systems Viewpoint},
+  institution = {Cambridge University Press / Hindustan Book Agency},
+  year        = {2008}
+}
+
+% Survey of multi-objective sequential decision-making. Why fixed reward weights cannot target a specific trade-off
+@article{roijers2013morl,
+  author  = {Roijers, Diederik M. and Vamplew, Peter and Whiteson, Shimon and Dazeley, Richard},
+  title   = {A Survey of Multi-Objective Sequential Decision-Making},
+  journal = {Journal of Artificial Intelligence Research},
+  volume  = {48},
+  pages   = {67--113},
+  year    = {2013}
+}
+
+% Hyperparameter tuning in RL. Explains why the small-scale hyperparameter search did not transfer to full scale
+@techreport{eimer2023hyperparams,
+  author      = {Eimer, Theresa and Lindauer, Marius and Raileanu, Roberta},
+  title       = {Hyperparameters in Reinforcement Learning and How To Tune Them},
+  institution = {arXiv},
+  number      = {2306.01324},
+  year        = {2023}
+}
+
+% Safe exploration benchmarks (includes PPO-Lagrangian). Background for the PPO-Lagrangian experiments
+@techreport{ray2019safeexploration,
+  author      = {Ray, Alex and Achiam, Joshua and Amodei, Dario},
+  title       = {Benchmarking Safe Exploration in Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1910.01708},
+  year        = {2019}
+}
+
+% PID Lagrangian methods for constrained RL. Alternative to the plain Lagrange multiplier update used here
+@inproceedings{stooke2020pidlagrangian,
+  author    = {Stooke, Adam and Achiam, Joshua and Abbeel, Pieter},
+  title     = {Responsive Safety in Reinforcement Learning by PID Lagrangian Methods},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2020}
+}
+
+% Concrete problems in AI safety (incl. reward hacking). Background for the constrained-RL and RCPO discussion
+@techreport{amodei2016concreteproblems,
+  author      = {Amodei, Dario and Olah, Chris and Steinhardt, Jacob and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
+  title       = {Concrete Problems in AI Safety},
+  institution = {arXiv},
+  number      = {1606.06565},
+  year        = {2016}
+}
+
+% Formal definition of reward hacking. Used to classify the RCPO job-abandonment result
+@article{skalse2022rewardhacking,
+  author  = {Skalse, Joar and Howe, Nikolaus and Krasheninnikov, Dmitrii and Krueger, David},
+  title   = {Defining and Characterizing Reward Hacking},
+  journal = {arXiv preprint arXiv:2209.13085},
+  year    = {2022}
+}
+
+% ---------------------------------------------------------------------
+% Optimisation and multi-objective tooling
+% ---------------------------------------------------------------------
+% NSGA-II multi-objective genetic algorithm. The algorithm Optuna uses for multi-objective searches
+@article{deb2002nsga2,
+  author  = {Deb, Kalyanmoy and Pratap, Amrit and Agarwal, Sameer and Meyarivan, T.},
+  title   = {A Fast and Elitist Multiobjective Genetic Algorithm: NSGA-II},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {6},
+  number  = {2},
+  pages   = {182--197},
+  year    = {2002}
+}
+
+% Optuna hyperparameter optimisation framework. Used for all hyperparameter searches
+@inproceedings{akiba2019optuna,
+  author    = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru and Koyama, Masanori},
+  title     = {Optuna: A Next-Generation Hyperparameter Optimization Framework},
+  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining (KDD)},
+  year      = {2019}
+}
+
+% Comparative review of exact, heuristic, metaheuristic and hybrid methods (applied to TSP). Used for the exact / heuristic / metaheuristic classification
+@misc{alkhalifa2025comparative,
+  title         = {A Comparative Review of Parallel Exact, Heuristic, Metaheuristic, and Hybrid Optimization Techniques for the Traveling Salesman Problem},
+  author        = {Alkhalifa, Rabab and Alkhomayes, Fatima and Almazroua, Boushra and Alhaidan, Dana and Alothman, Maryam and Almuhaidib, Jumana},
+  year          = {2025},
+  eprint        = {2505.18278},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.DC},
+  url           = {https://arxiv.org/abs/2505.18278}
+}
+
+% ---------------------------------------------------------------------
+% Queueing theory (online case)
+% ---------------------------------------------------------------------
+% Queueing theory textbook. Grounds the Poisson arrival process in the online case
+@book{kleinrock1975queueing,
+  author    = {Kleinrock, Leonard},
+  title     = {Queueing Systems, Volume 1: Theory},
+  publisher = {Wiley},
+  year      = {1975}
+}
+
+% Little's Law (L = lambda W). Used to set online load levels and to explain why SPT is attractive under heavy load
+@article{little1961law,
+  author  = {Little, John D. C.},
+  title   = {A Proof for the Queuing Formula: L = lambda W},
+  journal = {Operations Research},
+  volume  = {9},
+  number  = {3},
+  pages   = {383--387},
+  year    = {1961}
+}
+
+% ---------------------------------------------------------------------
+% Real-world cloud workloads and energy
+% ---------------------------------------------------------------------
+% Google cluster trace analysis: heavy-tailed job sizes. Justifies the log-normal job sizes in the online case
+@inproceedings{reiss2012googletrace,
+  author    = {Reiss, Charles and Tumanov, Alexey and Ganger, Gregory R. and Katz, Randy H. and Kozuch, Michael A.},
+  title     = {Heterogeneity and Dynamicity of Clouds at Scale: Google Trace Analysis},
+  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  year      = {2012}
+}
+
+% Microsoft Azure trace analysis: heavy-tailed VM sizes and lifetimes. Supports the log-normal job sizes alongside the Google trace
+@inproceedings{cortez2017resourcecentral,
+  author    = {Cortez, Eli and Bonde, Anand and Muzio, Alexandre and Russinovich, Mark and Fontoura, Marcus and Bianchini, Ricardo},
+  title     = {Resource Central: Understanding and Predicting Workloads for Improved Resource Management in Large Cloud Platforms},
+  booktitle = {Proceedings of the 26th ACM Symposium on Operating Systems Principles (SOSP)},
+  year      = {2017}
+}
+
+% Google power provisioning: idle servers draw ~70% of peak power. Energy-efficiency discussion (hotspot penalty vs consolidation)
+@inproceedings{fan2007powerprovisioning,
+  author    = {Fan, Xiaobo and Weber, Wolf-Dietrich and Barroso, Luiz Andr\'{e}},
+  title     = {Power Provisioning for a Warehouse-sized Computer},
+  booktitle = {Proceedings of the 34th Annual International Symposium on Computer Architecture (ISCA)},
+  year      = {2007},
+  pages     = {13--23},
+  doi       = {10.1145/1250662.1250665},
+  url       = {https://www.barroso.org/publications/PowerProvisioning.pdf}
+}
+
+% ---------------------------------------------------------------------
+% Core RL algorithms, multi-agent RL and hyper-heuristics
+% ---------------------------------------------------------------------
+% PPO: the original paper. Main RL algorithm used
+@article{schulman2017ppo,
+  author  = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
+  title   = {Proximal Policy Optimization Algorithms},
+  journal = {arXiv preprint arXiv:1707.06347},
+  year    = {2017}
+}
+
+% TRPO: trust-region policy optimisation, which PPO approximates. Algorithm background
+@inproceedings{schulman2015trpo,
+  author    = {Schulman, John and Levine, Sergey and Abbeel, Pieter and Jordan, Michael and Moritz, Philipp},
+  title     = {Trust Region Policy Optimization},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2015}
+}
+
+% A3C paper; A2C is its synchronous variant. Used for the A2C algorithm
+@inproceedings{mnih2016a3c,
+  author    = {Mnih, Volodymyr and Badia, Adri{\`a} Puigdom{\`e}nech and Mirza, Mehdi and Graves, Alex and Lillicrap, Timothy and Harley, Tim and Silver, David and Kavukcuoglu, Koray},
+  title     = {Asynchronous Methods for Deep Reinforcement Learning},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2016}
+}
+
+% MAPPO: multi-agent PPO. Future work: one agent per machine to shrink the action space
+@misc{yu2022mappo,
+  author      = {Yu, Chao and Velu, Akash and Vinitsky, Eugene and Gao, Jiaxuan and Wang, Yu and Bayen, Alexandre and Wu, Yi},
+  title       = {The Surprising Effectiveness of PPO in Cooperative, Multi-Agent Games},
+  howpublished = {arXiv preprint arXiv:2103.01955},
+  year        = {2022}
+}
+
+% QMIX: value-factorisation multi-agent RL. Future work alternative to MAPPO
+@inproceedings{rashid2018qmix,
+  author    = {Rashid, Tabish and Samvelyan, Mikayel and Schroeder, Christian and Farquhar, Gregory and Foerster, Jakob and Whiteson, Shimon},
+  title     = {QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  volume    = {80},
+  pages     = {4295--4304},
+  year      = {2018}
+}
+
+% Survey of multi-agent RL for resource allocation. Motivates the multi-agent future work (author list unconfirmed)
+@article{hady2025marlsurvey,
+  author  = {Hady, Mahardhika Ahmad and Hu, Shu and Pratama, Mahardhika and Cao, Zehong and Kowalczyk, Ryszard},
+  title   = {Multi-Agent Reinforcement Learning for Resources Allocation Optimization: A Survey},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {11},
+  pages   = {354},
+  year    = {2025},
+  doi     = {10.1007/s10462-025-11340-5}
+}
+
+% Hyper-heuristics survey: selection vs generation taxonomy. Used to frame Option 1 as a selection hyper-heuristic
+@article{burke2013hyperheuristicsurvey,
+  author  = {Burke, Edmund K. and Gendreau, Michel and Hyde, Matthew and Kendall, Graham and Ochoa, Gabriela and \"{O}zcan, Ender and Qu, Rong},
+  title   = {Hyper-heuristics: A Survey of the State of the Art},
+  journal = {Journal of the Operational Research Society},
+  volume  = {64},
+  number  = {12},
+  pages   = {1695--1724},
+  year    = {2013},
+  doi     = {10.1057/jors.2013.71}
+}
+
+% Survey comparing genetic programming and RL for job-shop scheduling. Future work: generation hyper-heuristics
+@article{xu2025learntooptimise,
+  author  = {Xu, Meng and Mei, Yi and Zhang, Fangfang and Zhang, Mengjie},
+  title   = {Learn to Optimise for Job Shop Scheduling: A Survey with Comparison Between Genetic Programming and Reinforcement Learning},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {6},
+  year    = {2025},
+  doi     = {10.1007/s10462-024-11059-9}
+}
+
+% Genetic programming evolves a pool of rules and RL selects among them. Future work: extending Option 1's rule set
+@article{chen2024drlgphh,
+  author  = {Chen, Xinan and Bai, Ruibin and Qu, Rong and Dong, Jiawei and Jin, Yuan},
+  title   = {Deep Reinforcement Learning Assisted Genetic Programming Ensemble Hyper-Heuristics for Dynamic Scheduling of Container Port Trucks},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {29},
+  number  = {4},
+  year    = {2024},
+  doi     = {10.1109/TEVC.2024.3381042}
+}
+
+% ---------------------------------------------------------------------
+% Single-machine RL scheduling precedents
+% ---------------------------------------------------------------------
+% Q-learning agent that selects a dispatching rule on a single machine. Early precedent for Option 1
+@article{wang2005reinforcement,
+  author  = {Wang, Yi-Chi and Usher, John M.},
+  title   = {Application of Reinforcement Learning for Agent-Based Production Scheduling},
+  journal = {Engineering Applications of Artificial Intelligence},
+  volume  = {18},
+  number  = {1},
+  pages   = {73--82},
+  year    = {2005},
+  doi     = {10.1016/j.engappai.2004.08.018}
+}
+
+% Flexible (state-adaptive) dispatching rule for minimising tardiness. Motivates adaptive rule choice in the online case
+@article{chen2013flexible,
+  author  = {Chen, Bo and Matis, Timothy I.},
+  title   = {A Flexible Dispatching Rule for Minimizing Tardiness in Job Shop Scheduling},
+  journal = {International Journal of Production Economics},
+  volume  = {141},
+  number  = {1},
+  pages   = {360--365},
+  year    = {2013},
+  doi     = {10.1016/j.ijpe.2012.08.017}
+}
+
+% ---------------------------------------------------------------------
+% Energy efficiency, cluster schedulers, multi-objective RL and scheduling theory
+% ---------------------------------------------------------------------
+% Energy-proportional computing: servers mostly run at 10-50% utilisation and idle draws ~50% of peak. Energy-efficiency objective
+@article{barroso2007energyproportional,
+  author  = {Barroso, Luiz Andr\'{e} and H\"{o}lzle, Urs},
+  title   = {The Case for Energy-Proportional Computing},
+  journal = {IEEE Computer},
+  volume  = {40},
+  number  = {12},
+  pages   = {33--37},
+  year    = {2007},
+  doi     = {10.1109/MC.2007.443}
+}
+
+% Peak-efficiency-aware scheduling: servers are most efficient below 100% utilisation. Energy-efficiency objective
+@inproceedings{wong2016peas,
+  author    = {Wong, Daniel},
+  title     = {Peak Efficiency Aware Scheduling for Highly Energy Proportional Servers},
+  booktitle = {Proceedings of the 43rd International Symposium on Computer Architecture (ISCA)},
+  pages     = {481--492},
+  year      = {2016}
+}
+
+% Performance-to-power-ratio-aware VM allocation. Energy-efficiency objective (exact peak-efficiency level not verified)
+@inproceedings{ruan2015pprgear,
+  author    = {Ruan, Xiaojun and Chen, Haiquan},
+  title     = {Performance-to-Power Ratio Aware Virtual Machine (VM) Allocation in Energy-Efficient Clouds},
+  booktitle = {IEEE International Conference on Cluster Computing (CLUSTER)},
+  year      = {2015}
+}
+
+% SPECpower benchmark: server power measured at 10% load steps. Energy-efficiency objective
+@misc{specpower2008,
+  author       = {{Standard Performance Evaluation Corporation}},
+  title        = {{SPECpower\_ssj2008} Benchmark and Run and Reporting Rules},
+  howpublished = {\url{https://www.spec.org/power_ssj2008/}},
+  year         = {2008}
+}
+
+% Dynamic VM consolidation with SLA-violation metrics (SLATAH, PDM, SLAV). Energy vs SLA trade-off
+@article{beloglazov2012optimalconsolidation,
+  author  = {Beloglazov, Anton and Buyya, Rajkumar},
+  title   = {Optimal Online Deterministic Algorithms and Adaptive Heuristics for Energy and Performance Efficient Dynamic Consolidation of Virtual Machines in Cloud Data Centers},
+  journal = {Concurrency and Computation: Practice and Experience},
+  volume  = {24},
+  number  = {13},
+  pages   = {1397--1420},
+  year    = {2012},
+  doi     = {10.1002/cpe.1867}
+}
+
+% Google Borg cluster manager. Real-world cluster scheduling context
+@inproceedings{verma2015borg,
+  author    = {Verma, Abhishek and Pedrosa, Luis and Korupolu, Madhukar and Oppenheimer, David and Tune, Eric and Wilkes, John},
+  title     = {Large-Scale Cluster Management at {Google} with {Borg}},
+  booktitle = {Proceedings of the Tenth European Conference on Computer Systems (EuroSys)},
+  year      = {2015},
+  doi       = {10.1145/2741948.2741964}
+}
+
+% Borg: the next generation (2019 Google trace). Real-world cluster scheduling context
+@inproceedings{tirmazi2020borgnext,
+  author    = {Tirmazi, Muhammad and Barker, Adam and Deng, Nan and Haque, Md E. and Qin, Zhijing Gene and Hand, Steven and Harchol-Balter, Mor and Wilkes, John},
+  title     = {Borg: The Next Generation},
+  booktitle = {Proceedings of the Fifteenth European Conference on Computer Systems (EuroSys)},
+  year      = {2020},
+  doi       = {10.1145/3342195.3387517}
+}
+
+% Protean: Azure's VM allocation service. Real-world VM placement context
+@inproceedings{hadary2020protean,
+  author    = {Hadary, Ori and Marshall, Luke and Menache, Ishai and Pan, Abhisek and others},
+  title     = {Protean: {VM} Allocation Service at Scale},
+  booktitle = {14th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2020}
+}
+
+% Task dependencies in Alibaba cloud jobs. Future work: dependent / linked tasks
+@inproceedings{tian2019alibabadag,
+  author    = {Tian, Huangshi and Zheng, Yunchuan and Wang, Wei},
+  title     = {Characterizing and Synthesizing Task Dependencies of Data-Parallel Jobs in {Alibaba} Cloud},
+  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  year      = {2019},
+  doi       = {10.1145/3357223.3362710}
+}
+
+% The Tail at Scale: tail latency in large services. Motivates caring about worst-case (tail) delays
+@article{dean2013tail,
+  author  = {Dean, Jeffrey and Barroso, Luiz Andr\'{e}},
+  title   = {The Tail at Scale},
+  journal = {Communications of the ACM},
+  volume  = {56},
+  number  = {2},
+  pages   = {74--80},
+  year    = {2013},
+  doi     = {10.1145/2408776.2408794}
+}
+
+% Graphene: packing and dependency-aware scheduling. Future work: dependent tasks
+@inproceedings{grandl2016graphene,
+  author    = {Grandl, Robert and Kandula, Srikanth and Rao, Sriram and Akella, Aditya and Kulkarni, Janardhan},
+  title     = {{GRAPHENE}: Packing and Dependency-Aware Scheduling for Data-Parallel Clusters},
+  booktitle = {12th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2016}
+}
+
+% Practical guide to multi-objective RL. Background for the multi-objective reward design
+@article{hayes2022morlguide,
+  author  = {Hayes, Conor F. and R\u{a}dulescu, Roxana and Bargiacchi, Eugenio and K\"{a}llstr\"{o}m, Johan and Macfarlane, Matthew and Reymond, Mathieu and others},
+  title   = {A Practical Guide to Multi-Objective Reinforcement Learning and Planning},
+  journal = {Autonomous Agents and Multi-Agent Systems},
+  volume  = {36},
+  number  = {1},
+  pages   = {26},
+  year    = {2022},
+  doi     = {10.1007/s10458-022-09552-y}
+}
+
+% Multi-objective deep RL with changing objective weights. Background for the multi-objective reward design
+@inproceedings{abels2019dynamicweights,
+  author    = {Abels, Axel and Roijers, Diederik and Lenaerts, Tom and Now\'{e}, Ann and Steckelmacher, Denis},
+  title     = {Dynamic Weights in Multi-Objective Deep Reinforcement Learning},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  series    = {PMLR},
+  volume    = {97},
+  pages     = {11--20},
+  year      = {2019}
+}
+
+% Scheduling with job rejection. Background for jobs being left unscheduled (DOI unverified)
+@article{bartal2000rejection,
+  author  = {Bartal, Yair and Leonardi, Stefano and Marchetti-Spaccamela, Alberto and Sgall, Ji\v{r}\'{i} and Stougie, Leen},
+  title   = {Multiprocessor Scheduling with Rejection},
+  journal = {SIAM Journal on Discrete Mathematics},
+  volume  = {13},
+  number  = {1},
+  pages   = {64--78},
+  year    = {2000}
+}
+
+% Scheduling with deliberately inserted idle time. Background for the idle action
+@article{kanet2000insertedidle,
+  author  = {Kanet, John J. and Sridharan, V.},
+  title   = {Scheduling with Inserted Idle Time: Problem Taxonomy and Literature Review},
+  journal = {Operations Research},
+  volume  = {48},
+  number  = {1},
+  pages   = {99--110},
+  year    = {2000},
+  doi     = {10.1287/opre.48.1.99.12447}
+}
+
+% Branch and bound for total weighted tardiness; standard due-date instance generator. Background for instance generation
+@article{potts1985wtardiness,
+  author  = {Potts, Chris N. and Van Wassenhove, Luk N.},
+  title   = {A Branch and Bound Algorithm for the Total Weighted Tardiness Problem},
+  journal = {Operations Research},
+  volume  = {33},
+  number  = {2},
+  pages   = {363--377},
+  year    = {1985},
+  doi     = {10.1287/opre.33.2.363}
+}
+
+% Scheduling textbook (newer edition). Scheduling theory reference
+@book{pinedo2022scheduling,
+  author    = {Pinedo, Michael L.},
+  title     = {Scheduling: Theory, Algorithms, and Systems},
+  edition   = {6},
+  publisher = {Springer},
+  year      = {2022},
+  doi       = {10.1007/978-3-031-05921-6}
+}

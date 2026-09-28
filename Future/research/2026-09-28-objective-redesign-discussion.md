@@ -219,6 +219,35 @@ meant to be simple. Keep. (CP-SAT already models it via `AddAllDifferent(start)`
 **Recommendation:** ΣwT and ΣwU selectable as objectives; all four always reported, plus dropped-job
 count. **Status:** recommendation made; user has not objected.
 
+## 9a. Reported metrics vs. objectives
+
+**User question:** do we need more metrics? The user cited Nagabushnam, Choi & Kim (2025), a survey of
+51 fog task-scheduling papers. It evaluates algorithms on **energy consumption, computational latency,
+task completion time and quality of service**.
+
+**Analysis:** before this, the project reported tardiness and late jobs only, which is a slice of QoS, and
+dropped jobs were invisible. **Reported metrics** (measured for every method, always) are kept separate
+from **objectives** (what a reward optimises, chosen per experiment). The reported set can be broad
+because it doesn't change training. Mapping onto this model:
+
+| Survey criterion | Metric(s) (`Code/core/metrics.py`) | Note |
+|---|---|---|
+| QoS / SLA | completion rate, dropped, on-time rate, late jobs, tardiness (total, weighted, max, P95), tardiness with dropped-job lower bound | on-time rate counts a dropped job as not on time |
+| Latency | mean and P95 waiting time (start − arrival) | no network in this model, so latency = queueing delay; fog transmission delay needs a topology (out of scope) |
+| Task completion time | mean flow time (completion − arrival), mean slowdown (flow / duration, DeepRM's objective), makespan | |
+| Energy | active machine-ticks, mean utilisation of active machines | equals energy up to constants under the linear power model (section 5) |
+
+**Decision (user):** add these metrics. They're computed from the final environment state, so they don't
+depend on the reward. Every method reports them through `run.py`. A hand-checked regression test is in
+`tests/test_schedule_metrics.py`.
+
+**First reading (off_c_15, legacy reward):**
+- EDF: tardiness with dropped-job lower bound 55.4, on-time rate 0.83, 162.4 active machine-ticks.
+- PSO (seed 500000 only): 935, 0.63 and 155.
+
+Even when dropped jobs are charged, EDF is far better on QoS. PSO only wins on completion rate, and on
+energy by a small margin.
+
 ## 10. Scale / normalisation
 
 **First proposal (dropped):** normalise each component by its value under a reference heuristic (EDF).

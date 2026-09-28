@@ -48,6 +48,7 @@ import numpy as np
 from ortools.sat.python import cp_model
 
 from Code.methods.rl.evaluation.eval_rl_agent import make_env
+from Code.core.metrics import schedule_metrics
 
 
 def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=None,
@@ -261,6 +262,7 @@ def replay_schedule(config, schedule):
         "tardiness": base_env.tardiness.copy(),
         "late_jobs": int((base_env.tardiness > 0).sum()),
         "jobs_scheduled": int((base_env.start_times != -1).sum()),
+        "metrics": schedule_metrics(base_env),  # reward-independent, see Code/core/metrics.py
         "utilisation_over_time": np.array(utilisation_over_time),
     }
 

@@ -47,23 +47,9 @@ def list_methods():
 
 
 def _metrics(stats, config):
-    """Common metric schema for one episode's stats dict."""
-    tard = np.asarray(stats["tardiness"], dtype=float)
-    weights = np.asarray(config["job_weights"], dtype=float)
-    if "job_arrival_times" in config:
-        n_jobs = int((np.asarray(config["job_arrival_times"]) <= int(config["horizon"])).sum())
-    else:
-        n_jobs = len(config["job_durations"])
-    sched = int(stats["jobs_scheduled"])
-    return {
-        "reward": float(stats["total_reward"]),
-        "tardiness": float(tard.sum()),
-        "weighted_tardiness": float((tard * weights[: len(tard)]).sum()),
-        "late_jobs": int(stats["late_jobs"]),
-        "jobs_scheduled": sched,
-        "jobs_total": n_jobs,
-        "dropped": n_jobs - sched,
-    }
+    """Reward (variant-specific) + the reward-independent schedule metrics of
+    Code/core/metrics.py (QoS, latency, completion time, energy)."""
+    return {"reward": float(stats["total_reward"]), **stats["metrics"]}
 
 
 def run_one_instance(method, config, args):
