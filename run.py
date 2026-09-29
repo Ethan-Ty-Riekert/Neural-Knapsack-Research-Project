@@ -112,6 +112,18 @@ def run_one_instance(method, config, args, env_kwargs=None):
     return dict(_metrics(stats, config), **extra, seconds=round(time.time() - t0, 3))
 
 
+_START_COMMIT = None
+
+
+def _start_commit():
+    """The commit (and dirty flag) when this process started -- the code actually loaded, even if
+    files are committed or edited while a long run is in progress."""
+    global _START_COMMIT
+    if _START_COMMIT is None:
+        _START_COMMIT = _git_commit()
+    return _START_COMMIT
+
+
 def _git_commit():
     """Short HEAD hash, suffixed '-dirty' if Code/, run.py or experiments/ have uncommitted
     changes (then the hash alone does not identify the code that produced the run)."""
@@ -155,7 +167,7 @@ def evaluate(variant_name, preset_name, method, args):
                                                         "time_limit", "cpsat_workers", "seed")},
         "env_kwargs": {k: (dataclasses.asdict(v) if dataclasses.is_dataclass(v) else v)
                        for k, v in env_kwargs.items()},
-        "git_commit": _git_commit(), "machine": MACHINE_NAME, "timestamp": stamp,
+        "git_commit": _start_commit(), "machine": MACHINE_NAME, "timestamp": stamp,
         "mean": means,
     }
     (out / "run.json").write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
@@ -227,7 +239,7 @@ def compare(variant_name, preset_name, methods, args):
     order = sorted(results, key=lambda m: results[m][key], reverse=(key == "reward"))
     cols = [c for c in COMPARE_COLUMNS if any(c in r for r in results.values())]
     lines = [f"# {variant_name} / {preset_name}: comparison ({'lower J is better' if key == 'objective_J' else 'higher reward is better'})",
-             "", f"git {_git_commit()}, machine {MACHINE_NAME}, {datetime.now():%Y-%m-%d %H:%M}, "
+             "", f"git {_start_commit()}, machine {MACHINE_NAME}, {datetime.now():%Y-%m-%d %H:%M}, "
              f"method args: pso {args.pso_swarm}x{args.pso_iterations}, cpsat {args.time_limit}s/{args.cpsat_workers}w, "
              f"objectives: {getattr(args, 'objectives', '-')}, limit: {args.limit or 'all'}", "",
              "| rank | method | " + " | ".join(cols) + " |", "|---|---|" + "---|" * len(cols)]
@@ -331,6 +343,7 @@ def main():
     ap.add_argument("--checkpoint-tag", default=None, help="rl-eval: tag to load; rl-train: tag to save")
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
+    _start_commit()  # record provenance before anything runs
 
     if args.experiment:
         import yaml
