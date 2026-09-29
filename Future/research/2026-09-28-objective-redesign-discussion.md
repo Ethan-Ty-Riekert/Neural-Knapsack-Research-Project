@@ -145,6 +145,41 @@ scale. It's implemented and verified (`tests/test_objective_reward.py`). The ori
 Previously: user is still weighing this explanation; revisit before the formal definitions (§12)
 are finalised.
 
+### 4a. Revisited 2026-09-29: the drop surcharge dominated everything, so it is replaced by an extended horizon
+
+**User position:** the drop term "impacts the final reward heavily in a way that the other penalties are not
+comparable".
+
+**Evidence (2026-09-29):**
+- On `off_c_15`, **every** job that LST and EDF dropped (30 and 42 of them) has its deadline at or after the
+  horizon (d = 100–109). The v1 generator draws deadlines from 10–109 while H = 100. So about 10% of jobs are due
+  after the window closes, dispatch rules put them last, and the window cuts them off. If they ran just after
+  H, most would be on time or a few ticks late.
+- Each of those drops was charged about 100 (= B), whereas a typical scheduled job is about 0.4 ticks late.
+- With B = H, LST's J is 238 against CP-SAT's 40. Without the surcharge, LST's J is 38.2. The "heuristics are
+  far from optimal" headline was mostly B.
+- The first v2 RL runs "won" (Option 1 offline J = 82.7) by trading lateness for fewer drops: 76 lateness and
+  0.07 drops, against LST's 38 and 2.0.
+
+**Decision (user):** **extended horizon.** Unfinished jobs are no longer dropped. They keep running after H, and
+their *real* lateness is charged, so there's a single unit (weighted job-ticks late) and no arbitrary B.
+Also track a metric for **how many jobs had to complete past the preferred horizon H**.
+
+**Implementation plan (to build on the PC):**
+- Environment: jobs may start after H−P_j; the capacity grid is extended to H + T_ext, where T_ext is large
+  enough to finish every job, e.g. ΣP_j or H plus n_jobs × max P; the episode ends when every (arrived) job has
+  finished. Offline keeps one start per tick.
+- Online: arrivals stop at H, and the episode continues until the queue is empty.
+- Reward: the dense tardiness charge unchanged; the drop charge and B removed (the drop component is
+  retired, and `drop_surcharge` is kept only for the old behaviour and for sensitivity checks).
+- Metrics: `completed_past_horizon` (count, and weighted), plus the lateness of those jobs reported separately.
+- CP-SAT: extend the start domains to the extended window and drop the optional-job logic in this mode.
+- Tests: exactness (the sum of charges = Σ w_j T_j over all jobs) and no job left unfinished.
+- Re-run the v2 baseline tables and the short RL runs under this mode.
+
+**Status of B = H results:** kept and labelled as such (they're valid under that definition), but they're **not
+the headline**. `2026-09-29-v2-build-and-first-results.md` has a correction section.
+
 ## 5. Activation penalty → energy
 
 **User position:** remove or rework it; energy / active servers stays as an objective in the

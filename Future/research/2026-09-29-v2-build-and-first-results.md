@@ -7,6 +7,21 @@ RL results yet (section 4).
 **Design:** `2026-09-28-v2-objective-formal-definition.md` (the objective and proofs) and
 `2026-09-28-objective-redesign-discussion.md` (the decisions).
 
+## CORRECTION (added the same day, after checking which jobs were dropped)
+
+Finding 1 below ("every heuristic is far from the best schedule, mostly through dropped jobs") is **mostly an
+artefact of the drop surcharge B = H**:
+- On `off_c_15`, every job LST and EDF dropped has a deadline of 100–109, i.e. at or after the horizon H = 100.
+  The v1 deadline range is 10–109, so these jobs are due after the window closes.
+- Each drop was charged about 100, against about 0.4 of lateness per scheduled job.
+- Without the surcharge, LST's J is 38.2, as good as CP-SAT's 40.4.
+
+On `off_tf05` the dropped jobs are due at about ticks 73–80, so they'd genuinely be about 20–30 ticks late, but
+100 of each drop's roughly 123 charge is still B. Drop counts and lateness (reported separately in every table)
+remain valid. The **J rankings in this document hold only under B = H**. The user has decided to replace
+drops with an extended horizon (true lateness, no B); see the decision record, section 4a. All v2 tables will be
+re-run under that mode.
+
 ---
 
 ## 1. What was built
@@ -89,6 +104,18 @@ summarised here yet.
   `on_rho050/075/095/110` and `on_rho075_tight` still need their heuristic tables (about 3 min each, run
   alone). `on_rho075` has lateness + energy tables from job E.
 - **PSO on the difficulty presets:** not run (about 30–45 min per preset).
+
+## 4a. Short v2 RL runs (smoke-scale, NOT final; 2026-09-29, 3 in parallel, about 10 min each)
+
+| Run | Steps | J | Dropped | Weighted lateness | Note |
+|---|---|---|---|---|---|
+| Option 1 offline (`off_c_15`) | 120k | 82.7 | 0.07 | 76.0 | Avoids drops by accepting 2× LST's lateness: the B = H trade-off |
+| Option 3 offline (`off_c_15`) | 50k | 233.1 | 0.07 | 226.5 | Same pattern, undertrained |
+| Option 1 online (`on_rho075`) | 60k | 10053.3 | 32.4 | 398.0 | Identical to LST in every metric: collapsed onto one rule, as in v1 |
+
+These are valid only under B = H and are superseded once the extended-horizon mode exists. They're checkpoints
+`action_space_option{1,3}_ppo_v2_off_c_short.zip` and `action_space_option1_ppo_v2_on_rho075_short.zip` in
+`rl_training/models/` on this laptop (gitignored).
 
 ## 5. Other findings recorded during the build
 

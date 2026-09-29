@@ -32,6 +32,32 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-29 (S2W11) -- CORRECTION: the v2 "heuristics far from optimal" gap was mostly the drop surcharge B = H; first short v2 RL runs
+
+**Config:** short PPO runs under v2 (B = H), 3 in parallel on the laptop: Option 1 offline 120k, Option 3 offline
+50k (both evaluated on `off_c_15`), and Option 1 online 60k (`on_rho075`). Plus an inspection of which jobs the
+heuristics drop.
+
+**Stats:**
+```
+dropped jobs, off_c_15: LST 30/30 and EDF 42/42 have deadline >= H=100 (d = 100..109)
+off_c_15 J with B=H: CP-SAT 40.4, LST 238.2 (lateness 38.2 + 2 drops x 100) -> with B=0 LST = 38.2
+Option 1 offline 120k: J 82.7, drops 0.07, weighted lateness 76.0   (LST: 2.00 drops, 38.2)
+Option 3 offline  50k: J 233.1, drops 0.07, weighted lateness 226.5
+Option 1 online   60k: J 10053.3, drops 32.4, lateness 398.0 -- identical to LST (rule collapse)
+```
+
+**Observation:** the previous entry's conclusion ("baselines clearly beatable, gap mostly drops") is largely an
+artefact. The v1 generator gives about 10% of jobs deadlines after the horizon, rules schedule them last, the
+window cuts them off, and each drop costs B = 100, while a scheduled job's lateness is about 0.4. The offline RL
+"win" is the same trade: fewer drops for twice the lateness. The online Option 1 collapsed onto LST.
+
+**Conclusion / next step:** the user has decided on an **extended horizon**: no drops; unfinished jobs run past
+H and pay their true lateness; plus a `completed_past_horizon` metric (decision record section 4a). Build it on
+the PC, then re-run the v2 baseline tables and RL. The B = H numbers stay recorded but aren't headline results.
+
+---
+
 ## 2026-09-29 (S2W11) -- v2 objective program built; first v2 baselines: every heuristic is far from CP-SAT, mostly through dropped jobs
 
 **Config:** variant v2 (`reward_mode="objective"`, J = weighted tardiness + drop cost with B = H), 15 held-out
