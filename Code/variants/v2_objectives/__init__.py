@@ -4,26 +4,36 @@ Definition: Future/research/2026-09-28-v2-objective-formal-definition.md; implem
 Code/core/objectives.py (reward_mode="objective"). Build status (2026-09-29):
   step 1 DONE  weighted tardiness + dropped jobs (always on) + optional weighted late count
   step 3 DONE  energy objective (linear = active machine-ticks, or SPECpower HP ML110 G5)
-  step 4       difficulty settings              -- not yet (presets below reuse v1's instances)
+  step 4 DONE  difficulty presets (Code/core/difficulty.py): offline deadline-tightness sweep,
+               online load sweep and tight-deadline setting
   step 5       RL training under v2              -- not yet
 
-Presets are v1's instance protocols, unchanged, so v1 and v2 results are always on identical
-instances. The objectives are chosen per run (run.py --objectives), not per preset.
+Presets = v1's instance protocols, unchanged (so v1 and v2 results can be compared on identical
+instances), plus the named difficulty presets (15 held-out instances each). The objectives are
+chosen per run (run.py --objectives), not per preset.
 """
 from Code.core.objectives import ObjectiveConfig
+from Code.core.difficulty import DIFFICULTIES, generate as _generate_difficulty
 from Code.variants.v1_legacy_reward import PRESETS as _V1_PRESETS, instances as _v1_instances
 
-DESCRIPTION = ("Reward = exactly the selected objectives: weighted tardiness + dropped-job cost "
-               "(+ optional weighted late count). Energy and difficulty settings: later build steps.")
-STATUS = "in progress (tardiness, drops, late count implemented)"
+DESCRIPTION = ("Reward = exactly the selected objectives: weighted tardiness + dropped-job cost, "
+               "optional weighted late count and energy; v1 instances plus difficulty presets.")
+STATUS = "active (objectives + difficulty implemented; RL training via --reward-mode objective)"
 
 PRESETS = {name: dict(p) for name, p in _V1_PRESETS.items()}
+_HELDOUT = list(range(500_000, 500_015))
+for _name, _d in DIFFICULTIES.items():
+    PRESETS[_name] = dict(_d.as_dict(), seeds=_HELDOUT)
 
 OBJECTIVES = ("tardiness", "late_count", "energy")  # drops are always on (formal doc sec. 3-4)
 
 
 def instances(preset_name: str):
-    return _v1_instances(preset_name)
+    if preset_name in DIFFICULTIES:
+        for seed in PRESETS[preset_name]["seeds"]:
+            yield seed, _generate_difficulty(DIFFICULTIES[preset_name], seed)
+    else:
+        yield from _v1_instances(preset_name)
 
 
 def objective_config(objectives=("tardiness",), drop_surcharge=None, lambda_late=1.0,
