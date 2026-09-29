@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-29 (S2W11) -- v2 objective program built; first v2 baselines: every heuristic is far from CP-SAT, mostly through dropped jobs
+
+**Config:** variant v2 (`reward_mode="objective"`, J = weighted tardiness + drop cost with B = H), 15 held-out
+instances per preset, CP-SAT at 60 s / 8 workers, PSO at 15x30. Presets: `off_c_15` (original deadlines) and
+the new difficulty presets `off_tf02/05/08`; lateness + energy on `off_tf05` and `on_rho075`. See
+`2026-09-29-v2-build-and-first-results.md`.
+
+**Stats:**
+```
+preset      CP-SAT J (drops)   best heuristic J (drops)   EDF J (drops)
+off_c_15      40.4 (0.00)       LST   238.2 (2.00)          330.3 (2.80)   PSO 952.4 (0.13)
+off_tf02       0.5 (0.00)       LST   406.7 (1.60)          840.0 (3.20)
+off_tf05    1306.7 (0.07)       ATC  2243.6 (5.67)         3116.2 (3.20)
+off_tf08    6770.9 (0.40)       ATC  8400.2 (5.67)        10622.5 (3.20)
+on_rho075 (lateness+energy, linear): LST+Consolidate 10748.9 < LST 10996.5 < EDF 11327.1 < EDF+WorstFit 13429.1
+```
+
+**Observation:** under the real objective, heuristics are 1.3-800x worse than the best schedule CP-SAT finds,
+and most of the gap is dropped jobs. Heuristics drop jobs even with loose deadlines, because the 100-job,
+100-tick, one-start-per-tick offline problem is near-saturated and the rules ignore latest-start times. The
+best heuristic flips from LST (loose deadlines) to ATC (medium or tight, weighted). Online, consolidation
+improves drops, lateness and energy together. PSO under v2 no longer games the reward but is weak (J 952).
+
+**Conclusion / next step:** v2 shows a large, genuine gap for learning to close -- the first time in this
+project the baselines are clearly beatable. The three v2 PPO trainings (Option 1/3 offline, Option 1 online)
+were killed by the system for low memory before saving a checkpoint, so they have to be rerun one at a time.
+Also worth testing: a latest-start-aware dispatching rule, as a stronger baseline.
+
 ## 2026-09-28 (S2W11) -- PSO-vs-EDF reward anomaly explained: EDF drops ~3 jobs/instance, PSO finishes all 100
 
 **Config:** no training. Re-evaluation on current code: EDF on `off_c_15` (seeds 500000-500014,

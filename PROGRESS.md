@@ -426,6 +426,20 @@ selectable objectives + difficulty, preserve all legacy results, restructure by 
 recorded with the user's reasoning and open questions in
 `Future/research/2026-09-28-objective-redesign-discussion.md`.
 
+## Phase 14 — The v2 objective program: reward = objective, and the baselines turn out to be beatable (2026-09-29, S2W11)
+
+All five build steps were implemented and tested in one session:
+- the objective reward (lateness + a provable drop penalty + optional late count and energy);
+- CP-SAT solving the same objective;
+- an energy model with a consolidation heuristic;
+- difficulty presets (online load, offline deadline tightness);
+- RL training and evaluation under v2 through `run.py`.
+
+Under the real objective, every heuristic is far from the best schedule CP-SAT finds, and the gap is mostly
+dropped jobs. That's the first clear evidence in this project of room for a learned scheduler to improve. The
+RL runs under v2 still have to be completed: the first attempt was killed for low memory. Details in
+`Future/research/2026-09-29-v2-build-and-first-results.md`.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

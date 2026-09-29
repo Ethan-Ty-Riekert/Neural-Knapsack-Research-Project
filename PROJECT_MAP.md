@@ -13,13 +13,14 @@ the true optimum on small cases.
 
 ## The problem
 
-- **Jobs:** each needs 4 resources (CPU, memory, storage, network; resource 0 is *assumed* to be CPU), runs
-  for 1–10 ticks, and has a deadline and a weight (importance).
+- **Jobs:** each needs 1–9 units of each of 4 resources (CPU, memory, storage, network; resource 0 is
+  *assumed* to be CPU), runs for 1–9 ticks, and has a deadline and a weight (importance).
 - **Machines:** 10, each with capacity 30 per resource. A job fits only if every resource fits.
 - **Offline setting:** 100 jobs, all known at the start, horizon H = 100 ticks, one job started per tick
   (a tick is one decision point). Simple, and it has a provable optimum to compare against.
-- **Online setting:** jobs arrive at random, about 9 per tick (~75% load), with realistic heavy-tailed sizes
-  and about 900 jobs per episode. Decisions are made without knowing the future, which is where learning
+- **Online setting:** jobs arrive at random, with realistic heavy-tailed sizes. The v1 protocol uses about 9
+  arrivals per tick and about 900 jobs per episode; it was labelled "~75% load", but its measured load is
+  ~87%. The v2 difficulty presets set the load exactly (50%, 75%, 95%, 110%). Decisions are made without knowing the future, which is where learning
   *should* help.
 - **Goal:** minimise lateness (tardiness) and dropped jobs; energy is to be added (the number of machines
   switched on over time).
