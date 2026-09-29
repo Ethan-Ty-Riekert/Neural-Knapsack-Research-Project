@@ -7,8 +7,12 @@
 
 ## The objective (default)
 
-J = Σ_{finished j} w_j T_j + Σ_{dropped j} w_j (max(0, H − d_j) + H)
+**Extended horizon (default since 2026-09-29):** J = Σ_j w_j T_j over *every* job. Nothing is dropped. Work that
+doesn't fit before the preferred horizon H keeps running after it and pays its true lateness. Reports show
+how much comes from past-horizon work (`completed_past_horizon`, `weighted_tardiness_past_horizon`).
 
+**Fixed window (`--no-extend-horizon`, the pre-2026-09-29 behaviour and a sensitivity check):**
+J = Σ_{finished j} w_j T_j + Σ_{dropped j} w_j (max(0, H − d_j) + H).
 This is weighted lateness, where a dropped job counts as if it finished at the horizon plus a further H ticks late. The reward is
 −J / (number of jobs), charged as the costs happen:
 - each tick a job is overdue;

@@ -67,7 +67,8 @@ def mask_fn(env):
 
 
 def make_base_gym_env(seed=0, reward_mode="legacy", use_potential_shaping=False, shaping_gamma=0.99,
-                       randomize_instances=False, job_weight_range=None, objective=None, difficulty=None):
+                       randomize_instances=False, job_weight_range=None, objective=None, difficulty=None,
+                       extend_horizon=False):
     """The OFFLINE case. seed=0 (default) is the real deployed fixed instance
     -- same seed/dims as exact_solver.py's --fixed-instance and every
     offline PPO/A2C "final" result this session, so tardiness numbers stay
@@ -126,6 +127,7 @@ def make_base_gym_env(seed=0, reward_mode="legacy", use_potential_shaping=False,
         use_potential_shaping=use_potential_shaping,
         shaping_gamma=shaping_gamma,
         objective=objective,
+        extend_horizon=extend_horizon,
     )
     if not randomize_instances:
         job_resampler = None
@@ -151,7 +153,7 @@ def make_difficulty_resampler(difficulty, rng_seed=0):
 def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribution,
                               seed=0, num_machines=10, num_resources=4, use_resampler=True,
                               reward_mode="legacy", use_potential_shaping=False, shaping_gamma=0.99,
-                              job_weight_range=None, objective=None, difficulty=None):
+                              job_weight_range=None, objective=None, difficulty=None, extend_horizon=False):
     """ONLINE case, dynamic Poisson arrivals -- see generate_poisson_arrivals()
     for job_size_distribution. use_resampler=True (default): every episode
     draws a fresh realized arrival sequence (make_online_resampler()) rather
@@ -190,6 +192,7 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
         use_potential_shaping=use_potential_shaping,
         shaping_gamma=shaping_gamma,
         objective=objective,
+        extend_horizon=extend_horizon,
     )
     if not use_resampler:
         job_resampler = None
@@ -307,6 +310,8 @@ def main():
     parser.add_argument("--lambda-late", type=float, default=1.0)
     parser.add_argument("--lambda-energy", type=float, default=1.0)
     parser.add_argument("--power-model", default="linear", choices=["linear", "specpower_ml110g5"])
+    parser.add_argument("--no-extend-horizon", action="store_true",
+                         help="v2: fixed window with dropped jobs instead of the default extended horizon.")
     parser.add_argument("--no-drop-shaping", action="store_true",
                          help="v2: disable potential-based drop-risk shaping (on by default for training).")
     parser.add_argument("--difficulty", choices=sorted(DIFFICULTIES), default=None,
@@ -369,6 +374,7 @@ def main():
                                      lambda_energy=args.lambda_energy, power_model=args.power_model)
         objective.shaping_gamma = args.gamma
     difficulty = DIFFICULTIES[args.difficulty] if args.difficulty else None
+    extend = args.reward_mode == "objective" and not args.no_extend_horizon  # v2 default (2026-09-29)
     if difficulty is not None:
         args.online = difficulty.case == "online"
         args.randomize_instances = True
@@ -380,13 +386,14 @@ def main():
             args.job_size_distribution,
             reward_mode=args.reward_mode, use_potential_shaping=args.use_potential_shaping,
             shaping_gamma=args.gamma, job_weight_range=job_weight_range,
-            objective=objective, difficulty=difficulty,
+            objective=objective, difficulty=difficulty, extend_horizon=extend,
         )
     else:
         full_gym_env = make_base_gym_env(
             reward_mode=args.reward_mode, use_potential_shaping=args.use_potential_shaping,
             shaping_gamma=args.gamma, randomize_instances=args.randomize_instances,
             job_weight_range=job_weight_range, objective=objective, difficulty=difficulty,
+            extend_horizon=extend,
         )
 
     env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env,
@@ -415,12 +422,12 @@ def main():
                     args.arrival_rate, args.online_horizon, args.online_max_jobs,
                     args.job_size_distribution, seed=seed, use_resampler=False,
                     job_weight_range=job_weight_range, reward_mode=args.reward_mode,
-                    objective=objective, difficulty=difficulty,
+                    objective=objective, difficulty=difficulty, extend_horizon=extend,
                 )
             else:
                 held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range,
                                                   reward_mode=args.reward_mode, objective=objective,
-                                                  difficulty=difficulty)
+                                                  difficulty=difficulty, extend_horizon=extend)
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order)

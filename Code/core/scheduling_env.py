@@ -16,6 +16,18 @@ from typing import Tuple, List, Dict, Union
 
 from .objectives import ObjectiveConfig, ObjectiveReward
 
+def extension_needed(job_durations) -> int:
+    """Ticks to add after the preferred horizon H so that EVERY job can still be started and
+    finished (extended-horizon mode). Bound: once no new work arrives (t >= H), every job already
+    running ends within max P ticks; after that the remaining jobs can always be run one after
+    another (each fits an empty machine by the environment's standing assumption), each needing
+    at most P_j ticks plus one start tick under the offline one-start-per-tick clock. So
+    sum_j (P_j + 1) + max_j P_j extra ticks always suffice for a policy that keeps working; a
+    policy that idles past even this is caught by the objective's end-of-window drop rule."""
+    d = np.asarray(job_durations, dtype=int)
+    return int(d.sum() + len(d) + max(int(d.max()) if len(d) else 0, 1))
+
+
 class SchedulingEnv:
     """Time-indexed scheduling environment for cloud resource allocation"""
     def __init__(
@@ -36,6 +48,7 @@ class SchedulingEnv:
         shaping_gamma: float = 0.99,      # discount factor used in the shaping term; should match the RL algorithm's gamma
         reward_mode: str = "legacy",      # "legacy" (default, unchanged), "dense_tardiness", or "objective" (v2)
         objective: ObjectiveConfig = None,  # reward_mode="objective" only; None -> ObjectiveConfig() defaults
+        extend_horizon: bool = False,     # reward_mode="objective" only: unfinished jobs run past H (see below)
     ):
         """Initiate the scheduling environment
 
@@ -76,6 +89,17 @@ class SchedulingEnv:
         self.num_resources = job_resources.shape[1] # Resources set R
         self.num_machines = num_machines # Machine set M
         self.horizon = horizon # Planning horizon H
+        # Extended horizon (2026-09-29, user decision -- Future/research/2026-09-28-objective-
+        # redesign-discussion.md sec. 4a): H stays the PREFERRED horizon (deadlines, metrics,
+        # observation scale), but the physical window self.horizon is lengthened so every job can
+        # still be started and finished after H -- unfinished work is late, not lost, and pays its
+        # true lateness. Without extension preferred_horizon == horizon (unchanged behaviour).
+        self.preferred_horizon = horizon
+        self.extend_horizon = extend_horizon
+        if extend_horizon:
+            if reward_mode != "objective":
+                raise ValueError("extend_horizon requires reward_mode='objective'")
+            self.horizon = horizon + extension_needed(job_durations)
 
         self.job_durations = job_durations # Set of processing durations
         self.job_resources = job_resources # Set of requirements of each job
@@ -171,6 +195,15 @@ class SchedulingEnv:
             reward += self.objective.finalize(self)
         return reward, done
 
+    def _resize_for_extension(self):
+        """Extended horizon only: re-size the physical window (and capacity grid) for the current
+        job set, e.g. after set_jobs() swaps in a resampled instance."""
+        needed = self.preferred_horizon + extension_needed(self.job_durations)
+        if needed != self.horizon:
+            self.horizon = needed
+            self.capacity = np.broadcast_to(self.machine_capacity[None, :, None],
+                                            (self.num_machines, self.num_resources, self.horizon)).copy()
+
     def set_jobs(
         self,
         job_durations: np.ndarray,
@@ -199,6 +232,8 @@ class SchedulingEnv:
         self.job_resources = job_resources
         self.job_deadlines = job_deadlines
         self.job_weights = job_weights
+        if getattr(self, "extend_horizon", False):
+            self._resize_for_extension()
         self.reset()
 
     def reset(self):

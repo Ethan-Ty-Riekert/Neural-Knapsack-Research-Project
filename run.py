@@ -96,13 +96,21 @@ def run_one_instance(method, config, args, env_kwargs=None):
     elif method == "cpsat":
         from Code.methods.exact.exact_solver import solve, replay_schedule
         objective = (env_kwargs or {}).get("objective")
-        drop_b = None
-        if objective is not None:  # v2: optional jobs, same J as the env (see exact_solver.solve)
-            drop_b = objective.drop_surcharge if objective.drop_surcharge is not None else int(config["horizon"])
+        extended = bool((env_kwargs or {}).get("extend_horizon"))
         online = "job_arrival_times" in config
+        drop_b, horizon_override = None, None
+        if extended:  # every job mandatory, window extended exactly as the env does
+            if online:
+                raise SystemExit("cpsat with the extended horizon is offline-only for now "
+                                 "(online padding jobs would need excluding from the model).")
+            from Code.core.scheduling_env import extension_needed
+            horizon_override = int(config["horizon"]) + extension_needed(config["job_durations"])
+        elif objective is not None:  # v2 fixed window: optional jobs, same J as the env
+            drop_b = objective.drop_surcharge if objective.drop_surcharge is not None else int(config["horizon"])
         res = solve(config, time_limit_seconds=args.time_limit, num_search_workers=args.cpsat_workers,
                     earliest_start=config["job_arrival_times"] if online else None,
-                    enforce_single_start_per_tick=not online, drop_surcharge=drop_b)
+                    enforce_single_start_per_tick=not online, drop_surcharge=drop_b,
+                    horizon_override=horizon_override)
         extra = {"cpsat_status": res["status"], "cpsat_objective": res["objective"]}
         if res["schedule"] is None:
             return dict(extra, seconds=time.time() - t0)
@@ -190,6 +198,8 @@ def rl_command(variant_name, preset_name, method, args):
               else "Code.methods.rl.training.train_action_space_variant")
     cmd = [sys.executable, "-m", module, "--option", option]
     if variant_name == "v2_objectives":
+        if args.no_extend_horizon:
+            cmd += ["--no-extend-horizon"]
         cmd += ["--reward-mode", "objective", "--objectives", args.objectives,
                 "--lambda-late", str(args.lambda_late), "--lambda-energy", str(args.lambda_energy),
                 "--power-model", args.power_model]
@@ -226,7 +236,8 @@ def rl_command(variant_name, preset_name, method, args):
     return cmd
 
 
-COMPARE_COLUMNS = ["objective_J", "reward", "dropped", "weighted_tardiness", "late_jobs", "on_time_rate",
+COMPARE_COLUMNS = ["objective_J", "reward", "dropped", "completed_past_horizon", "weighted_tardiness",
+                   "weighted_tardiness_past_horizon", "late_jobs", "on_time_rate",
                    "mean_wait", "mean_flow_time", "active_machine_ticks", "energy_specpower", "seconds"]
 
 
@@ -331,7 +342,11 @@ def main():
     ap.add_argument("--pso-fitness", choices=["reward", "tardiness"], default="reward")
     ap.add_argument("--objectives", default="tardiness",
                     help="v2 only: comma list from tardiness,late_count,energy (dropped-job cost is always on)")
-    ap.add_argument("--drop-surcharge", type=float, default=None, help="v2 only: B in ticks (default H)")
+    ap.add_argument("--drop-surcharge", type=float, default=None,
+                    help="v2 only: B in ticks (default: H with --no-extend-horizon, 0 with the extended horizon)")
+    ap.add_argument("--no-extend-horizon", action="store_true",
+                    help="v2 only: fixed window H with dropped jobs (the pre-2026-09-29 behaviour) instead of "
+                         "the default extended horizon, where unfinished jobs run past H and pay true lateness")
     ap.add_argument("--lambda-late", type=float, default=1.0, help="v2 only: weight of late_count")
     ap.add_argument("--lambda-energy", type=float, default=1.0,
                     help="v2 only: weight of energy (late job-ticks per normalised energy unit)")

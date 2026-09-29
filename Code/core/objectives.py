@@ -64,14 +64,21 @@ class ObjectiveReward:
 
     # ------------------------------------------------------------------ episode lifecycle
     def reset(self, env):
-        H = int(env.horizon)
+        H = int(env.horizon)                                        # physical window
+        H_pref = int(getattr(env, "preferred_horizon", H))          # deadlines / arrivals horizon
+        self.extended = bool(getattr(env, "extend_horizon", False))
         self.P = np.asarray(env.job_durations, dtype=float)
         self.d = np.asarray(env.job_deadlines, dtype=float)
         self.w = np.asarray(env.job_weights, dtype=float)
         n = len(self.P)
         self.arrival = np.asarray(getattr(env, "arrival_times", np.zeros(n)), dtype=float)
-        self.real = self.arrival <= H                      # online padding jobs arrive at H+1
-        self.B = float(H if self.cfg.drop_surcharge is None else self.cfg.drop_surcharge)
+        self.real = self.arrival <= H_pref                 # online padding jobs arrive at H+1
+        # Drop surcharge B. Extended horizon: every job can be finished, so a "drop" only happens if
+        # a policy idles past the whole extended window; it is then charged its lateness lower bound
+        # (finishing at the end of the physical window), B = 0 -- no arbitrary constant. Standard
+        # window: B = H (decided 2026-09-29, before the extended horizon replaced it).
+        default_B = 0.0 if self.extended else float(H_pref)
+        self.B = default_B if self.cfg.drop_surcharge is None else float(self.cfg.drop_surcharge)
         self.LS = H - self.P                               # latest feasible start
         self.K = self.w * (np.maximum(0.0, H - self.d) + self.B)   # total cost of dropping j
         self.c = float(self.cfg.scale if self.cfg.scale is not None else max(1, int(self.real.sum())))
@@ -185,8 +192,8 @@ class ObjectiveReward:
     def _potential(self, env):
         """Phi(s) = -sum over alive jobs (real, waiting, not dropped) of K_j * g(LS_j - t),
         g(sigma) = 1 / (1 + max(sigma, 0)). Zero whenever no job is alive (every terminal state)."""
-        if not self.cfg.drop_shaping or not env.remaining_jobs:
-            return 0.0
+        if not self.cfg.drop_shaping or self.extended or not env.remaining_jobs:
+            return 0.0  # no drop risk to shape under the extended horizon
         idx = np.fromiter(env.remaining_jobs, dtype=int)
         idx = idx[self.real[idx] & ~self.dropped[idx]]
         slack = np.maximum(self.LS[idx] - env.time, 0.0)
@@ -195,7 +202,7 @@ class ObjectiveReward:
     def _reward(self, env, cost, terminal=False):
         """cost is already lambda-weighted; returns -(cost)/c plus scaled shaping."""
         reward = -cost / self.c
-        if self.cfg.drop_shaping:
+        if self.cfg.drop_shaping and not self.extended:
             phi_new = 0.0 if terminal else self._potential(env)
             reward += self.cfg.drops * (self.cfg.shaping_gamma * phi_new - self.phi) / self.c
             self.phi = phi_new

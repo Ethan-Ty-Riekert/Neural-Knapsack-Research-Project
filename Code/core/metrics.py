@@ -32,7 +32,7 @@ from .power import grid_energy
 
 def schedule_metrics(env) -> dict:
     """Compute reward-independent metrics from a finished SchedulingEnv/OnlineSchedulingEnv."""
-    H = int(env.horizon)
+    H = int(getattr(env, "preferred_horizon", env.horizon))  # preferred horizon (== physical unless extended)
     start = np.asarray(env.start_times)
     dur = np.asarray(env.job_durations)
     dl = np.asarray(env.job_deadlines)
@@ -80,6 +80,15 @@ def schedule_metrics(env) -> dict:
         "max_tardiness": _stat(np.max, t_sched),
         "p95_tardiness": _stat(lambda x: np.percentile(x, 95), t_sched),
         "tardiness_with_dropped_lb": float(t_sched.sum() + drop_lb.sum()),
+        # extended horizon (2026-09-29): jobs that had to finish after the preferred horizon H, and the
+        # split of lateness / machine time into within-H and past-H parts. The totals above include
+        # both (the objective must -- excluding past-H lateness would make pushing work past H look
+        # free); these columns show how much of a result comes from past-horizon work.
+        "completed_past_horizon": int((sched & (completion > H)).sum()),
+        "weighted_completed_past_horizon": float(w[sched & (completion > H)].sum()),
+        "weighted_tardiness_within_horizon": float((tard * w)[sched & (completion <= H)].sum()),
+        "weighted_tardiness_past_horizon": float((tard * w)[sched & (completion > H)].sum()),
+        "active_machine_ticks_past_horizon": int(active[:, H:].sum()),
         # latency (queueing delay)
         "mean_wait": _stat(np.mean, wait),
         "p95_wait": _stat(lambda x: np.percentile(x, 95), wait),

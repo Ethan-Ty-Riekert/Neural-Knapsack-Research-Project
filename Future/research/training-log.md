@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-29 (S2W11) -- Extended horizon implemented (v2 default): no drops, true lateness past H
+
+**Config:** v2 `extend_horizon=True` (user decision, decision record sec. 4a). Quick heuristic-only check on
+`off_c_15` and `off_tf05` (15 held-out instances each); no RL or CP-SAT runs yet.
+
+**Stats:**
+```
+off_c_15: LST J 38.2 (2.60 jobs past H, 0.00 of it lateness) | EDF 50.9 (3.87, 0.53) | ATC 229.3 (5.33, 61.1)
+off_tf05: ATC J 1671.5 (5.80 past H) | LST 2288.4 (2.27) | EDF 2323.5 (4.00)
+```
+
+**Observation:** with no arbitrary drop cost, the J rankings match the lateness rankings, and every job is
+accounted for. EDF's 50.87 equals the earlier H=110 measurement, a consistency check. The past-horizon split
+shows LST's leftover jobs are all due after H (no lateness), while ATC's carry real lateness.
+
+**Conclusion / next step:** on the PC, re-run the v2 comparison tables (with CP-SAT offline) and the RL runs
+under the extended horizon. The B = H tables stay recorded as the fixed-window sensitivity case.
+
+---
+
 ## 2026-09-29 (S2W11) -- CORRECTION: the v2 "heuristics far from optimal" gap was mostly the drop surcharge B = H; first short v2 RL runs
 
 **Config:** short PPO runs under v2 (B = H), 3 in parallel on the laptop: Option 1 offline 120k, Option 3 offline

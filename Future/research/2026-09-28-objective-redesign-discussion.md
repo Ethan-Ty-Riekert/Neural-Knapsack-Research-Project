@@ -177,6 +177,26 @@ Also track a metric for **how many jobs had to complete past the preferred horiz
 - Tests: exactness (the sum of charges = Σ w_j T_j over all jobs) and no job left unfinished.
 - Re-run the v2 baseline tables and the short RL runs under this mode.
 
+**Implemented 2026-09-29** (same day), as the v2 default (`extend_horizon=True`; `--no-extend-horizon`
+restores the fixed window):
+- The physical window is H + Σ(P_j + 1) + max P (`extension_needed()`: provably enough to finish every job if
+  the policy keeps working). H stays the preferred horizon for deadlines, metrics and observation scaling.
+- Online arrivals stop at H and the episode ends when the queue is empty.
+- The drop surcharge B = 0. A "drop" can now only happen if a policy idles past the whole extended window,
+  and is then charged its lateness lower bound.
+- The drop-risk shaping is switched off, because no drop risk is left to shape.
+- CP-SAT uses the same window (`horizon_override`) with every job mandatory.
+- `tests/test_extended_horizon.py` checks all of it.
+
+**User follow-up question:** should past-horizon jobs be scored separately so they don't "infect" other
+metrics? **Answer:** not in the objective. Past-horizon lateness must count at full value, or pushing work past
+H becomes a new loophole. In the *reported* metrics, yes: every run now reports
+`weighted_tardiness_within_horizon` / `_past_horizon`, `completed_past_horizon` (and weighted), and
+`active_machine_ticks_past_horizon` next to the totals.
+
+First look (heuristics, `off_c_15`): LST J = 38.2, of which 2.6 jobs per instance complete past H with 0
+lateness (they're due after H). Under B = H those same jobs cost 200.
+
 **Status of B = H results:** kept and labelled as such (they're valid under that definition), but they're **not
 the headline**. `2026-09-29-v2-build-and-first-results.md` has a correction section.
 

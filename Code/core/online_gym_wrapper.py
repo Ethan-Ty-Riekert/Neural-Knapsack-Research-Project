@@ -44,8 +44,9 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         at rho 0.75 (2.8M list appends), and the main reason online RL training was slow. The
         equivalence test checks bit-identical float32 observations at every step."""
         R, J, n = self.num_resources, self.max_jobs, self.num_jobs
-        t = min(self.env.time, self.horizon)
-        t_idx = min(self.env.time, self.horizon - 1)
+        H_phys, H_pref = self.env.horizon, self.env.preferred_horizon  # see GymSchedulingEnv._get_obs
+        t = min(self.env.time, H_phys)
+        t_idx = min(self.env.time, H_phys - 1)
         capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
 
         max_dur = max(1.0, float(np.max(self.env.job_durations)))
@@ -56,7 +57,7 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         if self.env.revealed_jobs:
             idx = np.fromiter(self.env.revealed_jobs, dtype=int)
             job_feats[idx, 0] = self.env.job_durations[idx] / max_dur
-            job_feats[idx, 1] = self.env.job_deadlines[idx] / self.horizon
+            job_feats[idx, 1] = self.env.job_deadlines[idx] / H_pref
             job_feats[idx, 2] = self.env.job_weights[idx] / max_wgt
             job_feats[idx, 3:3 + R] = self.env.job_resources[idx] / max_res
         scheduled = np.ones(J, dtype=np.float32)
@@ -64,7 +65,7 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
             scheduled[list(self.env.remaining_jobs)] = 0.0
         job_feats[:, -1] = scheduled
 
-        return np.concatenate(([t / self.horizon], capacity_block.ravel(), job_feats.ravel())).astype(np.float32)
+        return np.concatenate(([t / H_pref], capacity_block.ravel(), job_feats.ravel())).astype(np.float32)
 
     def reset(self, *, seed=None, options=None):
         gym.Env.reset(self, seed=seed)

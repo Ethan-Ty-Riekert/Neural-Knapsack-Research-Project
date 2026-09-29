@@ -104,12 +104,16 @@ class GymSchedulingEnv(gym.Env):
         loop, just without the Python-level looping cost."""
         R, M, J, n = self.num_resources, self.num_machines, self.max_jobs, self.num_jobs
 
-        # 1. Normalised time
-        t = min(self.env.time, self.horizon)
+        # 1. Normalised time. Extended horizon (2026-09-29): the PHYSICAL window self.env.horizon
+        # may be longer than the preferred horizon H; time and deadlines are normalised by H (a
+        # fixed, meaningful scale), capacity is indexed within the physical window. Without
+        # extension both are the same value, so this is identical to before.
+        H_phys, H_pref = self.env.horizon, self.env.preferred_horizon
+        t = min(self.env.time, H_phys)
 
         # 2. Remaining capacity (normalised) -- machine-major, resource-minor,
         # matching the original nested "for m: for r:" append order exactly.
-        t_idx = min(self.env.time, self.horizon - 1)
+        t_idx = min(self.env.time, H_phys - 1)
         capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
 
         # Precompute normalisation constants
@@ -125,7 +129,7 @@ class GymSchedulingEnv(gym.Env):
         # exactly; only the first n rows get filled with real values.
         job_feats = np.zeros((J, R + 4), dtype=np.float32)
         job_feats[:n, 0] = self.env.job_durations / max_dur
-        job_feats[:n, 1] = self.env.job_deadlines / self.horizon
+        job_feats[:n, 1] = self.env.job_deadlines / H_pref
         job_feats[:n, 2] = self.env.job_weights / max_wgt
         job_feats[:n, 3:3 + R] = self.env.job_resources / max_res
         # scheduled mask: 1.0 everywhere by default (matches padding slots'
@@ -138,7 +142,7 @@ class GymSchedulingEnv(gym.Env):
         job_feats[:, -1] = scheduled
 
         return np.concatenate((
-            [t / self.horizon],
+            [t / H_pref],
             capacity_block.ravel(),
             job_feats.ravel(),
         )).astype(np.float32)
@@ -204,8 +208,8 @@ class GymSchedulingEnv(gym.Env):
         if remaining:
             remaining_idx = np.array(remaining, dtype=np.int64)
             durations = self.env.job_durations[remaining_idx]                  # (Jr,)
-            duration_ok = (t + durations) <= self.horizon                      # (Jr,)
-            t_idx = min(t, self.horizon - 1)
+            duration_ok = (t + durations) <= self.env.horizon                  # (Jr,) physical window
+            t_idx = min(t, self.env.horizon - 1)
             cap_t = self.env.capacity[:, :, t_idx]                             # (M, R)
             resources = self.env.job_resources[remaining_idx]                  # (Jr, R)
             resource_ok = (cap_t[None, :, :] - resources[:, None, :] >= 0).all(axis=2)  # (Jr, M)

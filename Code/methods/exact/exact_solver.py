@@ -52,7 +52,7 @@ from Code.core.metrics import schedule_metrics
 
 
 def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=None,
-          enforce_single_start_per_tick=True, drop_surcharge=None):
+          enforce_single_start_per_tick=True, drop_surcharge=None, horizon_override=None):
     """Build and solve the CP-SAT model for one instance. Returns a dict
     with solver status, objective value, a best-known lower bound, and (if
     any solution was found) a schedule: list of (job, machine, start_time)
@@ -110,6 +110,12 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     minimised value is exactly J = sum_{finished} w_j T_j + sum_{dropped} K_j -- the
     same J the reward_mode="objective" env reports on replay. Jobs that cannot fit
     the horizon at all are forced absent instead of raising.
+
+    horizon_override (added 2026-09-29, extended horizon): solve over a longer physical
+    window than config["horizon"] -- pass config["horizon"] + extension_needed(durations),
+    exactly as SchedulingEnv(extend_horizon=True) does, with drop_surcharge=None (every
+    job mandatory). Deadlines keep their meaning, so the minimised sum w_j T_j is the
+    extended-horizon J.
     """
     job_durations = np.asarray(config["job_durations"])
     job_resources = np.asarray(config["job_resources"])
@@ -117,7 +123,7 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     job_weights = np.asarray(config["job_weights"])
     machine_capacity = np.asarray(config["machine_capacity"])
     num_machines = int(config["num_machines"])
-    horizon = int(config["horizon"])
+    horizon = int(horizon_override) if horizon_override is not None else int(config["horizon"])
     num_jobs = len(job_durations)
     num_resources = job_resources.shape[1]
 

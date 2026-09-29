@@ -136,10 +136,13 @@ class OnlineSchedulingEnv(SchedulingEnv):
         if self.objective is not None:
             elapsed = self.time
             self.time += 1
-            if self.time <= self.horizon:  # same padding-sentinel guard as below
-                self._reveal_arrivals()
-            reward = self.objective.transition(self, elapsed_tick=elapsed)  # after reveal: drops of
-            done = self.time > self.horizon                                 # infeasible arrivals
+            if self.time <= self.preferred_horizon:  # arrivals stop at the (preferred) horizon;
+                self._reveal_arrivals()              # padding jobs arrive at H+1 and never reveal
+            reward = self.objective.transition(self, elapsed_tick=elapsed)  # after reveal
+            if self.extend_horizon:  # queue drained after arrivals stopped, or safety cap reached
+                done = (self.time > self.preferred_horizon and not self.remaining_jobs) or self.time > self.horizon
+            else:
+                done = self.time > self.horizon
             if done:
                 reward += self.objective.finalize(self)
             return None, reward, done

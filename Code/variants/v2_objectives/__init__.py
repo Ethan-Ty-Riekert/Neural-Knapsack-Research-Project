@@ -54,10 +54,14 @@ def objective_config(objectives=("tardiness",), drop_surcharge=None, lambda_late
 
 
 def env_kwargs(args) -> dict:
-    """Base-env constructor overrides for this variant, from run.py's arguments."""
+    """Base-env constructor overrides for this variant, from run.py's arguments. Extended horizon
+    is the default (user decision 2026-09-29): unfinished jobs run past H and pay true lateness;
+    --no-extend-horizon restores the fixed window with the drop charge (B = H), kept for
+    sensitivity checks against the earlier results."""
     objectives = tuple(o.strip() for o in (getattr(args, "objectives", None) or "tardiness").split(","))
     cfg = objective_config(objectives, getattr(args, "drop_surcharge", None),
                            getattr(args, "lambda_late", 1.0),
                            lambda_energy=getattr(args, "lambda_energy", 1.0),
                            power_model=getattr(args, "power_model", "linear"))
-    return {"reward_mode": "objective", "objective": cfg}
+    return {"reward_mode": "objective", "objective": cfg,
+            "extend_horizon": not getattr(args, "no_extend_horizon", False)}
