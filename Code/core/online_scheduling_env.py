@@ -102,6 +102,7 @@ class OnlineSchedulingEnv(SchedulingEnv):
         self.remaining_jobs.remove(job)
 
         if self.objective is not None:
+            self._last_placement = (job, machine, self.time)  # energy is charged at placement
             # placement without a tick: only the shaping potential changes (job leaves the risk set)
             return (None, self.objective.transition(self, elapsed_tick=None), False)
 

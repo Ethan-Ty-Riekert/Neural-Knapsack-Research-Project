@@ -468,6 +468,7 @@ class SchedulingEnv:
         self.remaining_jobs.remove(job)
 
         if self.objective is not None:
+            self._last_placement = (job, machine, self.time)  # energy is charged at placement
             reward, done = self._objective_tick()
             return (None, reward, done)
 

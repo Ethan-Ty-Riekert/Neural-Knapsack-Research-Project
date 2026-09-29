@@ -38,10 +38,29 @@ def worst_fit(base_env, job, feasible_machines, t):
                key=lambda m: (_remaining_capacity_after(base_env, job, m, t).sum(), -m))
 
 
+def consolidate(base_env, job, feasible_machines, t):
+    """Consolidate (energy-aware, added 2026-09-29, S2W11): choose the machine that switches on
+    the fewest NEW machine-ticks over the job's run [t, t+P_j) -- i.e. the least increase in
+    active machine-ticks, which is energy under the linear power model (see
+    Code/core/objectives.py). Ties broken by Best-Fit (tightest remaining capacity). This is the
+    "allocate where power increases least" principle of Beloglazov, Abawajy & Buyya's Modified
+    Best Fit Decreasing (FGCS 2012, bib key energyaware2012), applied per job."""
+    dur = int(base_env.job_durations[job])
+    window = base_env.capacity[:, :, t:t + dur]                       # (M, R, dur)
+    busy = (window < base_env.machine_capacity[None, :, None]).any(axis=1)  # (M, dur)
+
+    def key(m):
+        newly_active = int((~busy[m]).sum())
+        return (newly_active, _remaining_capacity_after(base_env, job, m, t).sum(), m)
+
+    return min(feasible_machines, key=key)
+
+
 PLACEMENT_RULES = {
     "FirstFit": first_fit,
     "BestFit": best_fit,
     "WorstFit": worst_fit,
+    "Consolidate": consolidate,
 }
 
 

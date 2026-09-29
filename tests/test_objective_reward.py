@@ -10,6 +10,8 @@ definition.md (2026-09-29, S2W11):
      -J/c - lambda_D * Phi(s_0)/c exactly.
   3. Drop dominance (sec. 3): K_j > w_j max(0, H - d_j) (dropping costs more than the latest
      possible completion) and rho_j = K_j - accrued_j >= 0.
+  5. Energy (sec. 4): energy charged at placement equals the energy recomputed from the env's final
+     capacity grid, under both power models (linear = active machine-ticks; SPECpower ML110 G5).
   4. Without shaping, reward = -J/c exactly for heuristics (so reward ordering == objective
      ordering); legacy reward_mode untouched (EDF off_c_15 seed 500000 = 286.00).
 
@@ -21,6 +23,7 @@ import numpy as np
 from Code.core.env_config import generate_env_config
 from Code.core.arrival_process import generate_poisson_arrivals
 from Code.core.objectives import ObjectiveConfig
+from Code.core.power import grid_energy
 from Code.methods.rl.evaluation.eval_rl_agent import make_env, run_heuristic
 
 TOL = 1e-6
@@ -61,7 +64,13 @@ def check_episode(base, total, phi0, cfg, label):
     assert abs(obj.totals["weighted_late"] - exp_U) < TOL, (label, obj.totals, exp_U)
     assert np.array_equal(obj.dropped, dropped), label
 
-    J = cfg.tardiness * exp_T + cfg.drops * exp_D + cfg.late_count * exp_U
+    used = base.machine_capacity[None, :, None] - base.capacity
+    active = (used > 1e-9).any(axis=1)
+    exp_E = grid_energy(active, used[:, 0, :] / base.machine_capacity[0], cfg.power_model)
+    assert abs(obj.totals["energy"] - exp_E) < 1e-6, (label, obj.totals["energy"], exp_E)
+    assert np.array_equal(obj.active, active), label
+
+    J = cfg.tardiness * exp_T + cfg.drops * exp_D + cfg.late_count * exp_U + cfg.energy * exp_E
     shaping = cfg.drops * (-phi0) / obj.c if cfg.drop_shaping else 0.0  # gamma = 1 telescoping
     assert abs(total - (-J / obj.c + shaping)) < 1e-6, (label, total, -J / obj.c + shaping)
 
@@ -77,6 +86,8 @@ for seed in range(6):
     lam_T, lam_U = rng.uniform(0.5, 2.0), rng.choice([0.0, rng.uniform(0.5, 3.0)])
     cfg = ObjectiveConfig(tardiness=lam_T, drops=lam_T + rng.uniform(0, 1.0), late_count=lam_U,
                           drop_surcharge=rng.choice([None, 5.0]), drop_shaping=bool(seed % 2),
+                          energy=rng.choice([0.0, rng.uniform(0.1, 2.0)]),
+                          power_model=["linear", "specpower_ml110g5"][seed % 2 == 0],
                           shaping_gamma=1.0)
     off = generate_env_config(seed=900 + seed, num_jobs=30, num_machines=3, horizon=40,
                               job_weight_range=(1, 6))
@@ -86,7 +97,7 @@ for seed in range(6):
         f, dr = check_episode(*random_episode(config, cfg, rng), cfg, f"{label} seed {seed}")
         n_eps += 1
     print(f"  seed {seed}: offline+online exact (last: {f} finished, {dr} dropped)")
-print(f"  exactness, shaping telescoping, drop dominance: {n_eps} random episodes OK")
+print(f"  exactness (incl. energy), shaping telescoping, drop dominance: {n_eps} random episodes OK")
 
 # 4a. heuristics without shaping: reward == -J/c, on the real off_c_15 instances
 nos = {"reward_mode": "objective", "objective": ObjectiveConfig(drop_shaping=False)}

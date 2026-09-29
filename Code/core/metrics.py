@@ -15,7 +15,8 @@ service (Nagabushnam, Choi & Kim 2025, Cluster Computing 28:375) -- mapped onto 
   energy        active machine-ticks (a machine is active at tick t if it runs >= 1 job): equal to
                 energy up to constants under the linear power model P(u) = P_idle + (P_max-P_idle)u,
                 since total work is fixed (Fan, Weber & Barroso 2007); mean utilisation of active
-                machines (consolidation quality)
+                machines (consolidation quality); energy_specpower = sum over active ticks of
+                P(u_cpu)/P_max for the HP ML110 G5 SPECpower curve (Code/core/power.py)
 
 Conventions (see Future/research/2026-09-28-objective-redesign-discussion.md):
   - "Jobs" = jobs that arrived by the horizon (offline: all jobs).
@@ -25,6 +26,8 @@ Conventions (see Future/research/2026-09-28-objective-redesign-discussion.md):
     max(0, H + P_j - d_j) (the tardiness it would have had if started at the horizon).
 """
 import numpy as np
+
+from .power import grid_energy
 
 
 def schedule_metrics(env) -> dict:
@@ -53,6 +56,7 @@ def schedule_metrics(env) -> dict:
     used = env.machine_capacity[None, :, None] - env.capacity  # (M, R, H) resource-units in use
     active = (used > 1e-9).any(axis=1)                          # (M, H)
     util = (used / env.machine_capacity[None, :, None]).max(axis=1)  # bottleneck-resource utilisation
+    cpu = used[:, 0, :] / env.machine_capacity[0]                   # resource 0 = CPU (assumption)
 
     def _stat(fn, x, default=0.0):
         return float(fn(x)) if len(x) else default
@@ -86,4 +90,6 @@ def schedule_metrics(env) -> dict:
         # energy / consolidation
         "active_machine_ticks": int(active.sum()),
         "mean_active_utilisation": _stat(np.mean, util[active]),
+        # SPECpower (HP ML110 G5) energy in peak-power machine-ticks -- Code/core/power.py
+        "energy_specpower": grid_energy(active, cpu, "specpower_ml110g5"),
     }

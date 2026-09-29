@@ -7,6 +7,7 @@ reward_mode="objective". The objective minimised is
     J = lambda_T * sum_{finished j} w_j T_j                       (weighted tardiness, sec. 2)
       + lambda_D * sum_{dropped j}  w_j (max(0, H - d_j) + B)     (dropped jobs, sec. 3)
       + lambda_U * sum_j w_j U_j                                  (weighted late count, sec. 5)
+      + lambda_E * sum_t sum_m a_m(t) P(u_m(t)) / P_max            (energy, sec. 4)
 
 and the per-step reward is r_t = -(1/c) * (this step's share of J) + F_t / c, with c a single
 global scale constant (sec. 6) and F_t optional potential-based drop-risk shaping (sec. 6).
@@ -19,12 +20,16 @@ Charges are dense (paid when the cost is incurred, not at episode end):
   - late count: w_j once, when the clock reaches d_j and j is not finished by d_j (jobs with
     d_j beyond the episode end are checked at the end).
 
-Energy (sec. 4) is build step 3 and not implemented yet.
+  - energy: charged at PLACEMENT -- a placement fixes the job's occupancy of [t, t+P_j) on its
+    machine (no preemption), so the exact increase in the machine's energy over that window is
+    known immediately (power models in Code/core/power.py; "linear" = active machine-ticks).
 """
 from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
+
+from .power import POWER_MODELS, relative_power
 
 
 @dataclass
@@ -34,17 +39,20 @@ class ObjectiveConfig:
     tardiness: float = 1.0                  # lambda_T, per weighted late job-tick
     drops: float = 1.0                      # lambda_D; must stay > 0 whenever energy is used (sec. 4)
     late_count: float = 0.0                 # lambda_U, per weighted late job
-    energy: float = 0.0                     # lambda_E -- build step 3, must be 0 for now
+    energy: float = 0.0                     # lambda_E, per normalised energy unit (sec. 4)
+    power_model: str = "linear"             # "linear" (active machine-ticks) or "specpower_ml110g5"
     drop_surcharge: Optional[float] = None  # B in ticks; None -> horizon H (decided 2026-09-29)
     scale: Optional[float] = None           # c; None -> number of real jobs in the instance
     drop_shaping: bool = True               # potential-based shaping on slack to latest start
     shaping_gamma: float = 0.99             # must equal the RL algorithm's discount factor
 
     def __post_init__(self):
-        if self.energy != 0.0:
-            raise NotImplementedError("energy objective is build step 3 -- not implemented yet")
-        if min(self.tardiness, self.drops, self.late_count) < 0:
+        if min(self.tardiness, self.drops, self.late_count, self.energy) < 0:
             raise ValueError("objective weights must be >= 0")
+        if self.energy > 0 and self.drops <= 0:
+            raise ValueError("energy rewards dropping work unless the drop cost is on (formal doc sec. 4)")
+        if self.power_model not in POWER_MODELS:
+            raise ValueError(f"unknown power model {self.power_model!r}; choose from {POWER_MODELS}")
 
 
 class ObjectiveReward:
@@ -75,14 +83,20 @@ class ObjectiveReward:
         # raw (un-lambda'd, unscaled) component totals, for verification and reporting. At episode
         # end: weighted_tardiness = sum over FINISHED jobs of w_j T_j, drop_cost = sum over dropped
         # jobs of K_j, weighted_late = sum_j w_j U_j.
-        self.totals = {"weighted_tardiness": 0.0, "drop_cost": 0.0, "weighted_late": 0.0}
+        self.totals = {"weighted_tardiness": 0.0, "drop_cost": 0.0, "weighted_late": 0.0, "energy": 0.0}
+        # energy bookkeeping: machine-activity and CPU-utilisation grids (always tracked, so
+        # energy is reported even when lambda_E = 0)
+        self.active = np.zeros((env.num_machines, H), dtype=bool)
+        self.cpu = np.zeros((env.num_machines, H))
+        self.cpu_cap = float(np.asarray(env.machine_capacity)[0])
+        env._last_placement = None
         self.phi = self._potential(env)
 
     def transition(self, env, elapsed_tick: Optional[int]) -> float:
         """Reward for one env transition. elapsed_tick = the tick that just elapsed (env.time has
         already been advanced and, online, arrivals revealed), or None for a placement that did
         not advance time (online case)."""
-        cost = 0.0
+        cost = self._energy_placement(env)
         if elapsed_tick is not None:
             cost += self._tardiness_tick(env, elapsed_tick)
             cost += self._late_checks(env, upto=env.time)
@@ -111,6 +125,21 @@ class ObjectiveReward:
             waiting[list(env.remaining_jobs)] = True
         running = (start != -1) & (start + self.P > t)
         return (waiting | running) & self.real & ~self.dropped
+
+    def _energy_placement(self, env):
+        """lambda_E * exact energy increase caused by the placement just made (if any)."""
+        placement, env._last_placement = getattr(env, "_last_placement", None), None
+        if placement is None:
+            return 0.0
+        j, m, t = placement
+        window = slice(t, t + int(self.P[j]))
+        model = self.cfg.power_model
+        before = (relative_power(self.cpu[m, window], model) * self.active[m, window]).sum()
+        self.cpu[m, window] += float(env.job_resources[j][0]) / self.cpu_cap
+        self.active[m, window] = True
+        delta = float(relative_power(self.cpu[m, window], model).sum() - before)
+        self.totals["energy"] += delta
+        return self.cfg.energy * delta
 
     def _add_tardiness(self, per_job):
         self.accrued += per_job
@@ -177,4 +206,5 @@ class ObjectiveReward:
         """J for the episode so far (unscaled, lambda-weighted, shaping excluded)."""
         return (self.cfg.tardiness * self.totals["weighted_tardiness"]
                 + self.cfg.drops * self.totals["drop_cost"]
-                + self.cfg.late_count * self.totals["weighted_late"])
+                + self.cfg.late_count * self.totals["weighted_late"]
+                + self.cfg.energy * self.totals["energy"])

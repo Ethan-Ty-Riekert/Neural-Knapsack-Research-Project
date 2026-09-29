@@ -271,9 +271,13 @@ def main():
     ap.add_argument("--pso-iterations", type=int, default=30)
     ap.add_argument("--pso-fitness", choices=["reward", "tardiness"], default="reward")
     ap.add_argument("--objectives", default="tardiness",
-                    help="v2 only: comma list from tardiness,late_count (dropped-job cost is always on)")
+                    help="v2 only: comma list from tardiness,late_count,energy (dropped-job cost is always on)")
     ap.add_argument("--drop-surcharge", type=float, default=None, help="v2 only: B in ticks (default H)")
     ap.add_argument("--lambda-late", type=float, default=1.0, help="v2 only: weight of late_count")
+    ap.add_argument("--lambda-energy", type=float, default=1.0,
+                    help="v2 only: weight of energy (late job-ticks per normalised energy unit)")
+    ap.add_argument("--power-model", default="linear", choices=["linear", "specpower_ml110g5"],
+                    help="v2 only: server power model for the energy objective")
     ap.add_argument("--time-limit", type=float, default=60.0, help="CP-SAT seconds per instance")
     ap.add_argument("--cpsat-workers", type=int, default=8, help="CP-SAT parallel search workers")
     ap.add_argument("--timesteps", type=int, default=None, help="rl-train only")
