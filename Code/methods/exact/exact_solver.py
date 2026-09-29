@@ -52,7 +52,7 @@ from Code.core.metrics import schedule_metrics
 
 
 def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=None,
-          enforce_single_start_per_tick=True):
+          enforce_single_start_per_tick=True, drop_surcharge=None):
     """Build and solve the CP-SAT model for one instance. Returns a dict
     with solver status, objective value, a best-known lower bound, and (if
     any solution was found) a schedule: list of (job, machine, start_time)
@@ -101,6 +101,15 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     schedule every one of them with zero tardiness. Pass False for the
     online case; machine capacity (AddCumulative, below) remains the only
     real per-tick constraint, matching OnlineSchedulingEnv exactly.
+
+    drop_surcharge (added 2026-09-29, S2W11, variant v2): None (default, unchanged)
+    forces every job to be scheduled and minimises sum w_j T_j. A number B instead
+    solves the v2 objective (Future/research/2026-09-28-v2-objective-formal-
+    definition.md): each job is OPTIONAL (presence literal = sum of its assign
+    booleans), and a dropped job costs K_j = w_j (max(0, H - d_j) + B), so the
+    minimised value is exactly J = sum_{finished} w_j T_j + sum_{dropped} K_j -- the
+    same J the reward_mode="objective" env reports on replay. Jobs that cannot fit
+    the horizon at all are forced absent instead of raising.
     """
     job_durations = np.asarray(config["job_durations"])
     job_resources = np.asarray(config["job_resources"])
@@ -123,7 +132,9 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
         dur = int(job_durations[j])
         latest_start = horizon - dur
         earliest = int(earliest_start[j]) if earliest_start is not None else 0
-        if latest_start < earliest:
+        if latest_start < earliest and drop_surcharge is not None:
+            latest_start = earliest  # v2: unschedulable job, forced absent below
+        elif latest_start < earliest:
             # This job cannot possibly complete within the horizon at all
             # given when it arrives -- matches SchedulingEnv.is_feasible()'s
             # own t+duration<=H check, extended with the arrival-time floor.
@@ -142,7 +153,12 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
             intervals_by_machine[m].append(interval)
             for r in range(num_resources):
                 demands_by_machine[m][r].append(int(job_resources[j, r]))
-        model.Add(sum(assign_j) == 1)  # every job scheduled on exactly one machine
+        if drop_surcharge is None:
+            model.Add(sum(assign_j) == 1)  # every job scheduled on exactly one machine
+        else:
+            model.Add(sum(assign_j) <= 1)  # v2: at most one machine; none = dropped
+            if horizon - dur < earliest:
+                model.Add(sum(assign_j) == 0)
         assign[j] = assign_j
 
     # Single global decision clock (see module docstring / this function's
@@ -151,8 +167,22 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     # OnlineSchedulingEnv permits concurrent same-tick placements (Option 2),
     # so this must be skipped there or the model becomes artificially
     # infeasible at realistic job counts.
-    if enforce_single_start_per_tick:
+    if enforce_single_start_per_tick and drop_surcharge is None:
         model.AddAllDifferent(start)
+    elif enforce_single_start_per_tick:
+        # v2: only PLACED jobs share the one-start-per-tick clock; a dropped job's start
+        # is mapped to a unique dummy value beyond the horizon so it cannot block a tick.
+        eff = []
+        for j in range(num_jobs):
+            present = sum(assign[j])
+            e = model.NewIntVar(0, horizon + 1 + num_jobs, f"eff_start_{j}")
+            b = model.NewBoolVar(f"present_{j}")
+            model.Add(present == 1).OnlyEnforceIf(b)
+            model.Add(present == 0).OnlyEnforceIf(b.Not())
+            model.Add(e == start[j]).OnlyEnforceIf(b)
+            model.Add(e == horizon + 1 + j).OnlyEnforceIf(b.Not())
+            eff.append(e)
+        model.AddAllDifferent(eff)
 
     for m in range(num_machines):
         for r in range(num_resources):
@@ -163,7 +193,11 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
         dur = int(job_durations[j])
         completion = start[j] + dur
         t = model.NewIntVar(0, horizon, f"tardiness_{j}")
-        model.Add(t >= completion - int(job_deadlines[j]))
+        if drop_surcharge is None:
+            model.Add(t >= completion - int(job_deadlines[j]))
+        else:  # v2: tardiness only binds for placed jobs (a dropped job pays K_j instead).
+            # Big-M with M = H: completion - d_j <= H always, so the bound is vacuous when absent.
+            model.Add(t >= completion - int(job_deadlines[j]) - horizon * (1 - sum(assign[j])))
         model.Add(t >= 0)
         tardiness_vars.append(t)
 
@@ -176,7 +210,15 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     # job_weight_range, but would need revisiting (e.g. scaling by 1000 and
     # dividing back) if a future instance ever uses non-integer weights.
     weights = np.round(job_weights).astype(int)
-    model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs)))
+    if drop_surcharge is None:
+        model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs)))
+    else:
+        B = int(round(drop_surcharge))
+        real = [earliest_start is None or int(earliest_start[j]) <= horizon for j in range(num_jobs)]
+        K = [int(weights[j]) * (max(0, horizon - int(job_deadlines[j])) + B) if real[j] else 0
+             for j in range(num_jobs)]  # online padding jobs (arrive after H) cost nothing
+        model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs))
+                       + sum(K[j] * (1 - sum(assign[j])) for j in range(num_jobs)))
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit_seconds
@@ -196,9 +238,10 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
         result["objective"] = solver.ObjectiveValue()
         schedule = []
         for j in range(num_jobs):
-            s = solver.Value(start[j])
-            m = next(m for m in range(num_machines) if solver.Value(assign[j][m]))
-            schedule.append((j, m, s))
+            placed = [m for m in range(num_machines) if solver.Value(assign[j][m])]
+            if not placed:
+                continue  # v2 only: job dropped
+            schedule.append((j, placed[0], solver.Value(start[j])))
         schedule.sort(key=lambda x: x[2])
         result["schedule"] = schedule
 
@@ -223,9 +266,12 @@ def replay_schedule(config, schedule, env_kwargs=None):
     utilisation_over_time = []
     initial_capacity = base_env.capacity[:, :, 0].copy()
 
+    episode_done = False
+
     def _step(action):
-        nonlocal obs, info
+        nonlocal obs, info, episode_done
         obs, reward, done, truncated, info = env.step(action)
+        episode_done = done
         rewards.append(float(reward))
         t_idx = min(base_env.time - 1, horizon - 1)
         used = initial_capacity - base_env.capacity[:, :, t_idx]
@@ -256,6 +302,11 @@ def replay_schedule(config, schedule, env_kwargs=None):
                 f"time-advance assumptions, not an expected outcome."
             )
         _step(job * num_machines + machine)
+
+    # v2 (drop_surcharge): dropped jobs mean the last placement need not end the episode --
+    # idle to the horizon so every end-of-episode charge (drops, running jobs) is applied.
+    while not episode_done:
+        _step(idle_action)
 
     return {
         "total_reward": float(np.sum(rewards)),

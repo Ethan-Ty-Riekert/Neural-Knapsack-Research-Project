@@ -65,7 +65,14 @@ def run_one_instance(method, config, args, env_kwargs=None):
                                  env_kwargs=env_kwargs)
     elif method == "cpsat":
         from Code.methods.exact.exact_solver import solve, replay_schedule
-        res = solve(config, time_limit_seconds=args.time_limit)
+        objective = (env_kwargs or {}).get("objective")
+        drop_b = None
+        if objective is not None:  # v2: optional jobs, same J as the env (see exact_solver.solve)
+            drop_b = objective.drop_surcharge if objective.drop_surcharge is not None else int(config["horizon"])
+        online = "job_arrival_times" in config
+        res = solve(config, time_limit_seconds=args.time_limit, num_search_workers=args.cpsat_workers,
+                    earliest_start=config["job_arrival_times"] if online else None,
+                    enforce_single_start_per_tick=not online, drop_surcharge=drop_b)
         extra = {"cpsat_status": res["status"], "cpsat_objective": res["objective"]}
         if res["schedule"] is None:
             return dict(extra, seconds=time.time() - t0)
@@ -115,7 +122,7 @@ def evaluate(variant_name, preset_name, method, args):
         "preset_config": {k: v for k, v in preset.items() if k != "seeds"},
         "seeds": [r["seed"] for r in rows],
         "method_args": {k: getattr(args, k) for k in ("pso_swarm", "pso_iterations", "pso_fitness",
-                                                        "time_limit", "seed")},
+                                                        "time_limit", "cpsat_workers", "seed")},
         "env_kwargs": {k: (dataclasses.asdict(v) if dataclasses.is_dataclass(v) else v)
                        for k, v in env_kwargs.items()},
         "git_commit": _git_commit(), "machine": MACHINE_NAME, "timestamp": stamp,
@@ -161,12 +168,47 @@ def rl_command(variant_name, preset_name, method, args):
     return cmd
 
 
-def dispatch(variant_name, preset_name, method, args):
+COMPARE_COLUMNS = ["objective_J", "reward", "dropped", "weighted_tardiness", "late_jobs", "on_time_rate",
+                   "mean_wait", "mean_flow_time", "active_machine_ticks", "energy_specpower", "seconds"]
+
+
+def compare(variant_name, preset_name, methods, args):
+    """Run several methods on one preset and write a ranked comparison table (markdown)."""
+    results = {}
+    for m in methods:
+        results[m] = dispatch(variant_name, preset_name, m, args, return_means=True)
+    key = "objective_J" if all("objective_J" in r for r in results.values()) else "reward"
+    order = sorted(results, key=lambda m: results[m][key], reverse=(key == "reward"))
+    cols = [c for c in COMPARE_COLUMNS if any(c in r for r in results.values())]
+    lines = [f"# {variant_name} / {preset_name}: comparison ({'lower J is better' if key == 'objective_J' else 'higher reward is better'})",
+             "", f"git {_git_commit()}, machine {MACHINE_NAME}, {datetime.now():%Y-%m-%d %H:%M}, "
+             f"method args: pso {args.pso_swarm}x{args.pso_iterations}, cpsat {args.time_limit}s/{args.cpsat_workers}w, "
+             f"objectives: {getattr(args, 'objectives', '-')}, limit: {args.limit or 'all'}", "",
+             "| rank | method | " + " | ".join(cols) + " |", "|---|---|" + "---|" * len(cols)]
+    for i, m in enumerate(order, 1):
+        cells = [f"{results[m][c]:.2f}" if isinstance(results[m].get(c), float) else str(results[m].get(c, "")) for c in cols]
+        lines.append(f"| {i} | {m} | " + " | ".join(cells) + " |")
+    text = "\n".join(lines) + "\n"
+    print("\n" + text)
+    if not args.no_save:
+        out = REPO_ROOT / "Results" / variant_name / "comparisons"
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"{datetime.now():%Y%m%d-%H%M%S}_{preset_name}.md"
+        path.write_text(text, encoding="utf-8")
+        print(f"saved -> {path.relative_to(REPO_ROOT)}")
+    return 0
+
+
+def dispatch(variant_name, preset_name, method, args, return_means=False):
     variant = get_variant(variant_name)
     if not variant.PRESETS:
         raise SystemExit(f"{variant_name}: {variant.STATUS} -- no presets yet.")
     if preset_name not in variant.PRESETS:
         raise SystemExit(f"unknown preset {preset_name!r} for {variant_name}; see --list")
+    if method == "heuristics" or "," in method:
+        from Code.methods.heuristics.registry import HEURISTICS
+        methods = sorted(HEURISTICS) if method == "heuristics" else [m.strip() for m in method.split(",")]
+        return compare(variant_name, preset_name, methods, args)
     if method not in list_methods():
         raise SystemExit(f"unknown method {method!r}; see --list")
     print(f"== {variant_name} / {preset_name} / {method} ==\n   {variant.PRESETS[preset_name]['desc']}")
@@ -176,8 +218,8 @@ def dispatch(variant_name, preset_name, method, args):
         cmd = rl_command(variant_name, preset_name, method, args)
         print("   running:", " ".join(cmd[1:]))
         return subprocess.run(cmd, cwd=REPO_ROOT).returncode
-    evaluate(variant_name, preset_name, method, args)
-    return 0
+    means = evaluate(variant_name, preset_name, method, args)
+    return means if return_means else 0
 
 
 # --------------------------------------------------------------------------- UI
@@ -233,6 +275,7 @@ def main():
     ap.add_argument("--drop-surcharge", type=float, default=None, help="v2 only: B in ticks (default H)")
     ap.add_argument("--lambda-late", type=float, default=1.0, help="v2 only: weight of late_count")
     ap.add_argument("--time-limit", type=float, default=60.0, help="CP-SAT seconds per instance")
+    ap.add_argument("--cpsat-workers", type=int, default=8, help="CP-SAT parallel search workers")
     ap.add_argument("--timesteps", type=int, default=None, help="rl-train only")
     ap.add_argument("--checkpoint-tag", default=None, help="rl-eval: tag to load; rl-train: tag to save")
     ap.add_argument("--no-save", action="store_true")
