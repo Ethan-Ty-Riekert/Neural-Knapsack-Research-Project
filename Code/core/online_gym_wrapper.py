@@ -35,35 +35,36 @@ from .gym_scheduling_wrapper import GymSchedulingEnv
 
 class OnlineGymSchedulingEnv(GymSchedulingEnv):
     def _get_obs(self):
-        obs = []
+        """Same layout as GymSchedulingEnv._get_obs, except only REVEALED jobs expose features
+        (unrevealed slots are zero with scheduled-flag 1.0, like padding).
 
+        PERF (2026-09-29, S2W11): vectorised, mirroring the offline wrapper's 2026-09-21 fix. The
+        original per-element Python loop (kept verbatim in tests/test_online_obs_vectorised.py as
+        the reference) was the dominant cost of every online episode -- ~75% of an ATC episode
+        at rho 0.75 (2.8M list appends), and the main reason online RL training was slow. The
+        equivalence test checks bit-identical float32 observations at every step."""
+        R, J, n = self.num_resources, self.max_jobs, self.num_jobs
         t = min(self.env.time, self.horizon)
-        obs.append(t / self.horizon)
-
         t_idx = min(self.env.time, self.horizon - 1)
-        for m in range(self.num_machines):
-            for r in range(self.num_resources):
-                cap = self.env.capacity[m, r, t_idx] / (self.initial_capacity[m, r] + 1e-8)
-                obs.append(cap)
+        capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
 
         max_dur = max(1.0, float(np.max(self.env.job_durations)))
         max_wgt = max(1.0, float(np.max(self.env.job_weights)))
         max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))
 
-        for j in range(self.max_jobs):
-            if j in self.env.revealed_jobs:
-                obs.append(self.env.job_durations[j] / max_dur)
-                obs.append(self.env.job_deadlines[j] / self.horizon)
-                obs.append(self.env.job_weights[j] / max_wgt)
-                for r in range(self.num_resources):
-                    obs.append(self.env.job_resources[j, r] / max_res[r])
-                scheduled = 0.0 if j in self.env.remaining_jobs else 1.0
-                obs.append(scheduled)
-            else:
-                obs.extend([0.0] * (3 + self.num_resources))
-                obs.append(1.0)
+        job_feats = np.zeros((J, R + 4), dtype=np.float32)
+        if self.env.revealed_jobs:
+            idx = np.fromiter(self.env.revealed_jobs, dtype=int)
+            job_feats[idx, 0] = self.env.job_durations[idx] / max_dur
+            job_feats[idx, 1] = self.env.job_deadlines[idx] / self.horizon
+            job_feats[idx, 2] = self.env.job_weights[idx] / max_wgt
+            job_feats[idx, 3:3 + R] = self.env.job_resources[idx] / max_res
+        scheduled = np.ones(J, dtype=np.float32)
+        if self.env.remaining_jobs:  # remaining is always a subset of revealed
+            scheduled[list(self.env.remaining_jobs)] = 0.0
+        job_feats[:, -1] = scheduled
 
-        return np.array(obs, dtype=np.float32)
+        return np.concatenate(([t / self.horizon], capacity_block.ravel(), job_feats.ravel())).astype(np.float32)
 
     def reset(self, *, seed=None, options=None):
         gym.Env.reset(self, seed=seed)

@@ -53,11 +53,41 @@ def _metrics(stats, config):
     return {"reward": float(stats["total_reward"]), **stats["metrics"]}
 
 
+_RL_MODELS = {}
+
+
+def _base_env(env):
+    """Walk wrapper .env links down to the raw SchedulingEnv."""
+    while not hasattr(env, "start_times"):
+        env = env.env
+    return env
+
+
+def run_rl_instance(option, config, args, env_kwargs):
+    """v2 RL evaluation: a trained action-space-variant checkpoint (Option 1-4) run deterministically
+    on one preset instance under the variant's env (same J/metrics as every other method)."""
+    from Code.methods.rl.evaluation.eval_rl_agent import make_env
+    from Code.methods.rl.evaluation.eval_action_space_variant import build_eval_env, load_model, run_episode
+    gym_env = make_env(config, env_kwargs).env  # strip eval_rl_agent's full-action-space masker
+    env = build_eval_env(option, gym_env)
+    key = (option, args.checkpoint_tag)
+    if key not in _RL_MODELS:
+        _RL_MODELS[key] = load_model(option, env, checkpoint_tag=args.checkpoint_tag)
+    result = run_episode(_RL_MODELS[key], env)
+    base = _base_env(env)
+    from Code.core.metrics import schedule_metrics
+    return {"total_reward": result["total_reward"], "metrics": schedule_metrics(base),
+            "truncated": result["truncated"]}
+
+
 def run_one_instance(method, config, args, env_kwargs=None):
     from Code.methods.rl.evaluation.eval_rl_agent import run_heuristic
     t0 = time.time()
     extra = {}
-    if method == "pso":
+    if method.startswith("rl-eval:"):
+        stats = run_rl_instance(method.split(":")[1], config, args, env_kwargs)
+        extra = {"truncated": int(stats["truncated"])}
+    elif method == "pso":
         from Code.methods.metaheuristic.pso import optimize_and_run
         n_jobs = len(config["job_durations"])
         stats = optimize_and_run(config, n_jobs, int(config["num_machines"]), swarm_size=args.pso_swarm,
@@ -139,12 +169,28 @@ def evaluate(variant_name, preset_name, method, args):
 
 
 def rl_command(variant_name, preset_name, method, args):
-    """Build the existing RL script command for a preset (v1 only for now)."""
+    """Build the RL script command for a preset: v1 = legacy reward; v2 (rl-train only -- v2
+    rl-eval runs in-process) = --reward-mode objective with this run's objective flags, and
+    --difficulty for the difficulty presets."""
     kind, option = method.split(":")
     preset = get_variant(variant_name).PRESETS[preset_name]
     module = ("Code.methods.rl.evaluation.eval_action_space_variant" if kind == "rl-eval"
               else "Code.methods.rl.training.train_action_space_variant")
     cmd = [sys.executable, "-m", module, "--option", option]
+    if variant_name == "v2_objectives":
+        cmd += ["--reward-mode", "objective", "--objectives", args.objectives,
+                "--lambda-late", str(args.lambda_late), "--lambda-energy", str(args.lambda_energy),
+                "--power-model", args.power_model]
+        if args.drop_surcharge is not None:
+            cmd += ["--drop-surcharge", str(args.drop_surcharge)]
+        from Code.core.difficulty import DIFFICULTIES
+        if preset_name in DIFFICULTIES:
+            cmd += ["--difficulty", preset_name]
+            if args.timesteps:
+                cmd += ["--timesteps", str(args.timesteps)]
+            if args.checkpoint_tag:
+                cmd += ["--save-tag", args.checkpoint_tag]
+            return cmd
     if preset["case"] == "online":
         cmd += ["--online", "--arrival-rate", str(preset["arrival_rate"]),
                 "--online-horizon", str(preset["horizon"]), "--online-max-jobs", str(preset["max_jobs"]),
@@ -212,9 +258,10 @@ def dispatch(variant_name, preset_name, method, args, return_means=False):
     if method not in list_methods():
         raise SystemExit(f"unknown method {method!r}; see --list")
     print(f"== {variant_name} / {preset_name} / {method} ==\n   {variant.PRESETS[preset_name]['desc']}")
+    if method.startswith("rl-eval:") and variant_name != "v1_legacy_reward":
+        means = evaluate(variant_name, preset_name, method, args)  # in-process, v2 env + metrics
+        return means if return_means else 0
     if method.startswith("rl-"):
-        if variant_name != "v1_legacy_reward":
-            raise SystemExit("RL under the v2 objective is build step 5 -- not wired into the training scripts yet.")
         cmd = rl_command(variant_name, preset_name, method, args)
         print("   running:", " ".join(cmd[1:]))
         return subprocess.run(cmd, cwd=REPO_ROOT).returncode
