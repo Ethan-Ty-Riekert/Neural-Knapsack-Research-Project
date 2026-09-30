@@ -354,6 +354,12 @@ def main():
                               "entropy/frequency logged as TensorBoard scalars, plus a cheap "
                               "held-out tardiness eval, every N timesteps. Default None keeps "
                               "existing behaviour (no callback at all) unchanged.")
+    parser.add_argument("--checkpoint-every", type=int, default=25_000,
+                         help="Save a checkpoint every N timesteps (2026-09-30: a run killed by the system "
+                              "lost all progress because the model was only saved at the end). 0 disables.")
+    parser.add_argument("--resume", action="store_true",
+                         help="Continue from the latest checkpoint of this --option/--save-tag, training only "
+                              "the remaining timesteps.")
     args = parser.parse_args()
 
     if args.online and args.arrival_rate is None and args.difficulty is None:
@@ -453,14 +459,39 @@ def main():
               f"{len(held_out_envs)} held-out eval instances (seeds {RANDOM_INSTANCE_SEED_CEILING}.."
               f"{RANDOM_INSTANCE_SEED_CEILING + len(held_out_envs) - 1})")
 
-    t0 = time.time()
-    model.learn(total_timesteps=args.timesteps,
-                tb_log_name=f"option{args.option}{'_' + args.save_tag if args.save_tag else ''}",
-                callback=callback)
-    elapsed_min = (time.time() - t0) / 60.0
-
     tag_suffix = f"_{args.save_tag}" if args.save_tag else ""
     save_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
+    ckpt_dir = MODELS_DIR / "checkpoints" / f"option{args.option}{tag_suffix}"
+
+    reset_num_timesteps = True
+    if args.resume:
+        ckpts = sorted(ckpt_dir.glob("ckpt_*_steps.zip"), key=lambda p: int(p.stem.split("_")[-2]))
+        if not ckpts:
+            raise SystemExit(f"--resume: no checkpoints in {ckpt_dir}")
+        model = MaskablePPO.load(str(ckpts[-1]), env=env)
+        reset_num_timesteps = False
+        print(f"Option {args.option}: resumed from {ckpts[-1].name} ({model.num_timesteps} steps done)")
+
+    callbacks = [c for c in (callback,) if c is not None]
+    if args.checkpoint_every:
+        from stable_baselines3.common.callbacks import CheckpointCallback
+        callbacks.append(CheckpointCallback(save_freq=args.checkpoint_every, save_path=str(ckpt_dir),
+                                            name_prefix="ckpt"))
+    from stable_baselines3.common.callbacks import CallbackList
+    remaining = max(0, args.timesteps - (model.num_timesteps if not reset_num_timesteps else 0))
+
+    t0 = time.time()
+    try:
+        model.learn(total_timesteps=remaining,
+                    tb_log_name=f"option{args.option}{tag_suffix}",
+                    callback=CallbackList(callbacks) if callbacks else None,
+                    reset_num_timesteps=reset_num_timesteps)
+    except KeyboardInterrupt:
+        interrupted = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}_interrupted.zip"
+        model.save(str(interrupted))
+        raise SystemExit(f"interrupted at {model.num_timesteps} steps -- saved to {interrupted}")
+    elapsed_min = (time.time() - t0) / 60.0
+
     model.save(str(save_path))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "
           f"saved to {save_path}")

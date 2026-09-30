@@ -217,6 +217,8 @@ def rl_command(variant_name, preset_name, method, args):
                 cmd += ["--timesteps", str(args.timesteps)]
             if args.checkpoint_tag:
                 cmd += ["--save-tag", args.checkpoint_tag]
+            if args.resume:
+                cmd += ["--resume"]
             return cmd
     if preset["case"] == "online":
         cmd += ["--online", "--arrival-rate", str(preset["arrival_rate"]),
@@ -238,6 +240,8 @@ def rl_command(variant_name, preset_name, method, args):
             cmd += ["--timesteps", str(args.timesteps)]
         if args.checkpoint_tag:
             cmd += ["--save-tag", args.checkpoint_tag]
+        if args.resume:
+            cmd += ["--resume"]
     return cmd
 
 
@@ -363,6 +367,7 @@ def main():
     ap.add_argument("--cpsat-workers", type=int, default=8, help="CP-SAT parallel search workers")
     ap.add_argument("--timesteps", type=int, default=None, help="rl-train only")
     ap.add_argument("--checkpoint-tag", default=None, help="rl-eval: tag to load; rl-train: tag to save")
+    ap.add_argument("--resume", action="store_true", help="rl-train: continue from the latest checkpoint of this tag")
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
     _start_commit()  # record provenance before anything runs
