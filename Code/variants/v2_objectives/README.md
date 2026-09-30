@@ -7,7 +7,10 @@
 
 ## The objective (default)
 
-**Extended horizon (default since 2026-09-29):** J = Σ_j w_j T_j over *every* job. Nothing is dropped. Work that
+**Default since 2026-09-30: squared lateness, J = Σ_j w_j T_j²** over every job, so one very late job costs more
+than several slightly late ones. `--objectives tardiness` gives the linear sum Σ_j w_j T_j instead.
+
+**Extended horizon (default since 2026-09-29):** the sums run over *every* job. Nothing is dropped. Work that
 doesn't fit before the preferred horizon H keeps running after it and pays its true lateness. Reports show
 how much comes from past-horizon work (`completed_past_horizon`, `weighted_tardiness_past_horizon`).
 

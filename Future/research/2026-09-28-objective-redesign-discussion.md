@@ -200,6 +200,29 @@ lateness (they're due after H). Under B = H those same jobs cost 200.
 **Status of B = H results:** kept and labelled as such (they're valid under that definition), but they're **not
 the headline**. `2026-09-29-v2-build-and-first-results.md` has a correction section.
 
+### 4b. 2026-09-30: squared lateness replaces total lateness as the default
+
+**What prompted it.** Under the extended horizon, CP-SAT and LST tied exactly on total lateness on every
+`off_c_15` instance, with very different schedules. On seed 500011 both have total 343: CP-SAT has 36 late jobs
+(the worst 45 ticks late), LST has 70 late jobs (the worst 11 ticks late). **User position:** "it just seems
+wrong" that the two get the same reward.
+
+**Analysis.** Total lateness Σ w_j T_j is indifferent to how lateness is distributed. The alternatives offered:
+- late count Σ w_j U_j favours fewer late jobs (CP-SAT's shape);
+- squared lateness Σ w_j T_j² favours no job being very late (LST's shape);
+- a mix of the two.
+
+Squared (quadratic) lateness is a standard way to say "one very late job is worse than several slightly late
+ones" (Pinedo 2022 covers quadratic tardiness penalties; the exact reference is still to be pinned down).
+
+**Decision (user):** **squared lateness** is the v2 default objective. `--objectives tardiness` still selects the
+linear sum, and `late_count` can still be added.
+
+**Exactness.** On a job's k-th overdue tick the charge is w_j(2k + 1). Since 1 + 3 + … + (2T − 1) = T², the
+charges sum to exactly w_j T_j² and arrive as the lateness builds up. In fixed-window mode a dropped job counts as
+finishing (max(0, H − d_j) + B) late in each selected lateness measure. CP-SAT models T_j² exactly. Verified by
+`tests/test_squared_lateness.py`.
+
 ## 5. Activation penalty → energy
 
 **User position:** remove or rework it; energy / active servers stays as an objective in the

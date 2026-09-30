@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-30 (S2W11) -- Squared lateness (new v2 default): CP-SAT switches to the spread-out schedule; LST still optimal
+
+**Config:** v2, extended horizon, objective `tardiness_sq` (J = sum w_j T_j^2), `off_c_15`, CP-SAT 60 s / 8 workers
+against LST, EDF, ATC and SPT. Commit `af72c4f`. Decision record section 4b.
+
+**Stats:**
+```
+          J (squared)   reward    worst job   late jobs (seed 500011)
+LST          191.53     -1.92       1.73        70
+CP-SAT       191.67     -1.92       1.73        70   (13 OPTIMAL, 2 FEASIBLE at 60 s)
+EDF          274.20     -2.74       3.60
+ATC         8419.27    -84.19      41.00
+SPT        76909.93   -769.10      85.53
+seed 500011: CP-SAT now picks 70 late / worst 11 (J 1997) instead of 36 late / worst 45 under linear lateness
+seed 500014: CP-SAT 681 (FEASIBLE) vs LST 679 -- LST better than the solver's best found in 60 s
+```
+
+**Observation:** squared lateness separates schedules that tied under total lateness, as intended: the solver
+now prefers spreading lateness over making some jobs very late. LST equals the proven optimum on all 13
+instances CP-SAT closed, and matches or beats it on the other two, so LST is optimal on the standard offline
+benchmark under both lateness measures. Rules that make some jobs very late (ATC, SPT) are penalised much
+harder than before.
+
+**Conclusion / next step:** unchanged. Learning can't beat LST on `off_c_15`; test RL and baselines on the
+weighted, tight-deadline and online presets under squared lateness.
+
+---
+
 ## 2026-09-30 (S2W11) -- Extended horizon: LST is optimal on the standard offline instances (CP-SAT proves it on 12/15)
 
 **Config:** v2, extended horizon (default), lateness objective. `off_c_15` (15 held-out instances, weights 1,
