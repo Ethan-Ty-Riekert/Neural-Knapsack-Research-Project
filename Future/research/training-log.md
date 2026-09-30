@@ -32,6 +32,35 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-30 (S2W11) -- Extended horizon: LST is optimal on the standard offline instances (CP-SAT proves it on 12/15)
+
+**Config:** v2, extended horizon (default), lateness objective. `off_c_15` (15 held-out instances, weights 1,
+original deadlines). CP-SAT at 60 s / 8 workers over the same extended window, against LST, EDF and ATC.
+Commit `8de76ae`. Table: `Results/v2_objectives/comparisons/20260930-101703_off_c_15.md`.
+
+**Stats:**
+```
+            J (= weighted tardiness)  late jobs  jobs past H
+CP-SAT      38.20  (12 OPTIMAL, 3 FEASIBLE at 60 s)   6.60   4.33
+LST         38.20                                    10.33   2.60
+EDF         50.87                                    14.53   3.87
+ATC        229.27                                    15.33   5.33
+per instance: LST J == CP-SAT J on all 15 (0 on 9 instances; 23, 8, 3 proven optimal; 57, 343, 139 = best found)
+```
+
+**Observation:** under the honest objective, LST reaches the proven optimum on every instance CP-SAT solved to
+optimality, and ties its best schedule on the other three. The standard offline benchmark has no room for
+any method to improve total lateness. CP-SAT's optimal schedules have far fewer late jobs (6.6 vs 10.3), so
+there is room on the late-count measure (SLA view), which the lateness objective alone doesn't see.
+
+**Conclusion / next step:** `off_c_15` can't show a benefit from learning under the lateness objective. The RL
+comparison should focus on settings where rules are demonstrably sub-optimal or setting-dependent: weighted
+and tight-deadline offline (`off_tf05`/`off_tf08`, where ATC beats LST), online (`on_rho*`), and/or the
+`tardiness,late_count` objective. Next on the PC: CP-SAT + heuristics on `off_tf02/05/08` under the extended
+horizon, then RL on the settings with a demonstrated gap.
+
+---
+
 ## 2026-09-29 (S2W11) -- Extended horizon implemented (v2 default): no drops, true lateness past H
 
 **Config:** v2 `extend_horizon=True` (user decision, decision record sec. 4a). Quick heuristic-only check on

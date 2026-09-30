@@ -22,6 +22,10 @@ remain valid. The **J rankings in this document hold only under B = H**. The use
 drops with an extended horizon (true lateness, no B); see the decision record, section 4a. All v2 tables will be
 re-run under that mode.
 
+**Update 2026-09-30 (extended horizon, the new default):** on `off_c_15`, CP-SAT gives J = 38.20 (12 of 15
+proven optimal) and **LST equals it on every instance**. So LST is optimal for total lateness on the standard
+offline benchmark. The earlier "gap" is entirely gone. See the training log for 2026-09-30.
+
 ---
 
 ## 1. What was built
