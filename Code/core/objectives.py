@@ -5,6 +5,7 @@ proofs; section numbers below refer to it). Used by SchedulingEnv / OnlineSchedu
 reward_mode="objective". The objective minimised is
 
     J = lambda_T * sum_{finished j} w_j T_j                       (weighted tardiness, sec. 2)
+      + lambda_S * sum_{finished j} w_j T_j^2                     (weighted SQUARED tardiness)
       + lambda_D * sum_{dropped j}  w_j (max(0, H - d_j) + B)     (dropped jobs, sec. 3)
       + lambda_U * sum_j w_j U_j                                  (weighted late count, sec. 5)
       + lambda_E * sum_t sum_m a_m(t) P(u_m(t)) / P_max            (energy, sec. 4)
@@ -14,6 +15,9 @@ global scale constant (sec. 6) and F_t optional potential-based drop-risk shapin
 
 Charges are dense (paid when the cost is incurred, not at episode end):
   - tardiness: w_j for every elapsing tick during which j is past its deadline and unfinished;
+  - squared tardiness (added 2026-09-30, user decision -- a few very late jobs are worse than many
+    slightly late ones): w_j (2k + 1) on job j's k-th overdue tick (k = 0, 1, ...). Exact, because
+    1 + 3 + ... + (2T - 1) = T^2, so the charges sum to w_j T_j^2 and still arrive as lateness grows;
   - drops: when the clock passes job j's latest start LS_j = H - P_j (it can never start after
     that), charge rho_j = K_j - (tardiness already accrued by j), so a dropped job's total is
     exactly K_j = w_j (max(0, H - d_j) + B); its per-tick charge then stops;
@@ -37,6 +41,7 @@ class ObjectiveConfig:
     """Exchange rates (lambda) and constants of the v2 objective. Defaults = the decided
     default configuration (2026-09-29): tardiness + drops, B = H, c = number of jobs."""
     tardiness: float = 1.0                  # lambda_T, per weighted late job-tick
+    tardiness_sq: float = 0.0               # lambda_S, per weighted squared late job-tick (v2 default: 1)
     drops: float = 1.0                      # lambda_D; must stay > 0 whenever energy is used (sec. 4)
     late_count: float = 0.0                 # lambda_U, per weighted late job
     energy: float = 0.0                     # lambda_E, per normalised energy unit (sec. 4)
@@ -47,10 +52,10 @@ class ObjectiveConfig:
     shaping_gamma: float = 0.99             # must equal the RL algorithm's discount factor
 
     def __post_init__(self):
-        if min(self.tardiness, self.drops, self.late_count, self.energy) < 0:
+        if min(self.tardiness, self.tardiness_sq, self.drops, self.late_count, self.energy) < 0:
             raise ValueError("objective weights must be >= 0")
-        if self.energy > 0 and self.drops <= 0:
-            raise ValueError("energy rewards dropping work unless the drop cost is on (formal doc sec. 4)")
+        if self.energy > 0 and self.drops <= 0 and self.tardiness_sq <= 0:
+            raise ValueError("energy rewards dropping work unless a drop cost is on (formal doc sec. 4)")
         if self.power_model not in POWER_MODELS:
             raise ValueError(f"unknown power model {self.power_model!r}; choose from {POWER_MODELS}")
 
@@ -80,17 +85,21 @@ class ObjectiveReward:
         default_B = 0.0 if self.extended else float(H_pref)
         self.B = default_B if self.cfg.drop_surcharge is None else float(self.cfg.drop_surcharge)
         self.LS = H - self.P                               # latest feasible start
-        self.K = self.w * (np.maximum(0.0, H - self.d) + self.B)   # total cost of dropping j
+        drop_lateness = np.maximum(0.0, H - self.d) + self.B        # a drop counts as this late
+        self.K = self.w * drop_lateness                            # total cost of dropping j (linear)
+        self.K_sq = self.w * drop_lateness ** 2                    # ... and in squared-lateness units
         self.c = float(self.cfg.scale if self.cfg.scale is not None else max(1, int(self.real.sum())))
 
         self.dropped = np.zeros(n, dtype=bool)
         self.infeasible_on_arrival = np.zeros(n, dtype=bool)
         self.u_checked = np.zeros(n, dtype=bool)
         self.accrued = np.zeros(n)                          # weighted tardiness ticks charged per job
+        self.accrued_sq = np.zeros(n)                       # weighted squared-tardiness charged per job
         # raw (un-lambda'd, unscaled) component totals, for verification and reporting. At episode
         # end: weighted_tardiness = sum over FINISHED jobs of w_j T_j, drop_cost = sum over dropped
         # jobs of K_j, weighted_late = sum_j w_j U_j.
-        self.totals = {"weighted_tardiness": 0.0, "drop_cost": 0.0, "weighted_late": 0.0, "energy": 0.0}
+        self.totals = {"weighted_tardiness": 0.0, "drop_cost": 0.0, "weighted_late": 0.0, "energy": 0.0,
+                       "weighted_sq_tardiness": 0.0, "drop_cost_sq": 0.0}
         # energy bookkeeping: machine-activity and CPU-utilisation grids (always tracked, so
         # energy is reported even when lambda_E = 0)
         self.active = np.zeros((env.num_machines, H), dtype=bool)
@@ -117,8 +126,12 @@ class ObjectiveReward:
         start = np.asarray(env.start_times)
         C = start + self.P
         late_ticks = np.where(start != -1, np.maximum(0.0, C - np.maximum(self.d, env.time)), 0.0)
-        self._add_tardiness(self.w * late_ticks)
-        cost = self.cfg.tardiness * float((self.w * late_ticks).sum())
+        # squared: the remaining overdue ticks k0 .. T-1 (k0 = ticks already overdue) add T^2 - k0^2
+        k0 = np.maximum(0.0, env.time - self.d)
+        sq = np.where(late_ticks > 0, self.w * ((C - self.d) ** 2 - k0 ** 2), 0.0)
+        self._add_tardiness(self.w * late_ticks, sq)
+        cost = (self.cfg.tardiness * float((self.w * late_ticks).sum())
+                + self.cfg.tardiness_sq * float(sq.sum()))
         cost += self._late_checks(env, upto=np.inf)
         cost += self._drops(env, force=True)
         return self._reward(env, cost, terminal=True)
@@ -148,15 +161,20 @@ class ObjectiveReward:
         self.totals["energy"] += delta
         return self.cfg.energy * delta
 
-    def _add_tardiness(self, per_job):
+    def _add_tardiness(self, per_job, per_job_sq):
         self.accrued += per_job
+        self.accrued_sq += per_job_sq
         self.totals["weighted_tardiness"] += float(per_job.sum())
+        self.totals["weighted_sq_tardiness"] += float(per_job_sq.sum())
 
     def _tardiness_tick(self, env, t):
-        """lambda_T * (sum of w_j over jobs past deadline and unfinished during tick t)."""
+        """lambda_T * sum w_j + lambda_S * sum w_j (2k_j + 1) over jobs past deadline and unfinished
+        during tick t, where k_j = t - d_j is how many ticks j has already been overdue."""
         charged = self._unfinished_at(env, t) & (self.d <= t)
-        self._add_tardiness(np.where(charged, self.w, 0.0))
-        return self.cfg.tardiness * float(self.w[charged].sum())
+        lin = np.where(charged, self.w, 0.0)
+        sq = np.where(charged, self.w * (2.0 * (t - self.d) + 1.0), 0.0)
+        self._add_tardiness(lin, sq)
+        return self.cfg.tardiness * float(lin.sum()) + self.cfg.tardiness_sq * float(sq.sum())
 
     def _late_checks(self, env, upto):
         """lambda_U * w_j once for each real job whose deadline <= upto (not yet checked) and that
@@ -185,9 +203,14 @@ class ObjectiveReward:
         self.infeasible_on_arrival |= new & (self.arrival > self.LS)
         self.dropped |= new
         pre = float(self.accrued[new].sum())
+        pre_sq = float(self.accrued_sq[new].sum())
         self.totals["weighted_tardiness"] -= pre
+        self.totals["weighted_sq_tardiness"] -= pre_sq
         self.totals["drop_cost"] += float(self.K[new].sum())
-        return self.cfg.drops * float(self.K[new].sum()) - self.cfg.tardiness * pre
+        self.totals["drop_cost_sq"] += float(self.K_sq[new].sum())
+        # squared part: a dropped job counts as finishing drop_lateness late in squared units too
+        return (self.cfg.drops * float(self.K[new].sum()) - self.cfg.tardiness * pre
+                + self.cfg.tardiness_sq * (float(self.K_sq[new].sum()) - pre_sq))
 
     def _potential(self, env):
         """Phi(s) = -sum over alive jobs (real, waiting, not dropped) of K_j * g(LS_j - t),
@@ -212,6 +235,7 @@ class ObjectiveReward:
     def objective_value(self) -> float:
         """J for the episode so far (unscaled, lambda-weighted, shaping excluded)."""
         return (self.cfg.tardiness * self.totals["weighted_tardiness"]
+                + self.cfg.tardiness_sq * (self.totals["weighted_sq_tardiness"] + self.totals["drop_cost_sq"])
                 + self.cfg.drops * self.totals["drop_cost"]
                 + self.cfg.late_count * self.totals["weighted_late"]
                 + self.cfg.energy * self.totals["energy"])

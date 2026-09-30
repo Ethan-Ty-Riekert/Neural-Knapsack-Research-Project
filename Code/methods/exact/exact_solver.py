@@ -52,7 +52,8 @@ from Code.core.metrics import schedule_metrics
 
 
 def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=None,
-          enforce_single_start_per_tick=True, drop_surcharge=None, horizon_override=None):
+          enforce_single_start_per_tick=True, drop_surcharge=None, horizon_override=None,
+          lambda_linear=1, lambda_squared=0):
     """Build and solve the CP-SAT model for one instance. Returns a dict
     with solver status, objective value, a best-known lower bound, and (if
     any solution was found) a schedule: list of (job, machine, start_time)
@@ -116,6 +117,11 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     exactly as SchedulingEnv(extend_horizon=True) does, with drop_surcharge=None (every
     job mandatory). Deadlines keep their meaning, so the minimised sum w_j T_j is the
     extended-horizon J.
+
+    lambda_linear / lambda_squared (added 2026-09-30): objective = sum w_j (lambda_linear T_j +
+    lambda_squared T_j^2) (+ drop costs in the same units), matching ObjectiveConfig.tardiness /
+    tardiness_sq. T_j^2 is modelled exactly with AddMultiplicationEquality. Integer lambdas only
+    (CP-SAT needs integer coefficients). Defaults reproduce the original linear objective.
     """
     job_durations = np.asarray(config["job_durations"])
     job_resources = np.asarray(config["job_resources"])
@@ -216,15 +222,27 @@ def solve(config, time_limit_seconds=60, num_search_workers=1, earliest_start=No
     # job_weight_range, but would need revisiting (e.g. scaling by 1000 and
     # dividing back) if a future instance ever uses non-integer weights.
     weights = np.round(job_weights).astype(int)
-    if drop_surcharge is None:
-        model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs)))
-    else:
+    lam_lin, lam_sq = int(lambda_linear), int(lambda_squared)
+    if (lam_lin, lam_sq) != (lambda_linear, lambda_squared):
+        raise ValueError("CP-SAT needs integer lambda_linear / lambda_squared")
+    terms = []
+    for j in range(num_jobs):
+        if lam_lin:
+            terms.append(lam_lin * int(weights[j]) * tardiness_vars[j])
+        if lam_sq:
+            sq = model.NewIntVar(0, horizon * horizon, f"tardiness_sq_{j}")
+            model.AddMultiplicationEquality(sq, [tardiness_vars[j], tardiness_vars[j]])
+            terms.append(lam_sq * int(weights[j]) * sq)
+    if drop_surcharge is not None:
         B = int(round(drop_surcharge))
         real = [earliest_start is None or int(earliest_start[j]) <= horizon for j in range(num_jobs)]
-        K = [int(weights[j]) * (max(0, horizon - int(job_deadlines[j])) + B) if real[j] else 0
-             for j in range(num_jobs)]  # online padding jobs (arrive after H) cost nothing
-        model.Minimize(sum(int(weights[j]) * tardiness_vars[j] for j in range(num_jobs))
-                       + sum(K[j] * (1 - sum(assign[j])) for j in range(num_jobs)))
+        for j in range(num_jobs):
+            if not real[j]:
+                continue  # online padding jobs (arrive after H) cost nothing
+            late = max(0, horizon - int(job_deadlines[j])) + B  # a drop counts as this late
+            K = int(weights[j]) * (lam_lin * late + lam_sq * late * late)
+            terms.append(K * (1 - sum(assign[j])))
+    model.Minimize(sum(terms))
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit_seconds

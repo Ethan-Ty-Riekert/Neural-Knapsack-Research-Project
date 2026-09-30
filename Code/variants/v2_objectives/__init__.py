@@ -25,7 +25,10 @@ _HELDOUT = list(range(500_000, 500_015))
 for _name, _d in DIFFICULTIES.items():
     PRESETS[_name] = dict(_d.as_dict(), seeds=_HELDOUT)
 
-OBJECTIVES = ("tardiness", "late_count", "energy")  # drops are always on (formal doc sec. 3-4)
+# drops are always on (formal doc sec. 3-4); "tardiness_sq" (squared lateness) is the default since
+# 2026-09-30 (user decision: a few very late jobs are worse than many slightly late ones)
+OBJECTIVES = ("tardiness_sq", "tardiness", "late_count", "energy")
+DEFAULT_OBJECTIVES = "tardiness_sq"
 
 
 def instances(preset_name: str):
@@ -36,7 +39,7 @@ def instances(preset_name: str):
         yield from _v1_instances(preset_name)
 
 
-def objective_config(objectives=("tardiness",), drop_surcharge=None, lambda_late=1.0,
+def objective_config(objectives=("tardiness_sq",), drop_surcharge=None, lambda_late=1.0,
                      drop_shaping=False, lambda_energy=1.0, power_model="linear") -> ObjectiveConfig:
     """Build the ObjectiveConfig for a run. drop_shaping defaults to False for evaluating fixed
     policies (heuristics/PSO/CP-SAT): then reward = -J/c exactly. RL training turns it on."""
@@ -45,6 +48,11 @@ def objective_config(objectives=("tardiness",), drop_surcharge=None, lambda_late
         raise ValueError(f"unknown objectives {sorted(unknown)}; choose from {OBJECTIVES}")
     return ObjectiveConfig(
         tardiness=1.0 if "tardiness" in objectives else 0.0,
+        tardiness_sq=1.0 if "tardiness_sq" in objectives else 0.0,
+        # a dropped job (fixed-window mode only) counts as finishing that late in each SELECTED
+        # lateness measure: linear drop cost only when linear lateness is selected (squared drop
+        # cost is charged via tardiness_sq automatically). Matches exact_solver's drop cost.
+        drops=1.0 if "tardiness" in objectives else 0.0,
         late_count=lambda_late if "late_count" in objectives else 0.0,
         energy=lambda_energy if "energy" in objectives else 0.0,
         power_model=power_model,
@@ -58,7 +66,7 @@ def env_kwargs(args) -> dict:
     is the default (user decision 2026-09-29): unfinished jobs run past H and pay true lateness;
     --no-extend-horizon restores the fixed window with the drop charge (B = H), kept for
     sensitivity checks against the earlier results."""
-    objectives = tuple(o.strip() for o in (getattr(args, "objectives", None) or "tardiness").split(","))
+    objectives = tuple(o.strip() for o in (getattr(args, "objectives", None) or DEFAULT_OBJECTIVES).split(","))
     cfg = objective_config(objectives, getattr(args, "drop_surcharge", None),
                            getattr(args, "lambda_late", 1.0),
                            lambda_energy=getattr(args, "lambda_energy", 1.0),

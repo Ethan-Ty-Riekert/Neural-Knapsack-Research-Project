@@ -303,9 +303,9 @@ def main():
                          help="2026-09-17 follow-up: dense_tardiness was only tested against the "
                               "old (huge) action space and ruled out there -- untested against "
                               "the winning action-space design until now.")
-    parser.add_argument("--objectives", default="tardiness",
+    parser.add_argument("--objectives", default="tardiness_sq",
                          help="--reward-mode objective only (variant v2): comma list from "
-                              "tardiness,late_count,energy; dropped-job cost is always on.")
+                              "tardiness_sq (default),tardiness,late_count,energy; dropped-job cost is always on.")
     parser.add_argument("--drop-surcharge", type=float, default=None, help="v2: B in ticks (default H)")
     parser.add_argument("--lambda-late", type=float, default=1.0)
     parser.add_argument("--lambda-energy", type=float, default=1.0)

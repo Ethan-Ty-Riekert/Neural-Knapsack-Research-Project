@@ -77,6 +77,7 @@ def schedule_metrics(env) -> dict:
         "late_jobs": int((t_sched > 0).sum()),
         "tardiness": float(t_sched.sum()),
         "weighted_tardiness": float((tard * w)[sched].sum()),
+        "weighted_sq_tardiness": float((tard ** 2 * w)[sched].sum()),  # the v2 default objective (2026-09-30)
         "max_tardiness": _stat(np.max, t_sched),
         "p95_tardiness": _stat(lambda x: np.percentile(x, 95), t_sched),
         "tardiness_with_dropped_lb": float(t_sched.sum() + drop_lb.sum()),

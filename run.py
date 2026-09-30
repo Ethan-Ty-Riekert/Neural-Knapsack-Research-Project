@@ -107,10 +107,15 @@ def run_one_instance(method, config, args, env_kwargs=None):
             horizon_override = int(config["horizon"]) + extension_needed(config["job_durations"])
         elif objective is not None:  # v2 fixed window: optional jobs, same J as the env
             drop_b = objective.drop_surcharge if objective.drop_surcharge is not None else int(config["horizon"])
+        lam = {}
+        if objective is not None:  # same lateness objective as the env (linear and/or squared)
+            if objective.late_count or objective.energy:
+                raise SystemExit("cpsat supports the tardiness / tardiness_sq objectives only")
+            lam = dict(lambda_linear=objective.tardiness, lambda_squared=objective.tardiness_sq)
         res = solve(config, time_limit_seconds=args.time_limit, num_search_workers=args.cpsat_workers,
                     earliest_start=config["job_arrival_times"] if online else None,
                     enforce_single_start_per_tick=not online, drop_surcharge=drop_b,
-                    horizon_override=horizon_override)
+                    horizon_override=horizon_override, **lam)
         extra = {"cpsat_status": res["status"], "cpsat_objective": res["objective"]}
         if res["schedule"] is None:
             return dict(extra, seconds=time.time() - t0)
@@ -236,7 +241,8 @@ def rl_command(variant_name, preset_name, method, args):
     return cmd
 
 
-COMPARE_COLUMNS = ["objective_J", "reward", "dropped", "completed_past_horizon", "weighted_tardiness",
+COMPARE_COLUMNS = ["objective_J", "reward", "dropped", "completed_past_horizon", "weighted_sq_tardiness",
+                   "max_tardiness", "weighted_tardiness",
                    "weighted_tardiness_past_horizon", "late_jobs", "on_time_rate",
                    "mean_wait", "mean_flow_time", "active_machine_ticks", "energy_specpower", "seconds"]
 
@@ -340,8 +346,9 @@ def main():
     ap.add_argument("--pso-swarm", type=int, default=15)
     ap.add_argument("--pso-iterations", type=int, default=30)
     ap.add_argument("--pso-fitness", choices=["reward", "tardiness"], default="reward")
-    ap.add_argument("--objectives", default="tardiness",
-                    help="v2 only: comma list from tardiness,late_count,energy (dropped-job cost is always on)")
+    ap.add_argument("--objectives", default="tardiness_sq",
+                    help="v2 only: comma list from tardiness_sq (squared lateness, default), tardiness, "
+                         "late_count, energy (dropped-job cost is always on)")
     ap.add_argument("--drop-surcharge", type=float, default=None,
                     help="v2 only: B in ticks (default: H with --no-extend-horizon, 0 with the extended horizon)")
     ap.add_argument("--no-extend-horizon", action="store_true",
