@@ -56,7 +56,7 @@ Trial 10 was chosen over trial 2 for the knee specifically because it trades
 a small reward cost (95.36 vs 96.28, ~1%) for a real tardiness improvement
 (0.48 vs 0.88, ~45%) without collapsing -- trial 2 gives up almost all reward
 for its zero tardiness, which is a degenerate point, not a genuine
-"knee." The selection rule (`train_reduced_budget_models.py::select_trials`)
+"knee." The selection rule (`Code/methods/rl/training/train_reduced_budget_models.py::select_trials`)
 picks whichever non-max-reward trial buys the most tardiness reduction per
 unit of reward given up, automatically avoiding exactly this kind of
 collapsed extreme.
