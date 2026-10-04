@@ -63,16 +63,30 @@ def _base_env(env):
     return env
 
 
-def run_rl_instance(option, config, args, env_kwargs):
+def parse_rl_method(method, args):
+    """'rl-eval:1' (tag from --checkpoint-tag) or 'rl-eval:1:<tag>' (per-method tag, so one
+    comparison table can hold several checkpoints) -> (kind, option, tag)."""
+    parts = method.split(":", 2)
+    return parts[0], parts[1], (parts[2] if len(parts) == 3 else args.checkpoint_tag)
+
+
+def run_rl_instance(option, tag, config, args, env_kwargs):
     """v2 RL evaluation: a trained action-space-variant checkpoint (Option 1-4) run deterministically
-    on one preset instance under the variant's env (same J/metrics as every other method)."""
+    on one preset instance under the variant's env (same J/metrics as every other method). The
+    wrapper settings (placements, ATC feature, window) come from the checkpoint's sidecar spec."""
     from Code.methods.rl.evaluation.eval_rl_agent import make_env
     from Code.methods.rl.evaluation.eval_action_space_variant import build_eval_env, load_model, run_episode
+    from Code.methods.rl.training.train_action_space_variant import read_env_spec
+    from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import DEFAULT_PLACEMENTS
+    spec = read_env_spec(option, tag)
     gym_env = make_env(config, env_kwargs).env  # strip eval_rl_agent's full-action-space masker
-    env = build_eval_env(option, gym_env)
-    key = (option, args.checkpoint_tag)
+    env = build_eval_env(option, gym_env, window_size=spec.get("window_size"),
+                         window_order=spec.get("window_order") or "edf",
+                         use_atc_feature=bool(spec.get("use_atc_feature")),
+                         placements=tuple(spec.get("placements") or DEFAULT_PLACEMENTS))
+    key = (option, tag)
     if key not in _RL_MODELS:
-        _RL_MODELS[key] = load_model(option, env, checkpoint_tag=args.checkpoint_tag)
+        _RL_MODELS[key] = load_model(option, env, checkpoint_tag=tag, window_size=spec.get("window_size"))
     result = run_episode(_RL_MODELS[key], env)
     base = _base_env(env)
     from Code.core.metrics import schedule_metrics
@@ -85,7 +99,8 @@ def run_one_instance(method, config, args, env_kwargs=None):
     t0 = time.time()
     extra = {}
     if method.startswith("rl-eval:"):
-        stats = run_rl_instance(method.split(":")[1], config, args, env_kwargs)
+        _, option, tag = parse_rl_method(method, args)
+        stats = run_rl_instance(option, tag, config, args, env_kwargs)
         extra = {"truncated": int(stats["truncated"])}
     elif method == "pso":
         from Code.methods.metaheuristic.pso import optimize_and_run
@@ -193,11 +208,22 @@ def evaluate(variant_name, preset_name, method, args):
     return means
 
 
+def rl_train_passthrough(args):
+    """Training-script flags run.py forwards unchanged (2026-10-05): parallel rollout, Option 1's
+    placement menu, diagnostics."""
+    extra = ["--n-envs", str(args.n_envs), "--vec-backend", args.vec_backend, "--seed", str(args.seed)]
+    if args.rule_placements:
+        extra += ["--rule-placements", args.rule_placements]
+    if args.diagnostics_interval:
+        extra += ["--diagnostics-interval", str(args.diagnostics_interval)]
+    return extra
+
+
 def rl_command(variant_name, preset_name, method, args):
     """Build the RL script command for a preset: v1 = legacy reward; v2 (rl-train only -- v2
     rl-eval runs in-process) = --reward-mode objective with this run's objective flags, and
     --difficulty for the difficulty presets."""
-    kind, option = method.split(":")
+    kind, option, tag = parse_rl_method(method, args)
     preset = get_variant(variant_name).PRESETS[preset_name]
     module = ("Code.methods.rl.evaluation.eval_action_space_variant" if kind == "rl-eval"
               else "Code.methods.rl.training.train_action_space_variant")
@@ -215,11 +241,11 @@ def rl_command(variant_name, preset_name, method, args):
             cmd += ["--difficulty", preset_name]
             if args.timesteps:
                 cmd += ["--timesteps", str(args.timesteps)]
-            if args.checkpoint_tag:
-                cmd += ["--save-tag", args.checkpoint_tag]
+            if tag:
+                cmd += ["--save-tag", tag]
             if args.resume:
                 cmd += ["--resume"]
-            return cmd
+            return cmd + rl_train_passthrough(args)
     if preset["case"] == "online":
         cmd += ["--online", "--arrival-rate", str(preset["arrival_rate"]),
                 "--online-horizon", str(preset["horizon"]), "--online-max-jobs", str(preset["max_jobs"]),
@@ -231,17 +257,18 @@ def rl_command(variant_name, preset_name, method, args):
     if kind == "rl-eval":
         if len(preset["seeds"]) > 1:
             cmd += ["--randomized-eval", "--eval-runs", str(args.limit or len(preset["seeds"]))]
-        if args.checkpoint_tag:
-            cmd += ["--checkpoint-tag", args.checkpoint_tag]
+        if tag:
+            cmd += ["--checkpoint-tag", tag]
     else:
         if len(preset["seeds"]) > 1 or preset["case"] == "online":
             cmd += ["--randomize-instances"]
         if args.timesteps:
             cmd += ["--timesteps", str(args.timesteps)]
-        if args.checkpoint_tag:
-            cmd += ["--save-tag", args.checkpoint_tag]
+        if tag:
+            cmd += ["--save-tag", tag]
         if args.resume:
             cmd += ["--resume"]
+        cmd += rl_train_passthrough(args)
     return cmd
 
 
@@ -288,7 +315,7 @@ def dispatch(variant_name, preset_name, method, args, return_means=False):
         from Code.methods.heuristics.registry import HEURISTICS
         methods = sorted(HEURISTICS) if method == "heuristics" else [m.strip() for m in method.split(",")]
         return compare(variant_name, preset_name, methods, args)
-    if method not in list_methods():
+    if ":".join(method.split(":", 2)[:2]) not in list_methods():  # allow rl-eval:<opt>:<tag>
         raise SystemExit(f"unknown method {method!r}; see --list")
     print(f"== {variant_name} / {preset_name} / {method} ==\n   {variant.PRESETS[preset_name]['desc']}")
     if method.startswith("rl-eval:") and variant_name != "v1_legacy_reward":
@@ -368,6 +395,11 @@ def main():
     ap.add_argument("--timesteps", type=int, default=None, help="rl-train only")
     ap.add_argument("--checkpoint-tag", default=None, help="rl-eval: tag to load; rl-train: tag to save")
     ap.add_argument("--resume", action="store_true", help="rl-train: continue from the latest checkpoint of this tag")
+    ap.add_argument("--n-envs", type=int, default=1, help="rl-train: parallel rollout envs")
+    ap.add_argument("--vec-backend", choices=["subproc", "dummy"], default="subproc", help="rl-train, with --n-envs > 1")
+    ap.add_argument("--rule-placements", default=None,
+                    help="rl-train --option 1: placement menu, e.g. FirstFit,Consolidate (rl-eval reads it from the checkpoint)")
+    ap.add_argument("--diagnostics-interval", type=int, default=None, help="rl-train: action-distribution diagnostics every N steps")
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()
     _start_commit()  # record provenance before anything runs

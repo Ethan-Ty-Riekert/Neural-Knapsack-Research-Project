@@ -21,8 +21,12 @@ import numpy as np
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
-from Code.methods.rl.training.train_action_space_variant import make_base_gym_env, make_online_base_gym_env, mask_fn
-from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv
+from Code.methods.rl.training.train_action_space_variant import (
+    make_base_gym_env, make_online_base_gym_env, mask_fn, checkpoint_path,
+)
+from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
+    RuleSelectionGymSchedulingEnv, DEFAULT_PLACEMENTS, parse_placements,
+)
 from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.methods.rl.action_spaces.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
 from Code.methods.rl.action_spaces.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
@@ -34,12 +38,11 @@ from Code.core.arrival_process import generate_poisson_arrivals
 from Code.methods.rl.evaluation.eval_rl_agent import run_heuristic
 from Code.methods.heuristics.registry import DEFAULT_HEURISTICS
 from Code.methods.rl.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
-from Code.utils.paths import MODELS_DIR
 from Code.utils.results_log import append_eval_result
 
 
 def build_eval_env(option: str, full_gym_env, window_size=None, window_order="edf",
-                    use_atc_feature=False):
+                    use_atc_feature=False, placements=DEFAULT_PLACEMENTS):
     """window_size (2026-09-18 follow-up): mirrors
     train_action_space_variant.py::build_env_and_policy's windowed branch --
     must be passed here too or a windowed checkpoint's obs/action-space shape
@@ -52,11 +55,18 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
     use_atc_feature (2026-09-23 follow-up): mirrors build_env_and_policy's
     same-named param -- must be passed here too, or an Option 1 checkpoint
     trained with the extra ATC feature has an obs shape mismatch against the
-    template env used to load it. Only meaningful for option == '1'."""
+    template env used to load it. Only meaningful for option == '1'.
+
+    placements (2026-10-05): mirrors build_env_and_policy's same-named param --
+    must match the checkpoint's training --rule-placements, or the action space
+    won't match. Only meaningful for option == '1'."""
+    if tuple(placements) != DEFAULT_PLACEMENTS and option != "1":
+        raise ValueError("--rule-placements only applies to --option 1.")
     if option == "1":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3.")
-        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature)
+        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature,
+                                            placements=placements)
     elif option in ("2", "3"):
         if use_atc_feature:
             raise ValueError("--use-atc-feature only applies to --option 1.")
@@ -78,8 +88,7 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
 
 
 def load_model(option: str, template_env, checkpoint_tag=None, window_size=None):
-    tag_suffix = f"_{checkpoint_tag}" if checkpoint_tag else ""
-    checkpoint = MODELS_DIR / f"action_space_option{option}_ppo{tag_suffix}.zip"
+    checkpoint = checkpoint_path(option, checkpoint_tag)
     if window_size is not None:
         custom_objects = {"policy_class": WindowedPriorityPointerMaskableActorCriticPolicy}
     elif option in ("2", "3"):
@@ -225,6 +234,8 @@ def main():
                               "(train_action_space_variant.py) -- option 2/3 only.")
     parser.add_argument("--window-order", choices=["edf", "fifo"], default="edf",
                          help="Must match --window-order the checkpoint was TRAINED with.")
+    parser.add_argument("--rule-placements", default=",".join(DEFAULT_PLACEMENTS),
+                        help="--option 1 only: must match the checkpoint's training --rule-placements.")
     parser.add_argument("--use-atc-feature", action="store_true",
                          help="Must match --use-atc-feature the checkpoint was TRAINED with "
                               "(train_action_space_variant.py) -- option 1 only.")
@@ -253,16 +264,17 @@ def main():
                 args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                 seed=RANDOM_INSTANCE_SEED_CEILING, use_resampler=False, job_weight_range=job_weight_range,
             ), window_size=args.window_size, window_order=args.window_order,
-               use_atc_feature=args.use_atc_feature)
+               use_atc_feature=args.use_atc_feature,
+                   placements=parse_placements(args.rule_placements))
         else:
             template_env = build_eval_env(args.option, make_base_gym_env(
                 seed=RANDOM_INSTANCE_SEED_CEILING, job_weight_range=job_weight_range,
             ), window_size=args.window_size, window_order=args.window_order,
-               use_atc_feature=args.use_atc_feature)
+               use_atc_feature=args.use_atc_feature,
+                   placements=parse_placements(args.rule_placements))
         model = load_model(args.option, template_env, checkpoint_tag=args.checkpoint_tag,
                             window_size=args.window_size)
-        tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
-        model_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
+        model_path = checkpoint_path(args.option, args.checkpoint_tag)
 
         variant_reward, variant_tardiness, variant_weighted, variant_late, variant_scheduled, denoms = \
             [], [], [], [], [], []
@@ -278,12 +290,14 @@ def main():
                     args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                     seed=seed, use_resampler=False, job_weight_range=job_weight_range,
                 ), window_size=args.window_size, window_order=args.window_order,
-                   use_atc_feature=args.use_atc_feature)
+                   use_atc_feature=args.use_atc_feature,
+                   placements=parse_placements(args.rule_placements))
             else:
                 denoms.append(100)
                 env = build_eval_env(args.option, make_base_gym_env(seed=seed, job_weight_range=job_weight_range),
                                       window_size=args.window_size, window_order=args.window_order,
-                                      use_atc_feature=args.use_atc_feature)
+                                      use_atc_feature=args.use_atc_feature,
+                   placements=parse_placements(args.rule_placements))
             r = run_episode(model, env)
             variant_reward.append(r["total_reward"])
             variant_tardiness.append(r["tardiness"].sum())
@@ -341,10 +355,10 @@ def main():
         variant_env = make_base_gym_env(job_weight_range=job_weight_range)
 
     env = build_eval_env(args.option, variant_env, window_size=args.window_size, window_order=args.window_order,
-                          use_atc_feature=args.use_atc_feature)
+                          use_atc_feature=args.use_atc_feature,
+                   placements=parse_placements(args.rule_placements))
     model = load_model(args.option, env, checkpoint_tag=args.checkpoint_tag, window_size=args.window_size)
-    tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
-    model_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
+    model_path = checkpoint_path(args.option, args.checkpoint_tag)
     result = run_episode(model, env)
     trunc_note = " [TRUNCATED]" if result["truncated"] else ""
     _print_row(f"Option {args.option}", result, denom, trunc_note)

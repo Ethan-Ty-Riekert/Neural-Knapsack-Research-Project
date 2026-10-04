@@ -33,6 +33,19 @@ performance narrows once the feature doesn't have to be re-derived from raw
 duration/deadline/weight/time features. Default False preserves every
 existing Option 1 checkpoint's observation_space shape unchanged.
 
+placements (added 2026-10-05, S2W12, v2 high-load runs): optional tuple of
+placement rule names (Code/methods/heuristics/placement_rules.py::PLACEMENT_RULES).
+The action menu becomes every priority rule x every listed placement, decoded
+through the matching HEURISTICS["{Rule}+{Placement}"] entry, plus idle. Default
+("FirstFit",) keeps the original 8-action menu, order and labels exactly, so every
+existing Option 1 checkpoint still loads. Motivation: the 2026-09-30 v2 heuristic
+sweep found placement matters as much as priority at high online load
+(LST+Consolidate cuts J ~40% vs LST+FirstFit at rho 0.95), and a FirstFit-only
+menu makes that unreachable for the RL policy by construction. Grounding:
+Option 1 is a selection hyper-heuristic over low-level heuristics (Burke et al.
+2013, J. Oper. Res. Soc. 64(12)); widening the low-level set is the standard
+lever in that framework.
+
 Wraps an already-constructed GymSchedulingEnv or OnlineGymSchedulingEnv
 instance (composition, not subclassing) so this one file is correct for
 both the offline and online case without duplicating either's _get_obs()
@@ -47,16 +60,26 @@ import gymnasium as gym
 import numpy as np
 
 from Code.methods.heuristics.priority_rules import PRIORITY_RULES
+from Code.methods.heuristics.placement_rules import PLACEMENT_RULES
 from Code.methods.heuristics.registry import HEURISTICS
 from Code.methods.rl.action_spaces.obs_atc_feature import append_atc_priority_feature
 
 RULE_NAMES = list(PRIORITY_RULES.keys())
+DEFAULT_PLACEMENTS = ("FirstFit",)
+
+
+def parse_placements(text):
+    """--rule-placements CLI value ("FirstFit,Consolidate") -> placements tuple. Shared by the
+    training/evaluation scripts and run.py so the format is defined once."""
+    if not text:
+        return DEFAULT_PLACEMENTS
+    return tuple(p.strip() for p in text.split(",") if p.strip())
 
 
 class RuleSelectionGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, full_gym_env, use_atc_feature: bool = False):
+    def __init__(self, full_gym_env, use_atc_feature: bool = False, placements=DEFAULT_PLACEMENTS):
         super().__init__()
         self._full = full_gym_env
         self.env = full_gym_env.env
@@ -66,7 +89,15 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         self.horizon = full_gym_env.horizon
         self.use_atc_feature = use_atc_feature
 
-        self.rule_names = RULE_NAMES
+        self.placements = tuple(placements)
+        unknown = set(self.placements) - set(PLACEMENT_RULES)
+        if unknown or not self.placements:
+            raise ValueError(f"placements must be a non-empty subset of {list(PLACEMENT_RULES)}, got {placements!r}")
+        self._heuristic_keys = [f"{r}+{p}" for p in self.placements for r in RULE_NAMES]
+        # Labels for logs/diagnostics: plain rule names for the default menu (unchanged from
+        # before), full "Rule+Placement" labels once more than FirstFit is offered.
+        self.rule_names = (RULE_NAMES if self.placements == DEFAULT_PLACEMENTS
+                           else list(self._heuristic_keys))
         self.num_rules = len(self.rule_names)
         self.action_space = gym.spaces.Discrete(self.num_rules + 1)  # +1 idle
 
@@ -132,8 +163,7 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         if action_id == self.num_rules or not job_actions:
             _, reward, done = self.env.step_idle()
         else:
-            rule_name = self.rule_names[action_id]
-            choose = HEURISTICS[f"{rule_name}+FirstFit"]
+            choose = HEURISTICS[self._heuristic_keys[action_id]]
             real_action = choose(self.env, job_actions, self._decode)
             job, machine = self._decode(real_action)
             was_pending = job in self.env.remaining_jobs

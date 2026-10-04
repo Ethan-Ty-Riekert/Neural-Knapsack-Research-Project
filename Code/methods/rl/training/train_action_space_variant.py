@@ -34,6 +34,7 @@ training-log.md's 2026-09-16 entry).
 """
 import argparse
 import functools
+import json
 import time
 
 from sb3_contrib import MaskablePPO
@@ -59,7 +60,9 @@ from Code.methods.rl.training.train_optimized import (
     make_online_resampler, make_random_instance_resampler, RANDOM_INSTANCE_SEED_CEILING,
     resolve_ppo_rollout_params,
 )
-from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RULE_NAMES
+from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
+    RULE_NAMES, DEFAULT_PLACEMENTS, parse_placements,
+)
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty
 from Code.utils.training_diagnostics import build_diagnostics_callbacks
@@ -209,7 +212,7 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
 
 
 def build_env_and_policy(option: str, full_gym_env=None, window_size=None, window_order="edf",
-                          use_atc_feature=False):
+                          use_atc_feature=False, placements=DEFAULT_PLACEMENTS):
     """window_size (2026-09-18, S2W10, user-approved): only meaningful for
     option in ("2", "3") -- DeepRM-style bounded action-space window
     (Code/methods/rl/action_spaces/windowed_priority_gym_wrapper.py), Discrete(window_size+1)
@@ -228,7 +231,14 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     already uses (Code/env/obs_atc_feature.py) to Option 1's observation. See
     rule_selection_gym_wrapper.py's module docstring for the motivation
     (observation-informativeness-probe result). Default False keeps existing
-    Option 1 checkpoints' observation_space shape unchanged."""
+    Option 1 checkpoints' observation_space shape unchanged.
+
+    placements (2026-10-05, S2W12): only meaningful for option == "1" -- the
+    placement rules offered alongside each priority rule (see
+    rule_selection_gym_wrapper.py's module docstring). Default ("FirstFit",) keeps
+    existing Option 1 checkpoints' action space unchanged."""
+    if tuple(placements) != DEFAULT_PLACEMENTS and option != "1":
+        raise ValueError("--rule-placements only applies to --option 1.")
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
@@ -236,7 +246,8 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3 (Option 1's action "
                               "space is already the 8-choice rule menu, not job-slot selection).")
-        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature)
+        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature,
+                                            placements=placements)
         policy, policy_kwargs = "MlpPolicy", {}
     elif option in ("2", "3"):
         if use_atc_feature:
@@ -281,6 +292,27 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     return monitored, policy, policy_kwargs
 
 
+def checkpoint_path(option, tag=None):
+    """The one place the final-model filename is defined (training saves here, evaluation and
+    run.py load from here)."""
+    return MODELS_DIR / f"action_space_option{option}_ppo{f'_{tag}' if tag else ''}.zip"
+
+
+def write_env_spec(option, tag, spec):
+    """Sidecar JSON next to the saved model recording how its env was built (2026-10-05), so an
+    evaluator can rebuild the matching action/observation space from the tag alone instead of
+    the caller having to repeat every training flag."""
+    path = checkpoint_path(option, tag).with_suffix(".json")
+    path.write_text(json.dumps(dict(option=option, tag=tag, **spec), indent=2), encoding="utf-8")
+
+
+def read_env_spec(option, tag=None):
+    """The sidecar written by write_env_spec(), or {} for checkpoints trained before it existed
+    (their env then has to be described by the caller's flags, as before)."""
+    path = checkpoint_path(option, tag).with_suffix(".json")
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
 def make_full_gym_env(online, base_env_kwargs, seed=0):
     """Single place the base (full-action-space) gym env is built from, for both the
     single-env path in main() and every --n-envs worker -- so a new env option (e.g.
@@ -295,7 +327,7 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
 
 
 def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, window_order,
-                    use_atc_feature, base_seed):
+                    use_atc_feature, base_seed, placements=DEFAULT_PLACEMENTS):
     """2026-10-04, S2W11: per-worker env factory for --n-envs > 1 parallel rollout
     (previously this whole file only ever trained on a single env, auto-wrapped by
     SB3 in a DummyVecEnv -- confirmed by grep, unlike train_optimized.py's existing
@@ -317,12 +349,13 @@ def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, 
     seed = (base_seed + worker_index) if per_worker else base_seed
     full_gym_env = make_full_gym_env(online, base_env_kwargs, seed=seed)
     env, _, _ = build_env_and_policy(option, full_gym_env=full_gym_env, window_size=window_size,
-                                      window_order=window_order, use_atc_feature=use_atc_feature)
+                                      window_order=window_order, use_atc_feature=use_atc_feature,
+                                      placements=placements)
     return env
 
 
 def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, window_size,
-                       window_order, use_atc_feature, base_seed=0):
+                       window_order, use_atc_feature, base_seed=0, placements=DEFAULT_PLACEMENTS):
     """n_envs==1 always uses DummyVecEnv (SB3's own default when a single env is
     passed to MaskablePPO -- no behaviour change from before this function existed).
     n_envs>1 with vec_backend="subproc" uses true multi-process rollout (SubprocVecEnv);
@@ -331,7 +364,7 @@ def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, win
     backend-choice tradeoff, already established in this project."""
     env_fns = [
         functools.partial(make_worker_env, i, option, online, base_env_kwargs, window_size,
-                          window_order, use_atc_feature, base_seed)
+                          window_order, use_atc_feature, base_seed, placements)
         for i in range(n_envs)
     ]
     if vec_backend == "subproc" and n_envs > 1:
@@ -422,6 +455,15 @@ def main():
                          help="Suffix for the saved checkpoint filename (e.g. 'online_lognormal') "
                               "so an online/heavy-tailed run doesn't overwrite the offline "
                               "fixed-instance checkpoint for the same --option.")
+    parser.add_argument("--seed", type=int, default=None,
+                         help="2026-10-05: MaskablePPO seed (torch/numpy/env-action sampling). Default None keeps "
+                              "the previous unseeded behaviour. Instance generation is unaffected, matching the "
+                              "project convention that --seed varies only algorithmic randomness.")
+    parser.add_argument("--rule-placements", default=",".join(DEFAULT_PLACEMENTS),
+                         help="2026-10-05: only meaningful with --option 1. Comma-separated placement "
+                              "rules offered with each priority rule, e.g. FirstFit,Consolidate "
+                              "(menu = rules x placements + idle). Default FirstFit keeps the "
+                              "original 8-action menu.")
     parser.add_argument("--use-atc-feature", action="store_true",
                          help="2026-09-23 follow-up: only meaningful with --option 1. Appends the "
                               "same per-job ATC-priority feature Option 3 already uses to Option "
@@ -465,6 +507,7 @@ def main():
         (args.job_weight_min, args.job_weight_max) if args.job_weight_min is not None else None
     )
 
+    placements = parse_placements(args.rule_placements)
     ensure_rl_training_dirs()
 
     objective = None
@@ -502,13 +545,13 @@ def main():
     # behaviour) or the parallel VecEnv built just below (n_envs>1, new).
     template_env, policy, policy_kwargs = build_env_and_policy(
         args.option, full_gym_env=full_gym_env, window_size=args.window_size,
-        window_order=args.window_order, use_atc_feature=args.use_atc_feature,
+        window_order=args.window_order, use_atc_feature=args.use_atc_feature, placements=placements,
     )
 
     if args.n_envs > 1:
         env = build_parallel_env(
             args.n_envs, args.vec_backend, args.option, args.online, base_env_kwargs,
-            args.window_size, args.window_order, args.use_atc_feature,
+            args.window_size, args.window_order, args.use_atc_feature, placements=placements,
         )
         # MaskablePPO's own un-tuned defaults (n_steps=2048, batch_size=64)
         # assume n_envs=1 -- the on-policy buffer size is n_envs*n_steps, so
@@ -537,6 +580,7 @@ def main():
         gamma=args.gamma,
         n_steps=n_steps,
         batch_size=batch_size,
+        seed=args.seed,
     )
 
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
@@ -562,7 +606,8 @@ def main():
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,
-                                                       use_atc_feature=args.use_atc_feature)
+                                                       use_atc_feature=args.use_atc_feature,
+                                                       placements=placements)
             # build_env_and_policy wraps Monitor(ActionMasker(wrapper, mask_fn))
             # for the TRAINING env (Monitor tracks episode completion for SB3's
             # own info buffer) -- run_episode() (Code/evaluation/
@@ -579,7 +624,7 @@ def main():
         inner_env = template_env.env.env
         callback = build_diagnostics_callbacks(
             args.option, held_out_envs=held_out_envs, diagnostics_interval=args.diagnostics_interval,
-            rule_names=RULE_NAMES, max_jobs=inner_env.max_jobs,
+            rule_names=getattr(inner_env, "rule_names", RULE_NAMES), max_jobs=inner_env.max_jobs,
             num_machines=inner_env.num_machines if args.option == "4" else None,
         )
         print(f"Option {args.option}: diagnostics enabled, interval={args.diagnostics_interval}, "
@@ -587,7 +632,7 @@ def main():
               f"{RANDOM_INSTANCE_SEED_CEILING + len(held_out_envs) - 1})")
 
     tag_suffix = f"_{args.save_tag}" if args.save_tag else ""
-    save_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
+    save_path = checkpoint_path(args.option, args.save_tag)
     ckpt_dir = MODELS_DIR / "checkpoints" / f"option{args.option}{tag_suffix}"
 
     reset_num_timesteps = True
@@ -599,7 +644,9 @@ def main():
         reset_num_timesteps = False
         print(f"Option {args.option}: resumed from {ckpts[-1].name} ({model.num_timesteps} steps done)")
 
-    callbacks = [c for c in (callback,) if c is not None]
+    # build_diagnostics_callbacks() returns a list -- extend, don't nest it (nesting crashed every
+    # --diagnostics-interval run once checkpointing was added; fixed 2026-10-05).
+    callbacks = list(callback) if callback is not None else []
     if args.checkpoint_every:
         from stable_baselines3.common.callbacks import CheckpointCallback
         callbacks.append(CheckpointCallback(save_freq=args.checkpoint_every, save_path=str(ckpt_dir),
@@ -620,6 +667,14 @@ def main():
     elapsed_min = (time.time() - t0) / 60.0
 
     model.save(str(save_path))
+    write_env_spec(args.option, args.save_tag, dict(
+        placements=list(placements), use_atc_feature=args.use_atc_feature,
+        window_size=args.window_size, window_order=args.window_order,
+        reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
+        difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
+        seed=args.seed,
+        train_minutes=round(elapsed_min, 1),
+    ))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "
           f"saved to {save_path}")
 

@@ -197,4 +197,47 @@ obs, info = env2c.reset()
 env2c.step(np.array(0))  # 0-d ndarray, not a python int
 print("  PriorityOnlyGymSchedulingEnv.step() accepted a 0-d ndarray action")
 
+# ============================================================
+# Option 1 placements menu (2026-10-05): default menu unchanged; with
+# Consolidate, every action decodes through exactly HEURISTICS[label].
+# ============================================================
+print("=== Option 1 placements: default menu unchanged ===")
+from Code.methods.heuristics.registry import HEURISTICS  # noqa: E402
+
+env_def = RuleSelectionGymSchedulingEnv(make_base_gym_env(num_jobs=4, num_machines=2, horizon=10))
+assert env_def.action_space.n == 8 and env_def.rule_names == RULE_NAMES, "default menu changed"
+print("  default: Discrete(8), same rule order and labels")
+
+print("=== Option 1 placements: FirstFit+Consolidate menu decodes through HEURISTICS ===")
+labels = None
+differs = False
+for action in range(len(RULE_NAMES) * 2):
+    # Same state every time: machine 2 already busy, so Consolidate (prefer active machines)
+    # and FirstFit (lowest index) disagree on where the next job goes.
+    full_p = make_base_gym_env(num_jobs=4, num_machines=3, horizon=10)
+    env_p = RuleSelectionGymSchedulingEnv(full_p, placements=("FirstFit", "Consolidate"))
+    env_p.reset()
+    env_p.env.step((0, 2))
+    labels = env_p.rule_names
+    assert env_p.action_space.n == 2 * len(RULE_NAMES) + 1, env_p.action_space
+    expected = HEURISTICS[labels[action]](env_p.env, env_p._job_actions(), env_p._decode)
+    expected = env_p._decode(expected)
+    sent = []
+    real_step = env_p.env.step
+    env_p.env.step = lambda a, _real=real_step: (sent.append(tuple(a)), _real(a))[1]
+    env_p.step(action)
+    assert sent == [tuple(expected)], (labels[action], sent, expected)
+    if labels[action].endswith("+Consolidate"):
+        differs |= sent[0][1] != 0  # FirstFit would take machine 0 here
+assert labels[:len(RULE_NAMES)] == [f"{r}+FirstFit" for r in RULE_NAMES], labels
+assert labels[len(RULE_NAMES):] == [f"{r}+Consolidate" for r in RULE_NAMES], labels
+assert differs, "test state never separated Consolidate from FirstFit -- check the setup"
+print(f"  Discrete({2 * len(RULE_NAMES) + 1}); all {2 * len(RULE_NAMES)} actions match HEURISTICS[label]")
+
+try:
+    RuleSelectionGymSchedulingEnv(make_base_gym_env(), placements=("NoSuchFit",))
+    raise AssertionError("unknown placement accepted")
+except ValueError:
+    print("  unknown placement name rejected")
+
 print("\nALL ACTION-SPACE-WRAPPER CHECKS PASSED")
