@@ -32,6 +32,154 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-04 (S2W11) -- Branches integrated on main (objective-redesign + autonomous-overnight ATC work); real bug fixed: --n-envs workers ignored the v2 objective
+
+**Config:** no training. Code integration only, local commits on `main` (not pushed).
+
+**What was merged:**
+1. `origin/objective-redesign` (80 commits: 2026-09-28 restructure into `Code/core` +
+   `Code/methods` with compatibility shims at the old paths, v2 objective, difficulty
+   presets, `run.py`). `main`'s one extra commit (d2d11d7: PSO `gbest_position`, Optuna
+   `--trial-timesteps`/`--deadline-range`) predated the restructure, so its changes were
+   re-applied to the moved files. Its two scripts now live in `Code/methods/rl/` with shims.
+2. `autonomous-overnight-2026-08-28` (the 13 commits from 2026-09-23 to 2026-10-04 that
+   were on neither branch: ATC observation feature, observation-informativeness and
+   credit-assignment diagnostics, `--n-envs` parallel rollout, the 3M-step result). Moved
+   into the new layout: `obs_atc_feature.py` -> `Code/methods/rl/action_spaces/`, the two
+   diagnostics -> `Code/methods/rl/evaluation/`, shims at the old paths. Both branches had
+   independently fixed the same O(J x num_jobs) ATC-feature slowdown (objective-redesign
+   inlined it into each wrapper; this branch put it in the shared helper). Kept the shared
+   helper so there is one place to change; the two are line-for-line the same computation.
+
+**Bug found (semantic merge conflict, not flagged by git):** the `--n-envs > 1` worker
+factory (`make_worker_env`) was written before v2 existed and built its envs from its own
+argument list. With `--n-envs > 1` it silently dropped `--reward-mode objective`'s
+`ObjectiveConfig`, `--difficulty`, the extended horizon and `--gamma`'s `shaping_gamma`,
+so parallel workers would have trained on a different reward than the single-env path.
+Also, `make_difficulty_resampler` was always seeded 0, so every worker would have replayed
+the same instance stream (the correlated-actors problem `make_worker_env`'s own docstring
+warns about). Fixed: both paths now build through one `make_full_gym_env(online,
+base_env_kwargs, seed)`, and the difficulty resampler is seeded from the env's seed
+(seed 0, the single-env path, is unchanged). No result in this log is affected: no v2
+run has used `--n-envs > 1` yet (the two features only met in this merge).
+
+**Stats:**
+```
+tests/: all 21 existing scripts pass on the merged tree
+tests/test_parallel_worker_env.py (new): 3/3 checks pass
+smoke (2048 steps, --n-envs 2): legacy online+ATC subproc OK, v2 objective+on_rho075 subproc OK,
+                                offline Option 3 dummy OK
+```
+
+**Conclusion / next step:** `main` now has all work from both machines. Branches
+`objective-redesign` and `autonomous-overnight-2026-08-28` are fully contained in `main`.
+The next experiments are still to be planned with the user.
+
+---
+
+## 2026-10-04 (S2W11) -- Big-budget result: 10x more training (3M vs. 300k) does NOT close the gap to ATC -- the policy converges HARDER into a hard-collapsed local optimum, not away from it
+
+**Context:** direct test of the open question from the 2026-09-26 entries
+("PPO learns away from the zero-cost ATC action... is it a genuine basin, or
+just undertrained?"). Now on real hardware (see the infra entry above --
+8-way parallel rollout, ~455-590fps vs. the laptop's ~20-36fps), ran Option
+1 baseline (no ATC feature, `--reward-mode dense_tardiness --job-weight-min
+1 --job-weight-max 6`, online, same protocol as every other run in this
+thread) at **3,000,000 timesteps** -- 10x the 300k first-pass-filter scale,
+and >3x the 900k scale used everywhere else in this investigation. Took
+201.1 minutes wall-clock (8-way `SubprocVecEnv`, `--diagnostics-interval
+50000`). Evaluated on the standard 50-instance randomized protocol.
+
+**Stats:**
+```
+Option 1 (3M, baseline, no ATC feature)   weighted_tardiness=784.34+/-353.13
+Option 1 (900k, SPT-collapsed, earlier)   weighted_tardiness=798.46+/-346.65
+WSPT+BestFit (heuristic)                  weighted_tardiness=709.42+/-299.06
+ATC (heuristic, still the best)           weighted_tardiness=648.16+/-338.30
+
+Final action distribution (identical across the last 4+ logged diagnostics
+checkpoints, spanning a large fraction of the 3M run -- i.e. FULLY locked,
+not just dominant):
+  ATC=0.0  EDF=0.0  FCFS=0.0  LPT=0.0  LST=0.0  SPT=0.0  WSPT=0.892  idle=0.108
+  entropy_normalized=0.164
+```
+
+**Observation:** 784.34 at 3M timesteps is statistically indistinguishable
+from 798.46 at 900k -- 10x more training bought essentially nothing. More
+strikingly, the policy didn't just fail to improve, it became MORE
+extreme: entropy_normalized=0.164 (vs. the earlier SPT-collapse's already-low
+but less extreme readings) and the action distribution is EXACTLY 0.0 for
+six of the seven rules, not just small -- a fully deterministic policy with
+zero remaining exploration. This time it collapsed onto WSPT rather than
+SPT (an interesting run-to-run difference -- which simple rule PPO locks onto
+isn't fixed), but the RESULT is the same dead end either way: whichever
+single cheap heuristic PPO latches onto first, more gradient steps make that
+lock-in more complete, not less. Also notable: mimicking WSPT 89.2% of the
+time (paired with FirstFit placement, not BestFit, plus 10.8% idle) still
+underperforms the WSPT+BestFit heuristic itself (784.34 vs. 709.42) -- the
+RL policy isn't even matching its own collapse target's heuristic
+performance cleanly, let alone ATC's.
+
+**Conclusion / next step:** this answers the "is more training the fix"
+question directly: NO. The basin PPO falls into for this MDP/reward/action-
+space combination is a genuine, training-budget-independent local optimum,
+not an artifact of undertraining -- raising more training budget only
+entrenches it further. Combined with the already-established "ATC is a
+zero-cost available action but gets ignored" finding and the "giving an
+explicit ATC feature barely helped" finding, the picture is now fairly
+clear: this is a policy-optimization/exploration problem specific to how
+PPO's clipped-surrogate objective interacts with this reward landscape, not
+a representation or budget problem. The credit-assignment-lag hypothesis
+(still untested properly -- the first diagnostic for it was degenerate, see
+the 2026-09-26 entry) and a genuinely different exploration mechanism
+(e.g. an entropy bonus or auxiliary reward specifically protecting
+under-selected actions from being driven all the way to exactly 0, rather
+than a uniform higher ent_coef which was already ruled out for a different
+reason on 2026-09-23) are the remaining concrete next steps -- both still
+unstarted, now worth pursuing given training budget is cheap on this
+machine and can no longer be blamed as the limiting factor.
+
+---
+
+## 2026-10-04 (S2W11) -- CORRECTION: the "background compute throttling" theory from the 2026-09-24 entries was WRONG -- it was the user's laptop, not this session's environment
+
+**Context:** the three 2026-09-24 entries below ("Launched: Option 1 online
+with an explicit ATC-priority observation feature," "Correction/refinement:
+the 300k restart does not fix the throttling either," and the matching
+memory note `feedback_background_jobs_need_active_monitor.md`) attributed a
+severe, multi-day slowdown in a background training run to this session's
+sandbox/agent-engagement behaviour -- i.e. that detached background
+processes stall unless the agent stays actively engaged. The user has now
+confirmed directly (2026-10-04, back from a 2-week break) that this was
+wrong: those runs were on the user's LAPTOP, which was being turned off or
+left asleep for long stretches, and separately had limited hardware
+resources even when on. The throttling had nothing to do with this
+session's execution environment, Monitor usage, or agent engagement --
+those correlations were coincidental, confounded with when the physical
+machine happened to be powered on.
+
+**Retracting, not deleting:** per this log's own convention, the original
+entries are left as-is below (do not edit history), but should be read with
+this correction in mind -- the 300k vs. 900k budget decision, the "don't
+chase this with Monitor tricks" guidance, and the multi-day timeline
+framing were all reasonable responses to a real observed slowdown, just
+with the wrong root cause attached. A product-feedback draft based on the
+wrong theory was queued (never sent) and has been flagged to the user to
+disregard.
+
+**What actually changes:** the user is now on their main PC (confirmed: AMD
+Ryzen 7 7800X3D, 16 logical cores, no CUDA GPU detected -- CPU-only training,
+same as every run so far, but on much better hardware and left on/attended
+for real work sessions) specifically to do the "extensive training and
+evaluation" that wasn't feasible on the laptop. Going forward: do not assume
+background jobs will stall during idle periods -- that was never a real
+property of anything other than the old laptop. If a new slowdown appears
+on this machine, diagnose it as an actual resource/code issue (CPU
+utilization, vectorization, thermal/power state) rather than reaching for
+the retracted "sandbox throttling" explanation again.
+
+---
+
 ## 2026-09-30 (S2W11) -- Heuristic sweep under squared lateness + extended horizon: offline LST dominates; online high load is where rules differ most
 
 **Config:** v2 defaults (tardiness_sq, extended horizon), 8 heuristics (LST, EDF, ATC, SPT, WSPT+BestFit,
@@ -220,6 +368,479 @@ never drops jobs and that the hotspot bug explained the gap. That conclusion is 
 jobs that would be late" (flattered by the tardiness metric) is the intended behaviour. This drove the
 objective redesign in `2026-09-28-objective-redesign-discussion.md` (reward = objective, explicit drop
 penalty, dropped jobs always reported). All tools now report jobs scheduled and dropped next to tardiness.
+
+---
+
+## 2026-09-26 (S2W10) -- Credit-assignment-lag hypothesis test: the diagnostic as built is DEGENERATE, not a real null result -- correcting the record
+
+**Context:** built and ran `Code/evaluation/diagnose_credit_assignment_lag.py`
+to test the credit-assignment-lag hypothesis from the entry immediately
+below, using the "any job anywhere late" proxy described there (ticks until
+the next tick, anywhere in the episode, where >=1 job is late-and-
+incomplete).
+
+**Result as first run:** mean_lag=0.00 (EXACTLY) for both disagree (SPT!=ATC)
+and agree states, n=16615 decisions across 20 episodes.
+
+**Why this is NOT a real null result:** investigated directly rather than
+taking the 0.00/0.00 at face value -- checked `_charged_ticks()`'s output
+for a single rollout and found EVERY tick in the episode (101/101, horizon=
+100) is "charged" (fraction=1.0). This environment (arrival_rate=9,
+horizon=100, online_max_jobs=1300 -> ~900 realized arrivals, only ~835
+ever scheduled per the eval numbers) is persistently over capacity -- some
+job somewhere is essentially always late-and-incomplete at every tick. The
+"any job anywhere" proxy is therefore trivially 0 almost everywhere by
+construction, regardless of the true hypothesis -- it measures system-wide
+congestion, not the causal link between a specific decision and its own
+consequence. This is a flawed instrument, not evidence against the
+hypothesis: **retracting the previous entry's "no meaningful difference ...
+does not support" conclusion** -- it was drawn from a degenerate metric and
+should not be read as informative either way.
+
+**Conclusion / next step:** a real test of this hypothesis needs a
+PER-DECISION, not per-episode-global, notion of lag -- e.g. tracking the
+specific job(s) SPT vs. ATC would prioritize differently at a given step,
+and measuring how many ticks until THAT job's own fate (late vs. on-time)
+is determined, which requires either counterfactual replay (what would have
+happened to that job under each rule) or a narrower congestion regime where
+"any job late" isn't already saturated at 1.0. Non-trivial design work, not
+a quick fix -- left as an open, unstarted follow-up rather than attempted
+under time/compute pressure. The hypothesis itself (below) remains neither
+supported nor refuted.
+
+---
+
+## 2026-09-26 (S2W10) -- A candidate mechanistic hypothesis for WHY PPO prefers SPT/WSPT over ATC, grounded in reading the reward code (not yet empirically tested)
+
+**Context:** direct follow-up to the entry immediately below (PPO learns away
+from the zero-cost ATC action). That entry established the WHAT (an
+optimization/exploration problem) but not the WHY. Read
+`SchedulingEnv.reward()`/`_dense_tardiness_tick_charge()`
+(`Code/env/scheduling_env.py:300-346,494-542`) directly to check whether the
+`dense_tardiness` reward mode's per-tick structure gives any reason to
+expect this specific SPT/WSPT-over-ATC bias, rather than treating it as an
+unexplained black box. No training or new compute involved -- pure code
+inspection, flagged as a HYPOTHESIS per CLAUDE.md's rigor rule, not a proven
+mechanism.
+
+**What the code shows:** `_dense_tardiness_tick_charge()` only accrues a
+non-zero cost for a job `j` once `self.time >= job_deadlines[j]` AND `j` is
+not yet complete -- i.e. the per-tick reward signal is EXACTLY ZERO for
+every job that still has slack remaining, regardless of which rule chose to
+schedule it or in what order. There is no positive reward for early
+completion, no differential signal between "scheduled now" vs. "scheduled
+later" as long as neither choice has yet caused a job to cross its deadline.
+This is not a bug -- it's confirmed to reproduce the true objective
+`sum_j(w_j*T_j/horizon)` exactly (see that method's own correctness
+argument, already tested in `tests/test_dense_tardiness_reward.py`) -- but
+it does mean the reward signal is genuinely SPARSE/flat across every
+low-congestion decision, which is plausibly the common case for most of an
+episode.
+
+**Hypothesis:** ATC's real advantage over WSPT is specifically in the
+narrow, state-dependent regime where a job's slack is shrinking but it
+hasn't yet crossed its deadline (the formula's own
+`exp(-slack/(k*mean_p))` term is exactly this urgency ramp -- see
+`atc_priority()`'s docstring). But the reward signal for a wrong call in
+that regime only actually fires LATER, once the job has already gone late --
+by which point PPO's credit assignment has to reach back through several
+ticks (via GAE/the value function) to find the earlier rule-choice
+responsible. SPT/WSPT's benefit, by contrast, is more immediate and locally
+visible: clearing short/high-value jobs fast has a direct, nearby effect on
+how many jobs are ever at risk of lateness at all. If PPO's local
+policy-gradient updates are more sensitive to this kind of immediate, dense
+local signal than to a longer, thinner delayed-credit chain, that would
+mechanistically explain a systematic bias toward SPT/WSPT over ATC even when
+ATC is informationally available and directly selectable -- independent of
+(and consistent with, not contradicting) the "optimization problem" framing
+in the entry below.
+
+**Status: NOT yet empirically tested -- flagged as the honest next
+diagnostic, not assumed true.** A cheap, no-new-training way to test this
+directly: log, per episode, the tick-distance between each rule choice and
+the nearest subsequent per-tick tardiness charge it plausibly caused, and
+check whether ATC-favorable states are systematically further from their
+associated reward signal than SPT/WSPT-favorable ones -- reusing
+`diagnose_rule_choice_congestion.py`'s existing rollout-and-log pattern
+rather than a new script from scratch. Left unstarted pending a steer on
+whether it's worth pursuing before or alongside the training-heavy options
+already listed below.
+
+---
+
+## 2026-09-26 (S2W10) -- Sharper finding, no new training needed: PPO actively LEARNS AWAY from the ATC action even though it's directly available and the observation gives an explicit ATC-priority feature -- this is an optimization problem, not a representation one
+
+**Context:** direct follow-up to the entry immediately below (the ATC-feature
+result). That entry left the representation-vs-optimization question
+ambiguous. Re-examining the just-completed 300k run's own
+`ActionDistributionCallback` diagnostics (already logged during training,
+no new compute needed) resolves it much more sharply, because of a fact
+worth stating explicitly: **"ATC" is not merely encodable in the
+observation -- it is literally one of Option 1's 8 discrete actions.** A
+policy that always selected the ATC action every tick would, by
+construction, reproduce ATC's exact heuristic behaviour and its exact
+648.16 weighted-tardiness score. No feature engineering or representation
+capacity is needed for that -- it only requires PPO's policy optimization to
+converge on "pick ATC."
+
+**Stats -- ATC's selection frequency over the course of this exact run:**
+```
+Start of training (first action_dist block, ~2048 steps):
+  ATC=0.106  EDF=0.111  FCFS=0.131  LPT=0.129  LST=0.133  SPT=0.132  WSPT=0.129  entropy_normalized=0.999
+  (near-uniform across all 7 rules + idle, as expected from an untrained policy)
+
+End of training (final action_dist blocks, ~295-300k steps):
+  ATC=0.009-0.012   EDF=0.09-0.14   SPT=0.23-0.48   WSPT=0.18-0.44   entropy_normalized=0.71-0.76
+  (SPT/WSPT dominate; ATC's share has fallen to ~1%, well below even a
+  uniform 12.5% baseline -- not "failed to discover ATC," but "moved AWAY
+  from it as training progressed")
+```
+This is with the explicit ATC-priority feature present in the observation
+the whole time (this run's whole point), and with entropy_normalized never
+collapsing to nearly this run's near-zero online-collapse precedent (stays
+in a healthy 0.7-0.76 range) -- so this isn't the entropy-saturation
+mechanism from the 2026-09-23 entries either. PPO explored broadly early on,
+then its own policy-gradient updates consistently pushed away from the one
+action that would have matched the best available heuristic exactly.
+
+**Observation:** this is much stronger evidence than the previous entry's
+"gap not closed" framing suggested. Since (a) ATC is a zero-representation-
+cost action already in the policy's repertoire, and (b) the observation
+literally contains a precomputed, correctly-verified ATC-priority value per
+job this whole run, the only remaining explanation for why the trained
+policy still ends up ~20% worse than ATC is that PPO's optimization
+landscape for this MDP has a more attractive (higher local, if not global,
+return) basin around SPT/WSPT than around ATC -- plausibly because SPT/WSPT
+are simpler, lower-variance strategies that are easier for policy-gradient
+methods to exploit reliably step-to-step, while ATC's benefit is a longer-
+horizon, state-dependent trade-off (only diverging from WSPT when slack is
+small, per the formula) that a locally-greedy policy-gradient process may
+systematically under-explore or discount.
+
+**Conclusion / next step:** this REVERSES (not just tempers) the previous
+entry's tentative "weakens representation-limit reading" framing into a
+positive, evidenced claim: the observation-informativeness probe's original
+"maybe it's a representation limit" hypothesis is now well-evidenced as
+WRONG for this specific gap -- the online case's shortfall vs. ATC is an
+optimization/exploration problem, full stop, given ATC's zero-cost
+availability as an action. Natural next steps (none started, all would need
+a user steer given the throttling-driven compute cost of any further
+training in this session): (1) an entropy bonus SPECIFICALLY biased or
+warm-started toward under-selected actions (not just a uniform higher
+ent_coef, already ruled out on 2026-09-23 for a different, now-superseded
+reason); (2) reward shaping or curriculum that makes ATC's longer-horizon
+payoff easier for PPO's credit assignment to detect; (3) simply a lot more
+timesteps at a budget large enough to escape the SPT/WSPT basin, which
+hasn't been cleanly tested since every online run to date has been
+resource-constrained by this session's throttling, not by a principled
+timestep-budget decision.
+
+---
+
+## 2026-09-26 (S2W10) -- ATC-feature result: a small, real improvement over the SPT-collapsed baseline, but the gap to ATC is NOT closed -- weakens the representation-limit reading
+
+**Context:** result of the 300k ATC-feature run (`online_lognormal_rho075_
+dense_weighted_atcfeature_300k`), which finished after ~64.2 hours of
+wall-clock time (severely throttled per the entries above -- not indicative
+of real compute cost, see the memory note
+`feedback_background_jobs_need_active_monitor.md`). Evaluated on the
+standard 50-instance randomized protocol (seeds 500000-500049), matching
+every other Option 1 result in this thread.
+
+**Stats:**
+```
+Option 1 + ATC feature (300k)   weighted_tardiness=776.42+/-331.15
+Option 1 (SPT-collapsed, 900k)  weighted_tardiness=798.46+/-346.65   (from the 2026-09-23 entcoef entry)
+ATC (heuristic)                 weighted_tardiness=648.16+/-338.30
+WSPT+BestFit (heuristic)        weighted_tardiness=709.42+/-299.06
+EDF+BestFit (heuristic)         weighted_tardiness=736.44+/-430.41
+```
+
+**IMPORTANT CAVEAT (matched-protocol discipline):** this is NOT a clean
+apples-to-apples comparison -- the ATC-feature run is 300k timesteps
+(first-pass-filter scale, forced by the throttling above), while the
+SPT-collapsed reference is 900k. No matched-budget (300k, no-ATC-feature)
+checkpoint currently exists to isolate the feature's effect from the
+budget difference. The ~22-point improvement (798.46 -> 776.42) could
+partly or wholly reflect the smaller budget landing at a different point in
+an otherwise-noisy training trajectory, not the feature itself -- flagged
+here rather than presented as a clean causal result.
+
+**Observation:** even taking the improvement at face value, it is small
+(~2.8%) relative to the ATC gap (776.42 vs. 648.16 is still a 128-point,
+~19.8% gap), and Option 1 + ATC feature is still worse than two off-the-shelf
+heuristics (WSPT+BestFit, EDF+BestFit) that need no learning at all. This
+weakens (does not refute) the observation-informativeness probe's
+representation-limit reading: giving the policy an explicit, correctly-
+computed ATC-priority signal did not meaningfully close the gap, which is
+more consistent with the gap being dominated by something other than "the
+raw features don't linearly/simply encode this" -- e.g. genuine optimization
+difficulty in this action space/reward setup, or a capability limit deeper
+than a single missing feature.
+
+**Conclusion / next step:** this closes out the ATC-feature thread as
+inconclusive-but-informative rather than a clean win. A matched-budget
+(300k, no feature) control run would be needed to confirm even the small
+improvement is real and not budget noise -- not run yet, given the multi-day
+throttled cost of a single run in this session; left as an open follow-up
+requiring a user steer on whether it's worth the wall-clock cost. Reverting
+to the earlier capability/representation-limit question in its original,
+more open form: the online case's ~150-point gap to ATC remains unexplained
+by (a) entropy/logit saturation (ruled out 2026-09-23), or (b) a simple
+missing-observation-feature story (this entry). Future work should probably
+look at a stronger nonlinear representation-adequacy test (e.g. can a
+larger, purpose-trained supervised probe predict ATC's full RANKING, not
+just the binary SPT-vs-ATC-disagreement label) or reconsider whether Option
+1's rule-selection action space itself (discrete rule per tick, not a
+continuous priority score) is the bottleneck.
+
+---
+
+## 2026-09-24 (S2W9) -- Correction/refinement: the 300k restart does not fix the throttling either -- this is a session-environment characteristic, not something to engineer around
+
+**Context:** direct correction to the entry immediately below, which
+hypothesized that an actively-armed `Monitor` (`tail -f` on the log) was
+sufficient to keep the background training process at normal throughput, and
+that reducing the timestep budget from 900k to 300k would make the run
+complete in a practical timeframe.
+
+**What actually happened:** left a 30-minute `Monitor` run to its natural
+expiry without immediately re-arming it. Over the resulting ~5h14m real
+gap (30 min actively monitored + ~4h44m with no monitor and no direct tool
+calls), the 300k run completed only 14336 steps -- an average of ~0.76
+steps/sec across the whole window, statistically indistinguishable from the
+earlier fully-idle stall rate. This means the Monitor's background `tail -f`
+pipe, by itself, is NOT what kept things moving during the earlier recovery
+-- that recovery most likely coincided with (and was probably caused by) the
+agent's own direct, frequent tool calls during that period.
+
+**Conclusion / next step:** this is a property of the session's background-
+compute execution environment, not something fixable by tooling choices
+(Monitor granularity, timestep budget, etc.) -- the effective throughput hit
+looks roughly constant in wall-clock terms regardless of job size, so
+shrinking the target further would not reliably fix completion time either.
+Decision: stop trying to engineer around it. Let the current 300k run
+continue as-is (killing and restarting a third time would only waste the
+steps already invested without addressing the root cause). Checking in at
+reasonable, not tight, intervals going forward, and treating multi-day
+wall-clock completion for what would normally be an hours-long job as the
+realistic expectation while unattended. See also the matching memory note
+(`feedback_background_jobs_need_active_monitor.md`, product feedback queued
+but not yet sent) for the full investigation.
+
+---
+
+## 2026-09-24 (S2W9) -- Restarted the ATC-feature run at 300k (first-pass-filter scale), not 900k -- background compute throttling made the original 900k budget impractical in this session
+
+**Context:** direct follow-up to the entry immediately below (the 900k
+ATC-feature launch). Discovered mid-run that this session's background
+process does not progress at a steady rate unattended -- confirmed via
+`Get-Process`/`ps`: after ~18.5 hours of wall-clock time the process had
+consumed only ~1946 CPU-seconds (~2.9% utilization) and completed ~29k/900k
+steps, despite the system overall being ~8% loaded (no external contention).
+Progress resumed at a roughly normal rate only while actively watched via a
+`Monitor`-armed `tail -f` on the log, and even that only partially closed the
+gap (~2.3 steps/sec sustained with a Monitor alone but no direct active
+engagement, vs. ~36 steps/sec fully engaged, vs. ~0.7 steps/sec fully idle).
+This looks like a property of the session's execution environment (background
+child processes appear to get deprioritized while the orchestrating agent
+session is dormant), not a bug in this project's training code -- logged
+here because it changes what's actually achievable unattended, not because
+anything about the ATC-feature implementation itself is suspect.
+
+**Decision:** rather than gamble on a multi-day run that may also be exposed
+to session/VM reclaim risk while mostly idle, killed the 900k run at ~41k
+steps (PowerShell `Stop-Process`) and relaunched with everything unchanged
+except `--timesteps 300000` (save-tag
+`online_lognormal_rho075_dense_weighted_atcfeature_300k`) -- matching this
+project's own established first-pass-filter convention (see e.g. the
+300k-timestep entropy-collapse investigation entries, "matching every other
+option's first-pass-filter scale"), rather than the 900k the diagnostics
+baseline checkpoint used. This is NOT a directly matched-protocol comparison
+to `online_lognormal_rho075_dense_weighted_diagnostics` (900k) -- flagging
+that explicitly now so the eventual result is interpreted at the right scale,
+per this project's matched-protocol discipline. If the 300k result looks
+promising, extending to 900k with sustained active monitoring (or across
+several shorter monitored sessions) is the natural follow-up, not a blocked
+question.
+
+---
+
+## 2026-09-23 (S2W9) -- Launched: Option 1 online with an explicit ATC-priority observation feature, direct test of the observation-informativeness-probe finding
+
+**Context:** Direct follow-up to the observation-informativeness-probe entry
+immediately below. That probe found the raw online observation only weakly
+encodes SPT-vs-ATC job-choice disagreement (linear AUC 0.62, nonlinear MLP AUC
+0.65, small gap between them -- consistent with a real but limited
+information gap in the raw features). The natural, low-risk next test:
+give Option 1's observation the same explicit per-job ATC-priority feature
+Option 3 already uses, and see whether the gap to ATC's tardiness performance
+narrows.
+
+**Implementation:** added an opt-in `use_atc_feature` flag to
+`RuleSelectionGymSchedulingEnv` (`Code/env/rule_selection_gym_wrapper.py`),
+appending the same per-job ATC-priority feature Option 3's `use_atc=True`
+already computes. Factored the shared slot-layout logic out of
+`priority_only_gym_wrapper.py` into a new `Code/env/obs_atc_feature.py`
+(`append_atc_priority_feature()`) so both options call one implementation
+instead of duplicating it -- Option 3's own behaviour is unchanged by this
+refactor (verified: `tests/test_action_space_wrappers.py`'s existing Option 3
+check and the new Option 1 check produce identical ATC feature values on the
+same synthetic instance). Threaded `use_atc_feature`/`--use-atc-feature`
+through `build_env_and_policy()`/`train_action_space_variant.py` and
+`build_eval_env()`/`eval_action_space_variant.py`, with explicit `ValueError`
+guards for every other option (mirrors the existing `--window-size` guard
+style). Default `False` preserves every existing Option 1 checkpoint's
+observation_space shape unchanged. New test coverage: obs_dim growth by
+exactly `max_jobs`, feature range/non-degeneracy, and that `step()` mechanics
+are unaffected by the extra feature -- all in
+`tests/test_action_space_wrappers.py`. Full existing suite
+(`test_action_space_wrappers.py`, `test_efficiency_fixes.py`,
+`test_training_diagnostics.py`) re-run clean, no regressions. Smoke-tested
+both the training and eval CLI paths at tiny scale (512 timesteps) before
+this launch, matching this project's established discipline.
+
+**Config:** Option 1, online, same protocol as the entropy-collapse/ATC-probe
+runs (`--arrival-rate 9 --online-horizon 100 --online-max-jobs 1300
+--job-size-distribution lognormal --reward-mode dense_tardiness
+--job-weight-min 1 --job-weight-max 6`), 900k timesteps,
+`--diagnostics-interval 5000`, new `--use-atc-feature` flag, save-tag
+`online_lognormal_rho075_dense_weighted_atcfeature`. Directly comparable to
+the `online_lognormal_rho075_dense_weighted_diagnostics` checkpoint (used by
+both the policy-confidence and observation-informativeness diagnostics) --
+same protocol, only the added feature differs.
+
+**Conclusion / next step:** Launched in the background (single env, ~35 fps
+observed at tiny scale on this obs_dim -- CPU-bound, expect several hours for
+900k timesteps). Will evaluate on the 50-instance randomized protocol and
+append a result entry once complete. If weighted tardiness moves meaningfully
+toward ATC's 648.16, that's evidence for the representation-limit reading; if
+it stays near the 798-810 band regardless, that would argue the earlier
+probe's "modest but real" signal wasn't the practical bottleneck after all
+(a genuinely informative negative result either way, not just a null run).
+
+---
+
+## 2026-09-23 (S2W9) -- Observation-informativeness probe: the online observation only weakly encodes ATC-vs-SPT disagreement -- points toward a representation limit, not just an optimization gap
+
+**Context:** Direct follow-up to the previous entry's closing question -- does
+the online observation vector (`OnlineGymSchedulingEnv._get_obs()`, unchanged
+through `RuleSelectionGymSchedulingEnv`) actually contain enough information to
+distinguish states where ATC's job choice would differ from SPT's, i.e. states
+where "clear the queue fast" and "respect weight/urgency" genuinely disagree
+-- exactly where an SPT-collapsed (or SPT-dominant) policy pays for it. New
+script: `Code/evaluation/diagnose_observation_informativeness.py`.
+
+**Method:** rolled out the `ent_coef=0.1` checkpoint deterministically over 20
+online episodes (same instance family as every other diagnostic this week:
+arrival_rate=9, horizon=100, lognormal, job_weight_range=(1,6)). At every
+decision step with >=1 feasible job, computed SPT's and ATC's job choice among
+the SAME feasible candidate set (reusing `priority_rules.py`'s key functions
+directly, matching `registry.py`'s own tie-break convention exactly), labelled
+the state `disagree=1` if they differ. Fit two probes on a held-out 25% test
+split, predicting `disagree` from the raw observation alone: a linear probe
+(logistic regression, `class_weight="balanced"`) and a small nonlinear probe
+(1-hidden-layer, 32-unit MLP) -- reporting both specifically to separate "the
+information isn't linearly accessible" from "the information mostly isn't
+there," which a linear probe alone can't distinguish.
+
+**Stats:**
+```
+16594 decision states across 20 episodes. SPT-vs-ATC disagreement rate: 0.668.
+
+Linear probe (logistic regression):  test ROC-AUC = 0.620  (balanced acc 0.594)
+Nonlinear probe (32-unit MLP):        test ROC-AUC = 0.645
+Gap (MLP - linear):                   +0.024
+```
+
+**Observation:** both probes land well above chance (0.5) but well below a
+strong result (0.85+) -- there IS real, non-trivial signal in the raw
+observation for this distinction, so it is not entirely uninformative. But the
+gap between the linear and nonlinear probe is small (+0.024), meaning giving
+the classifier more capacity to combine features nonlinearly barely helped --
+the ceiling looks like it comes from what the raw features encode, not from
+linear-readout weakness. Since the actual policy network is far more expressive
+than either probe, this doesn't prove the policy network itself is bottlenecked
+the same way, but it weakens the "it's purely an exploration/optimization
+problem and the network could learn this if trained differently" reading:
+there is a real information gap between "the observation, read any reasonable
+way" and "clean ATC-vs-SPT discrimination."
+
+**Conclusion / next step:** This tempers the previous entry's re-scoping
+without reversing it. The evidence now points more specifically toward a
+*representation* issue than a pure optimization one -- the online observation
+vector likely lacks an explicit summary feature for slack/urgency-weighted
+priority (the closest analogue would be adding an ATC-priority-like scalar
+feature directly to the observation, mirroring what `priority_only_gym_wrapper.py`'s
+Option 3 already does for its own purposes, but for Option 1's rule-selection
+observation instead). This is a concrete, scoped follow-up (one new observation
+feature + retrain) rather than a new architecture decision, so it does not need
+the same user-scoping GP+RL hyper-heuristic work was flagged as needing -- but
+is being logged here rather than started unprompted, since it's a real design
+choice (which feature(s) to add, and whether to also backfill it to the
+`ActionDistributionCallback` diagnostics) worth a quick steer before spending a
+training run on it.
+
+---
+
+## 2026-09-23 (S2W9) -- ent_coef=0.1 result: completely fixed the saturation mechanism, but tardiness performance barely moved -- decouples "entropy collapse" from "why online RL underperforms ATC"
+
+**Context:** Direct test of whether a substantially higher entropy coefficient
+(0.1, 10x the earlier-tried 0.01) prevents the per-state policy saturation
+found by the policy-confidence diagnostic. Same protocol as every other online
+Option 1 run this session, 900k timesteps.
+
+**Stats -- the mechanism was fixed, cleanly and completely:**
+```
+entropy_loss (SB3's own per-state metric): stayed flat at -1.75 to -1.83 for
+  the ENTIRE 900k run -- no decay trend at all (vs. the baseline run's smooth
+  decline to -0.00006 by the end).
+
+Policy-confidence diagnostic (6 episodes, 5587 decisions):
+                          ent_coef=0.1        ent_coef=0.0 (original, for comparison)
+  SPT probability          mean=0.135          mean=0.892
+  Margin (top1-top2)       mean=0.144           mean=1.000 (EXACTLY, every decision)
+  Value estimate V(s)      mean=-5.43, std=1.35  mean=-6.81, std=1.44 (both healthy)
+```
+The policy is now genuinely uncertain and state-dependent again -- SPT is no
+longer dominant (13.5% average probability, down from 89.2%), and the
+decision margin shows real variance instead of universal 1.0 saturation.
+
+**Stats -- but the actual tardiness outcome barely changed:**
+```
+Option 1 (ent_coef=0.1, 900k)   weighted_tardiness=798.74+/-449.64
+Option 1 (SPT-collapsed, 900k)  weighted_tardiness=798.46+/-346.65   (statistically indistinguishable)
+ATC (still the best heuristic)  weighted_tardiness=648.16+/-338.30
+```
+
+**Observation: this is a genuinely important, somewhat sobering decoupling.**
+Completely preventing the saturation mechanism (confirmed at both the SB3
+entropy_loss level and the direct per-state distribution level) did NOT
+translate into better task performance -- the two checkpoints achieve
+essentially the same weighted tardiness despite being mechanistically very
+different policies underneath (one deterministic and SPT-locked, one
+genuinely diverse and state-dependent). This means entropy/logit saturation,
+while real and now well-characterized, was likely a SYMPTOM correlated with
+this task's online training difficulty, not the ROOT CAUSE of why online RL
+doesn't reach ATC-level performance. Fixing the symptom left the underlying
+performance gap to ATC (648.16) exactly where it was.
+
+**Conclusion / next step:** This significantly re-scopes the remaining online-
+case mystery. The entropy-collapse investigation (four entries across
+2026-09-19 through 2026-09-23: entropy regularization tried and failed at
+0.01, mechanism diagnosed precisely via the confidence diagnostic, mechanism
+now fully fixed at 0.1) is closed out as a thread -- the collapse is real,
+well-understood, and fixable, but fixing it doesn't solve the actual open
+problem. The genuinely remaining question is a different one: WHY does this
+project's online RL setup top out around 798-810 weighted tardiness across
+multiple very different policies (SPT-collapsed, genuinely-diverse-with-high-
+entropy, and the earlier 300k mixed-strategy checkpoint), when ATC
+demonstrably achieves 648? This looks less like an optimization/exploration
+problem now and more like a genuine capability or representation limit at
+this training budget/architecture -- worth investigating directly (e.g.,
+whether the observation the policy receives actually contains enough
+information to distinguish ATC-favourable states, rather than assuming more
+training or better exploration would eventually find it).
 
 ---
 

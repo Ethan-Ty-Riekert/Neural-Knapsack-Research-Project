@@ -27,8 +27,8 @@ duplicating either's _get_obs().
 import gymnasium as gym
 import numpy as np
 
-from Code.methods.heuristics.priority_rules import atc_priority, _atc_mean_p
 from Code.methods.heuristics.placement_rules import first_fit
+from Code.methods.rl.action_spaces.obs_atc_feature import append_atc_priority_feature
 
 
 class PriorityOnlyGymSchedulingEnv(gym.Env):
@@ -60,23 +60,9 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
         base_obs = self._full._get_obs()
         if not self.use_atc:
             return base_obs
-
-        head = base_obs[:self._machine_block_end]
-        job_block = base_obs[self._machine_block_end:]
-        slots = job_block.reshape(self.max_jobs, self._job_slot_width)
-
-        revealed = getattr(self.env, "revealed_jobs", None)
-        out_slots = np.empty((self.max_jobs, self._job_slot_width + 1), dtype=np.float32)
-        # PERF (2026-09-29, S2W11): mean_p depends only on env state, not on j -- compute it once
-        # per observation (identical value) instead of once per job slot (O(max_jobs * num_jobs)
-        # per step; ~90% of an online Option 3 episode). Same pattern as registry.py's choose().
-        mean_p = _atc_mean_p(self.env)
-        for j in range(self.max_jobs):
-            out_slots[j, :self._job_slot_width] = slots[j]
-            is_real = (j < self.env.num_jobs) if revealed is None else (j in revealed)
-            out_slots[j, -1] = float(np.clip(atc_priority(self.env, j, mean_p=mean_p), 0.0, 1.0)) if is_real else 0.0
-
-        return np.concatenate([head, out_slots.reshape(-1)]).astype(np.float32)
+        return append_atc_priority_feature(
+            base_obs, self.env, self.max_jobs, self._job_slot_width, self._machine_block_end,
+        )
 
     def _feasible_machines(self, job):
         t = self.env.time

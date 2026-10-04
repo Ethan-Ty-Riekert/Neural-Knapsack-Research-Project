@@ -38,7 +38,8 @@ from Code.utils.paths import MODELS_DIR
 from Code.utils.results_log import append_eval_result
 
 
-def build_eval_env(option: str, full_gym_env, window_size=None, window_order="edf"):
+def build_eval_env(option: str, full_gym_env, window_size=None, window_order="edf",
+                    use_atc_feature=False):
     """window_size (2026-09-18 follow-up): mirrors
     train_action_space_variant.py::build_env_and_policy's windowed branch --
     must be passed here too or a windowed checkpoint's obs/action-space shape
@@ -46,12 +47,19 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
     follow-up): doesn't affect obs/action-space SHAPE, but must still match
     the checkpoint's TRAINING window_order for correct evaluation semantics
     -- a mismatched order silently evaluates the model against differently-
-    selected candidates than it learned to interpret, not a crash."""
+    selected candidates than it learned to interpret, not a crash.
+
+    use_atc_feature (2026-09-23 follow-up): mirrors build_env_and_policy's
+    same-named param -- must be passed here too, or an Option 1 checkpoint
+    trained with the extra ATC feature has an obs shape mismatch against the
+    template env used to load it. Only meaningful for option == '1'."""
     if option == "1":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3.")
-        env = RuleSelectionGymSchedulingEnv(full_gym_env)
+        env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature)
     elif option in ("2", "3"):
+        if use_atc_feature:
+            raise ValueError("--use-atc-feature only applies to --option 1.")
         use_atc = option == "3"
         if window_size is not None:
             env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc,
@@ -61,6 +69,8 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
     elif option == "4":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3.")
+        if use_atc_feature:
+            raise ValueError("--use-atc-feature only applies to --option 1.")
         env = ActionBranchingGymSchedulingEnv(full_gym_env)
     else:
         raise ValueError(f"Unknown option {option!r}")
@@ -215,6 +225,9 @@ def main():
                               "(train_action_space_variant.py) -- option 2/3 only.")
     parser.add_argument("--window-order", choices=["edf", "fifo"], default="edf",
                          help="Must match --window-order the checkpoint was TRAINED with.")
+    parser.add_argument("--use-atc-feature", action="store_true",
+                         help="Must match --use-atc-feature the checkpoint was TRAINED with "
+                              "(train_action_space_variant.py) -- option 1 only.")
     parser.add_argument("--no-log", action="store_true",
                          help="Skip appending this run's aggregate result to "
                               "rl_training/eval_results.csv (Code/utils/results_log.py). "
@@ -239,11 +252,13 @@ def main():
             template_env = build_eval_env(args.option, make_online_base_gym_env(
                 args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                 seed=RANDOM_INSTANCE_SEED_CEILING, use_resampler=False, job_weight_range=job_weight_range,
-            ), window_size=args.window_size, window_order=args.window_order)
+            ), window_size=args.window_size, window_order=args.window_order,
+               use_atc_feature=args.use_atc_feature)
         else:
             template_env = build_eval_env(args.option, make_base_gym_env(
                 seed=RANDOM_INSTANCE_SEED_CEILING, job_weight_range=job_weight_range,
-            ), window_size=args.window_size, window_order=args.window_order)
+            ), window_size=args.window_size, window_order=args.window_order,
+               use_atc_feature=args.use_atc_feature)
         model = load_model(args.option, template_env, checkpoint_tag=args.checkpoint_tag,
                             window_size=args.window_size)
         tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
@@ -262,11 +277,13 @@ def main():
                 env = build_eval_env(args.option, make_online_base_gym_env(
                     args.arrival_rate, args.online_horizon, args.online_max_jobs, args.job_size_distribution,
                     seed=seed, use_resampler=False, job_weight_range=job_weight_range,
-                ), window_size=args.window_size, window_order=args.window_order)
+                ), window_size=args.window_size, window_order=args.window_order,
+                   use_atc_feature=args.use_atc_feature)
             else:
                 denoms.append(100)
                 env = build_eval_env(args.option, make_base_gym_env(seed=seed, job_weight_range=job_weight_range),
-                                      window_size=args.window_size, window_order=args.window_order)
+                                      window_size=args.window_size, window_order=args.window_order,
+                                      use_atc_feature=args.use_atc_feature)
             r = run_episode(model, env)
             variant_reward.append(r["total_reward"])
             variant_tardiness.append(r["tardiness"].sum())
@@ -323,7 +340,8 @@ def main():
         denom = 100
         variant_env = make_base_gym_env(job_weight_range=job_weight_range)
 
-    env = build_eval_env(args.option, variant_env, window_size=args.window_size, window_order=args.window_order)
+    env = build_eval_env(args.option, variant_env, window_size=args.window_size, window_order=args.window_order,
+                          use_atc_feature=args.use_atc_feature)
     model = load_model(args.option, env, checkpoint_tag=args.checkpoint_tag, window_size=args.window_size)
     tag_suffix = f"_{args.checkpoint_tag}" if args.checkpoint_tag else ""
     model_path = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}.zip"
