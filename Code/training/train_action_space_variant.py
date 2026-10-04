@@ -33,11 +33,13 @@ training-log.md's 2026-09-16 entry).
         --job-size-distribution lognormal
 """
 import argparse
+import functools
 import time
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 from Code.env.scheduling_env import SchedulingEnv
 from Code.env.env_config import generate_env_config
@@ -54,6 +56,7 @@ from Code.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityP
 from Code.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
 from Code.training.train_optimized import (
     make_online_resampler, make_random_instance_resampler, RANDOM_INSTANCE_SEED_CEILING,
+    resolve_ppo_rollout_params,
 )
 from Code.env.rule_selection_gym_wrapper import RULE_NAMES
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
@@ -243,6 +246,65 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     return monitored, policy, policy_kwargs
 
 
+def make_worker_env(worker_index, option, online, arrival_rate, online_horizon, online_max_jobs,
+                     job_size_distribution, reward_mode, use_potential_shaping, job_weight_range,
+                     randomize_instances, window_size, window_order, use_atc_feature, base_seed):
+    """2026-10-04, S2W11: per-worker env factory for --n-envs > 1 parallel rollout
+    (previously this whole file only ever trained on a single env, auto-wrapped by
+    SB3 in a DummyVecEnv -- confirmed by grep, unlike train_optimized.py's existing
+    build_vec_env()). Deliberately a top-level function taking only picklable
+    arguments (not a closure) -- SubprocVecEnv on Windows always spawns workers via
+    the "spawn" start method, which pickles the env-constructor callable; the
+    exact same constraint train_optimized.py's build_vec_env() docstring already
+    documents.
+
+    worker_index varies the online arrival-sequence / randomized-instance seed per
+    worker, so the N parallel actors collect genuinely independent episode
+    realizations (Schulman et al. 2017, PPO, arXiv:1707.06347, Algorithm 1's N-actor
+    rollout scheme) rather than N correlated copies of the same realization. The
+    offline FIXED instance (randomize_instances=False) uses base_seed unchanged for
+    every worker instead -- every worker must see the IDENTICAL instance there,
+    matching build_vec_env()'s own fixed-instance bugfix precedent (a per-worker-
+    varying seed there was a real, previously-fixed bug, not a style choice)."""
+    if online:
+        full_gym_env = make_online_base_gym_env(
+            arrival_rate, online_horizon, online_max_jobs, job_size_distribution,
+            seed=base_seed + worker_index, reward_mode=reward_mode,
+            use_potential_shaping=use_potential_shaping, job_weight_range=job_weight_range,
+        )
+    else:
+        offline_seed = (base_seed + worker_index) if randomize_instances else base_seed
+        full_gym_env = make_base_gym_env(
+            seed=offline_seed, reward_mode=reward_mode, use_potential_shaping=use_potential_shaping,
+            randomize_instances=randomize_instances, job_weight_range=job_weight_range,
+        )
+    env, _, _ = build_env_and_policy(option, full_gym_env=full_gym_env, window_size=window_size,
+                                      window_order=window_order, use_atc_feature=use_atc_feature)
+    return env
+
+
+def build_parallel_env(n_envs, vec_backend, option, online, arrival_rate, online_horizon,
+                        online_max_jobs, job_size_distribution, reward_mode, use_potential_shaping,
+                        job_weight_range, randomize_instances, window_size, window_order,
+                        use_atc_feature, base_seed=0):
+    """n_envs==1 always uses DummyVecEnv (SB3's own default when a single env is
+    passed to MaskablePPO -- no behaviour change from before this function existed).
+    n_envs>1 with vec_backend="subproc" uses true multi-process rollout (SubprocVecEnv);
+    "dummy" runs every sub-env in the calling process (no IPC overhead, but no
+    multi-core speedup either) -- see build_vec_env()'s docstring for the same
+    backend-choice tradeoff, already established in this project."""
+    env_fns = [
+        functools.partial(make_worker_env, i, option, online, arrival_rate, online_horizon,
+                           online_max_jobs, job_size_distribution, reward_mode, use_potential_shaping,
+                           job_weight_range, randomize_instances, window_size, window_order,
+                           use_atc_feature, base_seed)
+        for i in range(n_envs)
+    ]
+    if vec_backend == "subproc" and n_envs > 1:
+        return SubprocVecEnv(env_fns)
+    return DummyVecEnv(env_fns)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--option", choices=["1", "2", "3", "4"], required=True,
@@ -317,6 +379,20 @@ def main():
                               "docstring (observation-informativeness-probe result) for the "
                               "motivation. Default off keeps existing Option 1 checkpoints' "
                               "observation_space shape unchanged.")
+    parser.add_argument("--n-envs", type=int, default=1,
+                         help="2026-10-04, S2W11: number of parallel rollout workers. Default 1 "
+                              "keeps the exact prior behaviour (single env, no vectorization) for "
+                              "every existing checkpoint's reproducibility. This file previously had "
+                              "NO multi-env support at all (confirmed by grep against "
+                              "train_optimized.py's existing build_vec_env()) -- every online run "
+                              "to date trained on a single CPU-bound env regardless of how many "
+                              "cores were available.")
+    parser.add_argument("--vec-backend", choices=["dummy", "subproc"], default="subproc",
+                         help="Only matters with --n-envs > 1. 'subproc' (default): true "
+                              "multi-process rollout via SubprocVecEnv. 'dummy': every sub-env "
+                              "runs in the calling process (no IPC overhead, no multi-core "
+                              "speedup) -- see build_vec_env()'s docstring in train_optimized.py "
+                              "for the same tradeoff, already established in this project.")
     parser.add_argument("--diagnostics-interval", type=int, default=None,
                          help="2026-09-20 follow-up: opt-in periodic training-time diagnostics "
                               "(Code/utils/training_diagnostics.py) -- action-distribution "
@@ -348,10 +424,41 @@ def main():
             randomize_instances=args.randomize_instances, job_weight_range=job_weight_range,
         )
 
-    env, policy, policy_kwargs = build_env_and_policy(args.option, full_gym_env=full_gym_env,
-                                                       window_size=args.window_size,
-                                                       window_order=args.window_order,
-                                                       use_atc_feature=args.use_atc_feature)
+    # template_env is ALWAYS built single/un-vectorized -- it's only used for
+    # policy/policy_kwargs (identical across every worker) and, below, as the
+    # diagnostics callback's source for max_jobs/num_machines (walking
+    # template_env.env.env, same chain-walk every other script in this project
+    # uses). The actual TRAINING env is this (n_envs==1, unchanged prior
+    # behaviour) or the parallel VecEnv built just below (n_envs>1, new).
+    template_env, policy, policy_kwargs = build_env_and_policy(
+        args.option, full_gym_env=full_gym_env, window_size=args.window_size,
+        window_order=args.window_order, use_atc_feature=args.use_atc_feature,
+    )
+
+    if args.n_envs > 1:
+        env = build_parallel_env(
+            args.n_envs, args.vec_backend, args.option, args.online, args.arrival_rate,
+            args.online_horizon, args.online_max_jobs, args.job_size_distribution,
+            args.reward_mode, args.use_potential_shaping, job_weight_range,
+            args.randomize_instances, args.window_size, args.window_order, args.use_atc_feature,
+        )
+        # MaskablePPO's own un-tuned defaults (n_steps=2048, batch_size=64)
+        # assume n_envs=1 -- the on-policy buffer size is n_envs*n_steps, so
+        # leaving n_steps at 2048 with n_envs>1 would silently grow the buffer
+        # (and the real timesteps-per-update) n_envs-fold instead of just
+        # speeding up wall-clock throughput. Rescale exactly like
+        # train_optimized.py's existing resolve_ppo_rollout_params() already
+        # does for its own tuned-hyperparameter case (Schulman et al. 2017,
+        # PPO, arXiv:1707.06347, Algorithm 1: N*T, not T alone, is what
+        # governs on-policy staleness) -- keeps buffer_size close to the
+        # single-env default of 2048 regardless of --n-envs.
+        n_steps, batch_size, buffer_size = resolve_ppo_rollout_params(2048, 64, args.n_envs)
+        print(f"Parallel rollout: n_envs={args.n_envs} (backend={args.vec_backend}), "
+              f"n_steps=2048 -> {n_steps} per env (buffer size {buffer_size}), "
+              f"batch_size=64 -> {batch_size}")
+    else:
+        env = template_env
+        n_steps, batch_size = 2048, 64
 
     model = MaskablePPO(
         policy, env,
@@ -359,10 +466,13 @@ def main():
         verbose=1,
         tensorboard_log=str(MODELS_DIR / "tb_action_space"),
         ent_coef=args.ent_coef,
+        n_steps=n_steps,
+        batch_size=batch_size,
     )
 
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
-          f"obs_dim={env.observation_space.shape[0]}, timesteps={args.timesteps}")
+          f"obs_dim={env.observation_space.shape[0]}, timesteps={args.timesteps}, "
+          f"n_envs={args.n_envs} (backend={args.vec_backend if args.n_envs > 1 else 'n/a'})")
 
     callback = None
     if args.diagnostics_interval is not None:
@@ -389,11 +499,12 @@ def main():
             # ActionMasker(wrapper)), so strip the extra Monitor layer here.
             held_out_envs.append(held_out_env.env)
 
-        # env is Monitor(ActionMasker(wrapper, mask_fn)) -- max_jobs/num_machines
-        # live on the innermost wrapper (RuleSelectionGymSchedulingEnv etc.),
-        # same chain-walk eval_action_space_variant.py's run_episode() uses
-        # (base_env = env.env.env).
-        inner_env = env.env.env
+        # template_env is ALWAYS Monitor(ActionMasker(wrapper, mask_fn)) regardless
+        # of --n-envs (env itself may be a VecEnv when n_envs>1, which doesn't
+        # have this attribute chain) -- max_jobs/num_machines live on the
+        # innermost wrapper (RuleSelectionGymSchedulingEnv etc.), same chain-walk
+        # eval_action_space_variant.py's run_episode() uses (base_env = env.env.env).
+        inner_env = template_env.env.env
         callback = build_diagnostics_callbacks(
             args.option, held_out_envs=held_out_envs, diagnostics_interval=args.diagnostics_interval,
             rule_names=RULE_NAMES, max_jobs=inner_env.max_jobs,
