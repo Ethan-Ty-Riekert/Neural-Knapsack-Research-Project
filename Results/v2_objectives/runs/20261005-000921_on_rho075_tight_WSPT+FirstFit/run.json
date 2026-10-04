@@ -1,0 +1,99 @@
+{
+  "variant": "v2_objectives",
+  "preset": "on_rho075_tight",
+  "method": "WSPT+FirstFit",
+  "preset_config": {
+    "case": "online",
+    "num_jobs": 100,
+    "num_machines": 10,
+    "horizon": 100,
+    "weights": [
+      1,
+      6
+    ],
+    "tf": null,
+    "rdd": 0.6,
+    "rho": 0.75,
+    "size_distribution": "lognormal",
+    "slack": [
+      5,
+      25
+    ],
+    "desc": "online, rho 0.75, tight deadlines (slack 5-25)"
+  },
+  "seeds": [
+    500000,
+    500001,
+    500002,
+    500003,
+    500004,
+    500005,
+    500006,
+    500007,
+    500008,
+    500009,
+    500010,
+    500011,
+    500012,
+    500013,
+    500014
+  ],
+  "method_args": {
+    "pso_swarm": 15,
+    "pso_iterations": 30,
+    "pso_fitness": "reward",
+    "time_limit": 60.0,
+    "cpsat_workers": 8,
+    "seed": 0
+  },
+  "env_kwargs": {
+    "reward_mode": "objective",
+    "objective": {
+      "tardiness": 0.0,
+      "tardiness_sq": 1.0,
+      "drops": 0.0,
+      "late_count": 0.0,
+      "energy": 0.0,
+      "power_model": "linear",
+      "drop_surcharge": null,
+      "scale": null,
+      "drop_shaping": false,
+      "shaping_gamma": 0.99
+    },
+    "extend_horizon": true
+  },
+  "git_commit": "66b77d0",
+  "machine": "DESKTOP-JO6TS9E",
+  "timestamp": "20261005-000921",
+  "mean": {
+    "reward": -107.2075,
+    "objective_J": 78252.0667,
+    "infeasible_on_arrival": 0.0,
+    "jobs_total": 722.1333,
+    "jobs_scheduled": 722.1333,
+    "dropped": 0.0,
+    "completion_rate": 1.0,
+    "on_time_rate": 0.8763,
+    "late_jobs": 89.4667,
+    "tardiness": 1002.6,
+    "weighted_tardiness": 2809.2667,
+    "weighted_sq_tardiness": 78252.0667,
+    "max_tardiness": 73.6667,
+    "p95_tardiness": 8.57,
+    "tardiness_with_dropped_lb": 1002.6,
+    "completed_past_horizon": 39.3333,
+    "weighted_completed_past_horizon": 113.0667,
+    "weighted_tardiness_within_horizon": 1686.2667,
+    "weighted_tardiness_past_horizon": 1123.0,
+    "active_machine_ticks_past_horizon": 190.4667,
+    "mean_wait": 0.9643,
+    "p95_wait": 3.8133,
+    "mean_flow_time": 6.4338,
+    "mean_slowdown": 1.2365,
+    "makespan": 137.5333,
+    "active_machine_ticks": 1154.6,
+    "mean_active_utilisation": 0.8814,
+    "energy_specpower": 1016.9091,
+    "seconds": 0.7441
+  }
+}

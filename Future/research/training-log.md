@@ -32,6 +32,93 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- Option 1 placement menu (Consolidate), self-describing checkpoints, run.py passthroughs; diagnostics crash fixed
+
+**Config:** code only, commit `47215d5`. Preparation for the first full-length v2 RL runs (online
+high load), plan agreed with the user on 2026-10-05.
+
+**What changed:**
+- **Option 1 can now choose the placement rule too** (`--rule-placements FirstFit,Consolidate`):
+  menu = 7 priority rules x listed placements + idle = `Discrete(15)`, decoded through the existing
+  `HEURISTICS["Rule+Placement"]` functions. Why: the v2 sweep (2026-09-30, and `on_rho075_tight`
+  below) found the best online rule at every load from 0.75 up is `LST+Consolidate`. A
+  FirstFit-only menu makes it unreachable for RL by construction, so any "RL loses to
+  LST+Consolidate" result would partly be a design artefact. Grounding: Option 1 is a selection
+  hyper-heuristic (Burke et al. 2013, J. Oper. Res. Soc. 64(12)), and widening the low-level heuristic
+  set is that framework's standard lever. The default menu is unchanged (old checkpoints load; verified
+  with the 900k ATC-feature model).
+- **Checkpoints are self-describing:** training writes `<model>.json` (placements, ATC feature,
+  window, reward mode, difficulty, timesteps, seed). `run.py`'s v2 evaluation rebuilds the env from it and
+  accepts `rl-eval:<option>:<tag>`, so one comparison table holds several RL models.
+- `run.py` now forwards `--n-envs/--vec-backend/--rule-placements/--diagnostics-interval/--seed`.
+  Before this, every run.py RL training run was single-env (about 20x slower) and unseeded.
+  `train_action_space_variant.py --seed` added (default None = unchanged).
+- **Bug fixed:** `--diagnostics-interval` crashed every run once periodic checkpointing was added
+  (2026-09-30, on objective-redesign). The diagnostics callback list was nested inside another list.
+  No logged result is affected: the crash happened at startup, so no run produced numbers.
+
+**Stats:**
+```
+tests/: 22/22 pass, incl. new placement checks: all 14 menu actions decode exactly as HEURISTICS[label]
+on a state where Consolidate and FirstFit disagree
+end-to-end: run.py v2 on_rho095 train (2 envs, Discrete(15)) -> rl-eval:1:<tag> next to LST+Consolidate in one table
+throughput calibration (20k steps, 4 runs x 4 envs concurrently, uncapped torch threads):
+  Option 1 online ~110 fps | Option 3 offline ~87 fps | Option 3 on_rho110 ~44 fps
+```
+
+**Conclusion / next step:** overnight roster launched (15 runs, 4 concurrent x 4 envs, torch
+threads capped at 3 per run). Each run's tag is `v2_<preset>_o<option>[c]_s<seed>`; `c` = with
+Consolidate.
+
+---
+
+## 2026-10-05 (S2W12) -- v2 heuristic sweep completed (8/8 presets): on_rho075_tight also favours LST+Consolidate
+
+**Config:** as the 2026-09-30 sweep (v2 defaults, all 33 heuristics, 15 held-out instances), the missing
+preset `on_rho075_tight`. Commit `66b77d0`. Table: `Results/v2_objectives/comparisons/20261005-000933_on_rho075_tight.md`.
+
+**Stats (J = sum w_j T_j^2, lower is better):**
+```
+on_rho075_tight  LST+Consolidate 32786 < EDF+Consolidate 35446 < FCFS+Consolidate 36262 < LST 36620 < EDF 37449
+```
+
+**Observation:** with tight deadlines at load 0.75, Consolidate placement helps every priority rule
+(LST -10%, EDF -5%), and the three best rules are all Consolidate variants. This matches the pattern at
+rho 0.95 / 1.10: online, placement matters as much as priority once the system is busy or deadlines are tight.
+
+**Conclusion / next step:** the v2 heuristic regime table is complete across all 8 presets. This
+is the justification for giving Option 1 Consolidate actions (entry above).
+
+---
+
+## 2026-10-05 (S2W12) -- 900k ATC-feature Option 1 (v1 reward): no better than 300k or than the baseline -- closes the ATC-feature thread
+
+**Config:** Option 1 online (`--arrival-rate 9`, lognormal, weights 1-6, `dense_tardiness`),
+`--use-atc-feature`, 900k timesteps, 8-way subproc rollout (after the 2026-10-04 perf fix), trained on
+the D: desktop 2026-10-04 22:50-23:41. Evaluated on the standard 50-instance online protocol.
+(A single-instance eval was run first by mistake and appended one row to `eval_results.csv`; the
+50-instance result below is the real one.)
+
+**Stats (weighted tardiness, 50 held-out instances):**
+```
+Option 1 + ATC feature (900k)   791.30 +/- 353.45
+Option 1 + ATC feature (300k)   776.42 +/- 331.15   (2026-09-26)
+Option 1 baseline (3M)          784.34 +/- 353.13   (2026-10-04)
+Option 1 baseline (900k)        798.46 +/- 346.65
+WSPT+BestFit                    709.42 +/- 299.06
+ATC                             648.16 +/- 338.30
+```
+
+**Observation:** tripling the ATC-feature budget changed nothing (791 vs 776, well inside one std).
+Every Option 1 variant under the v1 reward sits in the same 776-798 band, whatever the feature or
+budget (300k-3M), and all are worse than ATC.
+
+**Conclusion / next step:** under the v1 reward this thread is closed. Neither the representation
+(ATC feature) nor the budget moves Option 1 off the single-rule basin. The project's effort now
+goes to v2, where reward = objective.
+
+---
+
 ## 2026-10-04 (S2W11) -- Branches integrated on main (objective-redesign + autonomous-overnight ATC work); real bug fixed: --n-envs workers ignored the v2 objective
 
 **Config:** no training. Code integration only, local commits on `main` (not pushed).
