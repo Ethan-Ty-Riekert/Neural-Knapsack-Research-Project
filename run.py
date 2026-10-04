@@ -19,6 +19,7 @@ Metrics always include jobs_scheduled and dropped next to tardiness: tardiness
 alone hides dropped jobs (see Future/research/2026-09-28-objective-redesign-
 discussion.md section 1).
 """
+import re
 import argparse
 import dataclasses
 import csv
@@ -185,7 +186,7 @@ def evaluate(variant_name, preset_name, method, args):
     if args.no_save:
         return means
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out = REPO_ROOT / "Results" / variant_name / "runs" / f"{stamp}_{preset_name}_{method.replace(':', '-')}"
+    out = REPO_ROOT / "Results" / variant_name / "runs" / f"{stamp}_{preset_name}_{re.sub(r'[^A-Za-z0-9_+.-]', '-', method)}"  # filesystem-safe (a '/' once nested folders)
     out.mkdir(parents=True, exist_ok=True)
     manifest = {
         "variant": variant_name, "preset": preset_name, "method": method,

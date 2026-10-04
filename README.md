@@ -91,7 +91,18 @@ python run.py --variant v1_legacy_reward --preset off_c_15 --method EDF
 python run.py --variant v1_legacy_reward --preset off_c_small --method cpsat
 python run.py --variant v1_legacy_reward --preset on_r_50 --method rl-eval:3
 python run.py --experiment experiments/pso_vs_edf_off_c_15.yaml
+
+# v2 RL: train (parallel envs, seeded; Option 1 may also choose the placement rule), then compare
+python run.py --variant v2_objectives --preset on_rho095 --method rl-train:1 --n-envs 4 --seed 0 \
+    --rule-placements FirstFit,Consolidate --timesteps 750000 --checkpoint-tag v2_on_rho095_o1c_s0
+python run.py --variant v2_objectives --preset on_rho095 \
+    --method "rl-eval:1:v2_on_rho095_o1c_s0,EDF+Consolidate,RandomRule+FirstFitConsolidate"
+python Results/v2_objectives/ALL_RESULTS/scripts/build_folder.py   # rebuild all v2 tables/figures
 ```
+
+Trained RL models save a sidecar `<model>.json` (action menu, ATC feature, window, seed, gamma), so
+`rl-eval:<option>:<tag>` rebuilds the matching environment from the tag alone. Tag convention:
+`v2_<preset>_o<option>[c]_s<seed>` (`c` = FirstFit+Consolidate menu).
 
 Heuristic / PSO / CP-SAT runs are saved to `Results/<variant>/runs/<timestamp>_<preset>_<method>/`
 (`run.json` with git commit, machine, full config and metrics, plus `per_instance.csv`). Every run

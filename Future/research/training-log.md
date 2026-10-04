@@ -32,6 +32,68 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- First v2 RL roster (23 PPO runs, 9 presets, PSO, random baselines): RL matches the best rule offline, loses badly online; half the high-load Option 1 runs ARE SPT/WSPT
+
+**Config:** overnight 00:20-06:30 on the D: desktop, commits `47215d5`..`e665915`. 4 concurrent runs x
+4 envs, torch threads capped at 3 per run (that tripled Option 1 throughput to ~200-300 fps). PPO
+defaults (gamma 0.99, lambda 0.95). Option 1: 750k steps online, 500k offline. Options 2-4: 200k steps
+(the two long Option 3 runs were stopped at their 200k checkpoint and promoted; their sidecar notes
+this). Seeds 0-2 for Option 1 (both menus) at rho 0.95 / 1.10, seed 0 otherwise. Every model
+evaluated on its preset's 15 held-out instances via `run.py rl-eval:<opt>:<tag>`. Also run: the full
+33-heuristic sweep on all presets, `RandomRule+FirstFit` / `RandomRule+FirstFitConsolidate` on all
+presets, PSO (10 x 20) on on_rho095 / on_rho110 / off_tf05. Everything is aggregated in
+`Results/v2_objectives/ALL_RESULTS/` (README, tables, figures; rebuild with its `scripts/build_folder.py`).
+
+**Stats (J = sum w_j T_j^2, mean over 15 instances; multi-seed = mean of seed means):**
+```
+preset      best heuristic            best RL                              random rule (best menu)  PSO
+off_tf05    LST+FirstFit     37,457   Opt1          38,885  (+3.8%, 1 seed)  107,422                  92,729
+off_tf08    LST+FirstFit    383,691   Opt3         381,318  (-0.6%, 1 seed)  511,737                  -
+on_rho075   LST+Consolidate   7,983   Opt1+Cons     12,608  (+58%,  1 seed)    8,823                  -
+on_rho095   EDF+Consolidate  21,923   Opt1         144,248  (+558%, 3 seeds)  51,931                 108,604
+on_rho110   EDF+Consolidate  99,781   Opt1+Cons    373,310  (+274%, 3 seeds) 247,810                 422,596
+on_rho095 others: Opt4 3.4e6, Opt3 2.4e8, Opt2 1.7e9 (1 seed each; Opt3 / Opt2 leave 5.6 / 21.2 jobs per instance unscheduled on average)
+per-seed Option 1 at high load (J): rho095 FF 88,629 / 172,057 / 172,057; +Cons 121,003 / 153,088 / 172,057
+                                    rho110 FF 421,360 / 427,001 / 437,945; +Cons 280,187 / 437,945 / 401,797
+  172,057 = SPT+FirstFit exactly (rho095); 437,945 = SPT+FirstFit, 421,360 = WSPT+FirstFit exactly (rho110)
+```
+
+**Observation:**
+- Offline, RL ties the best rule (1 seed, within instance noise). This fits CP-SAT proving LST
+  optimal on `off_c_15`.
+- Online, **6 of the 12 high-load Option 1 runs ARE a single short-job rule**: their J equals SPT+FirstFit
+  (5) or WSPT+FirstFit (1) to the decimal. The rest beat SPT but every one loses to random rule
+  selection. SPT gives the lowest mean wait of any method (3.0 vs 4.1) but starves long jobs, and
+  squared lateness punishes that (max tardiness ~90 vs ~32). This replicates v1's SPT/WSPT collapse,
+  now under a reward that equals the objective and across 3 seeds and 2 menus.
+- Options 2/3 (pointer priority scores) at 200k steps leave some jobs unscheduled until the safety
+  cap (dropped 1-72 per instance), so J is huge. Option 4 schedules everything but very late. All
+  under-trained at this budget; not comparable as tuned results.
+- The Consolidate menu helped Option 1 at rho 0.75 (12,608 vs 35,383) and on average at 1.10
+  (373k vs 429k), not at 0.95.
+
+**Conclusion / next step:** for the paper: (1) the heuristic regime map (rules near-optimal offline,
+placement-dependent online); (2) RL ties rules offline; (3) online, PPO selection collapses onto
+SPT-like rules and loses to random selection, a robust negative result with a mechanism
+(starvation under squared lateness, delayed credit). Next, with the user: per-tick decision epochs
+for Option 1 (the most direct test of the credit-assignment mechanism); larger budgets for Options
+2-4; seeds for the offline ties.
+
+---
+
+## 2026-10-05 (S2W12) -- CORRECTION: at rho 0.95 / 1.10 the best rule is EDF+Consolidate, not LST+Consolidate
+
+**Config:** full 33-heuristic sweep on every preset (the 2026-09-30 sweep ran 8 heuristics, without EDF+Consolidate).
+
+**Stats:** `on_rho095` EDF+Consolidate 21,923 < LST+Consolidate 25,757; `on_rho110` EDF+Consolidate
+99,781 < LST+Consolidate 134,376. `on_rho075` / `on_rho075_tight`: LST+Consolidate is still best.
+
+**Observation / conclusion:** the earlier statements "LST+Consolidate is best at every load from
+0.75 up" (2026-09-30 and the 2026-10-05 sweep entry below) hold only at rho 0.75. At 0.95 and 1.10,
+EDF+Consolidate wins. The qualitative point (Consolidate placement wins online) stands.
+
+---
+
 ## 2026-10-05 (S2W12) -- v2 Option 1 at rho 0.95: PPO drifts to a WORSE-than-random rule mix within ~10k steps; not fixed by gamma or GAE lambda; same short-job bias as v1
 
 **Config:** v2 (`tardiness_sq`, extended horizon), `on_rho095`, Option 1 + `--rule-placements

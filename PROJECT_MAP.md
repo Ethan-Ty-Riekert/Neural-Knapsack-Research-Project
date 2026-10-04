@@ -1,6 +1,6 @@
 # Project Map (read this first)
 
-*One page: what the project is, what has been found, and what is changing. Last updated 2026-09-28 (S2W11).
+*One page: what the project is, what has been found, and what is changing. Last updated 2026-10-05 (S2W12).
 Detail lives in `Future/research/`, but you shouldn't need it to explain the project.*
 
 ## The 30-second version
@@ -42,6 +42,15 @@ the true optimum on small cases.
 | Offline, 50 unseen instances | LST **23.9**, EDF 37.3 | none better without dropping more jobs | Simple rules are near-optimal here |
 | Offline, weighted, 50 unseen | LST **68.6** weighted tardiness, EDF 109.4 | 96.3 (Option 3) | RL beats EDF, but not LST |
 | Online, weighted, 50 unseen | ATC **648** weighted tardiness | 798 (Option 1, which learned to copy SPT) | RL doesn't beat the best rule |
+
+Those are **v1** (legacy reward) numbers. **v2** (reward = objective J = sum w_j T_j^2, extended horizon; 15 held-out instances per preset; full archive in `Results/v2_objectives/ALL_RESULTS/`):
+
+| v2 setting | Best rule (J) | Best RL (J) | Verdict |
+|---|---|---|---|
+| Offline, standard (`off_c_15`) | LST 192 = CP-SAT 192 (LST proven optimal on 12/15) | - | rules are optimal |
+| Offline, TF 0.5 / 0.8 | LST 37,457 / 383,691 | 38,885 (Opt 1) / 381,318 (Opt 3), 1 seed | RL ties the best rule |
+| Online, load 0.75 | LST+Consolidate 7,983 | 12,608 (Opt 1 + Consolidate), 1 seed | RL worse, also worse than random rule choice (8,823) |
+| Online, load 0.95 / 1.10 | EDF+Consolidate 21,923 / 99,781 | 144,248 / 373,310 (Opt 1), 3 seeds | RL collapses onto SPT-like rules; worse than random rule choice |
 
 **The biggest finding is a methodological one.** The reward used so far paid **+3 per job and +50 for
 finishing everything**, and only charged lateness weakly. So methods could "win" on reward while scheduling

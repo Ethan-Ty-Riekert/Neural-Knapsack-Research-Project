@@ -37,7 +37,7 @@ OPTION_NAMES = {"1": "rule selection", "2": "priority score", "3": "ATC-prior sc
 METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
            "active_machine_ticks", "dropped"]
 RL_TAG = re.compile(r"^v2_(?P<preset>.+)_o(?P<opt>\d)(?P<cons>c?)_s(?P<seed>\d+)$")
-BASELINES = ["EDF+FirstFit", "LST+FirstFit", "ATC+FirstFit"]
+BASELINES = ["EDF+FirstFit", "LST+FirstFit", "ATC+FirstFit", "RandomRule+FirstFit", "RandomRule+FirstFitConsolidate"]
 # Registry back-compat aliases of "<rule>+FirstFit" (Code/methods/heuristics/registry.py): same
 # function, so they are folded into the canonical name (newest run wins) instead of listed twice.
 ALIASES = {"EDF", "SPT", "LST", "ATC"}
@@ -208,11 +208,16 @@ def fig_preset_bars(results, figdir):
                 xerr=[r["objective_J_err"] for r in keep], error_kw=dict(ecolor=MUTED, lw=0.8, capsize=2))
         ax.set_yticks(list(y), [r["method"] + ("" if r["family"] != "RL (PPO)" else f"  (n={r['n_seeds']})")
                                 for r in keep], color=INK)
-        ax.set_xlabel("J = sum of w_j T_j^2, mean over instances (lower is better)\n"
-                      "error bars: std across seeds for multi-seed RL (n>1), otherwise standard error over instances",
+        ax.set_xlabel("J = sum of w_j T_j^2, mean over instances (log scale, lower is better)\n"
+                      "error bars: std across seeds if n>1, otherwise standard error over instances",
                       fontsize=7)
         ax.set_title(preset, loc="left", fontsize=10, color=INK)
         style(ax)
+        positive = [r["objective_J"] for r in keep if r["objective_J"] > 0]
+        if positive:  # J spans orders of magnitude across methods (1e4 to 1e9 online)
+            ax.set_xscale("log")
+            ax.set_xlim(left=min(positive) / 2)
+            ax.grid(axis="x", color=GRID, linewidth=0.6, which="both")
         family_legend(ax, {r["family"] for r in keep})
         fig.tight_layout()
         for ext in ("png", "pdf"):

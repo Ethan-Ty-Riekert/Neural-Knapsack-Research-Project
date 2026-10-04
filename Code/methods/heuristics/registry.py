@@ -96,7 +96,7 @@ def _make_random_rule_selector(placements):
 
 
 HEURISTICS["RandomRule+FirstFit"] = _make_random_rule_selector(("FirstFit",))
-HEURISTICS["RandomRule+FirstFit/Consolidate"] = _make_random_rule_selector(("FirstFit", "Consolidate"))
+HEURISTICS["RandomRule+FirstFitConsolidate"] = _make_random_rule_selector(("FirstFit", "Consolidate"))
 
 # Curated default set for eval_rl_agent.py's --heuristics (all 18
 # priority+placement combos x 6 priority rules x 3 placements = 18, plus
