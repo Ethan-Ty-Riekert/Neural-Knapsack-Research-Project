@@ -32,6 +32,61 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- v2 Option 1 at rho 0.95: PPO drifts to a WORSE-than-random rule mix within ~10k steps; not fixed by gamma or GAE lambda; same short-job bias as v1
+
+**Config:** v2 (`tardiness_sq`, extended horizon), `on_rho095`, Option 1 + `--rule-placements
+FirstFit,Consolidate` (Discrete(15)), 4 envs, seed 0. Main run `v2_on_rho095_o1c_s0`
+(gamma 0.99, lambda 0.95) plus 100k-step A/B runs: gamma in {0.999, 1.0} (lambda 0.95), and
+(gamma, lambda) in {(1.0, 1.0), (0.999, 0.99)}.
+
+**Stats:**
+```
+training ep_rew_mean (= -J/c, c = #jobs; higher is better), at ~8k -> ~80k steps:
+  gamma 0.99,  lambda 0.95 : -34 -> -68        (first ~4 episodes: -18)
+  gamma 0.999, lambda 0.95 : -49 -> -64
+  gamma 1.0,   lambda 0.95 : -46 -> -60
+  gamma 1.0,   lambda 1.0  : -47 -> -63
+  gamma 0.999, lambda 0.99 : -46 -> -54
+same config at rho 1.10 (v2_on_rho110_o1c_s0): -390 -> -196 (improves; LST+Consolidate ~ -124)
+
+held-out eval, first 3 on_rho095 instances, sum(-reward):
+  LST+Consolidate (fixed)              27.2
+  uniform random over the 15 actions   38.0   (incl. voluntary idle)
+  RandomRule+FirstFit/Consolidate      55.9   (new deterministic baseline, no voluntary idle)
+  LST+FirstFit (fixed)                 50.5
+  PPO checkpoint at 100k               70.8   actions: ATC+FirstFit 52%, SPT+Consolidate 26%, idle 12%, FCFS+FirstFit 10%
+```
+
+**Observation:**
+- The reward is exact: under the extended horizon there is no shaping, and the per-tick charge is
+  exactly sum w_j (2k_j+1) over overdue unfinished jobs (`Code/core/objectives.py::_tardiness_tick`).
+  So the drift is a learning problem, not reward misspecification.
+- Entropy stays high (-2.1 vs the -2.71 maximum) and the value fit is good (explained variance ~0.9),
+  so this is not v1's entropy collapse. The policy moves its probability toward ATC+FirstFit and SPT,
+  both short-job-first rules, which are among the worst sensible rules under squared lateness
+  (the heatmap puts ATC+FirstFit at 2.7x the best rule on this preset).
+- **Not a discounting problem:** gamma up to 1.0 and lambda up to 1.0 (Monte Carlo advantages)
+  leave the drift unchanged (all within ~10 of each other; one seed each).
+- It is the **same short-job bias v1 found** (Option 1 online locked onto SPT, then WSPT,
+  2026-09-23..10-04). It now holds under a reward that equals the objective, so it can't be blamed
+  on the legacy reward.
+- Untested candidate mechanisms: (a) the decision count per tick depends on the action (short-job
+  rules create more placement decisions per tick, and each decision gets equal weight in the PPO
+  loss); (b) small, highly correlated batches (2048 decisions from ~2 episodes per update, 10
+  epochs) letting PPO fit instance noise. Testing (a) needs a design change (choose a rule once
+  per tick, the usual hyper-heuristic decision epoch), which needs a user decision.
+- (A smaller issue found on the way: SB3 `CheckpointCallback.save_freq` counts `env.step` calls,
+  so with `--n-envs 4`, `--checkpoint-every 25000` saves every 100k timesteps. Not fixed tonight;
+  runs only lose resume granularity.)
+
+**Conclusion / next step:** the overnight roster runs with defaults (gamma 0.99, lambda 0.95,
+same as every v1 run), and this is reported as a finding with the random-rule baseline alongside.
+For the paper: "PPO selection at ~1 decision per job learns at overload (rho 1.10) but at rho 0.95
+drifts to short-job rules, below random selection." Next session, with the user: per-tick
+decision epochs for Option 1, and larger rollout batches.
+
+---
+
 ## 2026-10-05 (S2W12) -- Option 1 placement menu (Consolidate), self-describing checkpoints, run.py passthroughs; diagnostics crash fixed
 
 **Config:** code only, commit `47215d5`. Preparation for the first full-length v2 RL runs (online
