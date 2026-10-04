@@ -32,6 +32,70 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-04 (S2W11) -- Big-budget result: 10x more training (3M vs. 300k) does NOT close the gap to ATC -- the policy converges HARDER into a hard-collapsed local optimum, not away from it
+
+**Context:** direct test of the open question from the 2026-09-26 entries
+("PPO learns away from the zero-cost ATC action... is it a genuine basin, or
+just undertrained?"). Now on real hardware (see the infra entry above --
+8-way parallel rollout, ~455-590fps vs. the laptop's ~20-36fps), ran Option
+1 baseline (no ATC feature, `--reward-mode dense_tardiness --job-weight-min
+1 --job-weight-max 6`, online, same protocol as every other run in this
+thread) at **3,000,000 timesteps** -- 10x the 300k first-pass-filter scale,
+and >3x the 900k scale used everywhere else in this investigation. Took
+201.1 minutes wall-clock (8-way `SubprocVecEnv`, `--diagnostics-interval
+50000`). Evaluated on the standard 50-instance randomized protocol.
+
+**Stats:**
+```
+Option 1 (3M, baseline, no ATC feature)   weighted_tardiness=784.34+/-353.13
+Option 1 (900k, SPT-collapsed, earlier)   weighted_tardiness=798.46+/-346.65
+WSPT+BestFit (heuristic)                  weighted_tardiness=709.42+/-299.06
+ATC (heuristic, still the best)           weighted_tardiness=648.16+/-338.30
+
+Final action distribution (identical across the last 4+ logged diagnostics
+checkpoints, spanning a large fraction of the 3M run -- i.e. FULLY locked,
+not just dominant):
+  ATC=0.0  EDF=0.0  FCFS=0.0  LPT=0.0  LST=0.0  SPT=0.0  WSPT=0.892  idle=0.108
+  entropy_normalized=0.164
+```
+
+**Observation:** 784.34 at 3M timesteps is statistically indistinguishable
+from 798.46 at 900k -- 10x more training bought essentially nothing. More
+strikingly, the policy didn't just fail to improve, it became MORE
+extreme: entropy_normalized=0.164 (vs. the earlier SPT-collapse's already-low
+but less extreme readings) and the action distribution is EXACTLY 0.0 for
+six of the seven rules, not just small -- a fully deterministic policy with
+zero remaining exploration. This time it collapsed onto WSPT rather than
+SPT (an interesting run-to-run difference -- which simple rule PPO locks onto
+isn't fixed), but the RESULT is the same dead end either way: whichever
+single cheap heuristic PPO latches onto first, more gradient steps make that
+lock-in more complete, not less. Also notable: mimicking WSPT 89.2% of the
+time (paired with FirstFit placement, not BestFit, plus 10.8% idle) still
+underperforms the WSPT+BestFit heuristic itself (784.34 vs. 709.42) -- the
+RL policy isn't even matching its own collapse target's heuristic
+performance cleanly, let alone ATC's.
+
+**Conclusion / next step:** this answers the "is more training the fix"
+question directly: NO. The basin PPO falls into for this MDP/reward/action-
+space combination is a genuine, training-budget-independent local optimum,
+not an artifact of undertraining -- raising more training budget only
+entrenches it further. Combined with the already-established "ATC is a
+zero-cost available action but gets ignored" finding and the "giving an
+explicit ATC feature barely helped" finding, the picture is now fairly
+clear: this is a policy-optimization/exploration problem specific to how
+PPO's clipped-surrogate objective interacts with this reward landscape, not
+a representation or budget problem. The credit-assignment-lag hypothesis
+(still untested properly -- the first diagnostic for it was degenerate, see
+the 2026-09-26 entry) and a genuinely different exploration mechanism
+(e.g. an entropy bonus or auxiliary reward specifically protecting
+under-selected actions from being driven all the way to exactly 0, rather
+than a uniform higher ent_coef which was already ruled out for a different
+reason on 2026-09-23) are the remaining concrete next steps -- both still
+unstarted, now worth pursuing given training budget is cheap on this
+machine and can no longer be blamed as the limiting factor.
+
+---
+
 ## 2026-10-04 (S2W11) -- CORRECTION: the "background compute throttling" theory from the 2026-09-24 entries was WRONG -- it was the user's laptop, not this session's environment
 
 **Context:** the three 2026-09-24 entries below ("Launched: Option 1 online
