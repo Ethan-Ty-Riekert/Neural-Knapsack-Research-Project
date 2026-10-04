@@ -32,6 +32,45 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-04 (S2W11) -- CORRECTION: the "background compute throttling" theory from the 2026-09-24 entries was WRONG -- it was the user's laptop, not this session's environment
+
+**Context:** the three 2026-09-24 entries below ("Launched: Option 1 online
+with an explicit ATC-priority observation feature," "Correction/refinement:
+the 300k restart does not fix the throttling either," and the matching
+memory note `feedback_background_jobs_need_active_monitor.md`) attributed a
+severe, multi-day slowdown in a background training run to this session's
+sandbox/agent-engagement behaviour -- i.e. that detached background
+processes stall unless the agent stays actively engaged. The user has now
+confirmed directly (2026-10-04, back from a 2-week break) that this was
+wrong: those runs were on the user's LAPTOP, which was being turned off or
+left asleep for long stretches, and separately had limited hardware
+resources even when on. The throttling had nothing to do with this
+session's execution environment, Monitor usage, or agent engagement --
+those correlations were coincidental, confounded with when the physical
+machine happened to be powered on.
+
+**Retracting, not deleting:** per this log's own convention, the original
+entries are left as-is below (do not edit history), but should be read with
+this correction in mind -- the 300k vs. 900k budget decision, the "don't
+chase this with Monitor tricks" guidance, and the multi-day timeline
+framing were all reasonable responses to a real observed slowdown, just
+with the wrong root cause attached. A product-feedback draft based on the
+wrong theory was queued (never sent) and has been flagged to the user to
+disregard.
+
+**What actually changes:** the user is now on their main PC (confirmed: AMD
+Ryzen 7 7800X3D, 16 logical cores, no CUDA GPU detected -- CPU-only training,
+same as every run so far, but on much better hardware and left on/attended
+for real work sessions) specifically to do the "extensive training and
+evaluation" that wasn't feasible on the laptop. Going forward: do not assume
+background jobs will stall during idle periods -- that was never a real
+property of anything other than the old laptop. If a new slowdown appears
+on this machine, diagnose it as an actual resource/code issue (CPU
+utilization, vectorization, thermal/power state) rather than reaching for
+the retracted "sandbox throttling" explanation again.
+
+---
+
 ## 2026-09-26 (S2W10) -- Credit-assignment-lag hypothesis test: the diagnostic as built is DEGENERATE, not a real null result -- correcting the record
 
 **Context:** built and ran `Code/evaluation/diagnose_credit_assignment_lag.py`
