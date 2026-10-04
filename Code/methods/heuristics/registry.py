@@ -77,6 +77,27 @@ HEURISTICS["SPT"] = HEURISTICS["SPT+FirstFit"]
 HEURISTICS["LST"] = HEURISTICS["LST+FirstFit"]
 HEURISTICS["ATC"] = HEURISTICS["ATC+FirstFit"]
 
+
+def _make_random_rule_selector(placements):
+    """Random selection hyper-heuristic (2026-10-05): at every decision, apply one of the
+    priority-rule x placement-rule heuristics chosen uniformly at random -- the same menu RL
+    Option 1 chooses from (Code/methods/rl/action_spaces/rule_selection_gym_wrapper.py). It is the
+    standard control for a learned selection hyper-heuristic (Burke et al. 2013, J. Oper. Res.
+    Soc. 64(12)): a learned selector is only adding value where it beats this. The draw is seeded
+    from the current scheduling state, so a given instance always gets the same schedule."""
+    keys = [f"{r}+{p}" for p in placements for r in PRIORITY_RULES]
+
+    def choose(base_env, job_actions, decode):
+        state = (int(base_env.time), len(job_actions), int(np.asarray(base_env.start_times).sum()))
+        rng = np.random.default_rng(abs(hash(state)) % (2 ** 32))
+        return HEURISTICS[keys[int(rng.integers(len(keys)))]](base_env, job_actions, decode)
+    choose.__doc__ = f"Uniformly random choice among {len(keys)} rule heuristics ({'/'.join(placements)})."
+    return choose
+
+
+HEURISTICS["RandomRule+FirstFit"] = _make_random_rule_selector(("FirstFit",))
+HEURISTICS["RandomRule+FirstFit/Consolidate"] = _make_random_rule_selector(("FirstFit", "Consolidate"))
+
 # Curated default set for eval_rl_agent.py's --heuristics (all 18
 # priority+placement combos x 6 priority rules x 3 placements = 18, plus
 # Tetris and Random, is too many bars for one comparison run/plot set --

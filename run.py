@@ -216,6 +216,10 @@ def rl_train_passthrough(args):
         extra += ["--rule-placements", args.rule_placements]
     if args.diagnostics_interval:
         extra += ["--diagnostics-interval", str(args.diagnostics_interval)]
+    if args.gamma is not None:
+        extra += ["--gamma", str(args.gamma)]
+    if args.gae_lambda is not None:
+        extra += ["--gae-lambda", str(args.gae_lambda)]
     return extra
 
 
@@ -399,6 +403,8 @@ def main():
     ap.add_argument("--vec-backend", choices=["subproc", "dummy"], default="subproc", help="rl-train, with --n-envs > 1")
     ap.add_argument("--rule-placements", default=None,
                     help="rl-train --option 1: placement menu, e.g. FirstFit,Consolidate (rl-eval reads it from the checkpoint)")
+    ap.add_argument("--gamma", type=float, default=None, help="rl-train: PPO discount (training script default 0.99)")
+    ap.add_argument("--gae-lambda", type=float, default=None, help="rl-train: GAE lambda (training script default 0.95)")
     ap.add_argument("--diagnostics-interval", type=int, default=None, help="rl-train: action-distribution diagnostics every N steps")
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()

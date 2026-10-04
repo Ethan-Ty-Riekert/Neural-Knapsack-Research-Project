@@ -240,4 +240,14 @@ try:
 except ValueError:
     print("  unknown placement name rejected")
 
+print("=== Random rule-selection baseline: feasible and deterministic per state ===")
+full_r = make_base_gym_env(num_jobs=4, num_machines=3, horizon=10)
+env_r = RuleSelectionGymSchedulingEnv(full_r, placements=("FirstFit", "Consolidate"))
+env_r.reset()
+for name in ("RandomRule+FirstFit", "RandomRule+FirstFit/Consolidate"):
+    acts = env_r._job_actions()
+    picks = {HEURISTICS[name](env_r.env, acts, env_r._decode) for _ in range(5)}
+    assert len(picks) == 1 and picks <= set(acts), (name, picks)
+print("  both RandomRule heuristics return a feasible action, identical on repeat calls")
+
 print("\nALL ACTION-SPACE-WRAPPER CHECKS PASSED")

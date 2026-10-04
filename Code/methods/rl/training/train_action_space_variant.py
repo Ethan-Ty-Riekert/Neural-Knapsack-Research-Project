@@ -426,6 +426,9 @@ def main():
                               "--online for online presets and per-episode resampling.")
     parser.add_argument("--gamma", type=float, default=0.99,
                          help="PPO discount factor; also used as the v2 shaping gamma (must match).")
+    parser.add_argument("--gae-lambda", type=float, default=0.95,
+                         help="GAE lambda (SB3 default 0.95). 1.0 = Monte Carlo advantages with a value "
+                              "baseline: unbiased credit over the whole episode, at higher variance.")
     parser.add_argument("--use-potential-shaping", action="store_true",
                          help="Ng/Harada/Russell 1999 potential-based shaping -- same untested "
                               "status as --reward-mode dense_tardiness, see above.")
@@ -578,6 +581,7 @@ def main():
         tensorboard_log=str(MODELS_DIR / "tb_action_space"),
         ent_coef=args.ent_coef,
         gamma=args.gamma,
+        gae_lambda=args.gae_lambda,
         n_steps=n_steps,
         batch_size=batch_size,
         seed=args.seed,
@@ -672,7 +676,7 @@ def main():
         window_size=args.window_size, window_order=args.window_order,
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
-        seed=args.seed,
+        seed=args.seed, gamma=args.gamma, gae_lambda=args.gae_lambda,
         train_minutes=round(elapsed_min, 1),
     ))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "
