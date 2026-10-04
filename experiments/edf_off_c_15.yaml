@@ -1,0 +1,5 @@
+# EDF on the 15 held-out instances. Expected (legacy reward): reward 286.00, tardiness 50.33,
+# late 14.20, jobs scheduled 97.2 -- EDF drops ~3 jobs per instance.
+variant: v1_legacy_reward
+preset: off_c_15
+method: EDF

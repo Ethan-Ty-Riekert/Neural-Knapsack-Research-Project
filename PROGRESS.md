@@ -412,6 +412,34 @@ doesn't yet have a validated way to turn that structure into a better deployed c
 that needs a full-training-budget search, a substantially larger compute commitment left
 for a future session.
 
+## Phase 13 — Objective redesign decided: reward must equal the objective (2026-09-28, S2W11)
+
+Re-checking the PSO-vs-EDF anomaly (PSO reward 329 > EDF 286 with 20x the tardiness) on current
+code, at the protocol's horizon of 100, reproduces EDF's 286.00 / 50.33 exactly. EDF drops about 3
+jobs per instance (97.2/100 scheduled), so it never earns the +50 completion bonus. A schedule that
+fits every job in, however late, beats it on reward. A first re-check at horizon 110 wrongly
+suggested otherwise; the correction is recorded in the decision doc. A full reward audit found tardiness is the smallest term, dropped jobs are
+nearly free and invisible to the metrics, the activation penalty isn't energy, and the hotspot and
+idle terms have no objective meaning. Decisions (remove non-objective terms, drop penalty at each
+job's latest start, energy as active machine-ticks / SPECpower curve, physical-unit exchange rates,
+selectable objectives + difficulty, preserve all legacy results, restructure by variant) are
+recorded with the user's reasoning and open questions in
+`Future/research/2026-09-28-objective-redesign-discussion.md`.
+
+## Phase 14 — The v2 objective program: reward = objective, and the baselines turn out to be beatable (2026-09-29, S2W11)
+
+All five build steps were implemented and tested in one session:
+- the objective reward (lateness + a provable drop penalty + optional late count and energy);
+- CP-SAT solving the same objective;
+- an energy model with a consolidation heuristic;
+- difficulty presets (online load, offline deadline tightness);
+- RL training and evaluation under v2 through `run.py`.
+
+Under the real objective, every heuristic is far from the best schedule CP-SAT finds, and the gap is mostly
+dropped jobs. That's the first clear evidence in this project of room for a learned scheduler to improve. The
+RL runs under v2 still have to be completed: the first attempt was killed for low memory. Details in
+`Future/research/2026-09-29-v2-build-and-first-results.md`.
+
 ## Recurring lesson
 
 Three separate rounds of this project's history (idle collapse, stage-3/4 collapse,

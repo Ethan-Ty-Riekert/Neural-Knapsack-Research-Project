@@ -1,0 +1,218 @@
+id,date,case,weights,protocol,protocol_label,method,family,config,reward,tard,wtard,late,sched,total,n,status,note,source
+1,2026-07-24,offline,constant,off_c_curve,Early training curves (pre-rescale),PPO initial run (stage 1),rl_legacy,"flat MLP, idle-collapse (reward = -idle_penalty x steps)",-21.0,,,,,,,flag,"Policy collapsed onto the idle action; stage-1 episode reward, 21-step episodes.",training-log.md
+2,2026-07-24,offline,constant,off_c_curve,Early training curves (pre-rescale),PPO reweighted + ent_coef 0.05 (stage 1),rl_legacy,"flat MLP, idle-collapse (reward = -idle_penalty x steps)",-10.5,,,,,,,flag,"Policy collapsed onto the idle action; stage-1 episode reward, 21-step episodes.",training-log.md
+3,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),A2C flat baseline_fixed,rl_legacy,capacity-leak fixed; stage-4 last-200-episode mean training reward,-1299.2,,,,,,,ok,,training-log.md
+4,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),A2C flat solution1a (idle restricted),rl_legacy,restrict_idle=True; stage-4 last-200-episode mean training reward,-1191.3,,,,,,,ok,,training-log.md
+5,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),A2C flat solution1b (idle_penalty=50),rl_legacy,idle_penalty=50; stage-4 last-200-episode mean training reward,-1504.7,,,,,,,ok,,training-log.md
+6,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),A2C flat + ent_coef/reward-norm fixes,rl_legacy,flat_fixed_full; stage-4 last-200-episode mean training reward,50.7,,,,,,,ok,,training-log.md
+7,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),A2C pointer (untuned) + fixes,rl_legacy,"pointer_full, embed 128 / hidden 64; stage-4 last-200-episode mean training reward",-63.3,,,,,,,ok,,training-log.md
+8,2026-08-09,offline,constant,off_c_curve,Early training curves (pre-rescale),"EDF (reference, old scale)",heuristic,exact stage-4 job set,275.5,16.0,16.0,,98,100,1,ok,,training-log.md
+9,2026-08-10,offline,constant,off_c_fixed,Fixed instance (seed 0),EDF,heuristic,earliest deadline first + FirstFit,289.38,16.0,16.0,10,98,100,1,ok,Completion (98/100) measured 2026-08-28.,training-log.md
+10,2026-09-14,offline,constant,off_c_fixed,Fixed instance (seed 0),LST,heuristic,least slack time + FirstFit,,8.0,8.0,7,99,100,1,ok,,training-log.md
+11,2026-09-14,offline,constant,off_c_fixed,Fixed instance (seed 0),CP-SAT (proven optimal),exact,"900 s, 15 workers, OPTIMAL in 21.98 s",339.09,8.0,8.0,5,100,100,1,ok,Proven minimum tardiness for this instance.,training-log.md
+12,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),ATC,heuristic,"apparent tardiness cost, k=2",,106.0,106.0,14,96,100,1,ok,,training-log.md
+13,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),SPT,heuristic,shortest processing time,,1321.0,1321.0,43,92,100,1,ok,,training-log.md
+14,2026-09-18,offline,constant,off_c_fixed,Fixed instance (seed 0),WSPT+BestFit,heuristic,identical to SPT when all weights = 1,,1321.0,1321.0,,,,1,ok,,training-log.md
+15,2026-08-10,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C flat (S2W4),rl_legacy,"Optuna-tuned, 500k curriculum",231.84,866.0,866.0,27,,,1,ok,,training-log.md
+16,2026-08-10,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C pointer (S2W4),rl_legacy,"Optuna-tuned, 500k curriculum",270.23,1227.0,1227.0,32,,,1,ok,,training-log.md
+17,2026-08-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C flat, stage-4 x2",rl_legacy,400k stage-4 budget,259.17,1546.0,1546.0,30,,,1,ok,,training-log.md
+18,2026-08-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C pointer, stage-4 x2",rl_legacy,400k stage-4 budget,249.47,1103.0,1103.0,34,,,1,ok,,training-log.md
+19,2026-08-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C flat, tardiness-tuned",rl_legacy,Optuna optimize_for=tardiness,270.39,998.0,998.0,31,,,1,ok,,training-log.md
+20,2026-08-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C pointer, tardiness-tuned",rl_legacy,Optuna optimize_for=tardiness,328.21,1699.0,1699.0,44,,,1,ok,"Highest reward, worst tardiness of its time: reward hacking.",training-log.md
+21,2026-08-19,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C pointer + shaping,rl_legacy,potential-based shaping (Phase 8),253.94,9.0,9.0,6,,,1,ok,First RL result to beat EDF on tardiness.,training-log.md
+22,2026-08-19,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C flat + shaping,rl_legacy,potential-based shaping,262.98,1252.0,1252.0,26,,,1,ok,,training-log.md
+23,2026-08-20,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C pointer, randomised-trained",rl_legacy,"--randomize-instances, re-tuned",338.67,733.0,733.0,38,,,1,ok,,training-log.md
+24,2026-08-20,offline,constant,off_c_fixed,Fixed instance (seed 0),"A2C flat, randomised-trained",rl_legacy,"--randomize-instances, re-tuned",264.11,1396.0,1396.0,43,,,1,ok,,training-log.md
+25,2026-08-21,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C pointer + RCPO (alpha=0),rl_legacy,multiplier saturated at 49.37/50,124.47,10.0,10.0,3,,,1,flag,Later shown to abandon ~half the jobs (see 10 held-out diagnostic).,training-log.md
+26,2026-08-21,offline,constant,off_c_fixed,Fixed instance (seed 0),A2C flat + RCPO (alpha=0),rl_legacy,lambda 5.85 -> 20.59,198.5,0.0,0.0,0,,,1,flag,"Perfect here, 570.62 on held-out instances: memorisation.",training-log.md
+27,2026-08-28,offline,constant,off_c_fixed,Fixed instance (seed 0),PSO (reward fitness),meta,"swarm 15, 30 iterations, 208.5 s",337.37,963.0,963.0,39,,,1,ok,,2026-08-28-pso-metaheuristic-baseline.md
+28,2026-09-15,offline,constant,off_c_fixed,Fixed instance (seed 0),PSO (tardiness fitness),meta,"swarm 20, 40 iterations",,383.0,383.0,41,,,1,ok,,2026-08-28-pso-metaheuristic-baseline.md
+29,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 1 rule-selection, 300k",rl_options,legacy reward,,35.0,35.0,10,100,100,1,ok,,2026-09-17-action-space-reduction.md
+30,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 1 rule-selection, 600k",rl_options,legacy reward,,19.0,19.0,11,100,100,1,ok,,training-log.md
+31,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 3 ATC-primed priority, 300k",rl_options,legacy reward,,152.0,152.0,8,100,100,1,ok,,training-log.md
+32,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 3 ATC-primed priority, 600k",rl_options,legacy reward,,155.0,155.0,,,,1,ok,,training-log.md
+33,2026-09-17,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 2 raw-feature priority, 300k",rl_options,legacy reward,,525.0,525.0,16,100,100,1,ok,,training-log.md
+34,2026-09-18,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 1, dense reward, 300k",rl_options,dense_tardiness,,16.0,16.0,,,,1,ok,Exactly ties EDF.,training-log.md
+35,2026-09-18,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 1, potential shaping, 300k",rl_options,use_potential_shaping,,148.0,148.0,,,,1,ok,,training-log.md
+36,2026-09-18,offline,constant,off_c_fixed,Fixed instance (seed 0),"Option 3, dense reward, 300k",rl_options,dense_tardiness,,56.0,56.0,,,,1,ok,,training-log.md
+37,2026-09-18,offline,constant,off_c_fixed,Fixed instance (seed 0),Option 1 via curriculum pipeline,rl_options,"wrong (old action space) Optuna params, 300k",,1435.0,1435.0,45,,,1,flag,Hyperparameters tuned for the old action space did not transfer.,training-log.md
+38,2026-08-28,offline,constant,off_c_50,50 held-out instances,LST,heuristic,Stage A heuristic suite,288.28,23.94,23.94,8.26,97.76,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+39,2026-08-28,offline,constant,off_c_50,50 held-out instances,EDF,heuristic,Stage A heuristic suite,284.95,37.3,37.3,12.22,96.84,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+40,2026-08-28,offline,constant,off_c_50,50 held-out instances,Tetris,heuristic,Stage A heuristic suite,267.1,1320.18,1320.18,42.48,96.8,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+41,2026-08-28,offline,constant,off_c_50,50 held-out instances,SPT / WSPT,heuristic,Stage A heuristic suite,257.01,1150.86,1150.86,37.74,92.08,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+42,2026-08-28,offline,constant,off_c_50,50 held-out instances,FCFS+FirstFit,heuristic,Stage A heuristic suite,272.41,1299.52,1299.52,42.06,96.86,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+43,2026-08-28,offline,constant,off_c_50,50 held-out instances,LPT+FirstFit,heuristic,Stage A heuristic suite,332.26,1392.46,1392.46,44.92,100.0,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+44,2026-08-28,offline,constant,off_c_50,50 held-out instances,Random,heuristic,Stage A heuristic suite,264.92,1313.72,1313.72,42.48,97.14,100,50,ok,,2026-08-28-classical-heuristic-baselines.md
+45,2026-08-20,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping (fixed-trained),rl_legacy,Phase 8 checkpoint,254.75,28.66,28.66,9.56,89.48,100,50,ok,Completion corrected 2026-08-28 (was reported 98.5).,training-log.md
+46,2026-08-20,offline,constant,off_c_50,50 held-out instances,"A2C pointer, randomised-trained",rl_legacy,re-tuned Optuna,334.995,732.5,732.5,39.44,,,50,ok,,training-log.md
+47,2026-08-20,offline,constant,off_c_50,50 held-out instances,"A2C flat, randomised-trained",rl_legacy,re-tuned Optuna,264.41,1311.32,1311.32,42.22,,,50,ok,,training-log.md
+48,2026-08-21,offline,constant,off_c_50,50 held-out instances,A2C pointer + RCPO (alpha=0),rl_legacy,unreachable target,135.67,19.84,19.84,3.2,55.24,100,50,flag,Best tardiness bought by abandoning jobs.,training-log.md
+49,2026-08-21,offline,constant,off_c_50,50 held-out instances,A2C flat + RCPO (alpha=0),rl_legacy,,192.92,570.62,570.62,24.02,,,50,ok,,training-log.md
+50,2026-08-28,offline,constant,off_c_50,50 held-out instances,"A2C pointer + RCPO (fixed, alpha=0.29)",rl_legacy,constraint charges unscheduled jobs,268.77,28.16,28.16,9.74,93.12,100,50,ok,,training-log.md
+51,2026-08-28,offline,constant,off_c_50,50 held-out instances,"A2C pointer, Pareto-knee",rl_legacy,"lambda_2=10.98, 500k",303.08,733.56,733.56,23.84,99.38,100,50,flag,Reward-hacked once fully trained.,training-log.md
+52,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, fixed-trained (seed 1)",rl_legacy,"reward-tuned, 1.9M curriculum",269.33,1318.38,1318.38,42.44,97.14,100,50,ok,,training-log.md
+53,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, fixed-trained (seed 2)",rl_legacy,"reward-tuned, 1.9M curriculum",267.12,1320.54,1320.54,42.36,97.06,100,50,ok,,training-log.md
+54,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, fixed-trained (seed 3)",rl_legacy,"reward-tuned, 1.9M curriculum",268.61,1309.78,1309.78,42.12,96.9,100,50,ok,,training-log.md
+55,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, randomised-trained (seed 1)",rl_legacy,--randomize-instances,267.18,1327.62,1327.62,42.82,96.84,100,50,ok,,training-log.md
+56,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, randomised-trained (seed 2)",rl_legacy,--randomize-instances,269.54,1327.22,1327.22,41.86,96.94,100,50,ok,,training-log.md
+57,2026-09-14,offline,constant,off_c_50,50 held-out instances,"PPO flat, randomised-trained (seed 3)",rl_legacy,--randomize-instances,267.64,1327.3,1327.3,42.96,96.68,100,50,ok,,training-log.md
+58,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=50 (seed 1),rl_legacy,multiplier pinned at ceiling,-50.5,0.0,0.0,0,0,100,50,flag,Collapsed to scheduling zero jobs.,training-log.md
+59,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=50 (seed 2),rl_legacy,multiplier pinned at ceiling,-50.5,0.0,0.0,0,0,100,50,flag,Collapsed to scheduling zero jobs.,training-log.md
+60,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=50 (seed 3),rl_legacy,multiplier pinned at ceiling,-50.5,0.0,0.0,0,0,100,50,flag,Collapsed to scheduling zero jobs.,training-log.md
+61,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=8,rl_legacy,100k stage-4 smoke test,,1312.62,1312.62,42.4,96.9,100,50,ok,,training-log.md
+62,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=12,rl_legacy,100k stage-4 smoke test,,1291.16,1291.16,42.42,96.82,100,50,ok,,training-log.md
+63,2026-09-15,offline,constant,off_c_50,50 held-out instances,PPO-Lagrangian lambda_max=18,rl_legacy,100k stage-4 smoke test,,1291.64,1291.64,42.5,96.84,100,50,ok,,training-log.md
+64,2026-09-15,offline,constant,off_c_50,50 held-out instances,"PPO flat, tardiness-tuned (seed 1)",rl_legacy,Optuna optimize_for=tardiness,266.19,1315.06,1315.06,42.32,97.06,100,50,ok,,training-log.md
+65,2026-09-15,offline,constant,off_c_50,50 held-out instances,"PPO flat, tardiness-tuned (seed 2)",rl_legacy,Optuna optimize_for=tardiness,264.71,1289.04,1289.04,42.46,96.84,100,50,ok,,training-log.md
+66,2026-09-15,offline,constant,off_c_50,50 held-out instances,"PPO flat, tardiness-tuned (seed 3)",rl_legacy,Optuna optimize_for=tardiness,264.72,1304.88,1304.88,41.76,96.9,100,50,ok,,training-log.md
+67,2026-09-16,offline,constant,off_c_50,50 held-out instances,PPO pointer network (seed 1),rl_legacy,"embed 256 / hidden 64, 1.9M",330.85,1303.36,1303.36,45.48,99.96,100,50,ok,,training-log.md
+68,2026-09-16,offline,constant,off_c_50,50 held-out instances,PPO pointer network (seed 2),rl_legacy,"embed 256 / hidden 64, 1.9M",328.23,1619.24,1619.24,46.16,100.0,100,50,ok,,training-log.md
+69,2026-09-16,offline,constant,off_c_50,50 held-out instances,PPO pointer network (seed 3),rl_legacy,"embed 256 / hidden 64, 1.9M",317.84,1403.86,1403.86,45.36,99.76,100,50,ok,,training-log.md
+70,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping (seed 1),rl_legacy,3-seed rigor pass,277.95,28.48,28.48,9.66,96.5,100,50,ok,,training-log.md
+71,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping (seed 2),rl_legacy,3-seed rigor pass,262.08,27.3,27.3,9.46,91.14,100,50,ok,,training-log.md
+72,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping (seed 3),rl_legacy,3-seed rigor pass,228.32,31.2,31.2,9.96,81.76,100,50,ok,,training-log.md
+73,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping + RCPO (seed 1),rl_legacy,3-seed rigor pass,154.4,219.6,219.6,11.5,60.04,100,50,flag,Unstable across seeds (>7x spread).,training-log.md
+74,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping + RCPO (seed 2),rl_legacy,3-seed rigor pass,161.29,171.22,171.22,11.04,61.84,100,50,flag,Unstable across seeds (>7x spread).,training-log.md
+75,2026-09-16,offline,constant,off_c_50,50 held-out instances,A2C pointer + shaping + RCPO (seed 3),rl_legacy,3-seed rigor pass,271.48,1299.66,1299.66,42.16,97.08,100,50,flag,Unstable across seeds (>7x spread).,training-log.md
+76,2026-09-16,offline,constant,off_c_50,50 held-out instances,"A2C pointer, randomised-trained (seed 1)",rl_legacy,fixed-instance hyperparameters,281.46,1589.98,1589.98,36.16,98.52,100,50,ok,,training-log.md
+77,2026-09-16,offline,constant,off_c_50,50 held-out instances,"A2C pointer, randomised-trained (seed 2)",rl_legacy,fixed-instance hyperparameters,271.17,1723.42,1723.42,37.54,97.84,100,50,ok,,training-log.md
+78,2026-09-16,offline,constant,off_c_50,50 held-out instances,"A2C pointer, randomised-trained (seed 3)",rl_legacy,fixed-instance hyperparameters,280.78,1580.16,1580.16,35.14,98.58,100,50,ok,,training-log.md
+79,2026-09-17,offline,constant,off_c_50,50 held-out instances,"PPO flat, legacy reward (1.9M)",rl_legacy,reward-redesign test,,1301.12,1301.12,41.96,96.9,100,50,ok,,training-log.md
+80,2026-09-17,offline,constant,off_c_50,50 held-out instances,"PPO flat, dense reward (1.9M)",rl_legacy,reward-redesign test,,1309.66,1309.66,41.72,96.74,100,50,ok,,training-log.md
+81,2026-09-17,offline,constant,off_c_50,50 held-out instances,"PPO flat, legacy reward (300k)",rl_legacy,reward-redesign test,,1337.43,1337.43,42.4,96.73,100,50,ok,,training-log.md
+82,2026-09-17,offline,constant,off_c_50,50 held-out instances,"PPO flat, dense reward (300k)",rl_legacy,reward-redesign test,,1336.93,1336.93,41.97,96.8,100,50,ok,,training-log.md
+83,2026-09-18,offline,constant,off_c_50,50 held-out instances,"Option 1, randomised-trained, legacy (300k)",rl_options,collapsed to LPT ~80%,,1377.88,1377.88,44.3,99.22,100,50,ok,Legacy reward made LPT the reward-maximising rule.,training-log.md
+84,2026-09-18,offline,constant,off_c_50,50 held-out instances,"Option 1, randomised-trained, dense (300k)",rl_options,ATC 63% / LST 22% / WSPT 9%,,359.4,359.4,24.18,97.04,100,50,ok,,training-log.md
+85,2026-08-28,offline,constant,off_c_15,15 held-out (PSO study),PSO (reward fitness),meta,"swarm 15, 30 iterations",329.68,1012.4,1012.4,40.93,,,15,ok,,2026-08-28-pso-metaheuristic-baseline.md
+86,2026-08-28,offline,constant,off_c_15,15 held-out (PSO study),EDF,heuristic,,286.0,50.33,50.33,14.2,,,15,ok,,2026-08-28-pso-metaheuristic-baseline.md
+87,2026-08-28,offline,constant,off_c_10,10 held-out (RCPO diagnostic),A2C pointer + shaping,rl_legacy,instrumented diagnostic,286.7,14.0,14.0,7.6,98.5,100,10,superseded,horizon=110 by mistake; 50-instance figure is 89.48 scheduled.,training-log.md
+88,2026-08-28,offline,constant,off_c_10,10 held-out (RCPO diagnostic),A2C pointer + RCPO (alpha=0),rl_legacy,instrumented diagnostic,113.04,0.7,0.7,0.2,49.8,100,10,flag,Idles 61.2 steps/episode: abandons half the jobs.,training-log.md
+89,2026-08-28,offline,constant,off_c_small,Small exact (10 jobs),CP-SAT (proven optimal),exact,all 5 OPTIMAL in ~0.05 s,74.31,0.0,0.0,,10.0,10,5,ok,,2026-08-28-exact-solver-baseline.md
+90,2026-08-28,offline,constant,off_c_small,Small exact (10 jobs),EDF,heuristic,misses a job on 3 of 5,43.39,0.0,0.0,,9.4,10,5,ok,,2026-08-28-exact-solver-baseline.md
+91,2026-08-28,offline,constant,off_c_small,Small exact (10 jobs),LST,heuristic,misses a job on 2 of 5,43.46,0.0,0.0,,9.6,10,5,ok,,2026-08-28-exact-solver-baseline.md
+92,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),EDF,heuristic,reduced budget,93.06,2.5,2.5,1.75,15.0,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+93,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),LST,heuristic,reduced budget,93.03,1.75,1.75,1.12,15.0,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+94,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),Pointer + shaping,rl_legacy,reduced budget,90.1,24.5,24.5,4.5,15.0,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+95,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),Pointer + RCPO,rl_legacy,reduced budget,61.74,10.62,10.62,3.0,14.38,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+96,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),Pointer + Pareto-knee,rl_legacy,reduced budget,92.61,2.62,2.62,1.25,15.0,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+97,2026-09-04,offline,constant,off_c_rb1,Reduced budget v1 (15 jobs),PSO,meta,reduced budget,93.24,4.62,4.62,2.0,15.0,15,8,superseded,,Results/reduced_budget_2026-09-04/results_summary.md
+98,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),EDF,heuristic,reduced budget,174.65,14.88,14.88,7.38,44.88,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+99,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),LST,heuristic,reduced budget,181.82,9.12,9.12,4.62,45.0,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+100,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),Pointer + shaping,rl_legacy,reduced budget,119.36,10.25,10.25,4.75,40.38,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+101,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),Pointer + RCPO,rl_legacy,reduced budget,93.64,156.88,156.88,12.75,36.75,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+102,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),Pointer + Pareto-knee,rl_legacy,reduced budget,175.95,263.0,263.0,19.25,45.0,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+103,2026-09-04,offline,constant,off_c_rb2,Reduced budget v2 (45 jobs),PSO,meta,reduced budget,179.21,146.62,146.62,17.75,45.0,45,8,ok,,Results/reduced_budget_2026-09-04_v2/results_summary.md
+104,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),LST,heuristic,,,8.0,24.0,,,,1,ok,,training-log.md
+105,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),EDF,heuristic,,,16.0,46.0,,,,1,ok,,training-log.md
+106,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),ATC,heuristic,weight-aware,,301.0,341.0,,,,1,ok,,training-log.md
+107,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),WSPT+BestFit,heuristic,weight-aware,,1152.0,3013.0,,,,1,ok,,training-log.md
+108,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),SPT,heuristic,,,1321.0,,,,,1,ok,,training-log.md
+109,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 3 ATC-primed, 1.2M",rl_options,dense + weighted,,10.0,13.0,3,99,100,1,ok,Beats LST on the true (weighted) objective.,training-log.md
+110,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 2 raw-feature, 1.2M",rl_options,dense + weighted,,,24.0,,,,1,ok,Ties LST exactly.,training-log.md
+111,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 1 rule-selection, 1.2M",rl_options,dense + weighted,,11.0,30.0,8,100,100,1,ok,,training-log.md
+112,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 3 ATC-primed, 300k",rl_options,dense + weighted,,28.0,,5,100,100,1,ok,,training-log.md
+113,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 2 raw-feature, 300k",rl_options,dense + weighted,,45.0,49.0,10,99,100,1,ok,,training-log.md
+114,2026-09-18,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 1 rule-selection, 300k",rl_options,dense + weighted,,12.0,,7,100,100,1,ok,,training-log.md
+115,2026-09-22,offline,random,off_r_fixed,Fixed instance (seed 0),"Option 3 windowed (15), 300k",rl_options,"EDF-ordered window, fixed-trained",,17.0,20.0,,,,1,ok,,training-log.md
+116,2026-09-18,offline,random,off_r_50,50 held-out instances,EDF,heuristic,weighted instances,284.23,37.3,109.36,12.22,96.84,100,50,ok,,key_results_excerpt.csv
+117,2026-09-18,offline,random,off_r_50,50 held-out instances,LST,heuristic,weighted instances,287.83,23.94,68.62,8.26,97.76,100,50,ok,,key_results_excerpt.csv
+118,2026-09-18,offline,random,off_r_50,50 held-out instances,ATC,heuristic,weighted instances,274.75,221.24,298.8,11.1,94.68,100,50,ok,,key_results_excerpt.csv
+119,2026-09-18,offline,random,off_r_50,50 held-out instances,SPT,heuristic,weighted instances,234.02,1150.86,3447.56,37.74,92.08,100,50,ok,,key_results_excerpt.csv
+120,2026-09-18,offline,random,off_r_50,50 held-out instances,FCFS+FirstFit,heuristic,weighted instances,246.37,1299.52,3904.1,42.06,96.86,100,50,ok,,key_results_excerpt.csv
+121,2026-09-18,offline,random,off_r_50,50 held-out instances,LPT+WorstFit,heuristic,weighted instances,299.15,1392.46,4155.4,44.92,100.0,100,50,ok,,key_results_excerpt.csv
+122,2026-09-18,offline,random,off_r_50,50 held-out instances,WSPT+BestFit,heuristic,weighted instances,246.42,1221.4,2930.02,40.1,94.2,100,50,ok,,key_results_excerpt.csv
+123,2026-09-18,offline,random,off_r_50,50 held-out instances,EDF+BestFit,heuristic,weighted instances,284.25,37.3,109.36,12.22,96.84,100,50,ok,,key_results_excerpt.csv
+124,2026-09-18,offline,random,off_r_50,50 held-out instances,Tetris,heuristic,weighted instances,241.45,1320.18,3885.36,42.48,96.8,100,50,ok,,key_results_excerpt.csv
+125,2026-09-18,offline,random,off_r_50,50 held-out instances,"Option 1, randomised-trained (300k)",rl_options,dense + weighted; EDF 85% / LPT 13%,,49.32,,13.72,99.44,100,50,ok,,training-log.md
+126,2026-09-18,offline,random,off_r_50,50 held-out instances,"Option 3, randomised-trained (300k)",rl_options,dense + weighted,,98.82,,12.08,99.28,100,50,ok,,training-log.md
+127,2026-09-19,offline,random,off_r_50,50 held-out instances,"Option 1, randomised-trained (1.2M)",rl_options,dense + weighted,312.81,38.88,116.5,12.22,99.0,100,50,ok,,key_results_excerpt.csv
+128,2026-09-22,offline,random,off_r_50,50 held-out instances,"Option 3 unwindowed, fixed-trained (300k)",rl_options,dense + weighted,,66.48,96.34,,,,50,ok,,training-log.md
+129,2026-09-18,offline,random,off_r_50,50 held-out instances,"Option 3 windowed (15, EDF order)",rl_options,"300k, fixed-trained",292.1,55.14,105.86,9.2,98.22,100,50,ok,,key_results_excerpt.csv
+130,2026-09-18,offline,random,off_r_50,50 held-out instances,"Option 2 windowed (15, EDF order)",rl_options,"300k, fixed-trained",292.94,55.1,111.08,15.3,98.18,100,50,ok,,key_results_excerpt.csv
+131,2026-09-22,offline,random,off_r_50,50 held-out instances,"Option 3 windowed (15, FIFO order)",rl_options,"300k, confound test",257.48,1033.76,2869.1,43.16,97.1,100,50,ok,Removing EDF ordering collapses to near-SPT.,key_results_excerpt.csv
+132,2026-09-22,offline,random,off_r_50,50 held-out instances,"Option 3 windowed, randomised-trained",rl_options,"300k, overfitting test",,,151.04,11.18,99.62,100,50,ok,,training-log.md
+133,2026-09-20,offline,random,off_r_50,50 held-out instances,Option 4 action-branching,rl_options,"flat-mean pooling, 300k",281.32,172.74,355.64,31.74,96.1,100,50,ok,,key_results_excerpt.csv
+134,2026-09-21,offline,random,off_r_50,50 held-out instances,"Option 4, weighted pooling",rl_options,"ctxfix, undetached, 300k",260.86,427.24,795.48,40.46,92.26,100,50,ok,"Hit weighted tardiness 0 mid-training, unstable.",key_results_excerpt.csv
+135,2026-09-21,offline,random,off_r_50,50 held-out instances,"Option 4, weighted pooling (detached)",rl_options,"ctxfix + detach, 300k",272.27,374.16,558.64,35.88,94.8,100,50,ok,,key_results_excerpt.csv
+136,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",CP-SAT hindsight bound,exact,"status=UNKNOWN, dual bound only",,105.0,105.0,,,,1,flag,"Not a proof: sees the future, 600 s timeout.",training-log.md
+137,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",ATC,heuristic,,,120.0,120.0,14,799,864,1,ok,,training-log.md
+138,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",SPT,heuristic,,,163.0,163.0,15,799,864,1,ok,,training-log.md
+139,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",WSPT+BestFit,heuristic,,,192.0,192.0,19,796,864,1,ok,,training-log.md
+140,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",EDF,heuristic,,,193.0,193.0,25,797,864,1,ok,,training-log.md
+141,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",EDF+BestFit,heuristic,,,235.0,235.0,23,792,864,1,ok,,training-log.md
+142,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",Tetris,heuristic,,,248.0,248.0,18,799,864,1,ok,,training-log.md
+143,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",LST,heuristic,,,275.0,275.0,28,789,864,1,ok,,training-log.md
+144,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",FCFS+FirstFit,heuristic,,,294.0,294.0,23,793,864,1,ok,,training-log.md
+145,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0",LPT+WorstFit,heuristic,,,634.0,634.0,34,759,864,1,ok,,training-log.md
+146,2026-09-17,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0","Option 1, legacy reward (300k)",rl_options,100% SPT,,163.0,163.0,15,799,864,1,ok,Byte-identical to SPT.,training-log.md
+147,2026-09-18,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0","Option 1, dense reward (300k)",rl_options,,,163.0,163.0,15,799,864,1,ok,Identical to legacy and SPT.,training-log.md
+148,2026-09-18,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0","Option 1, potential shaping (300k)",rl_options,,,246.0,246.0,,,,1,ok,,training-log.md
+149,2026-09-18,online,constant,on_c_r075_s0,"rho~0.75 heavy-tailed, seed 0","Option 3, dense reward (300k)",rl_options,unweighted,,199.0,199.0,19,772,864,1,ok,,training-log.md
+150,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",EDF,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+151,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",SPT,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+152,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",LST,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+153,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",ATC,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+154,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",FCFS+FirstFit,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+155,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",LPT+WorstFit,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+156,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",WSPT+BestFit,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+157,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",EDF+BestFit,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+158,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",Tetris,heuristic,,,36.0,36.0,2,298,309,1,ok,,training-log.md
+159,2026-09-17,online,constant,on_c_r025_s0,"rho~0.25 heavy-tailed, seed 0",Option 1 (300k),rl_options,,,36.0,36.0,2,298,309,1,ok,Matches every heuristic: 11 jobs unschedulable by anyone.,training-log.md
+160,2026-09-17,online,constant,on_c_r100_s0,"rho~1.0 heavy-tailed, seed 0",WSPT+BestFit (best heuristic),heuristic,,,333.0,333.0,,1071,1199,1,ok,,2026-09-17-heavy-tailed-arrivals.md
+161,2026-09-16,online,constant,on_c_sweep050,Sweep rho~0.50 (15 held-out),EDF / LST / ATC,heuristic,,,0,0,0,,,15,ok,,training-log.md
+162,2026-09-16,online,constant,on_c_sweep050,Sweep rho~0.50 (15 held-out),FCFS+FirstFit,heuristic,,,0,0,0,,,15,ok,,training-log.md
+163,2026-09-16,online,constant,on_c_sweep050,Sweep rho~0.50 (15 held-out),PPO flat,rl_legacy,"300k, randomised arrivals",,0,0,0,,,15,ok,,training-log.md
+164,2026-09-16,online,constant,on_c_sweep050,Sweep rho~0.50 (15 held-out),A2C pointer,rl_legacy,"300k, randomised arrivals",,0,0,0,,,15,ok,,training-log.md
+165,2026-09-16,online,constant,on_c_sweep080,Sweep rho~0.80 (15 held-out),EDF / LST / ATC,heuristic,,,0,0,0,,,15,ok,,training-log.md
+166,2026-09-16,online,constant,on_c_sweep080,Sweep rho~0.80 (15 held-out),FCFS+FirstFit,heuristic,,,0.47,0.47,0.33,,,15,ok,,training-log.md
+167,2026-09-16,online,constant,on_c_sweep080,Sweep rho~0.80 (15 held-out),PPO flat,rl_legacy,"300k, randomised arrivals",,21.73,21.73,3.07,,,15,ok,,training-log.md
+168,2026-09-16,online,constant,on_c_sweep080,Sweep rho~0.80 (15 held-out),A2C pointer,rl_legacy,"300k, randomised arrivals",,176.0,176.0,10.0,,,15,ok,,training-log.md
+169,2026-09-16,online,constant,on_c_sweep095,Sweep rho~0.95 (15 held-out),EDF / LST / ATC,heuristic,,,0,0,0,,,15,ok,,training-log.md
+170,2026-09-16,online,constant,on_c_sweep095,Sweep rho~0.95 (15 held-out),FCFS+FirstFit,heuristic,,,63.93,63.93,21.53,,,15,ok,,training-log.md
+171,2026-09-16,online,constant,on_c_sweep095,Sweep rho~0.95 (15 held-out),PPO flat,rl_legacy,"300k, randomised arrivals",,392.93,392.93,30.6,,,15,ok,,training-log.md
+172,2026-09-16,online,constant,on_c_sweep095,Sweep rho~0.95 (15 held-out),A2C pointer,rl_legacy,"300k, randomised arrivals",,1031.0,1031.0,59.2,,,15,ok,,training-log.md
+173,2026-09-16,online,constant,on_c_r008,Pipeline check rho~0.08 (30 held-out),PPO flat (300k),rl_legacy,pipeline validation,3132.16,0.0,0.0,0,93.93,100,30,ok,,training-log.md
+174,2026-09-16,online,constant,on_c_r008,Pipeline check rho~0.08 (30 held-out),EDF / LST / ATC,heuristic,,3139.25,0.0,0.0,0,93.93,100,30,ok,Reward 3139.2-3139.3.,training-log.md
+175,2026-09-16,online,constant,on_c_r070,rho~0.7 (20 held-out),PPO flat (300k),rl_legacy,,5850.15,0.1,0.1,0.05,808.05,808,20,ok,,training-log.md
+176,2026-09-16,online,constant,on_c_r070,rho~0.7 (20 held-out),EDF / LST / ATC / FCFS,heuristic,,6200.0,0.0,0.0,0,808.25,808,20,ok,Reward reported as range 6190-6211.,training-log.md
+177,2026-09-16,online,constant,on_c_r092,rho~0.92 (15 held-out),PPO flat (300k),rl_legacy,,3339.42,287.93,287.93,23.87,1027.93,1031,15,ok,,training-log.md
+178,2026-09-16,online,constant,on_c_r092,rho~0.92 (15 held-out),EDF / LST / ATC,heuristic,,3380.5,0.0,0.0,0,1030.75,1032,15,ok,"Reward range 3371-3390, scheduled 1029.8-1031.7.",training-log.md
+179,2026-09-16,online,constant,on_c_r092,rho~0.92 (15 held-out),FCFS+FirstFit,heuristic,,3402.92,31.2,31.2,12.87,1033.8,1034,15,ok,,training-log.md
+180,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"CP-SAT oracle, rho~0.04",exact,OPTIMAL,,0.0,0.0,,9,9,1,ok,,2026-09-17-retrospective-cpsat-oracle-and-rho-testing.md
+181,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"EDF / ATC, rho~0.04",heuristic,,,0.0,0.0,,9,9,1,ok,,training-log.md
+182,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"EDF, rho~0.67",heuristic,oracle UNKNOWN,,0.0,0.0,,200,200,1,ok,,training-log.md
+183,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"ATC, rho~0.67",heuristic,,,0.0,0.0,,200,200,1,ok,,training-log.md
+184,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"EDF, rho~1.17",heuristic,"max_jobs 2000, 1411 arrivals",,0.0,0.0,,1136,1352,1,ok,"Overload shows as abandonment, not tardiness.",training-log.md
+185,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"ATC, rho~1.17",heuristic,max_jobs 2000,,0.0,0.0,,1145,1352,1,ok,,training-log.md
+186,2026-09-17,online,constant,on_c_oracle,Retrospective oracle checks,"EDF / ATC, rho~1.17, max_jobs=300",heuristic,arrivals end at tick 20,,0.0,0.0,,300,300,1,flag,Fake result: max_jobs too small left an arrival-free tail.,training-log.md
+187,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",Option 1 rule-selection (300k),rl_options,dense + weighted,,136.0,,16,818,866,1,superseded,"Single-seed 'beats every heuristic' claim, overturned by the 20-instance check.",training-log.md
+188,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",EDF,heuristic,,,147.0,,14,822,866,1,ok,,training-log.md
+189,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",ATC,heuristic,,,167.0,,16,819,866,1,ok,,training-log.md
+190,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",SPT,heuristic,,,177.0,,17,816,866,1,ok,,training-log.md
+191,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",WSPT+BestFit,heuristic,,,178.0,,18,821,866,1,ok,,training-log.md
+192,2026-09-18,online,random,on_r_s0,"rho~0.75 heavy-tailed, seed 0",Option 3 ATC-primed (300k),rl_options,dense + weighted,,210.0,,20,818,866,1,ok,,training-log.md
+193,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",ATC,heuristic,,,229.95,644.2,24.1,831.6,893,20,ok,,training-log.md
+194,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",Option 1 rule-selection (300k),rl_options,dense + weighted,,242.65,730.3,22.6,829.45,893,20,ok,Best online RL result to date: mixed SPT + LST.,training-log.md
+195,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",EDF,heuristic,,,254.1,769.7,28.7,827.9,893,20,ok,,training-log.md
+196,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",SPT,heuristic,,,266.7,788.2,22.4,829.7,893,20,ok,,training-log.md
+197,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",Option 1 rule-selection (900k),rl_options,dense + weighted,,266.7,788.2,,,,20,ok,Collapsed to pure SPT (identical numbers).,training-log.md
+198,2026-09-18,online,random,on_r_20,"rho~0.75, 20 held-out",Option 3 ATC-primed (300k),rl_options,dense + weighted,,267.75,,,,,20,ok,,training-log.md
+199,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",ATC,heuristic,,2824.78,234.36,648.16,23.8,835.92,898,50,ok,,key_results_excerpt.csv
+200,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",WSPT+BestFit,heuristic,,2867.05,263.66,709.42,24.3,836.88,898,50,ok,,key_results_excerpt.csv
+201,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",EDF+BestFit,heuristic,,2867.84,245.46,736.44,26.82,834.9,898,50,ok,,key_results_excerpt.csv
+202,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",SPT,heuristic,,2810.78,269.2,798.46,22.9,833.42,898,50,ok,,key_results_excerpt.csv
+203,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",EDF,heuristic,,2820.35,263.16,800.9,28.78,832.62,898,50,ok,,key_results_excerpt.csv
+204,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",LST,heuristic,,2797.41,304.32,918.92,31.12,827.7,898,50,ok,,key_results_excerpt.csv
+205,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",FCFS+FirstFit,heuristic,,2842.13,323.02,987.5,33.44,835.5,898,50,ok,,key_results_excerpt.csv
+206,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",Tetris,heuristic,,2715.75,408.14,1235.04,33.64,836.2,898,50,ok,,key_results_excerpt.csv
+207,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out",LPT+WorstFit,heuristic,,2476.14,790.82,2370.06,41.44,802.78,898,50,ok,,key_results_excerpt.csv
+208,2026-09-19,online,random,on_r_50,"rho~0.75, 50 held-out","Option 1, 900k, ent_coef 0.01",rl_options,dense + weighted,2810.78,269.2,798.46,22.9,833.42,898,50,ok,Identical to SPT despite healthy training entropy.,key_results_excerpt.csv
+209,2026-09-21,online,random,on_r_50,"rho~0.75, 50 held-out","Option 1, 900k, diagnostics run",rl_options,ent_coef 0.0,2810.78,269.2,798.46,22.9,833.42,898,50,ok,3rd independent 900k collapse onto SPT.,key_results_excerpt.csv
+210,2026-09-20,online,random,on_r_50,"rho~0.75, 50 held-out","Option 3 ATC-primed, 900k",rl_options,dense + weighted,2419.17,327.6,892.84,29.96,829.2,898,50,ok,,key_results_excerpt.csv
+211,2026-09-18,online,random,on_r_50,"rho~0.75, 50 held-out","Option 3 windowed (15, EDF order)",rl_options,300k,2413.91,309.74,952.74,28.16,825.98,898,50,ok,,key_results_excerpt.csv
+212,2026-09-22,online,random,on_r_50,"rho~0.75, 50 held-out","Option 3 windowed (15, FIFO order)",rl_options,"300k, confound test",,,1190.48,31.0,826.9,898,50,ok,,training-log.md
+213,2026-09-18,online,constant,on_c_rulecheck,"Reward per rule, rho~0.75",SPT (legacy reward),heuristic,legacy reward mode,3083.87,,,,,,1,ok,,training-log.md
+214,2026-09-18,online,constant,on_c_rulecheck,"Reward per rule, rho~0.75",ATC (legacy reward),heuristic,legacy reward mode,3034.3,,,,,,1,ok,,training-log.md
+215,2026-09-18,online,constant,on_c_rulecheck,"Reward per rule, rho~0.75",EDF (dense reward),heuristic,dense_tardiness reward mode,-63.59,,,,,,1,ok,,training-log.md
+216,2026-09-18,online,constant,on_c_rulecheck,"Reward per rule, rho~0.75",ATC (dense reward),heuristic,dense_tardiness reward mode,-63.94,,,,,,1,ok,,training-log.md
+217,2026-09-18,online,constant,on_c_rulecheck,"Reward per rule, rho~0.75",SPT (dense reward),heuristic,dense_tardiness reward mode,-65.67,,,,,,1,ok,,training-log.md

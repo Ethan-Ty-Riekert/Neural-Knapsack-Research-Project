@@ -1,0 +1,92 @@
+{
+  "variant": "v2_objectives",
+  "preset": "off_tf08",
+  "method": "cpsat",
+  "preset_config": {
+    "case": "offline",
+    "num_jobs": 100,
+    "num_machines": 10,
+    "horizon": 100,
+    "weights": [
+      1,
+      6
+    ],
+    "tf": 0.8,
+    "rdd": 0.6,
+    "rho": 0.75,
+    "size_distribution": "lognormal",
+    "slack": [
+      10,
+      60
+    ],
+    "desc": "offline, tight deadlines (TF 0.8, RDD 0.6)"
+  },
+  "seeds": [
+    500000,
+    500001,
+    500002,
+    500003,
+    500004,
+    500005,
+    500006,
+    500007,
+    500008,
+    500009,
+    500010,
+    500011,
+    500012,
+    500013,
+    500014
+  ],
+  "method_args": {
+    "pso_swarm": 15,
+    "pso_iterations": 30,
+    "pso_fitness": "reward",
+    "time_limit": 60.0,
+    "cpsat_workers": 8,
+    "seed": 0
+  },
+  "env_kwargs": {
+    "reward_mode": "objective",
+    "objective": {
+      "tardiness": 1.0,
+      "drops": 1.0,
+      "late_count": 0.0,
+      "energy": 0.0,
+      "power_model": "linear",
+      "drop_surcharge": null,
+      "scale": null,
+      "drop_shaping": false,
+      "shaping_gamma": 0.99
+    }
+  },
+  "git_commit": "0188dd2-dirty",
+  "machine": "Ducks_Laptop",
+  "timestamp": "20260929-123809",
+  "mean": {
+    "reward": -67.7093,
+    "objective_J": 6770.9333,
+    "infeasible_on_arrival": 0.0,
+    "jobs_total": 100.0,
+    "jobs_scheduled": 99.6,
+    "dropped": 0.4,
+    "completion_rate": 0.996,
+    "on_time_rate": 0.1587,
+    "late_jobs": 83.7333,
+    "tardiness": 3225.0667,
+    "weighted_tardiness": 6697.0,
+    "max_tardiness": 94.8,
+    "p95_tardiness": 82.9367,
+    "tardiness_with_dropped_lb": 3260.5333,
+    "mean_wait": 49.3,
+    "p95_wait": 93.67,
+    "mean_flow_time": 54.2811,
+    "mean_slowdown": 17.6211,
+    "makespan": 99.9333,
+    "active_machine_ticks": 385.3333,
+    "mean_active_utilisation": 0.3125,
+    "energy_specpower": 290.9762,
+    "cpsat_objective": 6770.9333,
+    "seconds": 72.0117
+  }
+}

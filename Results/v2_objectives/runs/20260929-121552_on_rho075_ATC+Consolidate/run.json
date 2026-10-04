@@ -1,0 +1,91 @@
+{
+  "variant": "v2_objectives",
+  "preset": "on_rho075",
+  "method": "ATC+Consolidate",
+  "preset_config": {
+    "case": "online",
+    "num_jobs": 100,
+    "num_machines": 10,
+    "horizon": 100,
+    "weights": [
+      1,
+      6
+    ],
+    "tf": null,
+    "rdd": 0.6,
+    "rho": 0.75,
+    "size_distribution": "lognormal",
+    "slack": [
+      10,
+      60
+    ],
+    "desc": "online, moderate load (rho 0.75)"
+  },
+  "seeds": [
+    500000,
+    500001,
+    500002,
+    500003,
+    500004,
+    500005,
+    500006,
+    500007,
+    500008,
+    500009,
+    500010,
+    500011,
+    500012,
+    500013,
+    500014
+  ],
+  "method_args": {
+    "pso_swarm": 15,
+    "pso_iterations": 30,
+    "pso_fitness": "reward",
+    "time_limit": 60.0,
+    "cpsat_workers": 8,
+    "seed": 0
+  },
+  "env_kwargs": {
+    "reward_mode": "objective",
+    "objective": {
+      "tardiness": 1.0,
+      "drops": 1.0,
+      "late_count": 0.0,
+      "energy": 1.0,
+      "power_model": "specpower_ml110g5",
+      "drop_surcharge": null,
+      "scale": null,
+      "drop_shaping": false,
+      "shaping_gamma": 0.99
+    }
+  },
+  "git_commit": "0188dd2-dirty",
+  "machine": "Ducks_Laptop",
+  "timestamp": "20260929-121552",
+  "mean": {
+    "reward": -14.8072,
+    "objective_J": 10716.9625,
+    "infeasible_on_arrival": 30.3333,
+    "jobs_total": 722.1333,
+    "jobs_scheduled": 690.0667,
+    "dropped": 32.0667,
+    "completion_rate": 0.9557,
+    "on_time_rate": 0.9359,
+    "late_jobs": 14.3333,
+    "tardiness": 121.8667,
+    "weighted_tardiness": 376.2667,
+    "max_tardiness": 23.3333,
+    "p95_tardiness": 0.0,
+    "tardiness_with_dropped_lb": 259.2667,
+    "mean_wait": 0.7049,
+    "p95_wait": 4.0467,
+    "mean_flow_time": 5.7681,
+    "mean_slowdown": 1.2592,
+    "makespan": 100.0,
+    "active_machine_ticks": 933.7333,
+    "mean_active_utilisation": 0.9321,
+    "energy_specpower": 838.1625,
+    "seconds": 2.6191
+  }
+}

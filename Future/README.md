@@ -28,8 +28,13 @@ codebase (see `NotesForAI/` for the fuller research background):
   tokens, or a graph neural network over jobs+machines) would handle arbitrary
   job counts natively and should generalise to unseen problem sizes at
   evaluation time, matching "Option A" in the research notes.
-- **Dynamic workloads.** VM/job arrivals and departures over time, rather than
-  all jobs being known upfront (the current static, offline case).
+- **Dynamic workloads.** Job **arrivals** over time (rather than all jobs known
+  upfront) are now an active phase, started 2026-09-16 -- see
+  `research/2026-09-16-online-arrival-mdp-design.md` for the MDP design
+  (Poisson arrivals, relaxed tick-advance rule, arrival-relative deadlines)
+  and `mathformulation.tex`'s online MDP subsection for the formal writeup.
+  Job **departures/cancellations** remain explicitly deferred, out of scope
+  for this phase.
 - **Energy-aware and SLA-aware rewards.** Proper energy/power proxies and
   SLA-violation modelling beyond the current machine-activation and tardiness
   penalties.

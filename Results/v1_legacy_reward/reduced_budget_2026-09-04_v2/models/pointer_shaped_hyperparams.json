@@ -1,0 +1,36 @@
+{
+  "embed_dim": 64,
+  "hidden": 32,
+  "learning_rate": 9.525889086580776e-05,
+  "n_steps": 5,
+  "gamma": 0.9616442396556275,
+  "gae_lambda": 0.972821634861186,
+  "ent_coef": 0.005439591236568527,
+  "value_coef": 0.7242293729451846,
+  "max_grad_norm": 0.7434707975326262,
+  "lambda_1": 1.3036620261121377,
+  "lambda_2": 0.6976211400403726,
+  "lambda_3": 1.752953743383857,
+  "idle_penalty": 1.3019501624293395,
+  "invalid_penalty": 4.3056295727989795,
+  "model_name": "pointer_shaped",
+  "source_trial": 7,
+  "timesteps": 60000,
+  "use_rcpo": false,
+  "rcpo_alpha": 0.0,
+  "rcpo_lambda_lr": 0.05,
+  "rcpo_update_every_episodes": 3,
+  "num_jobs": 45,
+  "num_machines": 6,
+  "horizon": 50,
+  "deadline_range": [
+    10,
+    50
+  ],
+  "job_duration_range": [
+    1,
+    8
+  ],
+  "use_potential_shaping": true,
+  "policy_type": "pointer"
+}

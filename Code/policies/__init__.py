@@ -1,13 +1,4 @@
-# Policies/__init__.py
-from .ppo_policy import make_maskable_ppo, train_ppo
-from .a2c_policy import make_maskable_a2c, train_a2c
-from .pointer_policy import PointerActorCritic
-
-
-__all__ = [
-    "make_maskable_ppo",
-    "train_ppo",
-    "make_maskable_a2c",
-    "train_a2c",
-    "PointerActorCritic",
-]
+"""Moved to `Code.methods.rl.policies` (2026-09-28 restructure). Compatibility
+package: submodules here are shims, see each file."""
+from Code.methods.rl.policies import *  # noqa: F401,F403
+from Code.methods.rl.policies import __all__  # noqa: F401

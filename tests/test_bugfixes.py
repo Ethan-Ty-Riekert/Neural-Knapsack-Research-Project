@@ -13,9 +13,9 @@ Run from the repo root: python -m tests.test_bugfixes
 """
 import numpy as np
 
-from Code.env.scheduling_env import SchedulingEnv
-from Code.env.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.policies.a2c_policy import make_maskable_a2c, select_action
+from Code.core.scheduling_env import SchedulingEnv
+from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
+from Code.methods.rl.policies.a2c_policy import make_maskable_a2c, select_action
 
 
 # ============================================================
