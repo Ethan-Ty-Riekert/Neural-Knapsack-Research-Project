@@ -32,6 +32,36 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-09-30 (S2W11) -- Heuristic sweep under squared lateness + extended horizon: offline LST dominates; online high load is where rules differ most
+
+**Config:** v2 defaults (tardiness_sq, extended horizon), 8 heuristics (LST, EDF, ATC, SPT, WSPT+BestFit,
+FCFS+FirstFit, LST+Consolidate, ATC+Consolidate) on every difficulty preset, 15 held-out instances each.
+Commit `51dfcb9`. Stopped by the background time limit after 7 of 8 presets (`on_rho075_tight` not run).
+Tables: `Results/v2_objectives/comparisons/20260930-1526*` to `-1538*`.
+
+**Stats (J = sum w_j T_j^2, lower is better):**
+```
+off_tf02   LST 0 = EDF 0 < ATC 420 < WSPT+BF 19521
+off_tf05   LST 37457 < EDF 38917 < ATC 72180 < WSPT+BF 133254
+off_tf08   LST 383691 < EDF 387571 < ATC 417484
+on_rho050  ATC+Cons 3721 ~ LST+Cons 3725 ~ LST 3729 ~ EDF 3757   (all within ~1%)
+on_rho075  LST+Cons 7983 < LST 8161 < ATC+Cons 9351 < EDF 10543
+on_rho095  LST+Cons 25757 < ATC+Cons 37452 < EDF 41997 < LST 44258   (~70% spread)
+on_rho110  LST+Cons 134376 ~ ATC+Cons 134644 < EDF 143397 < LST 171728
+```
+
+**Observation:** offline (weighted, any tightness), LST is best and EDF close; under squared lateness ATC is
+far worse than under linear (it lets some jobs run very late). Online the ranking depends on load: at light load
+every rule is within about 1%; at high load the placement rule matters as much as the priority rule
+(Consolidate cuts J 40% at rho 0.95), and the best priority rule changes with load.
+
+**Conclusion / next step:** online high load (`on_rho095`, `on_rho110`) is the most promising setting for RL:
+large differences between rules and a load-dependent best choice. Next, on the PC: run `on_rho075_tight`,
+then full-length RL (Option 1 rule selection over rules incl. Consolidate variants; Option 3) on on_rho095 /
+on_rho110 with checkpoints, one run at a time.
+
+---
+
 ## 2026-09-30 (S2W11) -- Squared lateness (new v2 default): CP-SAT switches to the spread-out schedule; LST still optimal
 
 **Config:** v2, extended horizon, objective `tardiness_sq` (J = sum w_j T_j^2), `off_c_15`, CP-SAT 60 s / 8 workers
