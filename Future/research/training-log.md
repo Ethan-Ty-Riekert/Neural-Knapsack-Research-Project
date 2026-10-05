@@ -32,6 +32,19 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- CORRECTION: v2 job weights are Uniform{1..5}, not "1-6"
+
+**Observation:** every v2 difficulty preset uses `weights=(1, 6)` (`Code/core/difficulty.py`), drawn by
+`rng.integers(1, 6)`, whose upper bound is exclusive: w_j is uniform on {1, 2, 3, 4, 5}. On the 5,000 jobs of
+the `off_tf05` test set the counts are 994 / 964 / 1,014 / 1,008 / 1,020 for weights 1-5, and none are 6. The
+code comment was already correct ("1..5"); the entries above that say "weights 1-6" are wrong in wording only.
+The same applies to v1 runs logged with `--job-weight-min 1 --job-weight-max 6`. The `off_c_15` / `off_c_50`
+presets (inherited from v1) are unweighted (w_j = 1).
+
+**Conclusion:** report the weights as w_j ~ Uniform{1,...,5} in the paper. No result changes.
+
+---
+
 ## 2026-10-05 (S2W12) -- FIRST RL WIN OVER THE BEST HEURISTIC: offline off_tf05, Option 2 and windowed Option 3 beat LST on all 5 seeds (~18-20% lower J)
 
 **Config:** v2 objective (sum w_j T_j^2, extended horizon), preset `off_tf05` (offline, 100 jobs, 10

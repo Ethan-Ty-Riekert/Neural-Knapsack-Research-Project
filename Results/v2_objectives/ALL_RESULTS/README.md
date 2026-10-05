@@ -13,7 +13,7 @@ python Results/v2_objectives/ALL_RESULTS/scripts/build_folder.py
 | `tables/summary.md` | best heuristic vs best RL vs PSO vs CP-SAT per preset |
 | `figures/` | `J_by_method_<preset>`, `regime_map`, `heuristic_regime_heatmap`, `training_curves_<preset>` (PNG + PDF) |
 
-**Setup.** Objective J = sum_j w_j T_j^2 (weights 1-6), with an extended horizon: jobs never expire,
+**Setup.** Objective J = sum_j w_j T_j^2 (difficulty presets: w_j ~ Uniform{1,...,5}, i.e. `weights=(1, 6)` with numpy's exclusive upper bound; `off_c_*` presets: w_j = 1), with an extended horizon: jobs never expire,
 and unfinished jobs keep accruing lateness past H. The RL reward is exactly -J / (number of jobs)
 (`Code/core/objectives.py`). Each preset is evaluated on the same 15 held-out instances for every
 method (seeds 500000-500014). Offline presets: 100 jobs, 10 machines, H = 100, deadline tightness
