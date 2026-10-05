@@ -32,6 +32,38 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- Online priority-design failure diagnosed (voluntary idling) and fixed with a work-conserving action mode; campaign rebalanced toward the designs that learn their own policy
+
+**Config:** diagnostic on the trained `v2_on_rho095_o3_s0` (Option 3, 200k steps), 3 test instances,
+deterministic policy, counting idle actions taken while a job was placeable. Code: commit `559bcc5`.
+
+**Stats:**
+```
+as trained (idle always legal): voluntary idles 6,111-6,543 per episode; episode ends at t ~ 6,140-6,565
+                                (extended horizon); 3-7 jobs left to the safety cap; J ~ 2.4e8 (50-inst. avg)
+same model, idle masked when a job fits:  J = 65,631 / 56,385 / 105,863; episodes end at t ~ 125; 0 jobs left
+reference (test set, 50 inst.): EDF+Consolidate 21,923 | ATC+Consolidate ~37k | RandomRule+FF/Cons 51,931
+```
+
+**Observation:** the online Options 2/3 failure was not under-capacity of the network: the policy idled.
+Once arrivals stop, it keeps choosing idle over the few remaining jobs, and the extended horizon lets that
+run for thousands of ticks while squared lateness accumulates. Masking voluntary idle at evaluation time
+alone brings the untouched model into the heuristic range.
+
+**Change:** `--work-conserving` (tag modifier `n`): idle is legal only when nothing can be placed
+(non-delay schedules, Giffler & Thompson 1960). Every dispatching heuristic in the comparison already
+produces non-delay schedules, so this also equalises the comparison. Caveat to report: for regular
+objectives an optimal schedule is guaranteed among *active* schedules, not necessarily non-delay ones,
+so the restriction can in principle exclude the optimum.
+
+**Campaign rebalance (user decision 2026-10-05):** 72% of the queued runs were rule selection (Option 1),
+the one design that cannot produce schedules outside the rules, and it was the only design tuned. Nothing
+is dropped. Added at the front of the queue: validation tuning of Options 3 and 4 in work-conserving mode
+(user's priorities; 10 trials each, 100k steps, `on_rho095`), work-conserving retrains of Options 2, 3,
+windowed 3, 4 and 0-pointer (3 seeds; `on_rho095` and `off_tf05`), then 5-seed tuned retrains.
+
+---
+
 ## 2026-10-05 (S2W12) -- v2 tuning (validation-selected): every trial of both algorithms converges onto a fixed dispatching rule; tuning chooses WHICH rule. PPO never finds EDF; A2C's best trial IS EDF+Consolidate
 
 **Config:** random search (`Code/methods/rl/training/tune_v2.py`), Option 1 + Consolidate menu, `on_rho095`,
