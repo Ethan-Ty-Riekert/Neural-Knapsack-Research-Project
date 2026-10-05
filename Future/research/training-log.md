@@ -32,6 +32,42 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- Protocol correction for the v2 roster: 50 test instances, >= 3-5 seeds, tuned PPO, every v1 variant on v2
+
+**Config:** decisions after the user's review of the overnight results (below). The overnight roster
+had four weaknesses that make it not research-defensible as it stands:
+1. **1 seed** for most configurations. I (Claude) recommended "breadth over seeds" and the user
+   accepted, but for RL that is not a defensible protocol.
+2. **15 test instances** per v2 preset (set on objective-redesign, 2026-09-29), against v1's
+   established 50-instance protocol, offline and online.
+3. **Untuned PPO** (SB3 defaults) for every v2 run.
+4. Options 2-4 were **capped at 200k steps** (my mid-run decision, for throughput), not at a
+   principled budget.
+
+**What changes (commit `f9aaf99`):**
+- Every v2 difficulty preset is evaluated on **50 held-out instances** (500000-500049). All heuristics,
+  CP-SAT (`off_c_50`) and every trained model are re-evaluated. The archive builder now ignores runs on
+  the old 15-instance protocol, so the earlier tables are superseded, not mixed in.
+- **Seeds:** Option 1 at high load goes to 5 seeds; every other configuration gets at least 3.
+- **Tuning:** random search (16 PPO trials, 8 A2C trials, 300k steps) on Option 1 + Consolidate at
+  rho 0.95, selected on **validation instances (600000-600019)**, disjoint from training (< 500000) and
+  test (500000-500049). Trials are never evaluated on test. The best configuration is then retrained
+  with 5 seeds (tag suffix `_tuned`).
+- **All v1 model variants on v2,** on one pipeline: Option 0 (full action space; flat MLP and pointer
+  network, the v1 PPO/A2C designs), Options 1 (FirstFit / Consolidate menus, ATC feature, per-tick
+  decisions), 2, 3, windowed 3, 4. Each runs with **PPO and A2C**, where A2C is the special case of PPO
+  (Huang et al. 2022, arXiv:2205.09123) on the identical pipeline, so the comparison isolates the update rule.
+- PPO-Lagrangian / A2C+RCPO are not run under v2. They constrain tardiness while optimising a different
+  reward; under v2 the reward *is* the lateness objective, so that constraint would just repeat it. They
+  become meaningful again with a second objective (e.g. lateness + energy), which is future work.
+
+**Conclusion / next step:** a 123-job queue is running (tuning first, then offline variants, Option 1
+seeds, online fast variants, online pointer-network variants), followed by tuned retrains. Superseded
+numbers in the two entries below stay as recorded (append-only), but the paper should use the
+50-instance archive.
+
+---
+
 ## 2026-10-05 (S2W12) -- First v2 RL roster (23 PPO runs, 9 presets, PSO, random baselines): RL matches the best rule offline, loses badly online; half the high-load Option 1 runs ARE SPT/WSPT
 
 **Config:** overnight 00:20-06:30 on the D: desktop, commits `47215d5`..`e665915`. 4 concurrent runs x
