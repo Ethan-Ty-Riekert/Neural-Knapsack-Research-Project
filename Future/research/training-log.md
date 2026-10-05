@@ -32,6 +32,45 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Uniform v2 RL protocol launched: Optuna tuning + final runs for Options 0-4 x PPO/A2C
+
+**Config (approved by the user 2026-10-06; supersedes the 304-job queue, backed up as
+`rl_training/campaign/queue_superseded_2026-10-06_304jobs.txt`):** one protocol for every design, no exceptions.
+- Designs: Option 0 pointer network (`o0pnm`), Option 1 rule selection with the Consolidate placement menu
+  (`o1cnm`), Option 2 priority pointer (`o2nm`), Option 3 windowed priority pointer, window 20 (`o3wnm`),
+  Option 4 action branching + placement repair (`o4nfm`). Every one: full MDP state (`--markov-obs`,
+  report Methodology) and work-conserving dispatching (`--work-conserving`, Giffler & Thompson 1960
+  non-delay schedules; the deliberate-idling question is listed as future work).
+- Update rules: PPO and A2C (A2C as the PPO special case of Huang et al. 2022) for every design.
+- Tuning: Optuna (akiba2019optuna) TPE sampler (bergstra2011tpe), library defaults, MedianPruner, library
+  defaults. 20 trials x 100k steps per (design, update rule, tuning preset) = 20 studies; tuning presets
+  off_tf05 (offline) and on_rho095 (online). Search space unchanged from tune_v2.SPACE (Andrychowicz et al.
+  2021). Pruning signal: mean J on 5 validation instances every 25k steps; trial score: mean J on all 20
+  validation instances (seeds 600000-600019; never the test seeds 500000-500049). Two workers per study
+  share an Optuna journal; the TPE seed is the worker index, because identically seeded workers proposed
+  identical configurations in the smoke test.
+- Final runs: the best configuration, 300k steps x seeds 0,1,2 on off_tf05, off_tf05_w1 (constant weights;
+  reuses the off_tf05 study's choice) and on_rho095; scored by auto_eval on the 50 test instances.
+  on_rho075 dropped (user decision) to fit the deadline.
+- Code: `Code/methods/rl/training/tune_optuna_v2.py` (new); `train_action_space_variant.main(argv,
+  extra_callbacks, save)` now callable in-process, with `build_parser` / `env_spec_from_args`; `run.py`
+  `build_parser`, `build_rl_eval_env`, `run_rl_model` (one evaluation path shared by test evaluation and
+  the tuner); the queue runner accepts `-m <module>` jobs. Test 10 in `tests/test_v2_variants.py` checks
+  that every option x algorithm x preset reaches the training script with exactly its design flags.
+
+**Stats:** smoke tests (tiny budgets) on Options 0, 1, 2, 3w and 4, PPO and A2C, offline and online: trials,
+pruning, two-worker sharing, finalisation and queueing of final runs all worked; a generated final-run line
+trained and evaluated through run.py. Launched 2026-10-06 ~01:00 (CPU target 90%, max 6 jobs, BELOW_NORMAL,
+torch threads 2, watchdog). Estimate from earlier throughput (offline 100k ~5 min, online 100k 25-80 min
+per job): roughly 2 days, with the online studies as the long pole.
+
+**Observation:** none yet (results go to `Results/v2_objectives/tuning/optuna/<study>/` and evals.txt).
+
+**Conclusion / next step:** when studies finish, update report Appendix E (tuning protocol and budgets),
+rebuild `Results/v2_objectives/ALL_RESULTS/`, and record the results here.
+
+---
+
 ## 2026-10-05 (S2W12) -- Experimental design: offline constant-weight vs weighted comparison, with weight-aware heuristics
 
 **Config (user direction 2026-10-05):** compare RL against the other methods (1) with constant weights and

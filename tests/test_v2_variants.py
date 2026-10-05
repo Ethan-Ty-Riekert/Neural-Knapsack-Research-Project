@@ -8,6 +8,8 @@
   4. --algo a2c resolves to A2C-as-PPO (one epoch, one full batch, RMSprop, no advantage
      normalisation); --algo ppo keeps the exact previous defaults.
 
+  (5-9: see the numbered sections below; 10: the uniform v2 protocol of tune_optuna_v2.)
+
 Run from the repo root: python -m tests.test_v2_variants
 """
 import types
@@ -273,5 +275,32 @@ for online in (False, True):
             with _torch.no_grad():
                 model.policy.predict(o, action_masks=env_o.env.action_masks())  # Monitor -> ActionMasker
 print("  9. Full-state obs: s_j, m_j, y_m exact, no online leak; all designs and networks run on it")
+
+# 10. Uniform v2 protocol (tune_optuna_v2): every option's trial / final run reaches the training script
+#     with the full state, work-conserving mode and its own design flags; final tags parse as campaign tags
+import run as _run  # noqa: E402
+from Code.methods.rl.training import tune_optuna_v2 as tov  # noqa: E402
+from Code.methods.rl.training import train_action_space_variant as tasv  # noqa: E402
+from tools.campaign.common import TAG  # noqa: E402
+
+for opt in tov.OPTIONS:
+    for algo in tov.ALGOS:
+        hp = {k: (v[1] if isinstance(v, tuple) else v[0]) for k, v in tov.SPACE[algo].items()}
+        for preset in tov.FINAL_PRESETS:
+            ns = _run.build_parser().parse_args(["--checkpoint-tag", "x",
+                                                 *tov.run_args(opt, algo, preset, 0, tov.TRIAL_STEPS, hp)])
+            a = tasv.build_parser().parse_args(_run.rl_command(ns.variant, ns.preset, ns.method, ns)[3:])
+            spec = tasv.env_spec_from_args(a)
+            assert a.option == opt and a.algo == algo and a.timesteps == tov.TRIAL_STEPS and a.difficulty == preset
+            assert spec["markov_obs"] and spec["work_conserving"] and a.learning_rate == hp["learning-rate"]
+            assert spec["repair_placement"] == (opt == "4")
+            assert spec["window_size"] == (20 if opt == "3" else None)
+            assert spec["policy_arch"] == ("pointer" if opt == "0" else None)
+            assert spec["placements"] == (["FirstFit", "Consolidate"] if opt == "1" else ["FirstFit"])
+            for line in tov.final_job_lines(opt, algo, preset, hp):
+                m = TAG.match(line.split()[0])
+                assert m and m["opt"] == opt and m["hp"] == "_tuned" and bool(m["algo"]) == (algo == "a2c")
+                assert "m" in m["mods"] and "n" in m["mods"] and m["preset"] in tov.FINAL_PRESETS[preset]
+print(" 10. Uniform protocol: every option x algorithm x preset carries its exact design flags")
 
 print("test_v2_variants: all checks passed")

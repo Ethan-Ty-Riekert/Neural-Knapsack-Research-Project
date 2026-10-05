@@ -439,7 +439,8 @@ def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, win
     return DummyVecEnv(env_fns)
 
 
-def main():
+def build_parser():
+    """The training script's argument parser (also used by the Optuna tuner to parse a trial's argv)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy-arch", choices=["flat", "pointer"], default="flat",
                          help="--option 0 only: flat MLP or pointer network over the full action space.")
@@ -596,7 +597,27 @@ def main():
     parser.add_argument("--resume", action="store_true",
                          help="Continue from the latest checkpoint of this --option/--save-tag, training only "
                               "the remaining timesteps.")
-    args = parser.parse_args()
+    return parser
+
+
+def env_spec_from_args(args):
+    """Everything an evaluator needs to rebuild this model's env (the sidecar spec): one definition
+    shared by main()'s sidecar and the tuner's in-process validation evaluation."""
+    rule_kwargs = rule_kwargs_from_args(args)
+    return dict(
+        placements=list(rule_kwargs["placements"]), decision_epoch=rule_kwargs["decision_epoch"],
+        use_atc_feature=args.use_atc_feature, window_size=args.window_size, window_order=args.window_order,
+        work_conserving=args.work_conserving, repair_placement=args.repair_placement,
+        markov_obs=args.markov_obs, policy_arch=args.policy_arch if args.option == "0" else None,
+    )
+
+
+def main(argv=None, extra_callbacks=None, save=True):
+    """Train one model. argv: the CLI arguments (None = sys.argv). extra_callbacks: SB3 callbacks added
+    to training (the Optuna tuner's pruning callback). save=False: return the trained model without
+    saving it, its sidecar or TensorBoard logs (tuning trials); the training env is closed either way."""
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.online and args.arrival_rate is None and args.difficulty is None:
         parser.error("--online requires --arrival-rate")
@@ -676,7 +697,7 @@ def main():
         policy, env,
         policy_kwargs=policy_kwargs,
         verbose=1,
-        tensorboard_log=str(MODELS_DIR / "tb_action_space"),
+        tensorboard_log=str(MODELS_DIR / "tb_action_space") if save else None,
         ent_coef=args.ent_coef,
         gamma=args.gamma,
         seed=args.seed,
@@ -751,6 +772,7 @@ def main():
     # build_diagnostics_callbacks() returns a list -- extend, don't nest it (nesting crashed every
     # --diagnostics-interval run once checkpointing was added; fixed 2026-10-05).
     callbacks = list(callback) if callback is not None else []
+    callbacks += list(extra_callbacks or [])
     if args.checkpoint_every:
         from stable_baselines3.common.callbacks import CheckpointCallback
         callbacks.append(CheckpointCallback(save_freq=args.checkpoint_every, save_path=str(ckpt_dir),
@@ -768,23 +790,23 @@ def main():
         interrupted = MODELS_DIR / f"action_space_option{args.option}_ppo{tag_suffix}_interrupted.zip"
         model.save(str(interrupted))
         raise SystemExit(f"interrupted at {model.num_timesteps} steps -- saved to {interrupted}")
+    finally:
+        env.close()  # frees the SubprocVecEnv workers (also when a tuning trial is pruned)
     elapsed_min = (time.time() - t0) / 60.0
 
+    if not save:
+        return model
     model.save(str(save_path))
     write_env_spec(args.option, args.save_tag, dict(
-        placements=list(rule_kwargs["placements"]), decision_epoch=rule_kwargs["decision_epoch"],
-        use_atc_feature=args.use_atc_feature,
-        window_size=args.window_size, window_order=args.window_order,
+        **env_spec_from_args(args),
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
         seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
-        work_conserving=args.work_conserving, repair_placement=args.repair_placement,
-        markov_obs=args.markov_obs,
-        policy_arch=args.policy_arch if args.option == "0" else None,
         train_minutes=round(elapsed_min, 1),
     ))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "
           f"saved to {save_path}")
+    return model
 
 
 if __name__ == "__main__":

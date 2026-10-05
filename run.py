@@ -71,34 +71,49 @@ def parse_rl_method(method, args):
     return parts[0], parts[1], (parts[2] if len(parts) == 3 else args.checkpoint_tag)
 
 
-def run_rl_instance(option, tag, config, args, env_kwargs):
-    """v2 RL evaluation: a trained action-space-variant checkpoint (Option 1-4) run deterministically
-    on one preset instance under the variant's env (same J/metrics as every other method). The
-    wrapper settings (placements, ATC feature, window) come from the checkpoint's sidecar spec."""
+def build_rl_eval_env(option, spec, config, env_kwargs):
+    """The v2 evaluation env for one preset instance, rebuilt from a checkpoint's sidecar spec
+    (train_action_space_variant.env_spec_from_args): placements, ATC feature, window, work-conserving
+    mode, placement repair and the full-state observation all match training."""
     from Code.methods.rl.evaluation.eval_rl_agent import make_env
-    from Code.methods.rl.evaluation.eval_action_space_variant import build_eval_env, load_model, run_episode
-    from Code.methods.rl.training.train_action_space_variant import read_env_spec
+    from Code.methods.rl.evaluation.eval_action_space_variant import build_eval_env
     from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import DEFAULT_PLACEMENTS
-    spec = read_env_spec(option, tag)
     gym_env = make_env(config, env_kwargs).env  # strip eval_rl_agent's full-action-space masker
     gym_env.restrict_idle = bool(spec.get("work_conserving"))  # non-delay models evaluate non-delay
     gym_env.repair_placement = bool(spec.get("repair_placement"))  # Option 4 placement repair
     if spec.get("markov_obs"):
         gym_env.set_markov_obs()  # full MDP state (report Methodology), Code/core/obs_layout.py
-    env = build_eval_env(option, gym_env, window_size=spec.get("window_size"),
-                         window_order=spec.get("window_order") or "edf",
-                         use_atc_feature=bool(spec.get("use_atc_feature")),
-                         rule_kwargs=dict(placements=tuple(spec.get("placements") or DEFAULT_PLACEMENTS),
-                                          decision_epoch=spec.get("decision_epoch") or "placement"))
+    return build_eval_env(option, gym_env, window_size=spec.get("window_size"),
+                          window_order=spec.get("window_order") or "edf",
+                          use_atc_feature=bool(spec.get("use_atc_feature")),
+                          rule_kwargs=dict(placements=tuple(spec.get("placements") or DEFAULT_PLACEMENTS),
+                                           decision_epoch=spec.get("decision_epoch") or "placement"))
+
+
+def run_rl_model(model, option, spec, config, env_kwargs):
+    """One deterministic episode of an already-built model on one preset instance (the shared v2 RL
+    evaluation path: test-set evaluation below, and the Optuna tuner's validation scores)."""
+    from Code.methods.rl.evaluation.eval_action_space_variant import run_episode
+    from Code.core.metrics import schedule_metrics
+    env = build_rl_eval_env(option, spec, config, env_kwargs)
+    result = run_episode(model, env)
+    return {"total_reward": result["total_reward"], "metrics": schedule_metrics(_base_env(env)),
+            "truncated": result["truncated"]}
+
+
+def run_rl_instance(option, tag, config, args, env_kwargs):
+    """v2 RL evaluation: a trained action-space-variant checkpoint (Option 0-4) run deterministically
+    on one preset instance under the variant's env (same J/metrics as every other method). The
+    wrapper settings (placements, ATC feature, window) come from the checkpoint's sidecar spec."""
+    from Code.methods.rl.evaluation.eval_action_space_variant import load_model
+    from Code.methods.rl.training.train_action_space_variant import read_env_spec
+    spec = read_env_spec(option, tag)
     key = (option, tag)
     if key not in _RL_MODELS:
+        env = build_rl_eval_env(option, spec, config, env_kwargs)
         _RL_MODELS[key] = load_model(option, env, checkpoint_tag=tag, window_size=spec.get("window_size"),
                                      policy_arch=spec.get("policy_arch"))
-    result = run_episode(_RL_MODELS[key], env)
-    base = _base_env(env)
-    from Code.core.metrics import schedule_metrics
-    return {"total_reward": result["total_reward"], "metrics": schedule_metrics(base),
-            "truncated": result["truncated"]}
+    return run_rl_model(_RL_MODELS[key], option, spec, config, env_kwargs)
 
 
 def run_one_instance(method, config, args, env_kwargs=None):
@@ -380,7 +395,8 @@ def interactive(args):
     return dispatch(variant_name, preset_name, method, args)
 
 
-def main():
+def build_parser():
+    """run.py's argument parser (also used by the v2 Optuna tuner to build the exact rl-train command)."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--experiment", type=Path, help="YAML file with any of the keys below")
@@ -422,7 +438,11 @@ def main():
                          "script, e.g. --train-args --learning-rate 1e-4 --n-epochs 5")
     ap.add_argument("--diagnostics-interval", type=int, default=None, help="rl-train: action-distribution diagnostics every N steps")
     ap.add_argument("--no-save", action="store_true")
-    args = ap.parse_args()
+    return ap
+
+
+def main():
+    args = build_parser().parse_args()
     _start_commit()  # record provenance before anything runs
 
     if args.experiment:

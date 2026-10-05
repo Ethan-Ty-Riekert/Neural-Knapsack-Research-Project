@@ -1,6 +1,6 @@
 """Load-aware queue runner for long training campaigns (tools/campaign/README.md).
 
-Starts the next job from rl_training/campaign/queue.txt when (a) fewer than max_jobs are running and
+Starts the next job (run.py, or "-m <module>" job scripts) from rl_training/campaign/queue.txt when (a) fewer than max_jobs are running and
 (b) the 60 s average CPU plus the job's estimated cost stays at or below target_cpu. All settings are
 re-read from runner_settings.json every loop. Jobs and their env workers run at BELOW_NORMAL priority.
 Jobs started by an earlier runner (START without a later DONE in status.txt) are adopted: waited for,
@@ -47,6 +47,15 @@ def pop_job():
     return jobs[0]
 
 
+def job_command(tag, args):
+    """A queue line's command: "<tag> <run.py args>", or "<tag> -m <module> <args>" for other job
+    scripts (e.g. the v2 Optuna tuner's workers). The tag always reaches the job as --checkpoint-tag."""
+    a = args.split()
+    if a[0] == "-m":
+        return ["-m", a[1], "--checkpoint-tag", tag, *a[2:]]
+    return ["run.py", "--checkpoint-tag", tag, *a]  # --train-args stays last
+
+
 def adopt_running():
     """{tag: psutil.Process} for jobs whose latest status event is START and that are still alive."""
     last = {}
@@ -57,7 +66,7 @@ def adopt_running():
     for p in psutil.process_iter(["cmdline"]):
         cl = " ".join(p.info["cmdline"] or []) + " "
         for t in started:
-            if "run.py" in cl and f"--checkpoint-tag {t} " in cl:
+            if f"--checkpoint-tag {t} " in cl:
                 alive[t] = p
     return alive
 
@@ -81,7 +90,7 @@ def main():
         for tag, p in list(adopted.items()):
             if not p.is_running() or p.status() == psutil.STATUS_ZOMBIE:
                 text = job_log_text(tag)
-                ok = "saved to" in text or "saved ->" in text  # training / run.py success markers
+                ok = any(m in text for m in ("saved to", "saved ->", "finalises the study", "enqueued"))  # success markers
                 status(f"DONE  {tag} rc={0 if ok else 1} (adopted job; rc inferred from its log)")
                 del adopted[tag]
         cfg = settings()
@@ -97,7 +106,7 @@ def main():
                 t = cfg["torch_threads"]
                 env.update(OMP_NUM_THREADS=t, MKL_NUM_THREADS=t, OPENBLAS_NUM_THREADS=t)
                 fh = open(LOGS / f"{tag}.log", "w", encoding="utf-8")
-                cmd = [sys.executable, "run.py", "--checkpoint-tag", tag, *args.split()]  # --train-args stays last
+                cmd = [sys.executable, *job_command(tag, args)]
                 proc = subprocess.Popen(cmd, cwd=REPO, env=env, stdout=fh, stderr=subprocess.STDOUT,
                                         creationflags=subprocess.BELOW_NORMAL_PRIORITY_CLASS)
                 running[tag] = (proc, time.time(), fh)

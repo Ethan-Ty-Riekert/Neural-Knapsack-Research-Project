@@ -17,11 +17,11 @@ PAUSE_ABOVE, RESUME_BELOW, WINDOW = 95.0, 80.0, 18  # 18 x 10 s = 3 min
 
 
 def training_jobs():
-    """run.py training processes (roots of each job tree), newest first."""
+    """Training processes (run.py rl-train jobs and Optuna tuner workers; roots of each job tree), newest first."""
     jobs = []
     for p in psutil.process_iter(["cmdline", "create_time"]):
         cl = " ".join(p.info["cmdline"] or [])
-        if "run.py" in cl and "--checkpoint-tag" in cl and "rl-train" in cl:
+        if "--checkpoint-tag" in cl and ("rl-train" in cl or "tune_optuna_v2" in cl):
             jobs.append((p.info["create_time"], cl.split("--checkpoint-tag ")[1].split()[0], p))
     return sorted(jobs, key=lambda x: x[0], reverse=True)
 

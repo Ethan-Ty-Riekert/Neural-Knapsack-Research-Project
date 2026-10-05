@@ -20,7 +20,11 @@ python cpu_watchdog.py
 ```
 
 Queue lines are `<tag> <run.py args>`, with `--train-args ...` (verbatim training-script flags) always
-last. Tags follow `v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>`. Modifiers: `c` Consolidate
+last, or `<tag> -m <module> <args>` for other job scripts. The v2 Optuna tuner uses the second form:
+`python -m Code.methods.rl.training.tune_optuna_v2 jobs --enqueue-to rl_training/campaign/queue.txt`
+prints its worker jobs, and the last worker of each study prepends that study's final `_tuned` runs to
+the queue. The tag reaches every job as `--checkpoint-tag`, which is how the runner and the watchdog
+find jobs. Tuning workers (`tune_...`) are not evaluated on test. Tags follow `v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>`. Modifiers: `c` Consolidate
 menu, `a` ATC feature, `p` pointer network (Option 0), `w` windowed, `t` per-tick, `n` work-conserving,
 `f` placement repair, `m` full-MDP (Markov) observation. The paper's tables (`Results/v2_objectives/
 ALL_RESULTS/`) include only `m` runs.
