@@ -1,0 +1,18 @@
+{
+ "best_tag": "v2_on_rho095_o4n_hp9_s0",
+ "validation_J": 2295891.9,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "hyperparameters": {
+  "learning-rate": 0.0006806144148517329,
+  "rollout-size": 4096,
+  "batch-size": 64,
+  "n-epochs": 10,
+  "gamma": 0.995,
+  "gae-lambda": 0.9,
+  "clip-range": 0.1,
+  "ent-coef": 0.011549429063523587
+ }
+}

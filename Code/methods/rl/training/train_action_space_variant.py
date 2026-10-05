@@ -380,8 +380,10 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     SubprocVecEnv (see make_worker_env())."""
     kwargs = dict(base_env_kwargs)
     work_conserving = kwargs.pop("work_conserving", False)
+    repair_placement = kwargs.pop("repair_placement", False)
     env = make_online_base_gym_env(seed=seed, **kwargs) if online else make_base_gym_env(seed=seed, **kwargs)
     env.restrict_idle = work_conserving  # non-delay mode, see GymSchedulingEnv.idle_allowed()
+    env.repair_placement = repair_placement  # Option 4 only, see ActionBranchingGymSchedulingEnv.step()
     return env
 
 
@@ -535,6 +537,9 @@ def main():
                          help="2026-10-05: MaskablePPO seed (torch/numpy/env-action sampling). Default None keeps "
                               "the previous unseeded behaviour. Instance generation is unaffected, matching the "
                               "project convention that --seed varies only algorithmic randomness.")
+    parser.add_argument("--repair-placement", action="store_true",
+                         help="2026-10-05, --option 4 only: if the chosen machine does not fit but another "
+                              "does, place the job by FirstFit instead of idling (see the wrapper's step()).")
     parser.add_argument("--work-conserving", action="store_true",
                          help="2026-10-05: non-delay action space -- idle is masked whenever a job can be "
                               "placed (as every heuristic does). Fixes the online failure where priority "
@@ -612,7 +617,7 @@ def main():
         reward_mode=args.reward_mode, use_potential_shaping=args.use_potential_shaping,
         shaping_gamma=args.gamma, job_weight_range=job_weight_range,
         objective=objective, difficulty=difficulty, extend_horizon=extend,
-        work_conserving=args.work_conserving,
+        work_conserving=args.work_conserving, repair_placement=args.repair_placement,
     )
     if args.online:
         base_env_kwargs.update(arrival_rate=args.arrival_rate, horizon=args.online_horizon,
@@ -688,6 +693,7 @@ def main():
                                                   reward_mode=args.reward_mode, objective=objective,
                                                   difficulty=difficulty, extend_horizon=extend)
             held_out_full.restrict_idle = args.work_conserving
+            held_out_full.repair_placement = args.repair_placement
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,
@@ -759,7 +765,7 @@ def main():
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
         seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
-        work_conserving=args.work_conserving,
+        work_conserving=args.work_conserving, repair_placement=args.repair_placement,
         policy_arch=args.policy_arch if args.option == "0" else None,
         train_minutes=round(elapsed_min, 1),
     ))

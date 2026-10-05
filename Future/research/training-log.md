@@ -32,6 +32,42 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- Option 3/4 tuning (work-conserving, validation): Option 3 learns its own ordering and beats random rule choice; Option 4's "disguised idle" diagnosed and fixed with opt-in placement repair
+
+**Config:** `tune_v2.py`, 10 PPO trials each, Options 3 and 4 with `--work-conserving`, `on_rho095`, 100k steps
+(short trials because these designs are slow: Option 4 took ~73 min per trial), seed 0; ranked on the 20
+validation instances. Results: `Results/v2_objectives/tuning/on_rho095_o{3n,4n}/`.
+
+**Stats (validation J):**
+```
+reference: EDF+Consolidate 30,857 | ATC+Consolidate 44,416 | RandomRule+FF/Cons 72,557 | SPT+FirstFit 189,648
+Option 3 (non-delay): best 62,827 (hp5) | 82,027 | 87,268 | ... | 203,710   -- no trial equals any heuristic's J
+Option 4 (non-delay): best 2,295,892 (hp9) ... two trials ~1.0e9-1.2e9
+Option 4 diagnostic (hp9, 2 test instances): 14% of steps pick a (job, machine) that does not fit; in 100%
+  of those the job fit another machine; the wrapper's fallback idled -> episodes end at t ~175-186 (vs ~125)
+same Option 4 model with placement repair at evaluation: J 565,052 / 436,488 (vs ~2.3M), end t ~135-149
+```
+
+**Observation:**
+- **Option 3 does its own thing:** unlike rule selection, no trial reproduces a heuristic. The best
+  (after only 100k steps) beats random rule selection (62.8k vs 72.6k) but not the best rules.
+- **Option 4's online failure was a second disguised idle:** the machine branch cannot condition on the
+  sampled job (parallel branches; documented limitation), so ~14% of decisions pair a job with a machine
+  it does not fit. The wrapper turned each of those into an idle tick, which the work-conserving mask cannot
+  block.
+
+**Change (commit pending this entry):** opt-in `--repair-placement` (tag modifier `f`). On such a
+mismatch, place the chosen job by FirstFit (the placement Options 2/3 use) instead of idling. The machine
+branch still decides placement whenever its choice fits (~86-90%), and mismatches remain flagged in
+`info["mask_mismatch"]`. Default unchanged. `tests/test_v2_variants.py` check 7. The principled fix, a
+machine choice conditioned on the sampled job (autoregressive branching), needs a new policy architecture
+and is future work.
+
+**Queued (front, interleaved):** tuned Option 3 (non-delay; 5 seeds x on_rho095/110/075 + off_tf05, 300k)
+and tuned Option 4 (non-delay + repair; 5 seeds on_rho095, 3 seeds off_tf05, 300k).
+
+---
+
 ## 2026-10-05 (S2W12) -- Online priority-design failure diagnosed (voluntary idling) and fixed with a work-conserving action mode; campaign rebalanced toward the designs that learn their own policy
 
 **Config:** diagnostic on the trained `v2_on_rho095_o3_s0` (Option 3, 200k steps), 3 test instances,

@@ -59,6 +59,8 @@ rule_selection_gym_wrapper.py do.
 import gymnasium as gym
 import numpy as np
 
+from Code.methods.heuristics.placement_rules import first_fit
+
 
 class ActionBranchingGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -139,8 +141,19 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
                 # auto-repaired. Idle-fallback, not first_fit: auto-repair
                 # would defeat the point of testing whether the machine branch
                 # can learn anything.
+                #
+                # Placement repair (opt-in, 2026-10-05, set on the base gym env like restrict_idle):
+                # diagnosis on on_rho095 found ~14% of steps were such mismatches and EVERY one had a
+                # feasible machine, so this idle-fallback was a disguised idle (episodes ~180 ticks
+                # vs ~125). With repair on, the chosen job is placed by FirstFit instead; the machine
+                # branch still decides placement whenever its choice fits. Default off (unchanged).
                 mask_mismatch = True
-                _, reward, done = self.env.step_idle()
+                feasible = np.flatnonzero(self._full.feasibility_matrix()[job]).tolist()
+                if getattr(self._full, "repair_placement", False) and feasible:
+                    _, reward, done = self.env.step((job, first_fit(self.env, job, feasible, t)))
+                    self._invalid_action_count = 0
+                else:
+                    _, reward, done = self.env.step_idle()
 
         obs = self._get_obs()
         info = {

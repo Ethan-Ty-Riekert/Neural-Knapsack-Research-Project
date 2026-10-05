@@ -173,4 +173,36 @@ for online in (False, True):
                     break
 print("  6. work-conserving mode masks idle exactly when a job is placeable (all wrappers); default unchanged")
 
+# 7. Option 4 placement repair: a mismatched (job, machine) places the job by FirstFit; off = idle fallback
+from Code.methods.heuristics.placement_rules import first_fit  # noqa: E402
+for repair in (False, True):
+    full = make_online_base_gym_env(9, 30, 400, "lognormal", seed=4, use_resampler=False)
+    full.repair_placement = repair
+    w = ActionBranchingGymSchedulingEnv(full)
+    w.reset()
+    found = False
+    for _ in range(200):
+        F = w._full.feasibility_matrix()
+        # find a remaining job that fits somewhere but NOT on some machine m
+        cand = [(j, m) for j in w.env.remaining_jobs for m in range(w.num_machines) if F[j].any() and not F[j, m]]
+        if cand:
+            j, m = cand[0]
+            t0, expect_m = w.env.time, first_fit(w.env, j, np.flatnonzero(F[j]).tolist(), w.env.time)
+            _, _, _, _, info = w.step(np.array([j, m]))
+            assert info["mask_mismatch"]
+            if repair:
+                assert j not in w.env.remaining_jobs and w.env.time == t0, "repair must place the job, not idle"
+                assert np.asarray(w.env.start_times)[j] == t0
+            else:
+                assert j in w.env.remaining_jobs and w.env.time == t0 + 1, "default must keep the idle fallback"
+            found = True
+            break
+        fits = np.argwhere(F)
+        if len(fits):  # load the machines (place a job on its first fitting machine) until one is full
+            w.step(np.array([int(fits[0][0]), int(fits[0][1])]))
+        else:
+            w.step(np.array([w.max_jobs, 0]))  # nothing fits: idle so time and arrivals advance
+    assert found, "test setup: no mismatch case found"
+print("  7. Option 4 placement repair places a mismatched job by FirstFit; default keeps the idle fallback")
+
 print("test_v2_variants: all checks passed")
