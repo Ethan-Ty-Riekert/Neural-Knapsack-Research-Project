@@ -56,6 +56,15 @@ produces non-delay schedules, so this also equalises the comparison. Caveat to r
 objectives an optimal schedule is guaranteed among *active* schedules, not necessarily non-delay ones,
 so the restriction can in principle exclude the optimum.
 
+**Limitation to report (user, 2026-10-05):** the non-delay restriction removes the one behaviour a learned
+online policy could have over every dispatching rule: deliberately leaving capacity free for a
+high-weight job it expects to arrive. Keeping voluntary idle available was an explicit design goal, but in
+training the free-idle policies degenerated into idling indefinitely after arrivals stopped. The paper frames
+capacity reservation as an open challenge, with the free-idle runs (still in the queue, default Options
+2/3/4) as the evidence of the failure. Untested middle ground for future work: allow voluntary idle only
+while arrivals are still pending (reservation stays possible; the observed failure occurred after the last
+arrival, when reserving capacity cannot help any future job).
+
 **Campaign rebalance (user decision 2026-10-05):** 72% of the queued runs were rule selection (Option 1),
 the one design that cannot produce schedules outside the rules, and it was the only design tuned. Nothing
 is dropped. Added at the front of the queue: validation tuning of Options 3 and 4 in work-conserving mode
