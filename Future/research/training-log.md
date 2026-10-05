@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- FIRST RL WIN OVER THE BEST HEURISTIC: offline off_tf05, Option 2 and windowed Option 3 beat LST on all 5 seeds (~18-20% lower J)
+
+**Config:** v2 objective (sum w_j T_j^2, extended horizon), preset `off_tf05` (offline, 100 jobs, 10
+machines, tardiness factor 0.5), 50 held-out test instances. PPO with default hyperparameters, 300k steps,
+4 envs, seeds 0-4. Option 2 (learned priority score), Option 3 windowed (ATC-prior score, window 20), Option 3
+work-conserving. Best of 33 heuristics on the same instances: LST+FirstFit.
+
+**Stats (J, mean over 50 test instances, per seed):**
+```
+LST+FirstFit (best rule)       39,536
+Option 2           31,804 / 31,162 / 33,801 / 32,894 / 29,494   mean 31,831 +/- 1,652   -19.5%   5/5 seeds beat LST
+Option 3 windowed  32,292 / 34,108 / 32,172 / 32,270 / 32,702   mean 32,709 +/-   808   -17.3%   5/5
+Option 3 non-delay 34,455 / 30,701 / 33,458 / 43,321 / 30,877   mean 34,562 +/- 5,158   -12.6%   4/5
+one-sample t vs LST across seeds (df 4): Option 2 t~10.4, Option 3w t~18.9 (both p<0.001); Option 3n t~2.2 (p~0.1)
+seed-0 trade-off: Option 2 weighted tardiness 1,611 vs LST 2,364, but max tardiness 38 vs 24
+```
+
+**Observation:** the designs that learn their own job ordering beat every dispatching rule on this offline
+regime, robustly across seeds. They do not copy a rule: they accept a worse worst case for much less total
+weighted lateness, the trade squared lateness rewards. Rule selection (Option 1) on the same preset
+matches LST (+3%), as expected from its collapse behaviour.
+
+**Conclusion / next step:** headline candidate for the paper. Still to do: paired per-instance comparison
+(RL vs LST on the same 50 instances), a CP-SAT bound on `off_tf05` to show how far from optimal both are,
+and checking whether the win extends to `off_tf08` / `off_tf02` (Option 2/3 runs there are queued).
+
+---
+
 ## 2026-10-05 (S2W12) -- Option 3/4 tuning (work-conserving, validation): Option 3 learns its own ordering and beats random rule choice; Option 4's "disguised idle" diagnosed and fixed with opt-in placement repair
 
 **Config:** `tune_v2.py`, 10 PPO trials each, Options 3 and 4 with `--work-conserving`, `on_rho095`, 100k steps
