@@ -12,12 +12,12 @@ scores (job, machine) pairs jointly rather than picking a job first.
 """
 import numpy as np
 
-from Code.methods.heuristics.priority_rules import PRIORITY_RULES, atc_key, _atc_mean_p
+from Code.methods.heuristics.priority_rules import PRIORITY_RULES, ALL_PRIORITY_RULES, atc_key, _atc_mean_p
 from Code.methods.heuristics.placement_rules import PLACEMENT_RULES, tetris_score
 
 
 def _make_priority_placement(priority_name, placement_name):
-    priority_key = PRIORITY_RULES[priority_name]
+    priority_key = ALL_PRIORITY_RULES[priority_name]
     placement_rule = PLACEMENT_RULES[placement_name]
     # PERF (2026-09-21, S2W9, from Future/research/2026-09-20-optimisation-
     # and-efficiency-critique.md Section 1.5): ATC's priority_key recomputes
@@ -63,7 +63,7 @@ def _random(base_env, job_actions, decode):
 
 HEURISTICS = {"Random": _random, "Tetris": _tetris}
 
-for _priority_name in PRIORITY_RULES:
+for _priority_name in ALL_PRIORITY_RULES:  # includes the weight-aware WMDD / COVERT (2026-10-05)
     for _placement_name in PLACEMENT_RULES:
         HEURISTICS[f"{_priority_name}+{_placement_name}"] = _make_priority_placement(_priority_name, _placement_name)
 

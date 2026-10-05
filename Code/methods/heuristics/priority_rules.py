@@ -181,6 +181,42 @@ def atc_key(base_env, job, k: float = 2.0, mean_p: float = None):
     return -atc_priority(base_env, job, k, mean_p)
 
 
+def wmdd_key(base_env, job):
+    """Weighted Modified Due Date (Kanet & Li 2004, "A weighted modified due date rule for sequencing
+    to minimize weighted tardiness", Journal of Scheduling 7(4)):
+        WMDD_j(t) = max(p_j, d_j - t) / w_j        (smallest first)
+    The modified due date max(p_j, d_j - t) is the time-to-deadline floored at the job's own
+    length; dividing by w_j moves important jobs forward. Designed for LINEAR weighted tardiness;
+    applied here unchanged to the squared objective (flagged, not re-derived). Added 2026-10-05 as a
+    weight-aware counterpart of EDF/LST for the weighted-vs-unweighted comparison."""
+    p = base_env.job_durations[job]
+    return max(p, base_env.job_deadlines[job] - base_env.time) / max(base_env.job_weights[job], 1e-8)
+
+
+def covert_key(base_env, job, k: float = 2.0):
+    """COVERT, "cost over time" (Carroll 1965, MIT PhD thesis; compared with ATC in Vepsalainen &
+    Morton 1987, Management Science 33(8)):
+        priority_j(t) = (w_j / p_j) * max(0, 1 - max(0, slack_j) / (k * p_j)),  slack_j = d_j - p_j - t
+    i.e. WSPT scaled by how close the job is to being late (0 while slack >= k * p_j, full w_j/p_j once
+    slack <= 0). The original scales by k times a lead-time estimate; with no queueing estimate in this
+    environment, p_j is used and k = 2 matches ATC's default here -- both unverified simplifications,
+    flagged. Ties (many jobs at priority 0 when slack is ample) are broken by earliest deadline. Designed
+    for linear weighted tardiness. Added 2026-10-05 for the weighted-vs-unweighted comparison."""
+    p = max(base_env.job_durations[job], 1e-8)
+    slack = base_env.job_deadlines[job] - base_env.job_durations[job] - base_env.time
+    priority = (base_env.job_weights[job] / p) * max(0.0, 1.0 - max(0.0, slack) / (k * p))
+    return (-priority, base_env.job_deadlines[job])
+
+
+# Option 1's rule menu (rule_selection_gym_wrapper.py) and the random rule-selection baselines draw from
+# PRIORITY_RULES only, so their action spaces and existing checkpoints stay unchanged. The heuristic
+# registry composes every rule (both dicts) with every placement rule.
+WEIGHTED_PRIORITY_RULES = {
+    "WMDD": wmdd_key,
+    "COVERT": covert_key,
+}
+
+
 PRIORITY_RULES = {
     "EDF": edf_key,
     "SPT": spt_key,
@@ -190,3 +226,5 @@ PRIORITY_RULES = {
     "WSPT": wspt_key,
     "ATC": atc_key,
 }
+
+ALL_PRIORITY_RULES = {**PRIORITY_RULES, **WEIGHTED_PRIORITY_RULES}

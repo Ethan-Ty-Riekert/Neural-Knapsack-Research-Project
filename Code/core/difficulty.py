@@ -117,6 +117,11 @@ DIFFICULTIES = {
     "off_tf02": Difficulty("offline", tf=0.2, desc="offline, loose deadlines (TF 0.2, RDD 0.6)"),
     "off_tf05": Difficulty("offline", tf=0.5, desc="offline, medium deadlines (TF 0.5, RDD 0.6)"),
     "off_tf08": Difficulty("offline", tf=0.8, desc="offline, tight deadlines (TF 0.8, RDD 0.6)"),
+    # Constant-weight counterparts (2026-10-05): identical jobs, durations, resources and deadlines
+    # (weights are drawn last from the generator stream), w_j = 1 -- isolates the effect of weights.
+    "off_tf02_w1": Difficulty("offline", tf=0.2, weights=None, desc="offline, loose deadlines, unweighted"),
+    "off_tf05_w1": Difficulty("offline", tf=0.5, weights=None, desc="offline, medium deadlines, unweighted"),
+    "off_tf08_w1": Difficulty("offline", tf=0.8, weights=None, desc="offline, tight deadlines, unweighted"),
     # online: load sweep (heavy-tailed sizes, weights 1..5, slack 10-60)
     "on_rho050": Difficulty("online", rho=0.50, desc="online, light load (rho 0.50)"),
     "on_rho075": Difficulty("online", rho=0.75, desc="online, moderate load (rho 0.75)"),

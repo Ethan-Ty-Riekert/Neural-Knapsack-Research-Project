@@ -205,4 +205,23 @@ for repair in (False, True):
     assert found, "test setup: no mismatch case found"
 print("  7. Option 4 placement repair places a mismatched job by FirstFit; default keeps the idle fallback")
 
+# 8. weight-aware rules (hand-computed), Option 1 menu unchanged, unweighted presets = same jobs with w=1
+import dataclasses  # noqa: E402
+from Code.methods.heuristics.priority_rules import wmdd_key, covert_key, PRIORITY_RULES  # noqa: E402
+from Code.core.difficulty import DIFFICULTIES, generate  # noqa: E402
+env_k = types.SimpleNamespace(job_durations=np.array([4, 2, 3]), job_deadlines=np.array([10, 5, 30]),
+                              job_weights=np.array([2.0, 1.0, 5.0]), time=3)
+# WMDD = max(p, d - t) / w:  job0 max(4,7)/2 = 3.5 ; job1 max(2,2)/1 = 2 ; job2 max(3,27)/5 = 5.4
+assert [wmdd_key(env_k, j) for j in range(3)] == [3.5, 2.0, 5.4]
+# COVERT priority = (w/p) * max(0, 1 - max(0, slack)/(2p)), slack = d - p - t:
+#   job0 slack 3 -> (2/4)*(1 - 3/8) = 0.3125 ; job1 slack 0 -> (1/2)*1 = 0.5 ; job2 slack 24 -> 0
+assert [covert_key(env_k, j)[0] for j in range(3)] == [-0.3125, -0.5, -0.0]
+assert list(PRIORITY_RULES) == ["EDF", "SPT", "LST", "FCFS", "LPT", "WSPT", "ATC"], "Option 1 menu must not change"
+for s in range(500000, 500005):
+    a, b = generate(DIFFICULTIES["off_tf05"], s), generate(DIFFICULTIES["off_tf05_w1"], s)
+    for key in ("job_durations", "job_resources", "job_deadlines"):
+        assert np.array_equal(np.asarray(a[key]), np.asarray(b[key])), key
+    assert np.all(np.asarray(b["job_weights"]) == 1) and len(np.unique(a["job_weights"])) > 1
+print("  8. WMDD/COVERT match hand-computed values; Option 1 menu unchanged; *_w1 presets = same jobs, w=1")
+
 print("test_v2_variants: all checks passed")

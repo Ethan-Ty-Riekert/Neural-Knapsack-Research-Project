@@ -32,6 +32,35 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- Experimental design: offline constant-weight vs weighted comparison, with weight-aware heuristics
+
+**Config (user direction 2026-10-05):** compare RL against the other methods (1) with constant weights and
+(2) with weights, where most dispatching rules ignore weights, and give the heuristics a fair weighted
+version.
+
+- **Matched presets** `off_tf02_w1` / `off_tf05_w1` / `off_tf08_w1`: identical jobs, durations, resources
+  and deadlines to `off_tf02/05/08` (the generator draws weights last; verified equal on 20 seeds and in
+  `tests/test_v2_variants.py` check 8), with w_j = 1. The only difference between a pair is the weights.
+- **Weight-awareness of the methods:** of the 7 base rules only WSPT and ATC use w_j; EDF, LST, SPT, FCFS and
+  LPT ignore it. Added two standard weighted-tardiness dispatching rules to the heuristic pool (not to
+  Option 1's menu, which stays unchanged): **WMDD** (Kanet & Li 2004), max(p_j, d_j - t)/w_j, and **COVERT**
+  (Carroll 1965; Vepsalainen & Morton 1987), (w_j/p_j) * max(0, 1 - slack_j^+/(k p_j)), k = 2, ties by
+  EDF. Each is composed with all 4 placement rules. Both were designed for LINEAR weighted tardiness, a
+  caveat under our squared objective. PSO and CP-SAT optimise the weighted objective directly (no change);
+  RL sees w_j in its observation and reward.
+- **Runs (queued near the front):** 41-heuristic sweeps on all 7 offline presets (weighted and unweighted);
+  CP-SAT (60 s) on `off_tf05_w1`, `off_tf08_w1`, `off_tf08` (plus `off_tf05` already queued); PSO on
+  `off_tf05` and `off_tf05_w1`; RL with 5 seeds on `off_tf05_w1` (Options 1, 2, 3 windowed, 3 non-delay, 4)
+  and `off_tf08_w1` (Options 2, 3 windowed), with the weighted `off_tf05` side topped up to 5 seeds for
+  Options 1 and 4.
+
+**What the comparison will show:** if RL's offline margin over the best rule shrinks with constant weights,
+much of its advantage comes from using weights that most rules ignore. If the margin persists, RL is
+also a better orderer in general. The weight-aware heuristics (WMDD, COVERT, ATC, WSPT) are the fair
+weighted baselines.
+
+---
+
 ## 2026-10-05 (S2W12) -- CORRECTION: v2 job weights are Uniform{1..5}, not "1-6"
 
 **Observation:** every v2 difficulty preset uses `weights=(1, 6)` (`Code/core/difficulty.py`), drawn by

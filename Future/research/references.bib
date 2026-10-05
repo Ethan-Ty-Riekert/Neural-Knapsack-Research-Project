@@ -1360,3 +1360,72 @@ keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Spar
              latency, task completion time and QoS -- the basis for Code/core/metrics.py's metric groups.
              Details verified via Springer/ACM listing; full text not read. Author first names abbreviated.}
 }
+
+@misc{huang2022a2cppo,
+  author        = {Huang, Shengyi and Kanervisto, Anssi and Raffin, Antonin and Wang, Weixun and Onta{\~n}{\'o}n, Santiago and Dossa, Rousslan Fernand Julien},
+  title         = {{A2C} is a Special Case of {PPO}},
+  year          = {2022},
+  eprint        = {2205.09123},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  note          = {Justifies running A2C as PPO with one epoch over one full batch on the same pipeline. Author order recalled, not re-verified against the arXiv page.}
+}
+
+@article{raffin2021sb3,
+  author  = {Raffin, Antonin and Hill, Ashley and Gleave, Adam and Kanervisto, Anssi and Ernestus, Maximilian and Dormann, Noah},
+  title   = {{Stable-Baselines3}: Reliable Reinforcement Learning Implementations},
+  journal = {Journal of Machine Learning Research},
+  year    = {2021},
+  volume  = {22},
+  number  = {268},
+  pages   = {1--8},
+  note    = {RL library used for PPO/A2C (with sb3-contrib MaskablePPO for action masking).}
+}
+
+@article{kanet2004wmdd,
+  author  = {Kanet, John J. and Li, Xiaoming},
+  title   = {A Weighted Modified Due Date Rule for Sequencing to Minimize Weighted Tardiness},
+  journal = {Journal of Scheduling},
+  volume  = {7},
+  number  = {4},
+  pages   = {261--276},
+  year    = {2004},
+  note    = {Added 2026-10-05 for the WMDD dispatching rule (Code/methods/heuristics/priority_rules.py). Details from memory; verify volume/pages before citing.}
+}
+
+@phdthesis{carroll1965covert,
+  author  = {Carroll, Donald C.},
+  title   = {Heuristic Sequencing of Single and Multiple Component Jobs},
+  school  = {Sloan School of Management, Massachusetts Institute of Technology},
+  year    = {1965},
+  note    = {Origin of the COVERT (cost over time) dispatching rule. Added 2026-10-05; title/school from memory, verify before citing.}
+}
+
+@inproceedings{andrychowicz2021onpolicy,
+  author    = {Andrychowicz, Marcin and Raichuk, Anton and Sta{\'n}czyk, Piotr and Orsini, Manu and Girgin, Sertan and Marinier, Rapha{\"e}l and Hussenot, L{\'e}onard and Geist, Matthieu and Pietquin, Olivier and Michalski, Marcin and Gelly, Sylvain and Bachem, Olivier},
+  title     = {What Matters for On-Policy Deep Actor-Critic Methods? A Large-Scale Study},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2021},
+  note      = {Basis for the v2 PPO search space (Code/methods/rl/training/tune_v2.py). Author list from memory; verify before citing.}
+}
+
+@article{bergstra2012randomsearch,
+  author  = {Bergstra, James and Bengio, Yoshua},
+  title   = {Random Search for Hyper-Parameter Optimization},
+  journal = {Journal of Machine Learning Research},
+  volume  = {13},
+  pages   = {281--305},
+  year    = {2012},
+  note    = {Random-search tuning used in tune_v2.py. Added 2026-10-05.}
+}
+
+@article{giffler1960active,
+  author  = {Giffler, B. and Thompson, G. L.},
+  title   = {Algorithms for Solving Production-Scheduling Problems},
+  journal = {Operations Research},
+  volume  = {8},
+  number  = {4},
+  pages   = {487--503},
+  year    = {1960},
+  note    = {Active vs non-delay schedules; grounds the work-conserving (non-delay) action mode and its limitation. Added 2026-10-05; verify issue/pages.}
+}

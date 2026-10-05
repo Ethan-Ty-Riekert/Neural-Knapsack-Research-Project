@@ -38,7 +38,7 @@ from Code.variants import get_variant  # noqa: E402
 N_INSTANCES = {name: len(p["seeds"]) for name, p in get_variant("v2_objectives").PRESETS.items()}
 TB_DIRS = [ROOT.parents[2] / "rl_training" / "models" / "tb_action_space"]  # optional, gitignored
 
-PRESET_ORDER = ["off_c_50", "off_tf02", "off_tf05", "off_tf08", "on_rho050", "on_rho075", "on_rho075_tight",
+PRESET_ORDER = ["off_c_50", "off_tf02_w1", "off_tf05_w1", "off_tf08_w1", "off_tf02", "off_tf05", "off_tf08", "on_rho050", "on_rho075", "on_rho075_tight",
                 "on_rho095", "on_rho110"]
 # Validated with the dataviz palette validator (light, all pairs): worst CVD dE 9.2, normal 16.3.
 FAMILY_COLORS = {"RL": "#2a78d6", "Heuristic": "#eb6834", "PSO": "#1baf7a", "CP-SAT": "#4a3aa7"}
