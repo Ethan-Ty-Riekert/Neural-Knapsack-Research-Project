@@ -306,6 +306,9 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     else:
         raise ValueError(f"Unknown option {option!r} (expected '1', '2', '3', or '4')")
 
+    if policy != "MlpPolicy" and full_gym_env.obs_layout.markov:
+        # network policies slice the observation with the same layout (Code/core/obs_layout.py)
+        policy_kwargs = dict(policy_kwargs, markov=True)
     monitored = Monitor(ActionMasker(env, mask_fn))
     return monitored, policy, policy_kwargs
 
@@ -381,9 +384,12 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     kwargs = dict(base_env_kwargs)
     work_conserving = kwargs.pop("work_conserving", False)
     repair_placement = kwargs.pop("repair_placement", False)
+    markov_obs = kwargs.pop("markov_obs", False)
     env = make_online_base_gym_env(seed=seed, **kwargs) if online else make_base_gym_env(seed=seed, **kwargs)
     env.restrict_idle = work_conserving  # non-delay mode, see GymSchedulingEnv.idle_allowed()
     env.repair_placement = repair_placement  # Option 4 only, see ActionBranchingGymSchedulingEnv.step()
+    if markov_obs:
+        env.set_markov_obs()  # full MDP state (report Methodology), Code/core/obs_layout.py
     return env
 
 
@@ -537,6 +543,10 @@ def main():
                          help="2026-10-05: MaskablePPO seed (torch/numpy/env-action sampling). Default None keeps "
                               "the previous unseeded behaviour. Instance generation is unaffected, matching the "
                               "project convention that --seed varies only algorithmic randomness.")
+    parser.add_argument("--markov-obs", action="store_true",
+                         help="2026-10-06: full MDP state of the report's Methodology -- adds each job's "
+                              "start time s_j and machine m_j and each machine's activation y_m "
+                              "(Code/core/obs_layout.py). Default off keeps the original observation.")
     parser.add_argument("--repair-placement", action="store_true",
                          help="2026-10-05, --option 4 only: if the chosen machine does not fit but another "
                               "does, place the job by FirstFit instead of idling (see the wrapper's step()).")
@@ -618,6 +628,7 @@ def main():
         shaping_gamma=args.gamma, job_weight_range=job_weight_range,
         objective=objective, difficulty=difficulty, extend_horizon=extend,
         work_conserving=args.work_conserving, repair_placement=args.repair_placement,
+        markov_obs=args.markov_obs,
     )
     if args.online:
         base_env_kwargs.update(arrival_rate=args.arrival_rate, horizon=args.online_horizon,
@@ -694,6 +705,8 @@ def main():
                                                   difficulty=difficulty, extend_horizon=extend)
             held_out_full.restrict_idle = args.work_conserving
             held_out_full.repair_placement = args.repair_placement
+            if args.markov_obs:
+                held_out_full.set_markov_obs()
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,
@@ -766,6 +779,7 @@ def main():
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
         seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
         work_conserving=args.work_conserving, repair_placement=args.repair_placement,
+        markov_obs=args.markov_obs,
         policy_arch=args.policy_arch if args.option == "0" else None,
         train_minutes=round(elapsed_min, 1),
     ))

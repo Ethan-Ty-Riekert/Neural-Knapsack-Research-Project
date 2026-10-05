@@ -9,6 +9,7 @@ longer a policy decision (FirstFit, see
 Code/methods/rl/action_spaces/priority_only_gym_wrapper.py), so only job-selection needs an
 output.
 """
+from Code.core.obs_layout import ObsLayout
 from typing import Tuple
 
 import torch
@@ -46,6 +47,7 @@ class PriorityPointerActorCritic(nn.Module):
         max_jobs: int,
         num_machines: int,
         num_resources: int,
+        markov: bool = False,
         use_atc: bool = False,
         embed_dim: int = 128,
         hidden: int = 64,
@@ -59,8 +61,9 @@ class PriorityPointerActorCritic(nn.Module):
         # Must match PriorityOnlyGymSchedulingEnv._get_obs()'s per-job-slot
         # layout: [duration, deadline, weight, resource_0..R-1, scheduled]
         # (+ atc appended last, only when use_atc).
-        self._slot_width = num_resources + 4 + (1 if use_atc else 0)
-        machine_feat_dim = num_resources
+        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov)
+        self._slot_width = self._layout.job_slot_width + (1 if use_atc else 0)
+        machine_feat_dim = self._layout.machine_feat_dim
 
         self.job_encoder = JobEncoder(self._slot_width, embed_dim)
         self.machine_encoder = MachineEncoder(machine_feat_dim, embed_dim)
@@ -75,8 +78,8 @@ class PriorityPointerActorCritic(nn.Module):
         M, R, J = self.num_machines, self.num_resources, self.max_jobs
 
         time_feat = obs[:, 0:1]
-        machine_end = 1 + M * R
-        machine_feats = obs[:, 1:machine_end].reshape(B, M, R)
+        machine_end = self._layout.machine_block_end
+        machine_feats = obs[:, 1:machine_end].reshape(B, M, self._layout.machine_feat_dim)
         job_feats = obs[:, machine_end:machine_end + J * self._slot_width].reshape(B, J, self._slot_width)
         return time_feat, machine_feats, job_feats
 

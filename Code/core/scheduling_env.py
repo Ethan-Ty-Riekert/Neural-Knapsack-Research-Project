@@ -127,6 +127,7 @@ class SchedulingEnv:
 
         # Job start times and tardiness
         self.start_times = np.full(self.num_jobs, fill_value=-1, dtype=int) # s_t start time
+        self.job_machines = np.full(self.num_jobs, fill_value=-1, dtype=int) # m_j, -1 = not started
         self.tardiness = np.zeros(self.num_jobs) # Tardiness T
 
         # Remaining jobs
@@ -262,6 +263,7 @@ class SchedulingEnv:
 
         self.machine_active[:] = 0
         self.start_times[:] = -1
+        self.job_machines[:] = -1
         self.tardiness[:] = 0
         self.remaining_jobs = set(range(self.num_jobs))
         self.time = 0
@@ -497,6 +499,7 @@ class SchedulingEnv:
 
         # Update job timing
         self.start_times[job] = self.time
+        self.job_machines[job] = machine
         self.tardiness[job] = max(0, self.time + duration - self.job_deadlines[job]) # Equation from report
 
         # Remove job from remaining set

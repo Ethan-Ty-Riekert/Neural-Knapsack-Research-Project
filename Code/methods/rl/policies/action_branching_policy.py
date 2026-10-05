@@ -51,6 +51,7 @@ them as pooling weights, breaking that specific gradient-coupling path
 while keeping the core fix. Also not yet validated by a training run --
 see training-log.md.
 """
+from Code.core.obs_layout import ObsLayout
 from typing import Tuple
 
 import torch
@@ -97,6 +98,7 @@ class ActionBranchingActorCritic(nn.Module):
         max_jobs: int,
         num_machines: int,
         num_resources: int,
+        markov: bool = False,
         embed_dim: int = 128,
         hidden: int = 64,
     ):
@@ -109,8 +111,9 @@ class ActionBranchingActorCritic(nn.Module):
         # exactly: [duration, deadline, weight, resource_0..R-1, scheduled]
         # -- same as pointer_policy.py's PointerActorCritic (no ATC offset
         # here, unlike priority_pointer_policy.py).
-        job_feat_dim = num_resources + 4
-        machine_feat_dim = num_resources
+        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov)
+        job_feat_dim = self._layout.job_slot_width
+        machine_feat_dim = self._layout.machine_feat_dim
 
         self.job_encoder = JobEncoder(job_feat_dim, embed_dim)
         self.machine_encoder = MachineEncoder(machine_feat_dim, embed_dim)
@@ -128,9 +131,9 @@ class ActionBranchingActorCritic(nn.Module):
         M, R, J = self.num_machines, self.num_resources, self.max_jobs
 
         time_feat = obs[:, 0:1]
-        machine_end = 1 + M * R
-        machine_feats = obs[:, 1:machine_end].reshape(B, M, R)
-        job_feats = obs[:, machine_end:machine_end + J * (R + 4)].reshape(B, J, R + 4)
+        machine_end = self._layout.machine_block_end
+        machine_feats = obs[:, 1:machine_end].reshape(B, M, self._layout.machine_feat_dim)
+        job_feats = obs[:, machine_end:machine_end + J * self._layout.job_slot_width].reshape(B, J, self._layout.job_slot_width)
         return time_feat, machine_feats, job_feats
 
     def _pool_job_context(self, job_emb: torch.Tensor, job_logits: torch.Tensor,
@@ -178,7 +181,7 @@ class ActionBranchingActorCritic(nn.Module):
 
         job_logits = self.job_score_head(job_emb)  # (B, J), unmasked
 
-        active_mask = (job_feats[..., -1] < 0.5).float().unsqueeze(-1)  # (B, J, 1)
+        active_mask = (job_feats[..., self._layout.scheduled_index] < 0.5).float().unsqueeze(-1)  # (B, J, 1)
         job_context = self._pool_job_context(job_emb, job_logits, active_mask)  # (B, E)
         machine_context = machine_emb.mean(dim=1)                 # (B, E)
 

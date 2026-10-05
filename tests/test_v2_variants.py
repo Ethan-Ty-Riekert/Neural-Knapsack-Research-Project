@@ -224,4 +224,54 @@ for s in range(500000, 500005):
     assert np.all(np.asarray(b["job_weights"]) == 1) and len(np.unique(a["job_weights"])) > 1
 print("  8. WMDD/COVERT match hand-computed values; Option 1 menu unchanged; *_w1 presets = same jobs, w=1")
 
+# 9. Full-state observation (the report's MDP state): every job row carries (s_j, m_j) exactly as the
+#    environment records them, every machine its y_m; online, unrevealed rows leak nothing; every action
+#    design and its network runs on it (Code/core/obs_layout.py)
+import torch as _torch  # noqa: E402
+for online in (False, True):
+    full = (make_online_base_gym_env(9, 30, 400, "lognormal", seed=6, use_resampler=False) if online
+            else make_base_gym_env(seed=6))
+    full.set_markov_obs()
+    full.reset()
+    L = full.obs_layout
+    R, M = full.num_resources, full.num_machines
+    assert L.machine_feat_dim == R + 1 and L.job_slot_width == R + 6
+    assert full.observation_space.shape[0] == L.dim
+    rng = np.random.default_rng(0)
+    for step in range(60):
+        obs = full._get_obs()
+        base = full.env
+        mach = obs[1:L.machine_block_end].reshape(M, R + 1)
+        t_idx = min(base.time, base.horizon - 1)
+        assert np.allclose(mach[:, :R], base.capacity[:, :, t_idx] / (full.initial_capacity + 1e-8), atol=1e-6)
+        assert np.array_equal(mach[:, R], base.machine_active), "y_m must equal the env's activation vector"
+        slots = obs[L.machine_block_end:].reshape(L.max_jobs, L.job_slot_width)
+        visible = set(range(base.num_jobs)) if not online else set(base.revealed_jobs)
+        for j in range(L.max_jobs):
+            if j in visible and base.start_times[j] >= 0:
+                assert np.isclose(slots[j, R + 4], base.start_times[j] / base.preferred_horizon, atol=1e-6)
+                assert np.isclose(slots[j, R + 5], (base.job_machines[j] + 1) / M, atol=1e-6)
+                assert 1 <= round(slots[j, R + 5] * M) <= M
+            else:
+                assert slots[j, R + 4] == 0 and slots[j, R + 5] == 0, "unstarted / unrevealed jobs use the 0 sentinel"
+            if online and j not in visible:
+                assert not slots[j, :R + 3].any(), "an unrevealed job must not leak its features"
+        m = full.get_action_mask()
+        full.step(int(rng.choice(np.flatnonzero(m))))
+    assert (np.asarray(full.env.start_times) >= 0).any(), "test setup: some jobs must have started"
+    for opt, kw in (("0", dict(policy_arch="flat")), ("0", dict(policy_arch="pointer")), ("1", {}),
+                    ("2", {}), ("3", {}), ("3", dict(window_size=20)), ("4", {})):
+        f2 = (make_online_base_gym_env(9, 30, 400, "lognormal", seed=6, use_resampler=False) if online
+              else make_base_gym_env(seed=6))
+        f2.set_markov_obs()
+        env_o, policy, pkw = build_env_and_policy(opt, full_gym_env=f2, **kw)
+        o, _ = env_o.reset()
+        assert o.shape == env_o.observation_space.shape
+        if policy != "MlpPolicy":
+            from sb3_contrib import MaskablePPO
+            model = MaskablePPO(policy, env_o, policy_kwargs=pkw, n_steps=8, batch_size=8, verbose=0)
+            with _torch.no_grad():
+                model.policy.predict(o, action_masks=env_o.env.action_masks())  # Monitor -> ActionMasker
+print("  9. Full-state obs: s_j, m_j, y_m exact, no online leak; all designs and networks run on it")
+
 print("test_v2_variants: all checks passed")

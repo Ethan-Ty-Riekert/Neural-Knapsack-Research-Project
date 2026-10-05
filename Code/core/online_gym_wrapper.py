@@ -46,14 +46,13 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         R, J, n = self.num_resources, self.max_jobs, self.num_jobs
         H_phys, H_pref = self.env.horizon, self.env.preferred_horizon  # see GymSchedulingEnv._get_obs
         t = min(self.env.time, H_phys)
-        t_idx = min(self.env.time, H_phys - 1)
-        capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
+        capacity_block = self._capacity_block()  # (+ y_m in full-state mode, see GymSchedulingEnv)
 
         max_dur = max(1.0, float(np.max(self.env.job_durations)))
         max_wgt = max(1.0, float(np.max(self.env.job_weights)))
         max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))
 
-        job_feats = np.zeros((J, R + 4), dtype=np.float32)
+        job_feats = np.zeros((J, self.obs_layout.job_slot_width), dtype=np.float32)
         if self.env.revealed_jobs:
             idx = np.fromiter(self.env.revealed_jobs, dtype=int)
             job_feats[idx, 0] = self.env.job_durations[idx] / max_dur
@@ -63,7 +62,10 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         scheduled = np.ones(J, dtype=np.float32)
         if self.env.remaining_jobs:  # remaining is always a subset of revealed
             scheduled[list(self.env.remaining_jobs)] = 0.0
-        job_feats[:, -1] = scheduled
+        job_feats[:, R + 3] = scheduled
+        if self.obs_layout.markov and self.env.revealed_jobs:
+            # revealed jobs only: an unrevealed slot's deadline would leak a future arrival
+            self._add_markov_job_feats(job_feats, idx)
 
         return np.concatenate(([t / H_pref], capacity_block.ravel(), job_feats.ravel())).astype(np.float32)
 

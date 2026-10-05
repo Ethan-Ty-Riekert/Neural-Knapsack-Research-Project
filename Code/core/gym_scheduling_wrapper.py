@@ -6,6 +6,7 @@ import numpy as np
 import gymnasium as gym
 from typing import List
 from .scheduling_env import SchedulingEnv
+from .obs_layout import ObsLayout
 
 
 class GymSchedulingEnv(gym.Env):
@@ -78,10 +79,39 @@ class GymSchedulingEnv(gym.Env):
         self._max_invalid_actions = 2 * self.max_jobs * self.num_machines
 
         ### Observation Space ###
+        self.obs_layout = ObsLayout(self.num_machines, self.num_resources, self.max_jobs)
         obs_dim = self._compute_obs_dim() # gymnasium method
         self.observation_space = gym.spaces.Box(
             low = 0.0, high=1.0, shape=(obs_dim,), dtype=np.float32
         )
+
+    def set_markov_obs(self):
+        """Switch to the full-state observation of the report's MDP (Code/core/obs_layout.py): adds each
+        job's start time s_j and machine m_j, and each machine's activation y_m. Call before wrapping
+        with a reduced-action wrapper (they read the layout at construction)."""
+        self.obs_layout = ObsLayout(self.num_machines, self.num_resources, self.max_jobs, markov=True)
+        # s_j / H can exceed 1 under the extended horizon, so the box is unbounded above
+        self.observation_space = gym.spaces.Box(low=0.0, high=np.inf, shape=(self.obs_layout.dim,),
+                                                dtype=np.float32)
+
+    def _capacity_block(self):
+        """(num_machines, machine_feat_dim): remaining capacity R_mrt / C_r at the current tick (clamped
+        index, as originally), plus y_m in full-state mode."""
+        t_idx = min(self.env.time, self.env.horizon - 1)
+        block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
+        if self.obs_layout.markov:
+            block = np.concatenate([block, self.env.machine_active[:, None].astype(float)], axis=1)
+        return block
+
+    def _add_markov_job_feats(self, job_feats, rows):
+        """Full-state extras for the given job rows: s_j / H and (m_j + 1) / |M| for jobs that have
+        started, the sentinel 0 for jobs that have not (m_j is 1-based so 0 is never a machine)."""
+        R = self.num_resources
+        start = np.asarray(self.env.start_times)[rows]
+        machine = np.asarray(self.env.job_machines)[rows]
+        started = start >= 0
+        job_feats[rows, R + 4] = np.where(started, start / self.env.preferred_horizon, 0.0)
+        job_feats[rows, R + 5] = np.where(started, (machine + 1) / self.num_machines, 0.0)
 
     def _compute_obs_dim(self):
         """Observation vector construction: Compute the dimension of the observation space.
@@ -90,7 +120,7 @@ class GymSchedulingEnv(gym.Env):
         job features: duration (1), deadline (1), weight (1), requirement dimension (R), scheduled mask (1)
         -> total per job slot = 3 + R + 1 = R + 4, for max_jobs slots"""
 
-        return 1 + (self.num_machines * self.num_resources) + self.max_jobs * (self.num_resources + 4)
+        return self.obs_layout.dim
 
     def _get_obs(self):
         """Observation vector construction: Build the observation vector.
@@ -113,8 +143,8 @@ class GymSchedulingEnv(gym.Env):
 
         # 2. Remaining capacity (normalised) -- machine-major, resource-minor,
         # matching the original nested "for m: for r:" append order exactly.
-        t_idx = min(self.env.time, H_phys - 1)
-        capacity_block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
+        # (+ y_m in full-state mode -- see _capacity_block.)
+        capacity_block = self._capacity_block()
 
         # Precompute normalisation constants
         max_dur = max(1.0, float(np.max(self.env.job_durations)))
@@ -127,7 +157,7 @@ class GymSchedulingEnv(gym.Env):
         # actions are always masked out in get_action_mask()). job_feats
         # starts all-zero, matching the original's padding-slot branch
         # exactly; only the first n rows get filled with real values.
-        job_feats = np.zeros((J, R + 4), dtype=np.float32)
+        job_feats = np.zeros((J, self.obs_layout.job_slot_width), dtype=np.float32)
         job_feats[:n, 0] = self.env.job_durations / max_dur
         job_feats[:n, 1] = self.env.job_deadlines / H_pref
         job_feats[:n, 2] = self.env.job_weights / max_wgt
@@ -139,7 +169,9 @@ class GymSchedulingEnv(gym.Env):
         scheduled = np.ones(J, dtype=np.float32)
         if self.env.remaining_jobs:
             scheduled[list(self.env.remaining_jobs)] = 0.0
-        job_feats[:, -1] = scheduled
+        job_feats[:, R + 3] = scheduled
+        if self.obs_layout.markov:
+            self._add_markov_job_feats(job_feats, slice(0, n))
 
         return np.concatenate((
             [t / H_pref],

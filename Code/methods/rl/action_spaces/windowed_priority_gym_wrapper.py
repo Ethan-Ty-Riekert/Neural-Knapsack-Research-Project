@@ -79,13 +79,15 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
         self.use_atc = use_atc
         self.window_order = window_order
 
-        self._job_slot_width = self.num_resources + 4
-        self._machine_block_end = 1 + self.num_machines * self.num_resources
+        self._job_slot_width = full_gym_env.obs_layout.job_slot_width  # Code/core/obs_layout.py
+        self._machine_block_end = full_gym_env.obs_layout.machine_block_end
         self._out_slot_width = self._job_slot_width + (1 if use_atc else 0)
 
         self.action_space = gym.spaces.Discrete(window_size + 1)  # +1 idle
         obs_dim = 1 + self._machine_block_end - 1 + window_size * self._out_slot_width + 1  # +1 backlog scalar
-        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(obs_dim,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(low=float(full_gym_env.observation_space.low.min()),
+                                                high=float(full_gym_env.observation_space.high.max()),
+                                                shape=(obs_dim,), dtype=np.float32)
 
         self._window_jobs = [None] * window_size  # slot index -> real job id, or None (padding)
         self._invalid_action_count = 0

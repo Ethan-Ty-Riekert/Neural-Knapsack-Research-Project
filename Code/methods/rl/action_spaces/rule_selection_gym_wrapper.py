@@ -124,10 +124,12 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         if use_atc_feature:
             # Must match GymSchedulingEnv._get_obs()'s per-job-slot layout:
             # [duration, deadline, weight, resource_0..R-1, scheduled].
-            self._job_slot_width = self.num_resources + 4
-            self._machine_block_end = 1 + self.num_machines * self.num_resources
+            self._job_slot_width = full_gym_env.obs_layout.job_slot_width  # Code/core/obs_layout.py
+            self._machine_block_end = full_gym_env.obs_layout.machine_block_end
             obs_dim = full_gym_env.observation_space.shape[0] + self.max_jobs
-            self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(obs_dim,), dtype=np.float32)
+            self.observation_space = gym.spaces.Box(low=float(full_gym_env.observation_space.low.min()),
+                                                high=float(full_gym_env.observation_space.high.max()),
+                                                shape=(obs_dim,), dtype=np.float32)
         else:
             self.observation_space = full_gym_env.observation_space
 

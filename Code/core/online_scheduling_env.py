@@ -97,6 +97,7 @@ class OnlineSchedulingEnv(SchedulingEnv):
         self.capacity[machine, :, self.time:self.time + duration] -= self.job_resources[job][:, None]
 
         self.start_times[job] = self.time
+        self.job_machines[job] = machine
         self.tardiness[job] = max(0, self.time + duration - self.job_deadlines[job])
 
         self.remaining_jobs.remove(job)
