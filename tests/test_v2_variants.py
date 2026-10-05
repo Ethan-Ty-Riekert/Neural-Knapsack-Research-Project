@@ -148,4 +148,29 @@ for online in (False, True):
                 w.reset()
 print(f"  5. vectorised masks / feasible machines / ATC feature equal the original loops on {checked} states")
 
+# 6. work-conserving (non-delay) mode: idle masked iff some job is placeable; default unchanged
+for online in (False, True):
+    for cls, kw, idle_of in (
+            (PriorityOnlyGymSchedulingEnv, dict(use_atc=True), lambda w, m: (m[:w.max_jobs], m[w.max_jobs])),
+            (WindowedPriorityGymSchedulingEnv, dict(window_size=20, use_atc=True), lambda w, m: (m[:w.window_size], m[w.window_size])),
+            (ActionBranchingGymSchedulingEnv, {}, lambda w, m: (m[:w.max_jobs], m[w.max_jobs])),
+            (RuleSelectionGymSchedulingEnv, {}, lambda w, m: (m[:w.num_rules], m[w.num_rules]))):
+        for restrict in (False, True):
+            full = (make_online_base_gym_env(9, 30, 400, "lognormal", seed=2, use_resampler=False) if online
+                    else make_base_gym_env(seed=2))
+            full.restrict_idle = restrict
+            w = cls(full, **kw)
+            w.reset()
+            saw_nothing_fits = False
+            for _ in range(60):
+                jobs, idle = idle_of(w, w.get_action_mask())
+                expect_idle = 1 if (not restrict or not jobs.any()) else 0
+                assert idle == expect_idle, (cls.__name__, online, restrict, jobs.any(), idle)
+                saw_nothing_fits |= not jobs.any()
+                m = w.get_action_mask()
+                a = w.action_space.sample() if cls is ActionBranchingGymSchedulingEnv else int(np.flatnonzero(m)[0])
+                if w.step(a)[2]:
+                    break
+print("  6. work-conserving mode masks idle exactly when a job is placeable (all wrappers); default unchanged")
+
 print("test_v2_variants: all checks passed")

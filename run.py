@@ -81,6 +81,7 @@ def run_rl_instance(option, tag, config, args, env_kwargs):
     from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import DEFAULT_PLACEMENTS
     spec = read_env_spec(option, tag)
     gym_env = make_env(config, env_kwargs).env  # strip eval_rl_agent's full-action-space masker
+    gym_env.restrict_idle = bool(spec.get("work_conserving"))  # non-delay models evaluate non-delay
     env = build_eval_env(option, gym_env, window_size=spec.get("window_size"),
                          window_order=spec.get("window_order") or "edf",
                          use_atc_feature=bool(spec.get("use_atc_feature")),

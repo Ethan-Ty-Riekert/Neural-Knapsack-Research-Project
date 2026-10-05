@@ -47,7 +47,8 @@ OPTION_NAMES = {"0": "full action space", "1": "rule selection", "2": "priority 
                 "4": "job x machine branching"}
 # Tag modifiers (train_action_space_variant.py flags): c = FirstFit+Consolidate menu, a = ATC feature,
 # p = pointer network (Option 0; default flat MLP), w = windowed action space, t = per-tick decisions.
-MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "windowed", "t": "per-tick"}
+MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "windowed", "t": "per-tick",
+             "n": "non-delay"}
 METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
            "active_machine_ticks", "dropped"]
 RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")

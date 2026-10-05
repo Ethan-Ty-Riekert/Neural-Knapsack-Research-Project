@@ -83,7 +83,7 @@ def cmd_generate(a):
         trials[trial_tag(a, k)] = cfg
         train_args = " ".join(f"--{n} {v:.6g}" if isinstance(v, float) else f"--{n} {v}" for n, v in cfg.items())
         mods = " ".join(MOD_FLAGS[m] for m in a.mods if m in MOD_FLAGS)
-        extra = ("--decision-epoch tick " if "t" in a.mods else "")
+        extra = ("--decision-epoch tick " if "t" in a.mods else "") + ("--work-conserving " if "n" in a.mods else "")
         print(f"{trial_tag(a, k)} --variant v2_objectives --n-envs 4 --vec-backend subproc --seed {a.seed} "
               f"--preset {a.preset} --method rl-train:{a.option} --algo {a.algo} {mods} --timesteps {a.timesteps} "
               f"--train-args {extra}{train_args}".replace("  ", " "))

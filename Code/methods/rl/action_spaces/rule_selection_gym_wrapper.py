@@ -162,7 +162,7 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         mask = np.zeros(self.num_rules + 1, dtype=np.int8)
         if self._job_actions():
             mask[:self.num_rules] = 1
-        mask[self.num_rules] = 1  # idle always legal
+        mask[self.num_rules] = 1 if self._full.idle_allowed(mask[:self.num_rules].any()) else 0
         return mask
 
     def reset(self, *, seed=None, options=None):

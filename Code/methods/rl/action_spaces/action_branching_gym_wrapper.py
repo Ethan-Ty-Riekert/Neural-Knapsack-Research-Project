@@ -94,7 +94,7 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
         feasible = self._full.feasibility_matrix()  # (max_jobs, M), vectorised is_feasible
         job_mask = np.zeros(self.max_jobs + 1, dtype=np.int8)
         job_mask[:self.max_jobs] = feasible.any(axis=1)
-        job_mask[self.max_jobs] = 1  # idle always legal
+        job_mask[self.max_jobs] = 1 if self._full.idle_allowed(job_mask[:self.max_jobs].any()) else 0
 
         # Machine mask: union of feasible machines across ALL remaining jobs
         # (see module docstring's "HONEST LIMITATION" -- this is an

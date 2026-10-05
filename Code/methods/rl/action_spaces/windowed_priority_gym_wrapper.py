@@ -139,7 +139,7 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
         for i, job in enumerate(self._window_jobs):
             if job is not None:
                 mask[i] = 1
-        mask[self.window_size] = 1  # idle always legal
+        mask[self.window_size] = 1 if self._full.idle_allowed(mask[:self.window_size].any()) else 0
         return mask
 
     def reset(self, *, seed=None, options=None):

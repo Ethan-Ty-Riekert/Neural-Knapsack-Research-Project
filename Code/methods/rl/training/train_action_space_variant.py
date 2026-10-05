@@ -378,9 +378,11 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     base_env_kwargs holds make_online_base_gym_env()'s or make_base_gym_env()'s
     keyword arguments (everything except seed), and must stay picklable for
     SubprocVecEnv (see make_worker_env())."""
-    if online:
-        return make_online_base_gym_env(seed=seed, **base_env_kwargs)
-    return make_base_gym_env(seed=seed, **base_env_kwargs)
+    kwargs = dict(base_env_kwargs)
+    work_conserving = kwargs.pop("work_conserving", False)
+    env = make_online_base_gym_env(seed=seed, **kwargs) if online else make_base_gym_env(seed=seed, **kwargs)
+    env.restrict_idle = work_conserving  # non-delay mode, see GymSchedulingEnv.idle_allowed()
+    return env
 
 
 def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, window_order,
@@ -533,6 +535,10 @@ def main():
                          help="2026-10-05: MaskablePPO seed (torch/numpy/env-action sampling). Default None keeps "
                               "the previous unseeded behaviour. Instance generation is unaffected, matching the "
                               "project convention that --seed varies only algorithmic randomness.")
+    parser.add_argument("--work-conserving", action="store_true",
+                         help="2026-10-05: non-delay action space -- idle is masked whenever a job can be "
+                              "placed (as every heuristic does). Fixes the online failure where priority "
+                              "policies idled thousands of ticks and left jobs to the safety cap.")
     parser.add_argument("--decision-epoch", choices=["placement", "tick"], default="placement",
                          help="--option 1 only: one rule choice per job placement (default) or per tick "
                               "(the rule fills the tick, then time advances; online only -- offline the two "
@@ -606,6 +612,7 @@ def main():
         reward_mode=args.reward_mode, use_potential_shaping=args.use_potential_shaping,
         shaping_gamma=args.gamma, job_weight_range=job_weight_range,
         objective=objective, difficulty=difficulty, extend_horizon=extend,
+        work_conserving=args.work_conserving,
     )
     if args.online:
         base_env_kwargs.update(arrival_rate=args.arrival_rate, horizon=args.online_horizon,
@@ -680,6 +687,7 @@ def main():
                 held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range,
                                                   reward_mode=args.reward_mode, objective=objective,
                                                   difficulty=difficulty, extend_horizon=extend)
+            held_out_full.restrict_idle = args.work_conserving
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,
@@ -751,6 +759,7 @@ def main():
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
         seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
+        work_conserving=args.work_conserving,
         policy_arch=args.policy_arch if args.option == "0" else None,
         train_minutes=round(elapsed_min, 1),
     ))

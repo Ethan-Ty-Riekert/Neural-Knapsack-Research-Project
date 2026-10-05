@@ -196,6 +196,13 @@ class GymSchedulingEnv(gym.Env):
             feasible[remaining_idx] = resource_ok & duration_ok[:, None]
         return feasible
 
+    def idle_allowed(self, any_job_feasible):
+        """Whether the idle action is legal now. With restrict_idle (work-conserving / non-delay
+        mode), idle is only legal when nothing can be placed -- the same rule every dispatching
+        heuristic follows (non-delay schedules, Giffler & Thompson 1960). The single definition used
+        by get_action_mask() and by every reduced-action wrapper's idle bit (2026-10-05)."""
+        return not (self.restrict_idle and any_job_feasible)
+
     def get_action_mask(self):
         """Action mask building:
         mask[a] = 1 if (job, machine) is feasible at current time (see feasibility_matrix())
@@ -210,10 +217,7 @@ class GymSchedulingEnv(gym.Env):
         # Idle action: allowed by default, unless restrict_idle is set and at
         # least one non-idle action is feasible this step (Solution 1a).
         idle_action = self.max_jobs * self.num_machines
-        if self.restrict_idle and mask[:idle_action].any():
-            mask[idle_action] = 0
-        else:
-            mask[idle_action] = 1
+        mask[idle_action] = 1 if self.idle_allowed(mask[:idle_action].any()) else 0
 
         return mask
 

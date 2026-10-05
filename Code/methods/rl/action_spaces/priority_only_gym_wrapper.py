@@ -70,7 +70,7 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
     def get_action_mask(self):
         mask = np.zeros(self.max_jobs + 1, dtype=np.int8)
         mask[:self.max_jobs] = self._full.feasibility_matrix().any(axis=1)  # vectorised is_feasible
-        mask[self.max_jobs] = 1  # idle always legal
+        mask[self.max_jobs] = 1 if self._full.idle_allowed(mask[:self.max_jobs].any()) else 0
         return mask
 
     def reset(self, *, seed=None, options=None):
