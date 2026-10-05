@@ -48,7 +48,7 @@ OPTION_NAMES = {"0": "full action space", "1": "rule selection", "2": "priority 
 # Tag modifiers (train_action_space_variant.py flags): c = FirstFit+Consolidate menu, a = ATC feature,
 # p = pointer network (Option 0; default flat MLP), w = windowed action space, t = per-tick decisions.
 MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "windowed", "t": "per-tick",
-             "n": "non-delay", "f": "placement repair"}
+             "n": "non-delay", "f": "placement repair", "m": "Markov obs"}
 METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
            "active_machine_ticks", "dropped"]
 RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")
@@ -69,7 +69,7 @@ def rl_label(m, opt):
     if not m:
         return f"PPO Opt{opt} {OPTION_NAMES.get(opt, '')}"
     algo = "A2C" if m.group("algo") else "PPO"
-    mods = " ".join(MOD_NAMES.get(c, c) for c in m.group("mods"))
+    mods = " ".join(MOD_NAMES.get(c, c) for c in m.group("mods") if c != "m")  # every paper row is Markov
     hp = f" [{m.group('hp').lstrip('_')}]" if m.group("hp") else ""
     return f"{algo} Opt{opt} {OPTION_NAMES.get(opt, '')}" + (f" {mods}" if mods else "") + hp
 
@@ -91,7 +91,7 @@ def mean_std(xs):
     return m, (math.sqrt(sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) if len(xs) > 1 else 0.0)
 
 
-def load_runs():
+def load_runs(include_partial_obs=False):
     newest, skipped, stale = {}, 0, 0
     for run_json in sorted(RUNS.glob("*/run.json")):
         run = json.loads(run_json.read_text(encoding="utf-8"))
@@ -107,6 +107,12 @@ def load_runs():
             stale += 1
             continue
         method = run["method"] + "+FirstFit" if run["method"] in ALIASES else run["method"]
+        if method.startswith("rl-eval:") and not include_partial_obs:
+            tag_m = RL_TAG.match(method.split(":", 2)[2]) if method.count(":") == 2 else None
+            if not (tag_m and "m" in tag_m.group("mods")):
+                # paper tables: full-MDP (Markov observation) RL runs only, tag modifier "m"
+                skipped += 1
+                continue
         key = (run["preset"], method)
         if key not in newest or run["timestamp"] > newest[key]["timestamp"]:
             newest[key] = dict(timestamp=run["timestamp"], git=run.get("git_commit"), rows=rows,
@@ -368,7 +374,9 @@ def fig_training_curves(figdir):
 
 
 def main():
-    newest, skipped, stale = load_runs()
+    # --include-partial-obs: also list RL runs trained on the earlier partial observation (no
+    # running-job finish times), e.g. for the future with/without-Markov comparison.
+    newest, skipped, stale = load_runs(include_partial_obs="--include-partial-obs" in sys.argv)
     results = aggregate(newest)
     rows = write_data(results, skipped, stale)
     summary = write_tables(results)
