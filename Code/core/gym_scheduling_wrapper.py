@@ -164,48 +164,28 @@ class GymSchedulingEnv(gym.Env):
         """
         self.env.lambda2 = float(value)
 
-    def get_action_mask(self):
-        """Action mask building:
-        mask[a] = 1 if (job, machine) is feasible at current time
-        The final action (index = max_jobs * num_machines) is the idle action.
-        Job slots beyond this instance's actual num_jobs are never in
-        self.env.remaining_jobs, so their actions stay masked out (0) automatically.
+    def feasibility_matrix(self):
+        """(max_jobs, num_machines) bool: True where (job, machine) can start at the current time,
+        exactly SchedulingEnv.is_feasible(j, m, t) for every remaining job (False elsewhere). The
+        single vectorised definition used by get_action_mask() and by every reduced-action wrapper
+        (Options 2/3, windowed, branching), so none of them loops over is_feasible() in Python
+        (that loop was ~770 calls per step online; refactored into this method 2026-10-05).
+
+        Uses the uncapped self.env.time, matching step()/is_feasible() (an earlier clamp to
+        horizon-1 let a duration-1 job read as feasible at t == horizon and then fail inside step(),
+        an invalid action that never advances time). Indexing is still safe at t >= horizon: every
+        job has duration >= 1, so duration_ok is False for every row there, and the clamped t_idx
+        only keeps the capacity read in bounds.
+
+        PERF history: vectorised 2026-09-21 (Future/research/2026-09-20-optimisation-and-
+        efficiency-critique.md Section 1.4) instead of a nested "for j: for m:" is_feasible loop.
+        Replicates is_feasible's two conditions: the job finishes by the horizon, and every
+        resource has enough remaining capacity at t.
         """
-        total_actions = self.max_jobs * self.num_machines + 1
-        mask = np.zeros(total_actions, dtype=np.int8)
-
-        # BUG FIX (this session): this used to clamp t to horizon-1, which
-        # disagreed with SchedulingEnv.step()/is_feasible()'s own uncapped
-        # self.time. At env.time == horizon (reachable -- episode only ends once
-        # time > horizon), a duration-1 job could read as feasible here
-        # ((horizon-1)+1 == horizon, not > horizon) but then fail the real check
-        # inside step() (horizon+1 > horizon), landing in the invalid-action
-        # branch -- which does not advance time, so a policy trusting this mask
-        # could get stuck repeating the same invalid action forever. Using the
-        # uncapped self.time here instead matches step() exactly, and is safe
-        # because is_feasible() short-circuits on t+duration > horizon before any
-        # array indexing, and every job has duration >= 1, so no out-of-bounds
-        # read is possible for t >= horizon. NOTE: _get_obs()'s separate
-        # t_idx = min(self.env.time, self.horizon - 1) (above) must stay clamped
-        # -- that one directly indexes self.env.capacity[m, r, t_idx] and a real
-        # out-of-bounds read there.
-        t = self.env.time
-
-        # Normal feasible scheduling actions.
-        # PERF (2026-09-21, S2W9, from Future/research/2026-09-20-
-        # optimisation-and-efficiency-critique.md Section 1.4): vectorized
-        # instead of a nested Python "for j: for m:" loop calling
-        # is_feasible() O(|remaining_jobs| * num_machines) times. Replicates
-        # is_feasible(j, m, t)'s exact two conditions (duration fits before
-        # the horizon; every resource dimension has enough remaining
-        # capacity) as one array comparison. Preserves the original's OOB
-        # safety at t >= horizon defensively (clamped t_idx for indexing
-        # only) rather than via short-circuit order, since every job has
-        # duration >= 1 -- duration_ok is already False for every row
-        # whenever t >= horizon, so the (otherwise out-of-range) capacity
-        # values at those rows never affect the final mask.
+        feasible = np.zeros((self.max_jobs, self.num_machines), dtype=bool)
         remaining = list(self.env.remaining_jobs)
         if remaining:
+            t = self.env.time
             remaining_idx = np.array(remaining, dtype=np.int64)
             durations = self.env.job_durations[remaining_idx]                  # (Jr,)
             duration_ok = (t + durations) <= self.env.horizon                  # (Jr,) physical window
@@ -213,9 +193,19 @@ class GymSchedulingEnv(gym.Env):
             cap_t = self.env.capacity[:, :, t_idx]                             # (M, R)
             resources = self.env.job_resources[remaining_idx]                  # (Jr, R)
             resource_ok = (cap_t[None, :, :] - resources[:, None, :] >= 0).all(axis=2)  # (Jr, M)
-            feasible = resource_ok & duration_ok[:, None]                      # (Jr, M)
-            action_ids = remaining_idx[:, None] * self.num_machines + np.arange(self.num_machines)[None, :]
-            mask[action_ids[feasible]] = 1
+            feasible[remaining_idx] = resource_ok & duration_ok[:, None]
+        return feasible
+
+    def get_action_mask(self):
+        """Action mask building:
+        mask[a] = 1 if (job, machine) is feasible at current time (see feasibility_matrix())
+        The final action (index = max_jobs * num_machines) is the idle action.
+        Job slots beyond this instance's actual num_jobs are never in
+        self.env.remaining_jobs, so their actions stay masked out (0) automatically.
+        """
+        total_actions = self.max_jobs * self.num_machines + 1
+        mask = np.zeros(total_actions, dtype=np.int8)
+        mask[:self.max_jobs * self.num_machines] = self.feasibility_matrix().reshape(-1)
 
         # Idle action: allowed by default, unless restrict_idle is set and at
         # least one non-idle action is feasible this step (Solution 1a).

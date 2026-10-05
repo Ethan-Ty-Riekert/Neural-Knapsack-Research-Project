@@ -11,6 +11,8 @@ for full citation grounding; short form below.
 """
 import math
 
+import numpy as np
+
 
 def edf_key(base_env, job):
     """Earliest Deadline First -- classical scheduling priority rule (see
@@ -141,6 +143,22 @@ def atc_priority(base_env, job, k: float = 2.0, mean_p: float = None):
     slack = base_env.job_deadlines[job] - p_j - base_env.time
     urgency = math.exp(-max(slack, 0.0) / (k * mean_p))
     return (w_j / max(p_j, 1e-8)) * urgency
+
+
+def atc_priorities(base_env, jobs, k: float = 2.0, mean_p: float = None):
+    """Vectorised atc_priority() for an array of job indices (2026-10-05): the same formula,
+    evaluated with numpy over all jobs at once. Used by the per-slot RL observation feature
+    (Code/methods/rl/action_spaces/obs_atc_feature.py), where the scalar version was ~2M calls per
+    4k training steps. The scalar atc_priority() stays the definition the ATC heuristics rank by
+    (unchanged, so existing baseline results stay bit-for-bit reproducible);
+    tests/test_v2_variants.py pins the two to agree within 1e-12."""
+    jobs = np.asarray(jobs, dtype=np.int64)
+    if mean_p is None:
+        mean_p = _atc_mean_p(base_env)
+    p = np.asarray(base_env.job_durations, dtype=float)[jobs]
+    w = np.asarray(base_env.job_weights, dtype=float)[jobs]
+    slack = np.asarray(base_env.job_deadlines, dtype=float)[jobs] - p - base_env.time
+    return (w / np.maximum(p, 1e-8)) * np.exp(-np.maximum(slack, 0.0) / (k * mean_p))
 
 
 def atc_key(base_env, job, k: float = 2.0, mean_p: float = None):

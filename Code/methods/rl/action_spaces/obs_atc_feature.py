@@ -15,7 +15,7 @@ to be re-derived from raw duration/deadline/weight/time features.
 """
 import numpy as np
 
-from Code.methods.heuristics.priority_rules import atc_priority, _atc_mean_p
+from Code.methods.heuristics.priority_rules import atc_priorities, _atc_mean_p
 
 
 def append_atc_priority_feature(base_obs, base_env, max_jobs, job_slot_width, machine_block_end):
@@ -63,10 +63,16 @@ def append_atc_priority_feature(base_obs, base_env, max_jobs, job_slot_width, ma
 
     revealed = getattr(base_env, "revealed_jobs", None)
     mean_p = _atc_mean_p(base_env)
-    out_slots = np.empty((max_jobs, job_slot_width + 1), dtype=np.float32)
-    for j in range(max_jobs):
-        out_slots[j, :job_slot_width] = slots[j]
-        is_real = (j < base_env.num_jobs) if revealed is None else (j in revealed)
-        out_slots[j, -1] = float(np.clip(atc_priority(base_env, j, mean_p=mean_p), 0.0, 1.0)) if is_real else 0.0
+    out_slots = np.zeros((max_jobs, job_slot_width + 1), dtype=np.float32)
+    out_slots[:, :job_slot_width] = slots
+    # PERF (2026-10-05): one vectorised ATC evaluation over the real slots instead of a per-slot
+    # scalar call + np.clip (~500 calls per observation online). Same values, same 0.0 padding.
+    if revealed is None:
+        real = np.arange(min(base_env.num_jobs, max_jobs))
+    else:
+        real = np.fromiter(revealed, dtype=np.int64, count=len(revealed))
+        real = real[real < max_jobs]
+    if real.size:
+        out_slots[real, -1] = np.clip(atc_priorities(base_env, real, mean_p=mean_p), 0.0, 1.0)
 
     return np.concatenate([head, out_slots.reshape(-1)]).astype(np.float32)

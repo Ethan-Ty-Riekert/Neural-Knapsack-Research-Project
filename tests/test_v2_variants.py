@@ -85,4 +85,67 @@ over, _ = resolve_algo_kwargs(ns(learning_rate=1e-4, n_epochs=4), 4)
 assert over["learning_rate"] == 1e-4 and over["n_epochs"] == 4, "explicit flags must override defaults"
 print("  4. ppo defaults unchanged; a2c = 1 epoch x 1 full batch, RMSprop, lambda 1, no adv. normalisation")
 
+# 5. vectorised feasibility / ATC feature == the original Python loops, on many real states
+from Code.methods.heuristics.priority_rules import atc_priority, atc_priorities, _atc_mean_p  # noqa: E402
+from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv  # noqa: E402
+from Code.methods.rl.action_spaces.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv  # noqa: E402
+from Code.methods.rl.action_spaces.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv  # noqa: E402
+
+
+def loop_feasible(base, j):
+    return [m for m in range(base.num_machines) if base.is_feasible(j, m, base.time)]
+
+
+checked = 0
+for online in (False, True):
+    make = (lambda: make_online_base_gym_env(9, 30, 400, "lognormal", seed=11, use_resampler=False)) if online \
+        else (lambda: make_base_gym_env(seed=11))
+    for cls, kw in ((PriorityOnlyGymSchedulingEnv, dict(use_atc=True)),
+                    (WindowedPriorityGymSchedulingEnv, dict(window_size=20, use_atc=True)),
+                    (ActionBranchingGymSchedulingEnv, {})):
+        w = cls(make(), **kw)
+        w.reset()
+        rng = np.random.default_rng(1)
+        for step in range(120):
+            base = w.env
+            rem = list(base.remaining_jobs)
+            if cls is PriorityOnlyGymSchedulingEnv:
+                ref = np.zeros(w.max_jobs + 1, dtype=np.int8)
+                for j in rem:
+                    ref[j] = 1 if loop_feasible(base, j) else 0
+                ref[w.max_jobs] = 1
+                assert np.array_equal(w.get_action_mask(), ref), (online, step)
+                for j in rem[:5]:
+                    assert w._feasible_machines(j) == loop_feasible(base, j)
+                obs = w._get_obs()  # ATC feature: last column of each job slot
+                slots = obs[w._machine_block_end:].reshape(w.max_jobs, w._job_slot_width + 1)
+                revealed = getattr(base, "revealed_jobs", None)
+                mp = _atc_mean_p(base)
+                for j in range(w.max_jobs):
+                    real = (j < base.num_jobs) if revealed is None else (j in revealed)
+                    expect = np.float32(np.clip(atc_priority(base, j, mean_p=mp), 0, 1)) if real else 0.0
+                    assert slots[j, -1] == expect, (online, step, j)
+            elif cls is ActionBranchingGymSchedulingEnv:
+                m = w.get_action_mask()
+                jm, mm = m[:w.max_jobs + 1], m[w.max_jobs + 1:]
+                ref_j = np.array([1 if (j in base.remaining_jobs and loop_feasible(base, j)) else 0
+                                  for j in range(w.max_jobs)] + [1], dtype=np.int8)
+                ref_m = np.zeros(w.num_machines, dtype=np.int8)
+                for j in rem:
+                    for mach in loop_feasible(base, j):
+                        ref_m[mach] = 1
+                if not ref_m.any():
+                    ref_m[:] = 1
+                assert np.array_equal(jm, ref_j) and np.array_equal(mm, ref_m), (online, step)
+            if rem:
+                jobs = np.array(rem)
+                assert np.allclose(atc_priorities(base, jobs), [atc_priority(base, j) for j in rem], rtol=1e-12, atol=0)
+            mask = w.get_action_mask()
+            a = w.action_space.sample() if cls is ActionBranchingGymSchedulingEnv else int(rng.choice(np.flatnonzero(mask)))
+            _, _, done, trunc, _ = w.step(a)
+            checked += 1
+            if done or trunc:
+                w.reset()
+print(f"  5. vectorised masks / feasible machines / ATC feature equal the original loops on {checked} states")
+
 print("test_v2_variants: all checks passed")

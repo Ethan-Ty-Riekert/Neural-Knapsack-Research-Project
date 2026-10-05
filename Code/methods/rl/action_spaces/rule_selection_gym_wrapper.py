@@ -148,7 +148,9 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
     def _job_actions(self):
         mask = self._full.get_action_mask()
         idle_id = self.max_jobs * self.num_machines
-        return [a for a in range(idle_id) if mask[a]]
+        # PERF (2026-10-05): vectorised. The Python loop over all max_jobs * num_machines ids
+        # (~13k online) was ~45% of Option 1 training time (cProfile). Same ascending list of ints.
+        return np.flatnonzero(np.asarray(mask[:idle_id])).tolist()
 
     def get_action_mask(self):
         """All 7 rules are legal whenever >=1 (job, machine) placement is

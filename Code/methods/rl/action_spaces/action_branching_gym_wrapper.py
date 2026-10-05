@@ -83,8 +83,7 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
         return self._full._get_obs()
 
     def _feasible_machines_for(self, job):
-        t = self.env.time
-        return [m for m in range(self.num_machines) if self.env.is_feasible(job, m, t)]
+        return np.flatnonzero(self._full.feasibility_matrix()[job]).tolist()
 
     def get_action_mask(self):
         """Flat [job/idle mask][machine union-mask], matching the layout
@@ -92,21 +91,15 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
         MultiDiscrete([max_jobs+1, num_machines]) action space (one flat
         boolean array, split internally by the distribution using
         self.action_space.nvec, in declared branch order)."""
+        feasible = self._full.feasibility_matrix()  # (max_jobs, M), vectorised is_feasible
         job_mask = np.zeros(self.max_jobs + 1, dtype=np.int8)
-        t = self.env.time
-        for j in self.env.remaining_jobs:
-            if any(self.env.is_feasible(j, m, t) for m in range(self.num_machines)):
-                job_mask[j] = 1
+        job_mask[:self.max_jobs] = feasible.any(axis=1)
         job_mask[self.max_jobs] = 1  # idle always legal
 
         # Machine mask: union of feasible machines across ALL remaining jobs
         # (see module docstring's "HONEST LIMITATION" -- this is an
         # approximation, not per-job conditioning).
-        machine_mask = np.zeros(self.num_machines, dtype=np.int8)
-        for j in self.env.remaining_jobs:
-            for m in range(self.num_machines):
-                if self.env.is_feasible(j, m, t):
-                    machine_mask[m] = 1
+        machine_mask = feasible.any(axis=0).astype(np.int8)
         if not machine_mask.any():
             machine_mask[:] = 1  # nothing fits anywhere right now -- don't degenerate to all-zero
 

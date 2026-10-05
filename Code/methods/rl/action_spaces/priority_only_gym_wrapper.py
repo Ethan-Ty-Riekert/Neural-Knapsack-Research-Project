@@ -65,15 +65,11 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
         )
 
     def _feasible_machines(self, job):
-        t = self.env.time
-        return [m for m in range(self.num_machines) if self.env.is_feasible(job, m, t)]
+        return np.flatnonzero(self._full.feasibility_matrix()[job]).tolist()
 
     def get_action_mask(self):
         mask = np.zeros(self.max_jobs + 1, dtype=np.int8)
-        t = self.env.time
-        for j in self.env.remaining_jobs:
-            if any(self.env.is_feasible(j, m, t) for m in range(self.num_machines)):
-                mask[j] = 1
+        mask[:self.max_jobs] = self._full.feasibility_matrix().any(axis=1)  # vectorised is_feasible
         mask[self.max_jobs] = 1  # idle always legal
         return mask
 

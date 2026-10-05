@@ -95,11 +95,8 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
         """Unscheduled jobs with >=1 currently-feasible machine, sorted by
         self.window_order -- see module docstring for the "edf" vs "fifo"
         design choice and why "fifo" was added."""
-        t = self.env.time
-        candidates = [
-            j for j in self.env.remaining_jobs
-            if any(self.env.is_feasible(j, m, t) for m in range(self.num_machines))
-        ]
+        feasible = self._full.feasibility_matrix()  # (max_jobs, M), vectorised is_feasible
+        candidates = [j for j in self.env.remaining_jobs if feasible[j].any()]
         if self.window_order == "edf":
             candidates.sort(key=lambda j: (self.env.job_deadlines[j], j))
         else:  # "fifo"
@@ -160,7 +157,7 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
             _, reward, done = self.env.step_idle()
         else:
             t = self.env.time
-            feasible = [m for m in range(self.num_machines) if self.env.is_feasible(job, m, t)]
+            feasible = np.flatnonzero(self._full.feasibility_matrix()[job]).tolist()
             if not feasible:
                 _, reward, done = self.env.step_idle()
             else:
