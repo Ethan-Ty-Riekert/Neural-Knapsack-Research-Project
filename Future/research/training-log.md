@@ -32,6 +32,44 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-05 (S2W12) -- v2 tuning (validation-selected): every trial of both algorithms converges onto a fixed dispatching rule; tuning chooses WHICH rule. PPO never finds EDF; A2C's best trial IS EDF+Consolidate
+
+**Config:** random search (`Code/methods/rl/training/tune_v2.py`), Option 1 + Consolidate menu, `on_rho095`,
+300k steps, 4 envs, seed 0. PPO: 16 trials over lr, rollout, batch, epochs, gamma, GAE lambda, clip, entropy.
+A2C (as PPO special case): 8 trials over lr, rollout, gamma, lambda, entropy. Ranked on 20 validation
+instances (seeds 600000-600019), disjoint from training and test. Results:
+`Results/v2_objectives/tuning/on_rho095_o1c{,_a2c}/` (`summary.md`, `trials_ranked.csv`, `best.json`).
+Heuristics on the same validation instances computed for identification.
+
+**Stats (validation J; "=" means identical to that heuristic's J to the decimal):**
+```
+heuristics on validation: EDF+Consolidate 30,857 | EDF+BestFit 38,644 | LST+FirstFit 40,378 | FCFS+Cons 41,763
+                          LST+Cons 43,668 | ATC+Cons 44,416 | RandomRule+FF/Cons 72,557 | SPT+FirstFit 189,648
+PPO (16): 4 trials = ATC+Consolidate 44,416 (best; hp4/7/12/14) | 1 = ATC+FirstFit | 3 = SPT+Consolidate
+          | 2 = SPT+FirstFit | 6 mixtures 67,488-146,668
+A2C (8):  1 = EDF+Consolidate 30,857 (best; hp2) | 1 = FCFS+Cons | 1 = ATC+Cons | 1 = ATC+FirstFit
+          | 1 = WSPT+FirstFit | 3 = LPT+FirstFit 297,671     (all 8 are a single rule exactly)
+tuned PPO: lr 3.31e-5, rollout 2048, batch 64, epochs 3, gamma 0.999, lambda 0.95, clip 0.2, ent 0.00334
+tuned A2C: lr 1.20e-3, rollout 80 (20/env), gamma 0.995, lambda 0.95, ent 0.0105
+```
+
+**Observation:**
+- **Rule collapse is the norm across hyperparameters, not a tuning failure:** 10/16 PPO and 8/8 A2C
+  trials reproduce a single heuristic exactly. Tuning changes which rule the policy locks onto.
+- **PPO never converges onto a deadline rule** (EDF/LST) in 16 configurations, only ATC- or SPT-family
+  (short-job-weighted) rules. This matches the short-job bias in every earlier PPO run (v1 and v2).
+- **A2C's collapse target is more varied**, and its best trial is EDF+Consolidate, the best heuristic,
+  so tuned A2C at best *equals* the best rule rather than adapting beyond it.
+- Ties in the PPO ranking (4 trials at 44,416) are behaviourally identical policies, so choosing hp4 among
+  them is arbitrary and changes nothing on validation.
+
+**Conclusion / next step:** both tuned configurations are retrained at full budget with 5 seeds
+(Option 1 + Consolidate on rho 0.75 / 0.95 / 1.10 and off_tf05; Option 1 FirstFit at rho 0.95 / 1.10),
+tuned at rho 0.95 and transferred to the other presets as-is (stated as a limitation). The seeds will show
+whether "tuned A2C = EDF+Consolidate" holds reliably or was a lucky seed.
+
+---
+
 ## 2026-10-05 (S2W12) -- Protocol correction for the v2 roster: 50 test instances, >= 3-5 seeds, tuned PPO, every v1 variant on v2
 
 **Config:** decisions after the user's review of the overnight results (below). The overnight roster
