@@ -68,6 +68,22 @@ RULE_NAMES = list(PRIORITY_RULES.keys())
 DEFAULT_PLACEMENTS = ("FirstFit",)
 
 
+DECISION_EPOCHS = ("placement", "tick")
+
+
+def rule_kwargs_from_args(args):
+    """All Option 1 wrapper settings from a script's CLI args, in one dict (2026-10-05) -- the single
+    place these flags are read, so training, evaluation and run.py pass one object through."""
+    return dict(placements=parse_placements(getattr(args, "rule_placements", None)),
+                decision_epoch=getattr(args, "decision_epoch", None) or "placement")
+
+
+def is_default_rule_kwargs(rule_kwargs):
+    rk = rule_kwargs or {}
+    return (tuple(rk.get("placements", DEFAULT_PLACEMENTS)) == DEFAULT_PLACEMENTS
+            and rk.get("decision_epoch", "placement") == "placement")
+
+
 def parse_placements(text):
     """--rule-placements CLI value ("FirstFit,Consolidate") -> placements tuple. Shared by the
     training/evaluation scripts and run.py so the format is defined once."""
@@ -79,7 +95,8 @@ def parse_placements(text):
 class RuleSelectionGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, full_gym_env, use_atc_feature: bool = False, placements=DEFAULT_PLACEMENTS):
+    def __init__(self, full_gym_env, use_atc_feature: bool = False, placements=DEFAULT_PLACEMENTS,
+                 decision_epoch: str = "placement"):
         super().__init__()
         self._full = full_gym_env
         self.env = full_gym_env.env
@@ -89,6 +106,9 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         self.horizon = full_gym_env.horizon
         self.use_atc_feature = use_atc_feature
 
+        if decision_epoch not in DECISION_EPOCHS:
+            raise ValueError(f"decision_epoch must be one of {DECISION_EPOCHS}, got {decision_epoch!r}")
+        self.decision_epoch = decision_epoch
         self.placements = tuple(placements)
         unknown = set(self.placements) - set(PLACEMENT_RULES)
         if unknown or not self.placements:
@@ -162,6 +182,22 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
 
         if action_id == self.num_rules or not job_actions:
             _, reward, done = self.env.step_idle()
+        elif self.decision_epoch == "tick":
+            # One decision per tick: apply the chosen rule to every placement that fits this tick,
+            # then advance the clock; the transition's reward is the sum over the tick (exact, since
+            # the per-step rewards telescope to -J). Offline, each placement already advances time,
+            # so this loop runs once and the mode equals "placement".
+            choose = HEURISTICS[self._heuristic_keys[action_id]]
+            reward, done, t0 = 0.0, False, self.env.time
+            while job_actions and not done and self.env.time == t0:
+                job, machine = self._decode(choose(self.env, job_actions, self._decode))
+                _, r, done = self.env.step((job, machine))
+                reward += r
+                job_actions = self._job_actions()
+            if not done and self.env.time == t0:
+                _, r, done = self.env.step_idle()
+                reward += r
+            self._invalid_action_count = 0
         else:
             choose = HEURISTICS[self._heuristic_keys[action_id]]
             real_action = choose(self.env, job_actions, self._decode)

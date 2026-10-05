@@ -40,6 +40,7 @@ import time
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 import numpy as np
+import torch
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
@@ -53,6 +54,7 @@ from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RuleSelecti
 from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.methods.rl.action_spaces.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
 from Code.methods.rl.action_spaces.action_branching_gym_wrapper import ActionBranchingGymSchedulingEnv
+from Code.methods.rl.policies.pointer_ppo_policy import PointerMaskableActorCriticPolicy
 from Code.methods.rl.policies.priority_pointer_ppo_policy import PriorityPointerMaskableActorCriticPolicy
 from Code.methods.rl.policies.windowed_priority_pointer_ppo_policy import WindowedPriorityPointerMaskableActorCriticPolicy
 from Code.methods.rl.policies.action_branching_ppo_policy import ActionBranchingMaskableActorCriticPolicy
@@ -61,7 +63,7 @@ from Code.methods.rl.training.train_optimized import (
     resolve_ppo_rollout_params,
 )
 from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
-    RULE_NAMES, DEFAULT_PLACEMENTS, parse_placements,
+    RULE_NAMES, rule_kwargs_from_args, is_default_rule_kwargs,
 )
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty
@@ -212,7 +214,7 @@ def make_online_base_gym_env(arrival_rate, horizon, max_jobs, job_size_distribut
 
 
 def build_env_and_policy(option: str, full_gym_env=None, window_size=None, window_order="edf",
-                          use_atc_feature=False, placements=DEFAULT_PLACEMENTS):
+                          use_atc_feature=False, rule_kwargs=None, policy_arch="flat"):
     """window_size (2026-09-18, S2W10, user-approved): only meaningful for
     option in ("2", "3") -- DeepRM-style bounded action-space window
     (Code/methods/rl/action_spaces/windowed_priority_gym_wrapper.py), Discrete(window_size+1)
@@ -236,18 +238,34 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     placements (2026-10-05, S2W12): only meaningful for option == "1" -- the
     placement rules offered alongside each priority rule (see
     rule_selection_gym_wrapper.py's module docstring). Default ("FirstFit",) keeps
-    existing Option 1 checkpoints' action space unchanged."""
-    if tuple(placements) != DEFAULT_PLACEMENTS and option != "1":
-        raise ValueError("--rule-placements only applies to --option 1.")
+    existing Option 1 checkpoints' action space unchanged.
+
+    policy_arch (2026-10-05): only meaningful for option == "0" -- the original full
+    (job x machine) action space of GymSchedulingEnv, unreduced. "flat" = MLP (v1's 256x256 tanh),
+    "pointer" = PointerMaskableActorCriticPolicy (Code/methods/rl/policies/pointer_ppo_policy.py),
+    the two architectures every v1 Option-0 PPO/A2C result used."""
+    if not is_default_rule_kwargs(rule_kwargs) and option != "1":
+        raise ValueError("--rule-placements / --decision-epoch only apply to --option 1.")
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
-    if option == "1":
+    if option == "0":
+        if window_size is not None or use_atc_feature:
+            raise ValueError("--window-size / --use-atc-feature do not apply to --option 0.")
+        env = full_gym_env
+        if policy_arch == "pointer":
+            policy = PointerMaskableActorCriticPolicy
+            policy_kwargs = dict(max_jobs=env.max_jobs, num_machines=env.num_machines,
+                                 num_resources=env.num_resources)
+        else:
+            policy = "MlpPolicy"
+            policy_kwargs = dict(net_arch=dict(pi=[256, 256], vf=[256, 256]), activation_fn=torch.nn.Tanh)
+    elif option == "1":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3 (Option 1's action "
                               "space is already the 8-choice rule menu, not job-slot selection).")
         env = RuleSelectionGymSchedulingEnv(full_gym_env, use_atc_feature=use_atc_feature,
-                                            placements=placements)
+                                            **(rule_kwargs or {}))
         policy, policy_kwargs = "MlpPolicy", {}
     elif option in ("2", "3"):
         if use_atc_feature:
@@ -292,6 +310,45 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     return monitored, policy, policy_kwargs
 
 
+# Per-algorithm defaults for the on-policy update (2026-10-05). PPO = SB3 MaskablePPO defaults.
+# A2C is run as the special case of PPO it is (Huang, Dossa, Raffin, Kanervisto & Wang 2022, "A2C is
+# a special case of PPO", arXiv:2205.09123): one epoch over one full batch of short rollouts, no
+# advantage normalisation, RMSprop, with SB3 A2C's defaults (lr 7e-4, 5 steps per env, lambda 1.0).
+# With a single epoch on a single batch the probability ratio is exactly 1, so PPO's clipping never
+# activates. This keeps masking, envs, wrappers and evaluation identical between the two algorithms,
+# so a PPO-vs-A2C difference is the update rule alone (the confound flagged in report.md 1.6).
+ALGO_DEFAULTS = {
+    "ppo": dict(learning_rate=3e-4, rollout_size=2048, batch_size=64, n_epochs=10, clip_range=0.2,
+                gae_lambda=0.95, vf_coef=0.5, max_grad_norm=0.5),
+    "a2c": dict(learning_rate=7e-4, rollout_size=None, batch_size=None, n_epochs=1, clip_range=0.2,
+                gae_lambda=1.0, vf_coef=0.5, max_grad_norm=0.5),
+}
+
+
+def resolve_algo_kwargs(args, n_envs):
+    """MaskablePPO keyword arguments for --algo, with any explicitly given hyperparameter flag
+    overriding the algorithm's default. Returns (kwargs, resolved dict for the sidecar spec)."""
+    d = dict(ALGO_DEFAULTS[args.algo])
+    for k in d:
+        if getattr(args, k, None) is not None:
+            d[k] = getattr(args, k)
+    if args.algo == "a2c":
+        rollout = d["rollout_size"] or 5 * n_envs
+        n_steps = max(1, rollout // n_envs)
+        batch_size = n_steps * n_envs  # one full batch
+        extra = dict(normalize_advantage=False,
+                     policy_kwargs_update=dict(optimizer_class=torch.optim.RMSprop,
+                                               optimizer_kwargs=dict(alpha=0.99, eps=1e-5, weight_decay=0)))
+    else:
+        n_steps, batch_size, _ = resolve_ppo_rollout_params(d["rollout_size"], d["batch_size"], n_envs)
+        extra = {}
+    d.update(n_steps_per_env=n_steps, batch_size=batch_size, rollout_size=n_steps * n_envs)
+    kwargs = dict(learning_rate=d["learning_rate"], n_steps=n_steps, batch_size=batch_size,
+                  n_epochs=d["n_epochs"], clip_range=d["clip_range"], gae_lambda=d["gae_lambda"],
+                  vf_coef=d["vf_coef"], max_grad_norm=d["max_grad_norm"], **extra)
+    return kwargs, d
+
+
 def checkpoint_path(option, tag=None):
     """The one place the final-model filename is defined (training saves here, evaluation and
     run.py load from here)."""
@@ -327,7 +384,7 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
 
 
 def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, window_order,
-                    use_atc_feature, base_seed, placements=DEFAULT_PLACEMENTS):
+                    use_atc_feature, base_seed, rule_kwargs=None):
     """2026-10-04, S2W11: per-worker env factory for --n-envs > 1 parallel rollout
     (previously this whole file only ever trained on a single env, auto-wrapped by
     SB3 in a DummyVecEnv -- confirmed by grep, unlike train_optimized.py's existing
@@ -350,12 +407,12 @@ def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, 
     full_gym_env = make_full_gym_env(online, base_env_kwargs, seed=seed)
     env, _, _ = build_env_and_policy(option, full_gym_env=full_gym_env, window_size=window_size,
                                       window_order=window_order, use_atc_feature=use_atc_feature,
-                                      placements=placements)
+                                      rule_kwargs=rule_kwargs)
     return env
 
 
 def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, window_size,
-                       window_order, use_atc_feature, base_seed=0, placements=DEFAULT_PLACEMENTS):
+                       window_order, use_atc_feature, base_seed=0, rule_kwargs=None):
     """n_envs==1 always uses DummyVecEnv (SB3's own default when a single env is
     passed to MaskablePPO -- no behaviour change from before this function existed).
     n_envs>1 with vec_backend="subproc" uses true multi-process rollout (SubprocVecEnv);
@@ -364,7 +421,7 @@ def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, win
     backend-choice tradeoff, already established in this project."""
     env_fns = [
         functools.partial(make_worker_env, i, option, online, base_env_kwargs, window_size,
-                          window_order, use_atc_feature, base_seed, placements)
+                          window_order, use_atc_feature, base_seed, rule_kwargs)
         for i in range(n_envs)
     ]
     if vec_backend == "subproc" and n_envs > 1:
@@ -374,7 +431,9 @@ def build_parallel_env(n_envs, vec_backend, option, online, base_env_kwargs, win
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--option", choices=["1", "2", "3", "4"], required=True,
+    parser.add_argument("--policy-arch", choices=["flat", "pointer"], default="flat",
+                         help="--option 0 only: flat MLP or pointer network over the full action space.")
+    parser.add_argument("--option", choices=["0", "1", "2", "3", "4"], required=True,
                          help="1=hyper-heuristic rule selection, 2=raw-feature priority "
                               "learning, 3=ATC-primed priority learning, 4=action-branching "
                               "(learned placement, MultiDiscrete([max_jobs+1, num_machines]) "
@@ -426,9 +485,21 @@ def main():
                               "--online for online presets and per-episode resampling.")
     parser.add_argument("--gamma", type=float, default=0.99,
                          help="PPO discount factor; also used as the v2 shaping gamma (must match).")
-    parser.add_argument("--gae-lambda", type=float, default=0.95,
-                         help="GAE lambda (SB3 default 0.95). 1.0 = Monte Carlo advantages with a value "
-                              "baseline: unbiased credit over the whole episode, at higher variance.")
+    parser.add_argument("--algo", choices=sorted(ALGO_DEFAULTS), default="ppo",
+                         help="2026-10-05: on-policy update rule. 'a2c' = A2C as the special case of PPO "
+                              "(Huang et al. 2022, arXiv:2205.09123) on the identical pipeline -- see ALGO_DEFAULTS.")
+    # Hyperparameters (default None = the --algo default in ALGO_DEFAULTS); used by the v2 tuning search.
+    parser.add_argument("--gae-lambda", type=float, default=None,
+                         help="GAE lambda (PPO default 0.95, A2C 1.0). 1.0 = Monte Carlo advantages with a "
+                              "value baseline: unbiased credit over the whole episode, at higher variance.")
+    parser.add_argument("--learning-rate", type=float, default=None)
+    parser.add_argument("--rollout-size", type=int, default=None,
+                         help="timesteps collected per update across all envs (PPO default 2048, A2C 5 x n_envs)")
+    parser.add_argument("--batch-size", type=int, default=None, help="PPO minibatch size (default 64)")
+    parser.add_argument("--n-epochs", type=int, default=None, help="PPO epochs per update (default 10)")
+    parser.add_argument("--clip-range", type=float, default=None, help="PPO clip range (default 0.2)")
+    parser.add_argument("--vf-coef", type=float, default=None)
+    parser.add_argument("--max-grad-norm", type=float, default=None)
     parser.add_argument("--use-potential-shaping", action="store_true",
                          help="Ng/Harada/Russell 1999 potential-based shaping -- same untested "
                               "status as --reward-mode dense_tardiness, see above.")
@@ -462,7 +533,11 @@ def main():
                          help="2026-10-05: MaskablePPO seed (torch/numpy/env-action sampling). Default None keeps "
                               "the previous unseeded behaviour. Instance generation is unaffected, matching the "
                               "project convention that --seed varies only algorithmic randomness.")
-    parser.add_argument("--rule-placements", default=",".join(DEFAULT_PLACEMENTS),
+    parser.add_argument("--decision-epoch", choices=["placement", "tick"], default="placement",
+                         help="--option 1 only: one rule choice per job placement (default) or per tick "
+                              "(the rule fills the tick, then time advances; online only -- offline the two "
+                              "are identical).")
+    parser.add_argument("--rule-placements", default="FirstFit",
                          help="2026-10-05: only meaningful with --option 1. Comma-separated placement "
                               "rules offered with each priority rule, e.g. FirstFit,Consolidate "
                               "(menu = rules x placements + idle). Default FirstFit keeps the "
@@ -510,7 +585,7 @@ def main():
         (args.job_weight_min, args.job_weight_max) if args.job_weight_min is not None else None
     )
 
-    placements = parse_placements(args.rule_placements)
+    rule_kwargs = rule_kwargs_from_args(args)
     ensure_rl_training_dirs()
 
     objective = None
@@ -548,13 +623,14 @@ def main():
     # behaviour) or the parallel VecEnv built just below (n_envs>1, new).
     template_env, policy, policy_kwargs = build_env_and_policy(
         args.option, full_gym_env=full_gym_env, window_size=args.window_size,
-        window_order=args.window_order, use_atc_feature=args.use_atc_feature, placements=placements,
+        window_order=args.window_order, use_atc_feature=args.use_atc_feature, rule_kwargs=rule_kwargs,
+        policy_arch=args.policy_arch,
     )
 
     if args.n_envs > 1:
         env = build_parallel_env(
             args.n_envs, args.vec_backend, args.option, args.online, base_env_kwargs,
-            args.window_size, args.window_order, args.use_atc_feature, placements=placements,
+            args.window_size, args.window_order, args.use_atc_feature, rule_kwargs=rule_kwargs,
         )
         # MaskablePPO's own un-tuned defaults (n_steps=2048, batch_size=64)
         # assume n_envs=1 -- the on-policy buffer size is n_envs*n_steps, so
@@ -566,14 +642,13 @@ def main():
         # PPO, arXiv:1707.06347, Algorithm 1: N*T, not T alone, is what
         # governs on-policy staleness) -- keeps buffer_size close to the
         # single-env default of 2048 regardless of --n-envs.
-        n_steps, batch_size, buffer_size = resolve_ppo_rollout_params(2048, 64, args.n_envs)
-        print(f"Parallel rollout: n_envs={args.n_envs} (backend={args.vec_backend}), "
-              f"n_steps=2048 -> {n_steps} per env (buffer size {buffer_size}), "
-              f"batch_size=64 -> {batch_size}")
+        print(f"Parallel rollout: n_envs={args.n_envs} (backend={args.vec_backend})")
     else:
         env = template_env
-        n_steps, batch_size = 2048, 64
 
+    algo_kwargs, algo_spec = resolve_algo_kwargs(args, args.n_envs)
+    policy_kwargs = dict(policy_kwargs or {}, **algo_kwargs.pop("policy_kwargs_update", {}))
+    print(f"Algorithm {args.algo}: " + ", ".join(f"{k}={v}" for k, v in algo_spec.items()))
     model = MaskablePPO(
         policy, env,
         policy_kwargs=policy_kwargs,
@@ -581,10 +656,8 @@ def main():
         tensorboard_log=str(MODELS_DIR / "tb_action_space"),
         ent_coef=args.ent_coef,
         gamma=args.gamma,
-        gae_lambda=args.gae_lambda,
-        n_steps=n_steps,
-        batch_size=batch_size,
         seed=args.seed,
+        **algo_kwargs,
     )
 
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
@@ -611,7 +684,7 @@ def main():
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,
                                                        use_atc_feature=args.use_atc_feature,
-                                                       placements=placements)
+                                                       rule_kwargs=rule_kwargs)
             # build_env_and_policy wraps Monitor(ActionMasker(wrapper, mask_fn))
             # for the TRAINING env (Monitor tracks episode completion for SB3's
             # own info buffer) -- run_episode() (Code/evaluation/
@@ -672,11 +745,13 @@ def main():
 
     model.save(str(save_path))
     write_env_spec(args.option, args.save_tag, dict(
-        placements=list(placements), use_atc_feature=args.use_atc_feature,
+        placements=list(rule_kwargs["placements"]), decision_epoch=rule_kwargs["decision_epoch"],
+        use_atc_feature=args.use_atc_feature,
         window_size=args.window_size, window_order=args.window_order,
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
-        seed=args.seed, gamma=args.gamma, gae_lambda=args.gae_lambda,
+        seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
+        policy_arch=args.policy_arch if args.option == "0" else None,
         train_minutes=round(elapsed_min, 1),
     ))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "

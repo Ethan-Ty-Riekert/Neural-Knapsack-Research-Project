@@ -111,7 +111,7 @@ def generate(difficulty: Difficulty, seed: int) -> dict:
                                      job_size_distribution=d.size_distribution, job_weight_range=d.weights)
 
 
-# Named difficulty presets (15 held-out instances each: seeds 500000..500014)
+# Named difficulty presets (evaluated on 50 held-out instances: seeds 500000..500049, set in Code/variants/v2_objectives)
 DIFFICULTIES = {
     # offline: deadline tightness sweep at fixed size (100 jobs, 10 machines, H = 100, weights 1..5)
     "off_tf02": Difficulty("offline", tf=0.2, desc="offline, loose deadlines (TF 0.2, RDD 0.6)"),

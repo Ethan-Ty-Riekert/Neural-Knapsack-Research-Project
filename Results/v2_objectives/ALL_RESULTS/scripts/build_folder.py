@@ -19,6 +19,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -26,17 +28,29 @@ import matplotlib.pyplot as plt  # noqa: E402
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 RUNS = ROOT.parent / "runs"
+REPO = ROOT.parents[2]
+sys.path.insert(0, str(REPO))
+from Code.variants import get_variant  # noqa: E402
+
+# Current evaluation protocol per preset (number of held-out instances). Runs on an older protocol
+# (e.g. the 15-instance difficulty presets used until 2026-10-05) are skipped, so every row of one
+# preset is on the identical instance set.
+N_INSTANCES = {name: len(p["seeds"]) for name, p in get_variant("v2_objectives").PRESETS.items()}
 TB_DIRS = [ROOT.parents[2] / "rl_training" / "models" / "tb_action_space"]  # optional, gitignored
 
-PRESET_ORDER = ["off_c_15", "off_tf02", "off_tf05", "off_tf08", "on_rho050", "on_rho075", "on_rho075_tight",
+PRESET_ORDER = ["off_c_50", "off_tf02", "off_tf05", "off_tf08", "on_rho050", "on_rho075", "on_rho075_tight",
                 "on_rho095", "on_rho110"]
 # Validated with the dataviz palette validator (light, all pairs): worst CVD dE 9.2, normal 16.3.
-FAMILY_COLORS = {"RL (PPO)": "#2a78d6", "Heuristic": "#eb6834", "PSO": "#1baf7a", "CP-SAT": "#4a3aa7"}
+FAMILY_COLORS = {"RL": "#2a78d6", "Heuristic": "#eb6834", "PSO": "#1baf7a", "CP-SAT": "#4a3aa7"}
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
-OPTION_NAMES = {"1": "rule selection", "2": "priority score", "3": "ATC-prior score", "4": "job x machine"}
+OPTION_NAMES = {"0": "full action space", "1": "rule selection", "2": "priority score", "3": "ATC-prior score",
+                "4": "job x machine branching"}
+# Tag modifiers (train_action_space_variant.py flags): c = FirstFit+Consolidate menu, a = ATC feature,
+# p = pointer network (Option 0; default flat MLP), w = windowed action space, t = per-tick decisions.
+MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "windowed", "t": "per-tick"}
 METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
            "active_machine_ticks", "dropped"]
-RL_TAG = re.compile(r"^v2_(?P<preset>.+)_o(?P<opt>\d)(?P<cons>c?)_s(?P<seed>\d+)$")
+RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")
 BASELINES = ["EDF+FirstFit", "LST+FirstFit", "ATC+FirstFit", "RandomRule+FirstFit", "RandomRule+FirstFitConsolidate"]
 # Registry back-compat aliases of "<rule>+FirstFit" (Code/methods/heuristics/registry.py): same
 # function, so they are folded into the canonical name (newest run wins) instead of listed twice.
@@ -49,13 +63,21 @@ def is_current_objective(env_kwargs):
             and not any(obj.get(k) for k in ("tardiness", "drops", "late_count", "energy")))
 
 
+def rl_label(m, opt):
+    """'PPO Opt1 rule selection +Consolidate [tuned]' from a parsed tag (seed excluded, so seeds merge)."""
+    if not m:
+        return f"PPO Opt{opt} {OPTION_NAMES.get(opt, '')}"
+    algo = "A2C" if m.group("algo") else "PPO"
+    mods = " ".join(MOD_NAMES.get(c, c) for c in m.group("mods"))
+    hp = f" [{m.group('hp').lstrip('_')}]" if m.group("hp") else ""
+    return f"{algo} Opt{opt} {OPTION_NAMES.get(opt, '')}" + (f" {mods}" if mods else "") + hp
+
+
 def family_and_label(method):
     if method.startswith("rl-eval:"):
         _, opt, *tag = method.split(":")
         m = RL_TAG.match(tag[0]) if tag else None
-        cons = bool(m and m.group("cons"))
-        label = f"RL Opt{opt} {OPTION_NAMES.get(opt, '')}" + (" +Consolidate" if cons else "")
-        return "RL (PPO)", label, (m.group("seed") if m else "?")
+        return "RL", rl_label(m, opt), (m.group("seed") if m else "?")
     if method == "pso":
         return "PSO", "PSO", None
     if method == "cpsat":
@@ -69,7 +91,7 @@ def mean_std(xs):
 
 
 def load_runs():
-    newest, skipped = {}, 0
+    newest, skipped, stale = {}, 0, 0
     for run_json in sorted(RUNS.glob("*/run.json")):
         run = json.loads(run_json.read_text(encoding="utf-8"))
         if run.get("variant") != "v2_objectives" or not is_current_objective(run.get("env_kwargs")):
@@ -80,12 +102,15 @@ def load_runs():
             continue
         with open(csv_path, encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
+        if len(rows) != N_INSTANCES.get(run["preset"], -1):
+            stale += 1
+            continue
         method = run["method"] + "+FirstFit" if run["method"] in ALIASES else run["method"]
         key = (run["preset"], method)
         if key not in newest or run["timestamp"] > newest[key]["timestamp"]:
             newest[key] = dict(timestamp=run["timestamp"], git=run.get("git_commit"), rows=rows,
                                folder=run_json.parent.name)
-    return newest, skipped
+    return newest, skipped, stale
 
 
 def aggregate(newest):
@@ -119,7 +144,7 @@ def aggregate(newest):
     return out
 
 
-def write_data(results, skipped):
+def write_data(results, skipped, stale=0):
     d = ROOT / "data"
     d.mkdir(parents=True, exist_ok=True)
     fields = ["preset", "method", "family", "n_seeds", "n_instances", "spread"] + \
@@ -131,6 +156,7 @@ def write_data(results, skipped):
         w.writerows(rows)
     (d / "build_info.json").write_text(json.dumps(dict(
         n_rows=len(rows), skipped_runs_not_current_objective=skipped,
+        skipped_runs_old_instance_protocol=stale, instances_per_preset=N_INSTANCES,
         presets=[p for p in PRESET_ORDER if p in results]), indent=1), encoding="utf-8")
     return rows
 
@@ -164,7 +190,7 @@ def write_tables(results):
         def best(fam):
             fr = [r for r in recs if r["family"] == fam]
             return fr[0] if fr else None
-        h, rl, pso, cp = best("Heuristic"), best("RL (PPO)"), best("PSO"), best("CP-SAT")
+        h, rl, pso, cp = best("Heuristic"), best("RL"), best("PSO"), best("CP-SAT")
         gap = f"{100 * (rl['objective_J'] / h['objective_J'] - 1):+.1f}%" if (h and rl) else "-"
         rl_cell = (f"{rl['method']} ({rl['objective_J']:.0f}, {rl['n_seeds']} seed{'s' if rl['n_seeds'] > 1 else ''})"
                    if rl else "-")
@@ -203,10 +229,14 @@ def fig_preset_bars(results, figdir):
         keep.sort(key=lambda r: r["objective_J"], reverse=True)  # best at the top
         fig, ax = plt.subplots(figsize=(7, 0.32 * len(keep) + 1.2))
         y = range(len(keep))
-        ax.barh(list(y), [r["objective_J"] for r in keep], height=0.62,
+        bars = ax.barh(list(y), [r["objective_J"] for r in keep], height=0.62,
                 color=[FAMILY_COLORS[r["family"]] for r in keep],
                 xerr=[r["objective_J_err"] for r in keep], error_kw=dict(ecolor=MUTED, lw=0.8, capsize=2))
-        ax.set_yticks(list(y), [r["method"] + ("" if r["family"] != "RL (PPO)" else f"  (n={r['n_seeds']})")
+        for bar, r in zip(bars, keep):  # texture as secondary encoding: A2C hatched, PPO solid
+            if r["method"].startswith("A2C"):
+                bar.set_hatch("///")
+                bar.set_edgecolor("white")
+        ax.set_yticks(list(y), [r["method"] + ("" if r["family"] != "RL" else f"  (n={r['n_seeds']})")
                                 for r in keep], color=INK)
         ax.set_xlabel("J = sum of w_j T_j^2, mean over instances (log scale, lower is better)\n"
                       "error bars: std across seeds if n>1, otherwise standard error over instances",
@@ -229,7 +259,7 @@ def fig_regime_map(results, figdir):
     """Relative J of the best method in each family vs the best heuristic, per preset."""
     presets = [p for p in PRESET_ORDER if p in results]
     fig, ax = plt.subplots(figsize=(7.5, 3.4))
-    for k, fam in enumerate(["RL (PPO)", "PSO", "CP-SAT"]):
+    for k, fam in enumerate(["RL", "PSO", "CP-SAT"]):
         xs, ys = [], []
         for i, p in enumerate(presets):
             h = next((r for r in results[p] if r["family"] == "Heuristic"), None)
@@ -272,6 +302,8 @@ def fig_heuristic_heatmap(results, figdir):
             else:
                 row.append(min(r["objective_J"] / best, 3.0))
         grid.append(row)
+    if not names:  # no heuristic runs on the current protocol yet
+        return
     order = sorted(range(len(names)), key=lambda i: sum(v for v in grid[i] if not math.isnan(v)))
     names, grid = [names[i] for i in order], [grid[i] for i in order]
     fig, ax = plt.subplots(figsize=(7.5, 0.24 * len(names) + 1.6))
@@ -314,12 +346,12 @@ def fig_training_curves(figdir):
             curves[tag_m.group("preset")].append((m.group(2), [e.step for e in ev], [e.value for e in ev]))
     for preset, runs in curves.items():
         fig, ax = plt.subplots(figsize=(6.5, 3.2))
-        labels = sorted({RL_TAG.match(t).group("opt") + RL_TAG.match(t).group("cons") for t, _, _ in runs})
+        labels = sorted({rl_label(RL_TAG.match(t), RL_TAG.match(t).group("opt")) for t, _, _ in runs})
         palette = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
         for tag, xs, ys in runs:
-            key = RL_TAG.match(tag).group("opt") + RL_TAG.match(tag).group("cons")
+            key = rl_label(RL_TAG.match(tag), RL_TAG.match(tag).group("opt"))
             ax.plot(xs, ys, lw=2, color=palette[labels.index(key) % len(palette)], alpha=0.9,
-                    label=f"Opt{key.replace('c', ' +Consolidate')}")
+                    label=key)
         handles, lab = ax.get_legend_handles_labels()
         uniq = dict(zip(lab, handles))
         ax.legend(uniq.values(), uniq.keys(), frameon=False, fontsize=8, labelcolor=MUTED)
@@ -335,9 +367,9 @@ def fig_training_curves(figdir):
 
 
 def main():
-    newest, skipped = load_runs()
+    newest, skipped, stale = load_runs()
     results = aggregate(newest)
-    rows = write_data(results, skipped)
+    rows = write_data(results, skipped, stale)
     summary = write_tables(results)
     figdir = ROOT / "figures"
     figdir.mkdir(parents=True, exist_ok=True)
@@ -345,7 +377,8 @@ def main():
     fig_regime_map(results, figdir)
     fig_heuristic_heatmap(results, figdir)
     n_curves = fig_training_curves(figdir)
-    print(f"{len(rows)} method rows over {len(results)} presets; skipped {skipped} runs (not current objective); "
+    print(f"{len(rows)} method rows over {len(results)} presets; skipped {skipped} runs (not current objective), "
+          f"{stale} runs (old instance protocol); "
           f"training-curve figures for {n_curves} presets")
     print("\n".join(summary))
 

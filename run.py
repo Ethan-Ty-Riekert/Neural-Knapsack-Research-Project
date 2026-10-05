@@ -38,7 +38,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from Code.variants import VARIANTS, get_variant  # noqa: E402
 from Code.utils.paths import MACHINE_NAME  # noqa: E402
 
-RL_OPTIONS = ["1", "2", "3", "4"]
+RL_OPTIONS = ["0", "1", "2", "3", "4"]
 
 
 # --------------------------------------------------------------------------- methods
@@ -84,10 +84,12 @@ def run_rl_instance(option, tag, config, args, env_kwargs):
     env = build_eval_env(option, gym_env, window_size=spec.get("window_size"),
                          window_order=spec.get("window_order") or "edf",
                          use_atc_feature=bool(spec.get("use_atc_feature")),
-                         placements=tuple(spec.get("placements") or DEFAULT_PLACEMENTS))
+                         rule_kwargs=dict(placements=tuple(spec.get("placements") or DEFAULT_PLACEMENTS),
+                                          decision_epoch=spec.get("decision_epoch") or "placement"))
     key = (option, tag)
     if key not in _RL_MODELS:
-        _RL_MODELS[key] = load_model(option, env, checkpoint_tag=tag, window_size=spec.get("window_size"))
+        _RL_MODELS[key] = load_model(option, env, checkpoint_tag=tag, window_size=spec.get("window_size"),
+                                     policy_arch=spec.get("policy_arch"))
     result = run_episode(_RL_MODELS[key], env)
     base = _base_env(env)
     from Code.core.metrics import schedule_metrics
@@ -221,6 +223,10 @@ def rl_train_passthrough(args):
         extra += ["--gamma", str(args.gamma)]
     if args.gae_lambda is not None:
         extra += ["--gae-lambda", str(args.gae_lambda)]
+    if args.algo:
+        extra += ["--algo", args.algo]
+    if args.train_args:  # any other training-script flags, verbatim (e.g. tuned hyperparameters)
+        extra += args.train_args.split() if isinstance(args.train_args, str) else list(args.train_args)  # str from YAML
     return extra
 
 
@@ -406,6 +412,10 @@ def main():
                     help="rl-train --option 1: placement menu, e.g. FirstFit,Consolidate (rl-eval reads it from the checkpoint)")
     ap.add_argument("--gamma", type=float, default=None, help="rl-train: PPO discount (training script default 0.99)")
     ap.add_argument("--gae-lambda", type=float, default=None, help="rl-train: GAE lambda (training script default 0.95)")
+    ap.add_argument("--algo", choices=["ppo", "a2c"], default=None, help="rl-train: update rule (default ppo)")
+    ap.add_argument("--train-args", nargs=argparse.REMAINDER, default=None,
+                    help="rl-train: MUST BE LAST -- every following token is passed verbatim to the training "
+                         "script, e.g. --train-args --learning-rate 1e-4 --n-epochs 5")
     ap.add_argument("--diagnostics-interval", type=int, default=None, help="rl-train: action-distribution diagnostics every N steps")
     ap.add_argument("--no-save", action="store_true")
     args = ap.parse_args()

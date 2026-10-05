@@ -9,7 +9,7 @@ Code/core/objectives.py (reward_mode="objective"). Build status (2026-09-29):
   step 5       RL training under v2              -- not yet
 
 Presets = v1's instance protocols, unchanged (so v1 and v2 results can be compared on identical
-instances), plus the named difficulty presets (15 held-out instances each). The objectives are
+instances), plus the named difficulty presets (50 held-out instances each, seeds 500000..500049). The objectives are
 chosen per run (run.py --objectives), not per preset.
 """
 from Code.core.objectives import ObjectiveConfig
@@ -21,7 +21,7 @@ DESCRIPTION = ("Reward = exactly the selected objectives: weighted tardiness + d
 STATUS = "active (objectives + difficulty implemented; RL training via --reward-mode objective)"
 
 PRESETS = {name: dict(p) for name, p in _V1_PRESETS.items()}
-_HELDOUT = list(range(500_000, 500_015))
+_HELDOUT = list(range(500_000, 500_050))  # 50, matching v1's held-out protocol (was 15 until 2026-10-05)
 for _name, _d in DIFFICULTIES.items():
     PRESETS[_name] = dict(_d.as_dict(), seeds=_HELDOUT)
 

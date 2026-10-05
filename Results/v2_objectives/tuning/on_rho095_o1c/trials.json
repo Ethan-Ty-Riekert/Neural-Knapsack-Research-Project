@@ -1,0 +1,167 @@
+{
+ "space": "{'learning-rate': ('log', 3e-05, 0.001), 'rollout-size': [2048, 4096, 8192, 16384], 'batch-size': [64, 256, 1024], 'n-epochs': [3, 5, 10], 'gamma': [0.99, 0.995, 0.999], 'gae-lambda': [0.9, 0.95, 0.98], 'clip-range': [0.1, 0.2, 0.3], 'ent-coef': ('log', 0.0001, 0.03)}",
+ "search_seed": 0,
+ "timesteps": 300000,
+ "trials": {
+  "v2_on_rho095_o1c_hp0_s0": {
+   "learning-rate": 0.0002799862281075578,
+   "rollout-size": 8192,
+   "batch-size": 64,
+   "n-epochs": 3,
+   "gamma": 0.99,
+   "gae-lambda": 0.9,
+   "clip-range": 0.1,
+   "ent-coef": 0.01034115375436866
+  },
+  "v2_on_rho095_o1c_hp1_s0": {
+   "learning-rate": 0.0007364399214212697,
+   "rollout-size": 8192,
+   "batch-size": 256,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.95,
+   "clip-range": 0.2,
+   "ent-coef": 0.02071513536906373
+  },
+  "v2_on_rho095_o1c_hp2_s0": {
+   "learning-rate": 0.0005242848297799108,
+   "rollout-size": 8192,
+   "batch-size": 64,
+   "n-epochs": 5,
+   "gamma": 0.999,
+   "gae-lambda": 0.95,
+   "clip-range": 0.1,
+   "ent-coef": 0.0064186695106363545
+  },
+  "v2_on_rho095_o1c_hp3_s0": {
+   "learning-rate": 5.554224960528529e-05,
+   "rollout-size": 2048,
+   "batch-size": 1024,
+   "n-epochs": 3,
+   "gamma": 0.995,
+   "gae-lambda": 0.9,
+   "clip-range": 0.1,
+   "ent-coef": 0.00111441641306071
+  },
+  "v2_on_rho095_o1c_hp4_s0": {
+   "learning-rate": 3.31320783715448e-05,
+   "rollout-size": 2048,
+   "batch-size": 64,
+   "n-epochs": 3,
+   "gamma": 0.999,
+   "gae-lambda": 0.95,
+   "clip-range": 0.2,
+   "ent-coef": 0.003344903088247199
+  },
+  "v2_on_rho095_o1c_hp5_s0": {
+   "learning-rate": 0.00011519023045454686,
+   "rollout-size": 4096,
+   "batch-size": 1024,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.95,
+   "clip-range": 0.3,
+   "ent-coef": 0.00408570022552655
+  },
+  "v2_on_rho095_o1c_hp6_s0": {
+   "learning-rate": 0.0003353838516302873,
+   "rollout-size": 8192,
+   "batch-size": 256,
+   "n-epochs": 10,
+   "gamma": 0.99,
+   "gae-lambda": 0.95,
+   "clip-range": 0.3,
+   "ent-coef": 0.002001549607947164
+  },
+  "v2_on_rho095_o1c_hp7_s0": {
+   "learning-rate": 8.90393565561436e-05,
+   "rollout-size": 4096,
+   "batch-size": 256,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.9,
+   "clip-range": 0.3,
+   "ent-coef": 0.0007696656182328886
+  },
+  "v2_on_rho095_o1c_hp8_s0": {
+   "learning-rate": 0.0002225829460029659,
+   "rollout-size": 4096,
+   "batch-size": 64,
+   "n-epochs": 10,
+   "gamma": 0.995,
+   "gae-lambda": 0.95,
+   "clip-range": 0.2,
+   "ent-coef": 0.0009334428855135909
+  },
+  "v2_on_rho095_o1c_hp9_s0": {
+   "learning-rate": 0.0006806144148517329,
+   "rollout-size": 4096,
+   "batch-size": 64,
+   "n-epochs": 10,
+   "gamma": 0.995,
+   "gae-lambda": 0.9,
+   "clip-range": 0.1,
+   "ent-coef": 0.011549429063523587
+  },
+  "v2_on_rho095_o1c_hp10_s0": {
+   "learning-rate": 0.0004739980310359195,
+   "rollout-size": 4096,
+   "batch-size": 64,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.9,
+   "clip-range": 0.1,
+   "ent-coef": 0.0006801468871523402
+  },
+  "v2_on_rho095_o1c_hp11_s0": {
+   "learning-rate": 5.081344744850783e-05,
+   "rollout-size": 16384,
+   "batch-size": 256,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.98,
+   "clip-range": 0.1,
+   "ent-coef": 0.00013454360823771165
+  },
+  "v2_on_rho095_o1c_hp12_s0": {
+   "learning-rate": 0.00012393804832347392,
+   "rollout-size": 16384,
+   "batch-size": 64,
+   "n-epochs": 10,
+   "gamma": 0.99,
+   "gae-lambda": 0.95,
+   "clip-range": 0.2,
+   "ent-coef": 0.0005494226247287598
+  },
+  "v2_on_rho095_o1c_hp13_s0": {
+   "learning-rate": 0.00031658327777897175,
+   "rollout-size": 16384,
+   "batch-size": 64,
+   "n-epochs": 10,
+   "gamma": 0.999,
+   "gae-lambda": 0.9,
+   "clip-range": 0.2,
+   "ent-coef": 0.00018252594234571042
+  },
+  "v2_on_rho095_o1c_hp14_s0": {
+   "learning-rate": 0.00027238092298061074,
+   "rollout-size": 16384,
+   "batch-size": 1024,
+   "n-epochs": 5,
+   "gamma": 0.995,
+   "gae-lambda": 0.95,
+   "clip-range": 0.3,
+   "ent-coef": 0.001731021831643797
+  },
+  "v2_on_rho095_o1c_hp15_s0": {
+   "learning-rate": 0.00013325787680649686,
+   "rollout-size": 16384,
+   "batch-size": 256,
+   "n-epochs": 5,
+   "gamma": 0.999,
+   "gae-lambda": 0.95,
+   "clip-range": 0.3,
+   "ent-coef": 0.0013790740699226023
+  }
+ }
+}
