@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-07 (S2W12) -- Diagnosis: validation "swings" are an argmax-evaluation artefact, not training instability
+
+**Config:** v3 tuning logs; checkpoint `tune_off_tf05_o0pmlubr_t4/ckpt_100000_steps` (Option 0, PPO, free idling)
+and final models `v2_off_tf05_o0pmlubr[_a2c]_tuned_s0`, 5 validation instances, deterministic (argmax) vs
+stochastic (sampled) action selection.
+
+**Stats:**
+```
+training logs: episode length stable (online ~1,040 steps, offline 100) -- the training policy never idles to the cap
+t4 @100k  deterministic: J 130,944,993, idle 100% of steps | P(idle) 0.003 vs largest single (job, machine) P 0.002,
+                         idle is the argmax in 100% of states where a job fits
+t4 @100k  stochastic   : J 200,585, idle 2% of steps
+final PPO s0 (1M)      : deterministic J 27,814 / stochastic 34,017; P(idle) 0.000 when a job fits
+final A2C s0 (1M)      : deterministic J 239,473 / stochastic 192,998; largest single-action P 0.001 (near uniform)
+```
+**Observation (verified on the checkpoint above):** idle is ONE action while each job's probability is split over
+|M| = 10 (job, machine) actions, so for a not-yet-confident policy idle can be the single most likely action
+everywhere; argmax evaluation then idles until the safety cap (J ~1e8) although the trained (stochastic) policy
+places jobs 98% of the time. The 1e8-1e10 validation values in the v3 studies are this artefact. Confident
+(well-trained) policies are unaffected. PPO's objective is the expected return of the stochastic policy; the
+argmax policy is a different policy that is never optimised directly. A2C at 1M steps offline is still near
+uniform (not learning), a separate problem.
+
+**Conclusion / next step:** user decision on the evaluation rule for final results (deterministic as so far /
+stochastic / both), fixed before any v3 test result is seen.
+
+---
+
 ## 2026-10-07 (S2W12) -- Scheduling: v3 complete (PPO + A2C) by Friday morning; slow default runs held
 
 **Config:** user target: all v3 results by Friday 2026-10-09 morning, no further cuts. Estimate ~45-50 h of wall
