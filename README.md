@@ -10,33 +10,55 @@ paper. **Reviewers: the paper's results are reproduced from the tagged release c
 
 ## Overview
 
-Cloud data centres place jobs (virtual machines, containers) on physical machines with limited
-multi-dimensional capacity (CPU, memory, ...). Each job has a duration, a resource demand, a deadline
-and an importance weight, and the scheduler must decide **which job to start, on which machine, and
-when** -- including whether to deliberately leave capacity free for work that has not arrived yet.
+The project asks whether a reinforcement learning (RL) agent can learn to allocate jobs to machines in
+a cloud environment better than the dispatching rules used in practice, an exact solver and a
+metaheuristic.
 
-The project asks whether a reinforcement learning (RL) agent can learn scheduling policies that beat
-the dispatching rules used in practice, measured by **weighted squared tardiness**
+## Problem
 
-$$J = \sum_j w_j\, T_j^2, \qquad T_j = \max(0,\ C_j - d_j),$$
+Consider a cloud computing environment that receives a set of jobs, arriving according to some
+distribution, which need to be assigned to a set of physical machines. Each job $j$ has a fixed
+processing duration $p_j$, a fixed multi-dimensional vector of resource requirements $a_{jr}$ (e.g. CPU,
+memory) which it occupies for its entire processing time, and a due date $d_j$ by which it should be
+completed. Jobs are independent of one another. To reflect that some jobs matter more than others,
+each job has a priority weight $w_j$, set externally according to business needs.
 
-which penalises a few very late important jobs more than many slightly late ones. Two settings are
-studied:
+Jobs are served by a set of identical machines, each limited only by a fixed capacity $C_r$ in every
+resource $r$. A machine may process several jobs at once, provided their combined resource usage does
+not exceed its capacity in any dimension. Scheduling is non-preemptive: each job is assigned to exactly
+one machine at a single start time and runs uninterrupted until completion. Time is discretised into
+integer steps over a finite planning horizon $H$.
+
+Two settings are studied:
 
 - **Offline**: all jobs are known at the start (100 jobs, 10 machines, 4 resources).
 - **Online**: jobs arrive over time (Poisson arrivals, heavy-tailed sizes) and the scheduler does not
-  know the future; studied at increasing load.
+  know which jobs will arrive; studied at increasing load.
+
+## Objective
+
+The objective is a weighted sum of optional terms, each switched on by its weight $\lambda$:
+
+$$\min\ J = \lambda_S \sum_j w_j T_j^2 + \lambda_T \sum_j w_j T_j + \lambda_U \sum_j w_j U_j + \lambda_E E,$$
+
+where $T_j = \max(0, C_j - d_j)$ is the tardiness of job $j$ completing at $C_j$, $U_j = 1$ if job $j$
+finishes after its due date (an SLA violation) and 0 otherwise, and $E$ is energy, measured as active
+machine-ticks under a linear power model. Every term is implemented (`Code/core/objectives.py`).
+
+**All results so far use weighted squared tardiness alone** ($\lambda_S = 1$, every other
+$\lambda = 0$), which penalises a few very late important jobs more than many slightly late ones.
+The other terms (linear tardiness, late-job count, energy), together with the on-time rate, maximum
+tardiness and mean waiting time, are reported as evaluation metrics but not yet optimised;
+multi-objective training over these terms is future work.
 
 ## Formulation
 
-The problem is modelled as a Markov decision process (MDP). The state at time $t$ holds the
-remaining capacity $R_{m,r,t}$ of every machine and resource, each machine's activation $y_m$, and a
-feature row $(p_j, s_j, d_j, A_j, w_j, m_j)$ for every job (duration, start time, deadline, resource
-demand, weight, machine), which makes the state Markov. The reward is exactly the objective: at
-every step the agent is charged the lateness accrued in that step, so the episode return is $-J$ up
-to a constant scale. The full definitions (states, actions, transition dynamics, reward and their
-proofs) are in the paper's Methodology section; the code is in `Code/core/`
-(`scheduling_env.py`, `online_scheduling_env.py`, `objectives.py`, `obs_layout.py`).
+The problem is modelled as a Markov decision process (MDP): at each decision the agent observes the
+current time, every machine's remaining capacity, and every job's duration, start time, deadline,
+resource demand, weight and machine, and chooses what to schedule next (or to wait). The reward is
+exactly the objective: each step charges the lateness accrued in that step, so maximising the reward and
+minimising $J$ are the same problem. The full definitions are in the paper's Methodology section; the
+code is in `Code/core/` (`scheduling_env.py`, `online_scheduling_env.py`, `objectives.py`, `obs_layout.py`).
 
 ## Methods compared
 
