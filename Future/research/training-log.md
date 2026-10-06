@@ -32,6 +32,37 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- v3 protocol implemented (user-approved); idling-mode decision rule pre-registered
+
+**Config (approved 2026-10-06 evening; plan `2026-10-06-rl-improvement-plan.md`), commit 4a5b77d:**
+- Arrival-aware critic (`--critic-arrivals`, tag `b`): the critic alone also sees a summary of the jobs that
+  have not arrived yet (21 bins x [count, weight, work per resource, mean slack]; `Code/core/critic_input.py`).
+  Input-dependent baseline (mao2019variance), asymmetric actor-critic (pinto2018asymmetric). Unbiasedness
+  derivation in the module docstring: exact for GAE lambda = 1; for lambda < 1 no new bias source beyond the
+  usual critic error. Test 12: for all five designs the actor's output is bit-identical when the block
+  changes, and the value estimate changes.
+- Capacity look-ahead (`--lookahead`, tag `l`): K = longest possible job (9 offline, 40 online, from the
+  generators' bounds; `difficulty.max_job_duration`). Test 11 checks it equals
+  C_r - sum_{j in P_t, m_j = m, s_j <= t' < s_j + p_j} A_jr computed from F_t at every step: no new information.
+- Fixed scaling (`--fixed-scaling`, tag `u`): p_j / H, w_j / 5, A_jr / C_r (C_r = 30 for every resource,
+  machine and instance) instead of each instance's maxima.
+- Tuning v3 (`tune_optuna_v2 --protocol v3|v3_idle`): trial 0 = the algorithm's defaults; 12 trials x 300k
+  steps, pruning checks every 75k; finals 1M steps x 3 seeds on off_tf05, off_tf05_w1, on_rho095.
+- `GymSchedulingEnv.apply_options`: one place applying every env/observation option (training, parallel
+  workers, diagnostics, evaluation), replacing four copies.
+
+**Pre-registered decision rule (written before R1/R2 results are seen):** v3 runs one idling mode. Every R1
+(work-conserving, defaults) and R2 (free idling, defaults) model is scored on the 20 VALIDATION instances.
+Free idling (`v3_idle`) is chosen if its 3-seed mean validation J is lower in a strict majority of the 30
+(option x algorithm x preset) cells; otherwise work-conserving (`v3`). Test instances are not used.
+
+**Stats:** smoke tests: v3 trials / defaults trial / two workers / finalisation / final-run training and
+reloading for evaluation all work; all 12 checks in `tests/test_v2_variants.py` pass.
+
+**Conclusion / next step:** apply the rule when R1/R2 finish (~06:00 2026-10-07), then launch v3.
+
+---
+
 ## 2026-10-06 (S2W12) -- Online diagnosis: discounting (gamma) is NOT the main cause; observation sizes measured
 
 **Config:** on_rho095, PPO defaults, full state + work-conserving, 300k x seeds 0-2. `diag_gamma1_*`: gamma 1,
