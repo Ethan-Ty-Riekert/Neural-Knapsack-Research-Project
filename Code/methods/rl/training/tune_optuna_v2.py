@@ -26,7 +26,8 @@ Future/research/2026-10-06-rl-improvement-plan.md) change, uniformly for every d
       something worse than the defaults on validation (the defaults are not inside the log-scaled search
       space: the default entropy coefficient is 0); trials are as long as the v2 final runs (300k steps,
       pruning checks every 75k), which removes the short-trial bias found for Option 2; 12 trials;
-  (c) final runs of 1M steps.
+  (c) final runs of 1M steps offline; online 300k (2026-10-06 deadline cut: PPO-default online runs
+      train at ~19 steps/s, so 1M online would take ~15 h per run).
 "v3_idle" is "v3" with free idling instead of work-conserving dispatching.
 
 Trials train in-process (train_action_space_variant.main) through the exact command run.py builds,
@@ -75,15 +76,19 @@ class Protocol:
     work_conserving: bool         # adds --work-conserving and the "n" tag modifier
     extra_mods: str = ""          # tag modifiers appended for every option
     defaults_trial: bool = False  # trial 0 = the algorithm's default hyperparameters
+    final_steps_online: int = 0   # final-run length for online presets (0 = final_steps)
+
+    def final_steps_for(self, preset):
+        return self.final_steps_online if self.final_steps_online and preset.startswith("on_") else self.final_steps
 
 
 _V3_FLAGS = ("--markov-obs", "--lookahead", "--fixed-scaling", "--critic-arrivals", "--lateness-shaping")
 PROTOCOLS = {
     "v2": Protocol("v2", TUNING_DIR / "optuna", 20, 100_000, 25_000, 300_000, ("--markov-obs",), True),
     "v3": Protocol("v3", TUNING_DIR / "optuna_v3", 12, 300_000, 75_000, 1_000_000, _V3_FLAGS, True,
-                   "lubr", True),
+                   "lubr", True, 300_000),
     "v3_idle": Protocol("v3_idle", TUNING_DIR / "optuna_v3_idle", 12, 300_000, 75_000, 1_000_000,
-                        _V3_FLAGS, False, "lubr", True),
+                        _V3_FLAGS, False, "lubr", True, 300_000),
 }
 V2 = PROTOCOLS["v2"]
 TRIAL_STEPS = V2.trial_steps  # v2 values, kept for tests/test_v2_variants.py
@@ -251,7 +256,7 @@ def counts(study):
 def final_job_lines(option, algo, preset, hp, proto=V2):
     """Campaign queue lines ("<tag> <run.py args>") of the final runs for one finished study."""
     return [f"v2_{p}_o{OPTIONS[option]['option']}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}_tuned_s{s} "
-            + " ".join(run_args(option, algo, p, s, proto.final_steps, hp, proto))
+            + " ".join(run_args(option, algo, p, s, proto.final_steps_for(p), hp, proto))
             for p in FINAL_PRESETS[preset] for s in FINAL_SEEDS]
 
 

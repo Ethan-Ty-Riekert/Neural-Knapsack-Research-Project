@@ -32,6 +32,20 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Deadline cut applied: v3 online final runs 300k steps (offline stays 1M)
+
+**Config:** `Protocol.final_steps_online = 300_000` for v3 / v3_idle (cut (c) of the approved plan, "1M steps
+offline only"), applied before any v3 worker started.
+
+**Stats:** default-hyperparameter PPO runs online train at ~19 steps/s (minibatch 64 x 10 epochs over the
+1,235-slot observation), vs ~58 for the tuned v2 configurations: `v2_on_rho095_o0pnm_s0` reached 262k steps in
+3 h 45 min. Since trial 0 of every v3 study is the defaults, a 1M-step online final run could take ~15 h.
+
+**Conclusion:** online v3 results are reported at 300k steps (the same budget as the v2 online rows, so the
+v2-vs-v3 online comparison is like-for-like); offline at 1M.
+
+---
+
 ## 2026-10-06 (S2W12) -- Lateness reward shaping added to v3 (user-approved); v3 relaunched
 
 **Config:** `--lateness-shaping` (tag `r`), potential-based shaping F_t = gamma Phi(s') - Phi(s) with
