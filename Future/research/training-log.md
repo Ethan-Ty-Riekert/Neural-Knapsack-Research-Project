@@ -32,6 +32,28 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Lateness reward shaping added to v3 (user-approved); v3 relaunched
+
+**Config:** `--lateness-shaping` (tag `r`), potential-based shaping F_t = gamma Phi(s') - Phi(s) with
+Phi(s_t) = -sum_{j unfinished} w_j [(C^_j - d_j)_+^2 - (t - d_j)_+^2] (plus the linear analogue when linear
+tardiness is selected), C^_j = s_j + p_j if running, t + p_j if waiting (`Code/core/objectives.py`).
+User's idea ("reward a job actively being worked on, i.e. s_j has a value") made policy-invariant: a plain
+running-job bonus would change the optimal policy (it pays for busy machines, favours long low-weight jobs and
+penalises the strategic idling the user wants). Potential-based shaping leaves the optimal policy unchanged
+(ng1999shaping, Theorem 1) and J is computed from the schedule, never from the shaped reward.
+Shaping gamma = the run's (tuned) gamma. v3_idle relaunched ~23:00 with flags
+`--markov-obs --lookahead --fixed-scaling --critic-arrivals --lateness-shaping` (tags `...mlubr`); no v3 worker
+had started before the stop, so nothing was discarded.
+
+**Stats:** test 13 (new): with gamma = 1, sum_t r_t c + J = -Phi(s_0) to 1e-9 relative for three random policies
+(5%, 30%, 60% idling), offline and online -- the same constant for every policy; every offline idle tick's
+reward equals -sum_{waiting j} w_j[(t+1+p_j-d_j)_+^2 - (t+p_j-d_j)_+^2] exactly. Existing objective tests
+(test_objective_reward, test_squared_lateness, test_extended_horizon) still pass after the shaping refactor.
+Smoke: a 2,048-step free-idling online model (one update, no learning yet) idled to the safety cap
+(J = 9.7e10): the degenerate behaviour the shaping and training are meant to remove.
+
+---
+
 ## 2026-10-06 (S2W12) -- v3 runs with FREE IDLING (user decision); pre-registered idling rule withdrawn
 
 **Config:** v3 is launched as `tune_optuna_v2 --protocol v3_idle` for all 6 designs x PPO/A2C x {off_tf05,

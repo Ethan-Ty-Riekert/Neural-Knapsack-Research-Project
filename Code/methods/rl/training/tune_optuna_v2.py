@@ -20,6 +20,8 @@ Results/v2_objectives/tuning/optuna). "v3" / "v3_idle" (approved 2026-10-06 even
 Future/research/2026-10-06-rl-improvement-plan.md) change, uniformly for every design:
   (a) the observation: capacity look-ahead, fixed scaling, and the critic-only future-arrival summary
       (input-dependent baseline, Mao et al. 2019; Code/core/critic_input.py);
+  (a') the training reward: potential-based lateness shaping (Ng et al. 1999; Code/core/objectives.py),
+      which leaves the optimal policy and the reported J unchanged;
   (b) the tuning: trial 0 of every study is the algorithm's defaults, so tuning can never select
       something worse than the defaults on validation (the defaults are not inside the log-scaled search
       space: the default entropy coefficient is 0); trials are as long as the v2 final runs (300k steps,
@@ -75,13 +77,13 @@ class Protocol:
     defaults_trial: bool = False  # trial 0 = the algorithm's default hyperparameters
 
 
-_V3_FLAGS = ("--markov-obs", "--lookahead", "--fixed-scaling", "--critic-arrivals")
+_V3_FLAGS = ("--markov-obs", "--lookahead", "--fixed-scaling", "--critic-arrivals", "--lateness-shaping")
 PROTOCOLS = {
     "v2": Protocol("v2", TUNING_DIR / "optuna", 20, 100_000, 25_000, 300_000, ("--markov-obs",), True),
     "v3": Protocol("v3", TUNING_DIR / "optuna_v3", 12, 300_000, 75_000, 1_000_000, _V3_FLAGS, True,
-                   "lub", True),
+                   "lubr", True),
     "v3_idle": Protocol("v3_idle", TUNING_DIR / "optuna_v3_idle", 12, 300_000, 75_000, 1_000_000,
-                        _V3_FLAGS, False, "lub", True),
+                        _V3_FLAGS, False, "lubr", True),
 }
 V2 = PROTOCOLS["v2"]
 TRIAL_STEPS = V2.trial_steps  # v2 values, kept for tests/test_v2_variants.py

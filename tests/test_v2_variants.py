@@ -388,4 +388,47 @@ for opt, extra in (("0", dict(policy_arch="pointer")), ("1", {}), ("2", {}), ("3
         assert not _torch.allclose(model.policy.predict_values(x), model.policy.predict_values(y)), opt
 print(" 12. Every design's actor ignores the critic-only block; every critic uses it")
 
+# 13. Lateness shaping (Code/core/objectives.py). (a) Policy invariance (Ng et al. 1999): with gamma = 1 the
+#     shaped return satisfies  sum_t r_t * c + J = -Phi(s_0)  for EVERY policy, the same constant, so the
+#     shaping cannot prefer any policy. (b) An idle tick offline gives exactly
+#     -sum_{waiting j} w_j [(t+1+p_j-d_j)_+^2 - (t+p_j-d_j)_+^2]: the extra lateness the delay causes, and
+#     nothing for running jobs or for waiting jobs that can still finish on time.
+_shaped = objective_config(("tardiness_sq",), None, 1.0, lateness_shaping=True)
+_shaped.shaping_gamma = 1.0
+for preset in ("off_tf05", "on_rho095"):
+    d = DIFFICULTIES[preset]
+    online = d.case == "online"
+    kw = dict(reward_mode="objective", objective=_shaped, difficulty=d, extend_horizon=True, markov_obs=True)
+    kw.update(dict(arrival_rate=1.0, horizon=100, max_jobs=300, job_size_distribution="lognormal") if online
+              else dict(randomize_instances=False))
+    constants, n_idle_checked = [], 0
+    for policy_seed, p_idle in ((0, 0.05), (1, 0.3), (2, 0.6)):
+        full = make_full_gym_env(online, kw, seed=7)
+        rng = np.random.default_rng(policy_seed)
+        full.reset()
+        base, ob = full.env, full.env.objective
+        phi0, total, done = ob.phi, 0.0, False
+        idle = full.max_jobs * full.num_machines
+        while not done:
+            m = full.get_action_mask()
+            placeable = np.flatnonzero(m[:idle])
+            take_idle = (not placeable.size) or rng.random() < p_idle
+            if take_idle and not online:
+                t = base.time
+                P, dd, w = (np.asarray(x, float) for x in (base.job_durations, base.job_deadlines, base.job_weights))
+                wait = np.zeros(len(P), bool)
+                wait[list(base.remaining_jobs)] = True
+                expect = -(w * (np.maximum(0, t + 1 + P - dd) ** 2 - np.maximum(0, t + P - dd) ** 2))[wait].sum()
+            _, r, done, _, _ = full.step(idle if take_idle else int(rng.choice(placeable)))
+            total += r
+            if take_idle and not online and not done:
+                assert np.isclose(r * ob.c, expect, rtol=1e-9, atol=1e-6), (r * ob.c, expect)
+                n_idle_checked += 1
+        constants.append((total * ob.c + ob.objective_value(), -phi0))
+    for got, want in constants:
+        assert np.isclose(got, want, rtol=1e-9, atol=1e-4), (preset, got, want)
+    assert np.isclose(constants[0][1], constants[1][1]) and np.isclose(constants[0][1], constants[2][1])
+    assert online or n_idle_checked > 10
+print(" 13. Lateness shaping: shaped return = -J/c - Phi(s0)/c for every policy; idle penalty = delay's lateness")
+
 print("test_v2_variants: all checks passed")

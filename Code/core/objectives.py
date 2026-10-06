@@ -11,7 +11,23 @@ reward_mode="objective". The objective minimised is
       + lambda_E * sum_t sum_m a_m(t) P(u_m(t)) / P_max            (energy, sec. 4)
 
 and the per-step reward is r_t = -(1/c) * (this step's share of J) + F_t / c, with c a single
-global scale constant (sec. 6) and F_t optional potential-based drop-risk shaping (sec. 6).
+global scale constant (sec. 6) and F_t optional potential-based shaping F_t = gamma Phi(s') - Phi(s):
+drop-risk shaping (sec. 6, fixed window) and/or lateness shaping (extended horizon, 2026-10-06).
+
+Lateness shaping (lateness_shaping=True; user-approved 2026-10-06). Problem: a job that is already late
+costs the same per tick whether it waits or runs, so delaying it is only penalised p_j ticks later, when
+it would have finished. Potential (lambda-weighted, in cost units):
+    Phi(s_t) = - sum_{j unfinished} w_j [ lambda_S (max(0, C^_j - d_j)^2 - max(0, t - d_j)^2)
+                                         + lambda_T (max(0, C^_j - d_j)   - max(0, t - d_j)) ],
+    C^_j = s_j + p_j for a running job (its completion is fixed), t + p_j for a waiting job (the earliest
+    it can finish) -- minus the least lateness each unfinished job will still be charged.
+Effects: idling while a waiting job's earliest completion is past its deadline gives an immediate penalty
+equal to the extra lateness the one-tick delay causes; starting the job fixes C^_j (no further penalty);
+idling while every waiting job can still finish on time changes nothing (strategic idling stays free);
+running jobs net to zero (their charge is offset by Phi). Phi = 0 at every terminal state (no unfinished
+job), so with gamma = 1 the shaped return is -J/c - Phi(s_0)/c for every policy, and for any gamma the
+optimal policy is unchanged (Ng, Harada & Russell 1999, ICML, Theorem 1; shaping_gamma must equal the
+RL discount). The reported J (objective_value) never includes shaping.
 
 Charges are dense (paid when the cost is incurred, not at episode end):
   - tardiness: w_j for every elapsing tick during which j is past its deadline and unfinished;
@@ -49,6 +65,7 @@ class ObjectiveConfig:
     drop_surcharge: Optional[float] = None  # B in ticks; None -> horizon H (decided 2026-09-29)
     scale: Optional[float] = None           # c; None -> number of real jobs in the instance
     drop_shaping: bool = True               # potential-based shaping on slack to latest start
+    lateness_shaping: bool = False          # potential-based shaping on projected lateness (extended)
     shaping_gamma: float = 0.99             # must equal the RL algorithm's discount factor
 
     def __post_init__(self):
@@ -212,22 +229,52 @@ class ObjectiveReward:
         return (self.cfg.drops * float(self.K[new].sum()) - self.cfg.tardiness * pre
                 + self.cfg.tardiness_sq * (float(self.K_sq[new].sum()) - pre_sq))
 
+    def _shaping_on(self):
+        return (self.cfg.drop_shaping and not self.extended) or (self.cfg.lateness_shaping and self.extended)
+
     def _potential(self, env):
-        """Phi(s) = -sum over alive jobs (real, waiting, not dropped) of K_j * g(LS_j - t),
-        g(sigma) = 1 / (1 + max(sigma, 0)). Zero whenever no job is alive (every terminal state)."""
-        if not self.cfg.drop_shaping or self.extended or not env.remaining_jobs:
-            return 0.0  # no drop risk to shape under the extended horizon
+        """The shaping potential, lambda-weighted (cost units): drop-risk (fixed window) and/or lateness
+        (extended horizon) parts. Zero whenever no job is unfinished (every terminal state)."""
+        phi = 0.0
+        if self.cfg.drop_shaping and not self.extended:
+            phi += self.cfg.drops * self._drop_potential(env)
+        if self.cfg.lateness_shaping and self.extended:
+            phi += self._lateness_potential(env)
+        return phi
+
+    def _drop_potential(self, env):
+        """-sum over alive jobs (real, waiting, not dropped) of K_j * g(LS_j - t),
+        g(sigma) = 1 / (1 + max(sigma, 0))."""
+        if not env.remaining_jobs:
+            return 0.0
         idx = np.fromiter(env.remaining_jobs, dtype=int)
         idx = idx[self.real[idx] & ~self.dropped[idx]]
         slack = np.maximum(self.LS[idx] - env.time, 0.0)
         return float(-(self.K[idx] / (1.0 + slack)).sum())
 
+    def _lateness_potential(self, env):
+        """-(least lateness every unfinished job will still be charged), see the module docstring."""
+        t = float(env.time)
+        start = np.asarray(env.start_times, dtype=float)
+        waiting = np.zeros(len(start), dtype=bool)
+        if env.remaining_jobs:
+            waiting[list(env.remaining_jobs)] = True
+        running = (start >= 0) & (start + self.P > t)
+        alive = (waiting | running) & self.real & ~self.dropped
+        if not alive.any():
+            return 0.0
+        completion = np.where(start >= 0, start + self.P, t + self.P)[alive]
+        d, w = self.d[alive], self.w[alive]
+        late, k0 = np.maximum(0.0, completion - d), np.maximum(0.0, t - d)
+        return float(-(self.cfg.tardiness_sq * w * (late ** 2 - k0 ** 2)
+                       + self.cfg.tardiness * w * (late - k0)).sum())
+
     def _reward(self, env, cost, terminal=False):
         """cost is already lambda-weighted; returns -(cost)/c plus scaled shaping."""
         reward = -cost / self.c
-        if self.cfg.drop_shaping and not self.extended:
+        if self._shaping_on():
             phi_new = 0.0 if terminal else self._potential(env)
-            reward += self.cfg.drops * (self.cfg.shaping_gamma * phi_new - self.phi) / self.c
+            reward += (self.cfg.shaping_gamma * phi_new - self.phi) / self.c
             self.phi = phi_new
         return reward
 

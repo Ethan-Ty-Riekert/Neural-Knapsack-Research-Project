@@ -40,7 +40,8 @@ def instances(preset_name: str):
 
 
 def objective_config(objectives=("tardiness_sq",), drop_surcharge=None, lambda_late=1.0,
-                     drop_shaping=False, lambda_energy=1.0, power_model="linear") -> ObjectiveConfig:
+                     drop_shaping=False, lambda_energy=1.0, power_model="linear",
+                     lateness_shaping=False) -> ObjectiveConfig:
     """Build the ObjectiveConfig for a run. drop_shaping defaults to False for evaluating fixed
     policies (heuristics/PSO/CP-SAT): then reward = -J/c exactly. RL training turns it on."""
     unknown = set(objectives) - set(OBJECTIVES)
@@ -58,6 +59,7 @@ def objective_config(objectives=("tardiness_sq",), drop_surcharge=None, lambda_l
         power_model=power_model,
         drop_surcharge=drop_surcharge,
         drop_shaping=drop_shaping,
+        lateness_shaping=lateness_shaping,
     )
 
 

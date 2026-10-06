@@ -556,6 +556,10 @@ def build_parser():
                          help="2026-10-06, with --markov-obs: job features scaled by fixed constants (durations "
                               "by H, weights by the largest weight, requirements by machine capacity) instead "
                               "of each instance's maxima (GymSchedulingEnv._job_scales).")
+    parser.add_argument("--lateness-shaping", action="store_true",
+                         help="2026-10-06, extended horizon: potential-based shaping on each unfinished job's "
+                              "least remaining lateness (Code/core/objectives.py); optimal policy unchanged "
+                              "(Ng et al. 1999), J unaffected.")
     parser.add_argument("--critic-arrivals", action="store_true",
                          help="2026-10-06: the critic (only) also sees a summary of the future arrivals -- an "
                               "input-dependent baseline, unbiased (Code/core/critic_input.py).")
@@ -622,6 +626,7 @@ def env_spec_from_args(args):
         markov_obs=args.markov_obs, policy_arch=args.policy_arch if args.option == "0" else None,
         lookahead=max_job_duration(DIFFICULTIES[args.difficulty]) if args.lookahead else 0,
         fixed_scaling=args.fixed_scaling, critic_arrivals=args.critic_arrivals,
+        lateness_shaping=args.lateness_shaping,  # training reward only (provenance); evaluation uses J
     )
 
 
@@ -648,6 +653,7 @@ def main(argv=None, extra_callbacks=None, save=True):
         from Code.variants.v2_objectives import objective_config
         objective = objective_config(tuple(o.strip() for o in args.objectives.split(",")), args.drop_surcharge,
                                      args.lambda_late, drop_shaping=not args.no_drop_shaping,
+                                     lateness_shaping=args.lateness_shaping,
                                      lambda_energy=args.lambda_energy, power_model=args.power_model)
         objective.shaping_gamma = args.gamma
     difficulty = DIFFICULTIES[args.difficulty] if args.difficulty else None
