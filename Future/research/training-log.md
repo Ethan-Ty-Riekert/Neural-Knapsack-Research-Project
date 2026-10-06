@@ -32,6 +32,16 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-07 (S2W12) -- Scheduling: v3 complete (PPO + A2C) by Friday morning; slow default runs held
+
+**Config:** user target: all v3 results by Friday 2026-10-09 morning, no further cuts. Estimate ~45-50 h of wall
+time from 00:01 (tuning ~115 job-h, finals ~95 job-h at 4-5 concurrent jobs). To keep v3's final runs from waiting
+behind 4-hour jobs, the 19 remaining online default-hyperparameter PPO runs for Options 0/2/3/4 (both idling
+modes) were moved to `rl_training/campaign/queue_after_v3.txt`, to be re-queued after v3. The 177 fast
+default-hyperparameter runs remain queued behind v3 as filler.
+
+---
+
 ## 2026-10-06 (S2W12) -- Deadline cut applied: v3 online final runs 300k steps (offline stays 1M)
 
 **Config:** `Protocol.final_steps_online = 300_000` for v3 / v3_idle (cut (c) of the approved plan, "1M steps
