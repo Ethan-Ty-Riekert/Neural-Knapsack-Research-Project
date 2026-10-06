@@ -32,6 +32,37 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Online diagnosis: discounting (gamma) is NOT the main cause; observation sizes measured
+
+**Config:** on_rho095, PPO defaults, full state + work-conserving, 300k x seeds 0-2. `diag_gamma1_*`: gamma 1,
+GAE lambda 1 (undiscounted Monte Carlo returns = exactly J). Baselines `v2_on_rho095_o1cnm_s*`,
+`v2_on_rho095_o3wnm_s0` (gamma 0.99, lambda 0.95). Scored on the 20 VALIDATION instances (not test).
+
+**Stats:**
+```
+                       validation J (s0 / s1 / s2)        training ep. reward first -> last fifth
+Opt1 gamma=1          148,219 / 64,802 / 46,770           -61.6 -> -61.3  (flat)
+Opt1 gamma=0.99       171,392 / 30,857 / 142,197          -64.9 -> -75.5  (declines)
+Opt3w gamma=1          94,391 / 365,550 / 85,061          -164.4 -> -194.3 (declines)
+Opt3w gamma=0.99      343,537 (s0)                        -155.6 -> -147.9 (flat)
+EDF+Consolidate (best heuristic, test)  21,986
+```
+Online observation (measured): 1,235 job slots x 10 features = 12,350 of 12,401 numbers; under EDF+Consolidate
+and SPT+FirstFit only 153-159 jobs are waiting or running per tick on average (peak 434-487).
+Machine capacity is 30 for all 4 resources on every machine and instance (constant).
+
+**Observation:** gamma=1 stops Option 1's decline but does not make it learn; it makes Option 3w worse.
+Seed-to-seed spread (31k-171k for one design) dwarfs the gamma effect. The earlier hypothesis (entry
+"Uniform v2 protocol COMPLETE" discussion: gamma<1 optimises a different objective than J) is therefore NOT
+supported as the main cause. The pattern -- offline learns, online does not improve on its initial policy, huge
+seed variance -- matches input-driven variance (Mao et al. 2019, ICLR): online returns are dominated by the
+random arrival sequence, which the critic cannot predict from the state, so advantage estimates are mostly
+noise. Offline has no exogenous input after t=0. Hypothesis, not yet tested.
+
+**Conclusion / next step:** plan in `2026-10-06-rl-improvement-plan.md` (awaiting user approval).
+
+---
+
 ## 2026-10-06 (S2W12) -- Uniform v2 protocol COMPLETE: test results, Options 0-4 x PPO/A2C
 
 **Config:** as in "Uniform v2 RL protocol launched" below. All 20 studies finished (no failed trials);
