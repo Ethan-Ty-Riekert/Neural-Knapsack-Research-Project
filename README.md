@@ -96,7 +96,22 @@ only. Each configuration is then trained with 3 seeds and evaluated on 50 held-o
 
 ## Results
 
-All tables, figures and the per-run data behind the paper are in
+### Interactive results explorer
+
+**[Open the Scheduler Results Atlas](https://ethan-ty-riekert.github.io/Neural-Knapsack-Research-Project/Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html)**
+([alternative link](https://htmlpreview.github.io/?https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/blob/main/Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html),
+or download [`scheduler_results_atlas.html`](Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html) and open it in a browser).
+
+An interactive page with every evaluation from the project's first phase (v1, July to September 2026:
+217 results across RL, heuristics, PSO and CP-SAT), split into offline / online and constant / random
+job weights. Start with its "Start here" box: the settings marked **main** are the ones the
+conclusions rest on, and "Key results" shows the best method of each family. Note that v1 used the
+earlier objective, total weighted tardiness $\sum_j w_j T_j$; the folder's own
+[README](Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/README.md) explains its sources.
+
+### Final results (v2 objective)
+
+The tables, figures and per-run data behind the paper (weighted squared tardiness) are in
 [`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/) (start with its README and
 `tables/summary.md`). Each number there traces back to a run folder in `Results/v2_objectives/runs/`
 that records the git commit, machine, full configuration and per-instance metrics.

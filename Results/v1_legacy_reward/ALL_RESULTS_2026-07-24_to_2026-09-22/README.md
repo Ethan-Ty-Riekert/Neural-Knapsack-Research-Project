@@ -5,22 +5,19 @@ One folder with every evaluation result this project has recorded, split by
 (w_j ~ U{1..5})**, across tardiness, weighted tardiness, reward, late jobs and jobs
 scheduled (assigned).
 
-Open `scheduler_results_atlas.html` in a browser for the interactive version (same
-data, also published as a claude.ai artifact).
+Open `scheduler_results_atlas.html` in a browser for the interactive version (same data), or use the
+link in the repository's top-level README. These are **v1** results: the objective was total (weighted)
+tardiness under the original reward; the paper's final results use the v2 objective
+(`Results/v2_objectives/ALL_RESULTS/`).
 
-## Why the original figures are missing
+## About the figures
 
-Every training/eval script writes to `rl_training/` (see `Code/utils/paths.py`), and
-`rl_training/` is gitignored -- so **no commit on any branch ever contained the
-figures, checkpoints or `eval_results.csv`**. Git history, both stashes and every
-branch were checked: the only image files ever committed are the 5 portfolio figures.
-The model paths recorded in the eval CSV point to
-`D:\University\Year3\ResearchProject\Neural-Knapsack-Research-Project\rl_training\`,
-a drive that does not exist on this laptop. On this machine `rl_training/` only holds
-6 Optuna result files. **If you want the original Gantt charts, TensorBoard curves,
-per-machine utilisation plots and the full `eval_results.csv`, they should be in
-`rl_training/results_by_setting/`, `rl_training/plots/` and `rl_training/results/` on
-the D: machine.**
+Training and evaluation scripts write their plots, checkpoints and `eval_results.csv` to `rl_training/`,
+which is not version-controlled, so the original training plots were never committed. The numbers on
+this page were transcribed from the experiment log (`Future/research/training-log.md`), the dated
+research documents and the surviving raw files in `data/raw_sources/`; the comparison charts in
+`figures/regenerated/` were regenerated from them, and the 29 original figures that survived are in
+`figures/original_surviving/`.
 
 ## Layout
 
@@ -35,7 +32,7 @@ the D: machine.**
 | `figures/regenerated/online_random_weights/` | 12 bar charts |
 | `figures/original_surviving/` | The 29 original figures still on this machine (reduced-budget v1/v2 comparisons + Gantts, portfolio figures) |
 | `scripts/results_data.py` | The dataset itself, transcribed with sources |
-| `scripts/build_folder.py` | Rebuilds `data/` and `figures/` (`python Results/ALL_RESULTS_2026-07-24_to_2026-09-22/scripts/build_folder.py` from repo root) |
+| `scripts/build_folder.py` | Rebuilds `data/` and `figures/` (`python Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scripts/build_folder.py` from repo root) |
 
 Figure filenames are `<protocol>__<metric>.png`; protocol keys are defined in
 `scripts/results_data.py::PROTOCOLS` (e.g. `off_c_50` = offline, constant weights,
