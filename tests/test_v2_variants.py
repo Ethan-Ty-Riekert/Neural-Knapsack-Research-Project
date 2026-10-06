@@ -283,21 +283,22 @@ from Code.methods.rl.training import tune_optuna_v2 as tov  # noqa: E402
 from Code.methods.rl.training import train_action_space_variant as tasv  # noqa: E402
 from tools.campaign.common import TAG  # noqa: E402
 
-for opt in tov.OPTIONS:
+for design in tov.OPTIONS:
+    opt = tov.OPTIONS[design]["option"]
     for algo in tov.ALGOS:
         hp = {k: (v[1] if isinstance(v, tuple) else v[0]) for k, v in tov.SPACE[algo].items()}
         for preset in tov.FINAL_PRESETS:
             ns = _run.build_parser().parse_args(["--checkpoint-tag", "x",
-                                                 *tov.run_args(opt, algo, preset, 0, tov.TRIAL_STEPS, hp)])
+                                                 *tov.run_args(design, algo, preset, 0, tov.TRIAL_STEPS, hp)])
             a = tasv.build_parser().parse_args(_run.rl_command(ns.variant, ns.preset, ns.method, ns)[3:])
             spec = tasv.env_spec_from_args(a)
             assert a.option == opt and a.algo == algo and a.timesteps == tov.TRIAL_STEPS and a.difficulty == preset
             assert spec["markov_obs"] and spec["work_conserving"] and a.learning_rate == hp["learning-rate"]
             assert spec["repair_placement"] == (opt == "4")
-            assert spec["window_size"] == (20 if opt == "3" else None)
+            assert spec["window_size"] == (20 if design == "3w" else None)
             assert spec["policy_arch"] == ("pointer" if opt == "0" else None)
             assert spec["placements"] == (["FirstFit", "Consolidate"] if opt == "1" else ["FirstFit"])
-            for line in tov.final_job_lines(opt, algo, preset, hp):
+            for line in tov.final_job_lines(design, algo, preset, hp):
                 m = TAG.match(line.split()[0])
                 assert m and m["opt"] == opt and m["hp"] == "_tuned" and bool(m["algo"]) == (algo == "a2c")
                 assert "m" in m["mods"] and "n" in m["mods"] and m["preset"] in tov.FINAL_PRESETS[preset]
@@ -364,7 +365,8 @@ d = DIFFICULTIES["on_rho095"]
 kw = dict(reward_mode="objective", objective=_obj, difficulty=d, extend_horizon=True, markov_obs=True,
           work_conserving=True, lookahead=max_job_duration(d), fixed_scaling=True, critic_arrivals=True,
           arrival_rate=1.0, horizon=100, max_jobs=300, job_size_distribution="lognormal")
-for opt, extra in (("0", dict(policy_arch="pointer")), ("1", {}), ("2", {}), ("3", dict(window_size=20)), ("4", {})):
+for opt, extra in (("0", dict(policy_arch="pointer")), ("1", {}), ("2", {}), ("3", {}), ("3", dict(window_size=20)),
+                   ("4", {})):
     full = make_full_gym_env(True, kw, seed=2)
     env_o, policy, pkw = build_env_and_policy(opt, full_gym_env=full, **extra)
     model = _MPPO(policy, env_o, policy_kwargs=pkw, n_steps=8, batch_size=8, verbose=0)

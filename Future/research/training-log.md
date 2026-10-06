@@ -32,6 +32,23 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Added design "3": Option 3 (Option 2 + engineered ATC feature) over every job
+
+**Config (user request 2026-10-06):** the report defines Option 3 as Option 2 with the ATC index (eq:atc) as a
+per-job feature, plus a windowed variant. The v2 protocol only trained the windowed variant (`o3w`, 20 jobs).
+Design "3" (tag `o3nm` / free idling `o3m`; v3: `o3nmlub`) = the same network over every waiting job, no
+window. Added to: tonight's default-hyperparameter runs (36 runs: both idling modes, PPO/A2C, off_tf05,
+off_tf05_w1, on_rho095, seeds 0-2) and the v3 protocol (4 more Optuna studies + their final runs).
+`tune_optuna_v2.OPTIONS` is now keyed by design ("3" and "3w" both train action-space option 3).
+
+**Consequence for the pre-registered idling rule (entry below):** the cells become 36 (6 designs x 2
+algorithms x 3 presets) instead of 30; free idling still needs a strict majority (>= 19 of 36). Changed before
+any free-idling result was seen.
+
+**Stats:** tests 10-12 updated (design "3" included in the actor/critic separation check); all pass.
+
+---
+
 ## 2026-10-06 (S2W12) -- v3 protocol implemented (user-approved); idling-mode decision rule pre-registered
 
 **Config (approved 2026-10-06 evening; plan `2026-10-06-rl-improvement-plan.md`), commit 4a5b77d:**

@@ -4,7 +4,7 @@ One protocol for every action-space design (Options 0, 1, 2, 3w, 4) and both upd
 approved by the user on 2026-10-06 (Future/research/training-log.md):
   * every model uses the full MDP state (--markov-obs) and work-conserving dispatching
     (--work-conserving); Option 4 adds placement repair, Option 1 the Consolidate placement menu,
-    Option 3 a 20-job window, Option 0 the pointer network;
+    Option 3 a 20-job window, Option 0 the pointer network (v3 adds design "3": Option 3 over every job);
   * search: Optuna (Akiba et al. 2019, KDD) TPE sampler (Bergstra et al. 2011, NeurIPS) with library
     defaults, seeded with the worker index (identically seeded parallel workers would propose the
     same configurations), MedianPruner with library defaults; n_trials trials of trial_steps steps per
@@ -86,14 +86,23 @@ PROTOCOLS = {
 V2 = PROTOCOLS["v2"]
 TRIAL_STEPS = V2.trial_steps  # v2 values, kept for tests/test_v2_variants.py
 
-# Per-option design: tag modifiers (as in v2; "n" = work-conserving), run.py flags, training-script flags.
+# Designs (keys; --option on the command line): the action-space option they train, tag modifiers (as in
+# v2; "n" = work-conserving), run.py flags, training-script flags. Option 3 = Option 2 + the engineered ATC
+# feature (report Methodology), in two designs: "3" sees every job (added 2026-10-06 at the user's request),
+# "3w" the 20-job deadline-ordered window.
 OPTIONS = {
-    "0": dict(mods="pnm", run_flags=[], train_flags=["--policy-arch", "pointer"]),
-    "1": dict(mods="cnm", run_flags=["--rule-placements", "FirstFit,Consolidate"], train_flags=[]),
-    "2": dict(mods="nm", run_flags=[], train_flags=[]),
-    "3": dict(mods="wnm", run_flags=[], train_flags=["--window-size", "20"]),
-    "4": dict(mods="nfm", run_flags=[], train_flags=["--repair-placement"]),
+    "0": dict(option="0", mods="pnm", run_flags=[], train_flags=["--policy-arch", "pointer"]),
+    "1": dict(option="1", mods="cnm", run_flags=["--rule-placements", "FirstFit,Consolidate"], train_flags=[]),
+    "2": dict(option="2", mods="nm", run_flags=[], train_flags=[]),
+    "3": dict(option="3", mods="nm", run_flags=[], train_flags=[]),
+    "3w": dict(option="3", mods="wnm", run_flags=[], train_flags=["--window-size", "20"]),
+    "4": dict(option="4", mods="nfm", run_flags=[], train_flags=["--repair-placement"]),
 }
+V2_DESIGNS = ("0", "1", "2", "3w", "4")  # the designs the v2 protocol ran
+
+
+def designs(proto=V2):
+    return V2_DESIGNS if proto is V2 else tuple(OPTIONS)
 
 
 def mods(option, proto=V2):
@@ -102,7 +111,7 @@ def mods(option, proto=V2):
 
 
 def study_name(option, algo, preset, proto=V2):
-    return f"{preset}_o{option}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}"
+    return f"{preset}_o{OPTIONS[option]['option']}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}"
 
 
 def study_dir(option, algo, preset, proto=V2):
@@ -119,7 +128,7 @@ def run_args(option, algo, preset, seed, timesteps, hp, proto=V2):
     by tuning trials and final runs. --train-args stays last (argparse REMAINDER). hp = {}: defaults."""
     common = [*proto.train_flags, *(["--work-conserving"] if proto.work_conserving else [])]
     return (["--variant", "v2_objectives", "--n-envs", str(N_ENVS), "--vec-backend", "subproc",
-             "--seed", str(seed), "--preset", preset, "--method", f"rl-train:{option}", "--algo", algo,
+             "--seed", str(seed), "--preset", preset, "--method", f"rl-train:{OPTIONS[option]['option']}", "--algo", algo,
              *OPTIONS[option]["run_flags"], "--timesteps", str(timesteps),
              "--train-args", *common, *OPTIONS[option]["train_flags"], *format_hp(hp)])
 
@@ -222,7 +231,7 @@ def objective_fn(option, algo, preset, proto=V2):
             option, algo, preset, TRIAL_SEED, proto.trial_steps, hp, proto)])
         train_argv = run.rl_command(run_ns.variant, run_ns.preset, run_ns.method, run_ns)[3:]  # drop python -m mod
         spec = tasv.env_spec_from_args(tasv.build_parser().parse_args(train_argv))
-        validator = Validator(preset, option, spec, run_ns)
+        validator = Validator(preset, OPTIONS[option]["option"], spec, run_ns)
         trial.set_user_attr("train_argv", " ".join(train_argv))
         model = tasv.main(train_argv, extra_callbacks=[make_pruning_callback(trial, validator, proto)], save=False)
         return validator(model)
@@ -239,7 +248,7 @@ def counts(study):
 
 def final_job_lines(option, algo, preset, hp, proto=V2):
     """Campaign queue lines ("<tag> <run.py args>") of the final runs for one finished study."""
-    return [f"v2_{p}_o{option}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}_tuned_s{s} "
+    return [f"v2_{p}_o{OPTIONS[option]['option']}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}_tuned_s{s} "
             + " ".join(run_args(option, algo, p, s, proto.final_steps, hp, proto))
             for p in FINAL_PRESETS[preset] for s in FINAL_SEEDS]
 
@@ -322,7 +331,7 @@ def cmd_jobs(a):
     concurrent workers span studies and the slow online studies start from the beginning."""
     proto = PROTOCOLS[a.protocol]
     prefix = "tune" if proto is V2 else f"tune_{proto.name}"
-    studies = [(o, al, p) for o in OPTIONS for al in ALGOS for p in reversed(list(FINAL_PRESETS))]
+    studies = [(o, al, p) for o in designs(proto) for al in ALGOS for p in reversed(list(FINAL_PRESETS))]
     for w in range(WORKERS_PER_STUDY):
         for o, al, p in studies:
             print(f"{prefix}_{study_name(o, al, p, proto)}_w{w} -m Code.methods.rl.training.tune_optuna_v2 worker "
@@ -334,7 +343,7 @@ def cmd_summary(a):
     from optuna.trial import TrialState
     proto = PROTOCOLS[a.protocol]
     for p in FINAL_PRESETS:
-        for o in OPTIONS:
+        for o in designs(proto):
             for al in ALGOS:
                 name = study_name(o, al, p, proto)
                 if not (study_dir(o, al, p, proto) / "journal.log").exists():
