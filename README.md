@@ -1,227 +1,172 @@
-# Neural-Knapsack Research Project
+# Can Reinforcement Learning Outperform Traditional Methods for Cloud Resource Allocation?
 
-This repository contains the codebase, experiments, and documentation for my Curtin University  
-Third-Year Research Project (2026) on neural combinatorial optimisation applied to  
-bin packing and cloud resource allocation.
+Curtin University, NPSC3000 third-year research project (2026).
+Student: Ty Riekert. Supervisor: Elham Mardaneh. Co-supervisor: Tony Mathew.
 
-## Project Overview
+This repository contains the code, experiment protocol and results behind the project's research
+paper. **Reviewers: the paper's results are reproduced from the tagged release cited in the paper**
+(see [Citing this work](#citing-this-work)); the results themselves are in
+[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/).
 
-Cloud datacentres must allocate virtual machines (VMs) to physical hosts under multi-dimensional
-resource constraints such as CPU, RAM, and storage. This problem is commonly modelled as
-Vector Bin Packing (VBP) or Multidimensional Bin Packing (MDBP), both of which are NP-hard.
+## Overview
 
-Recent literature suggests that reinforcement learning (RL) and neural combinatorial optimisation
-(NCO) may outperform classical heuristics for large-scale, dynamic cloud workloads.  
-This project investigates whether RL-based policies can learn efficient packing strategies that 
-improve a set of metrics like minimize active servers, energy usage, reduce SLA violations ...
+Cloud data centres place jobs (virtual machines, containers) on physical machines with limited
+multi-dimensional capacity (CPU, memory, ...). Each job has a duration, a resource demand, a deadline
+and an importance weight, and the scheduler must decide **which job to start, on which machine, and
+when** -- including whether to deliberately leave capacity free for work that has not arrived yet.
 
-## Current Stage of Development
+The project asks whether a reinforcement learning (RL) agent can learn scheduling policies that beat
+the dispatching rules used in practice, measured by **weighted squared tardiness**
 
-**Updated 2026-09-18 (S2W9) -- this section previously described the project's very
-first (2026-07/08) static-only implementation and had not been revised since, despite
-dynamic arrivals having been designed, implemented, and evaluated. See
-`PROGRESS.md` and `Future/research/training-log.md` for the full run-by-run record.**
+$$J = \sum_j w_j\, T_j^2, \qquad T_j = \max(0,\ C_j - d_j),$$
 
-The repository implements two related problem variants, both with a genuine time
-dimension (deadlines, tardiness, a per-tick decision clock -- `Code/env/
-scheduling_env.py`):
+which penalises a few very late important jobs more than many slightly late ones. Two settings are
+studied:
 
-- **Offline case**: all jobs (VM requests) are known in advance, either as one fixed
-  instance or resampled fresh per episode. This is the more heavily validated case --
-  an exact CP-SAT baseline (`Code/baselines/exact_solver.py`) proves the true optimum
-  on the real deployed 100-job instance (tardiness=8.0), and RL policies using an
-  action-space-reduced design (see below) reach within a few units of it.
-- **Online case** (`Code/env/online_scheduling_env.py`, `arrival_process.py`): jobs
-  arrive dynamically via a Poisson process, optionally with heavy-tailed (log-normal)
-  job sizes matching published Google/Azure cluster-trace characteristics, so the
-  policy must decide under genuine uncertainty about future arrivals. A retrospective
-  CP-SAT oracle (`solve_retrospective()`) gives this case a hindsight lower-bound
-  reference point once an episode's realized arrival order is known.
+- **Offline**: all jobs are known at the start (100 jobs, 10 machines, 4 resources).
+- **Online**: jobs arrive over time (Poisson arrivals, heavy-tailed sizes) and the scheduler does not
+  know the future; studied at increasing load.
 
-Both cases support randomized per-job weights (`job_weight_range`) feeding into a
-weighted-tardiness objective, and three action-space designs
-(`Code/training/train_action_space_variant.py`, Options 1-3) that shrink the raw
-`jobs x machines` action space -- identified as PPO's actual bottleneck after seven
-other fixes (reward tuning, Lagrangian constraints, architecture changes) failed to
-move it. Energy usage and SLA/QoS modelling are not yet implemented -- see Planned
-Extensions.
+## Formulation
 
-## Repository Structure
+The problem is modelled as a Markov decision process (MDP). The state at time $t$ holds the
+remaining capacity $R_{m,r,t}$ of every machine and resource, each machine's activation $y_m$, and a
+feature row $(p_j, s_j, d_j, A_j, w_j, m_j)$ for every job (duration, start time, deadline, resource
+demand, weight, machine), which makes the state Markov. The reward is exactly the objective: at
+every step the agent is charged the lateness accrued in that step, so the episode return is $-J$ up
+to a constant scale. The full definitions (states, actions, transition dynamics, reward and their
+proofs) are in the paper's Methodology section; the code is in `Code/core/`
+(`scheduling_env.py`, `online_scheduling_env.py`, `objectives.py`, `obs_layout.py`).
 
-Reorganised 2026-09-28 (S2W11) by **problem variant** and **method family** -- see
-`Future/research/2026-09-28-objective-redesign-discussion.md` section 11. Old module paths
-(`Code.env.*`, `Code.baselines.*`, `Code.policies.*`, `Code.training.*`, `Code.evaluation.*`)
-still work as compatibility shims, so older commands and checkpoints keep loading.
+## Methods compared
+
+| Family | Methods | Code |
+|---|---|---|
+| Dispatching heuristics | 38 rules: 9 priority rules (EDF, SPT, LST, FCFS, LPT, WSPT, ATC, WMDD, COVERT) x 4 placement rules (First/Best/Worst-Fit, energy-aware Consolidate), Tetris, random | `Code/methods/heuristics/` |
+| Exact solver | CP-SAT (Google OR-Tools), 60 s per instance (offline) | `Code/methods/exact/` |
+| Metaheuristic | Particle swarm optimisation | `Code/methods/metaheuristic/` |
+| Reinforcement learning | PPO and A2C (Maskable PPO, Stable-Baselines3) on six action-space designs | `Code/methods/rl/` |
+
+RL action-space designs (the paper's Options 0-4):
+
+| Design | The agent chooses | Network |
+|---|---|---|
+| Option 0 | a (job, machine) pair, or idle | pointer network |
+| Option 1 | a dispatching rule (priority x placement) per decision | MLP |
+| Option 2 | the next job to start (First-Fit placement) | priority pointer network |
+| Option 3 | as Option 2, with the ATC index as an engineered per-job feature | priority pointer network |
+| Option 3w | as Option 3, over a 20-job deadline-ordered window | windowed pointer network |
+| Option 4 | job and machine as two sub-actions (action branching) | branching network |
+
+Final protocol (v3), identical for every design: free idling (the agent may leave capacity unused);
+a capacity look-ahead over the longest job duration; fixed feature scaling; a critic that also sees a
+summary of future arrivals (an input-dependent baseline, which leaves the policy gradient unbiased);
+potential-based reward shaping on projected lateness (which leaves the optimal policy unchanged).
+Hyperparameters are tuned with Optuna (TPE sampler, median pruning, 12 trials of 300k steps per design,
+algorithm and setting, with the library defaults as the first trial), selected on validation instances
+only. Each configuration is then trained with 3 seeds and evaluated on 50 held-out test instances.
+
+| Instance set | Seeds | Used for |
+|---|---|---|
+| Training | below 500000 | RL training (a fresh instance every episode) |
+| Validation | 600000-600019 | hyperparameter selection and any design decision |
+| Test | 500000-500049 | the reported results only |
+
+## Results
+
+All tables, figures and the per-run data behind the paper are in
+[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/) (start with its README and
+`tables/summary.md`). Each number there traces back to a run folder in `Results/v2_objectives/runs/`
+that records the git commit, machine, full configuration and per-instance metrics.
+
+<!-- RESULTS SUMMARY: filled in from tables/summary.md when the final (v3) runs are complete. -->
+
+## Reproducing the results
+
+Requirements: Python 3.13, CPU only (no GPU needed).
 
 ```
-Neural-Knapsack-Research-Project/
-|
-|-- run.py                     # ONE launcher: variant -> preset -> method (see below)
-|-- experiments/               # saved run configurations (YAML) for run.py --experiment
-|
-|-- Code/
-|   |-- core/                  # the shared problem: SchedulingEnv, OnlineSchedulingEnv,
-|   |                          #   instance generators (env_config, arrival_process),
-|   |                          #   base gym wrappers + action masking
-|   |-- variants/              # one package per problem/reward definition, each with
-|   |   |-- v1_legacy_reward/  #   PRESETS = exactly reproducible evaluation protocols
-|   |   `-- v2_objectives/     #   selectable objectives + difficulty (planned)
-|   |-- methods/               # every solution method, one package per family
-|   |   |-- heuristics/        #   priority rule x placement rule registry (EDF, ATC, ...)
-|   |   |-- metaheuristic/     #   PSO
-|   |   |-- exact/             #   CP-SAT
-|   |   `-- rl/                #   policies/, action_spaces/ (Options 1-4), training/, evaluation/
-|   `-- utils/                 # paths (artefact locations), results_log, plotting, diagnostics
-|
-|-- Results/                   # curated results, one folder per variant (see Results/README.md)
-|   |-- v1_legacy_reward/      #   everything up to 2026-09-28 + runs/ from run.py
-|   `-- v2_objectives/
-|-- tests/                     # regression scripts: python -m tests.<name>
-|-- Future/research/           # training-log.md + dated design/investigation docs + references.bib
-|-- PROGRESS.md                # narrative story of the project
-`-- rl_training/               # generated, gitignored (or NK_ARTIFACTS_DIR/<machine>/, see below)
+git clone https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project.git
+cd Neural-Knapsack-Research-Project
+git checkout <tag cited in the paper>
+pip install -r requirements.txt
+python -m tests.test_v2_variants          # protocol and correctness checks
 ```
 
-### Running things
+Baselines on one setting (offline, medium deadlines):
 
 ```
-python run.py                  # interactive menu
-python run.py --list           # variants, presets, methods
-python run.py --variant v1_legacy_reward --preset off_c_15 --method EDF
-python run.py --variant v1_legacy_reward --preset off_c_small --method cpsat
-python run.py --variant v1_legacy_reward --preset on_r_50 --method rl-eval:3
-python run.py --experiment experiments/pso_vs_edf_off_c_15.yaml
-
-# v2 RL: train (parallel envs, seeded; Option 1 may also choose the placement rule), then compare
-python run.py --variant v2_objectives --preset on_rho095 --method rl-train:1 --n-envs 4 --seed 0 \
-    --rule-placements FirstFit,Consolidate --timesteps 750000 --checkpoint-tag v2_on_rho095_o1c_s0
-python run.py --variant v2_objectives --preset on_rho095 \
-    --method "rl-eval:1:v2_on_rho095_o1c_s0,EDF+Consolidate,RandomRule+FirstFitConsolidate"
-python Results/v2_objectives/ALL_RESULTS/scripts/build_folder.py   # rebuild all v2 tables/figures
+python run.py --variant v2_objectives --preset off_tf05 --method heuristics
+python run.py --variant v2_objectives --preset off_tf05 --method cpsat --time-limit 60 --cpsat-workers 2
 ```
 
-Trained RL models save a sidecar `<model>.json` (action menu, ATC feature, window, seed, gamma), so
-`rl-eval:<option>:<tag>` rebuilds the matching environment from the tag alone. Tag convention:
-`v2_<preset>_o<option>[c]_s<seed>` (`c` = FirstFit+Consolidate menu).
+RL: hyperparameter studies, final training runs and test evaluation are generated by one module and
+run through a CPU-load-aware job queue (`tools/campaign/`):
 
-Heuristic / PSO / CP-SAT runs are saved to `Results/<variant>/runs/<timestamp>_<preset>_<method>/`
-(`run.json` with git commit, machine, full config and metrics, plus `per_instance.csv`). Every run
-reports **jobs scheduled and dropped next to tardiness**, because tardiness alone hides dropped jobs.
-RL methods delegate to the training/evaluation scripts with the preset's exact flags.
-
-Individual modules can still be run directly as modules from the repo root, e.g.
-`python -m Code.methods.rl.training.train_action_space_variant --option 1` -- not as script files,
-which breaks the `Code.*` absolute imports.
-
-### Two machines: artefact storage
-
-Set `NK_ARTIFACTS_DIR` to a cloud-synced folder and (optionally) `NK_MACHINE` to a machine name;
-generated artefacts then go to `NK_ARTIFACTS_DIR/<machine>/` instead of `rl_training/`. Each machine
-writes only its own subfolder (sync tools corrupt `optuna.db` and fork appended CSVs otherwise).
-Unset = the original `rl_training/` behaviour.
-
-## Components
-
-### Bin
-Represents a physical machine with:
-- A capacity vector  
-- Remaining resource tracking  
-- A list of items placed into the bin  
-
-### BasicBinPackingEnv
-A minimal RL-compatible environment that supports:
-- State extraction (dictionary and vector forms)
-- Action masking for feasible placements
-- Dynamic bin creation
-- Step-by-step item placement and reward feedback
-
-### Testing and Visualisation
-Includes:
-- A simple first-fit baseline policy
-- 3D visualisation of bin capacity and item placement for interpretability
-
-## Hyperparameter Optimization
-
-The project includes comprehensive hyperparameter optimization using Optuna to address common RL challenges:
-
-### Current Challenges
-- **Policy collapse to idling**: historically the agent learned to always idle instead
-  of scheduling jobs. Largely traced to a since-fixed environment bug (capacity never
-  properly reset between episodes) plus missing exploration/reward-normalisation in
-  the hand-rolled A2C -- see `Future/research/training-log.md` and
-  `Future/research/2026-08-09-pointer-network-action-head.md` for the current
-  understanding and what's still open.
-- **Large action space**: ~1000 discrete actions (jobs × machines) makes exploration difficult
-- **PPO gradient clipping**: Can trap policies in suboptimal regions for large action spaces
-- **Reward imbalance**: Idling penalty must be carefully balanced against other penalties
-
-### Solution
-Use Optuna to automatically find optimal hyperparameters:
-
-**Quick Start** (run from the repo root):
-```bash
-# 1. Run hyperparameter optimization (50-100 trials recommended)
-python -m Code.training.optuna_tune --algo ppo --trials 50
-
-# 2. Train with optimized parameters
-python -m Code.training.train_optimized --algo ppo
+```
+python -m Code.methods.rl.training.tune_optuna_v2 jobs --protocol v3_idle \
+    --enqueue-to rl_training/campaign/queue.txt > rl_training/campaign/queue.txt
+python tools/campaign/queue_runner.py      # trains; finished studies queue their final runs
+python tools/campaign/auto_eval.py         # scores every final model on the 50 test instances
+python run.py --variant v2_objectives --preset off_tf05 --method rl-eval:3:<model tag>
+python Results/v2_objectives/ALL_RESULTS/scripts/build_folder.py   # rebuild every table and figure
 ```
 
-**What Gets Optimized:**
-- Network architecture (layer sizes, depth, activation functions)
-- Learning rates and batch sizes
-- Entropy coefficient (critical for exploration)
-- Reward penalties (λ₁, λ₂, λ₃, idle_penalty, invalid_penalty)
-- PPO-specific: clip_range, n_epochs, GAE parameters
-- A2C-specific: n_steps, value coefficient
+The full campaign takes roughly two days on a 16-core desktop CPU. Trained models are written to
+`rl_training/` (not versioned).
 
-**Results:**
-Optimization results are saved to `rl_training/optuna_results/`:
-- Best hyperparameters (JSON)
-- All trials history (CSV)
-- Interactive visualizations (HTML plots)
-- Parameter importance analysis
+## Repository structure
 
-**Documentation:**
-See `docs/OPTUNA_GUIDE.md` for detailed instructions, troubleshooting, and advanced usage.
+```
+run.py                     one launcher: variant -> preset -> method
+Code/core/                 environments, instance generators, objective/reward, observation layout
+Code/variants/             reproducible problem definitions and evaluation presets
+Code/methods/              heuristics, exact (CP-SAT), metaheuristic (PSO), rl (policies, action spaces,
+                           training, evaluation)
+Results/                   results per problem variant; v2_objectives/ALL_RESULTS = the paper's results
+tests/                     regression and correctness checks (python -m tests.<name>)
+tools/campaign/            job queue, automatic evaluation and CPU watchdog for long campaigns
+Future/research/           experiment log, dated design documents, bibliography
+docs/                      development guide (docs/DEVELOPMENT.md) and earlier project documents
+```
 
-## Planned Extensions
+`Results/v1_legacy_reward/` holds the project's earlier results under a previous reward definition,
+kept for reference; the paper uses `Results/v2_objectives/`.
 
-**Updated 2026-09-18 (S2W9)** -- several items below are now implemented (struck
-through); genuinely remaining future work follows.
+## Citing this work
 
-- ~~Dynamic workloads with VM arrivals~~ -- implemented (`online_scheduling_env.py`,
-  Poisson arrivals, optional heavy-tailed job sizes)
-- VM/job *departures* and lifetimes -- not yet modelled; jobs currently run to
-  completion once started, with no early termination or resource release mid-run
-  beyond normal completion
-- Energy-aware reward functions -- not yet implemented
-- SLA/QoS modelling -- not yet implemented (tardiness/deadlines are modelled; explicit
-  SLA-tier or QoS-class distinctions are not)
-- ~~Multi-objective optimisation~~ -- implemented and explored (Pareto-front search
-  over the reward's lambda weights; see `PROGRESS.md` Phase 12's Pareto arc)
-- ~~RL agents (PPO, Actor-Critic)~~ -- implemented (`MaskablePPO` via `sb3_contrib`, a
-  hand-rolled masked A2C); DQN not attempted (action-masking + the continuous-ish
-  priority-scoring designs in Options 2/3 made policy-gradient methods the more
-  natural fit given this project's action-space designs)
-- ~~Comparison against classical heuristics~~ -- implemented, expanded well beyond
-  First/Best Fit to a 9-heuristic suite (EDF, SPT, LST, FCFS, LPT, WSPT, ATC, Tetris,
-  each paired with a placement rule) plus an exact CP-SAT baseline
-  (`Code/baselines/`)
-- Evaluation on real (not just synthetic) workload traces -- not yet done; the
-  log-normal job-size distribution is grounded in published trace statistics (Reiss et
-  al. 2012; Cortez et al. 2017) but no real trace file has been replayed directly
-- A deployed-scale hyperparameter search for the action-space-reduced (Options 1-3)
-  designs -- not yet run; current best numbers use un-tuned `MaskablePPO` defaults
+Please cite the tagged release named in the paper (a tag fixes the exact code and results; the branch
+does not), for example:
 
-## Academic Context
+> T. Riekert, *Can reinforcement learning outperform traditional methods for cloud resource allocation?*,
+> NPSC3000 research project, Curtin University, 2026. Code and results:
+> https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project (release `paper-2026-10`).
 
-This project is supervised by Elham Mardaneh with co-supervision from Tony Mathew.
+## Generative AI statement
 
-The work draws on literature in:
-- Cloud resource allocation  
-- Vector and multidimensional bin packing  
-- Reinforcement learning  
-- Neural combinatorial optimisation  
+Generative AI (Claude, Anthropic, used through the Claude Code assistant) was used throughout this
+project in the following ways:
 
-Additional notes, summaries, and mathematical formulations are maintained separately.
+1. **Coding assistant**: implementing the environments, RL policies and action-space designs, the
+   training, tuning and evaluation pipelines, the baselines and the diagnostic tooling in this
+   repository, under the author's direction. All design decisions and their literature grounding were
+   directed or reviewed by the author; each is recorded with its justification in
+   `Future/research/training-log.md`.
+2. **Running experiments**: setting up, running and monitoring the training and evaluation campaigns
+   (`tools/campaign/`), and checking finished runs for failures.
+3. **Literature**: assisting literature search and citation checking for the background and the design
+   decisions (`Future/research/references.bib`).
+4. **Diagnosis**: helping investigate unexpected experimental results, at the author's request.
+5. **Writing**: drafting and structuring documentation (including this README and the experiment log)
+   and parts of the written report from the author's notes, data and experiment log, with the author
+   reviewing and editing the text.
+
+No result, table or figure was produced without the underlying code being run and its output
+inspected; generative AI was not used as a substitute for running experiments or verifying their
+results. AI-written code is checked by automated tests (`tests/`), including tests of the mathematical
+properties the methods rely on. The author takes full responsibility for the content of this
+repository and the paper.
+
+## Acknowledgements
+
+Supervised by Elham Mardaneh, with co-supervision from Tony Mathew, Curtin University.
