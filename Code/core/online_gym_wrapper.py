@@ -48,9 +48,7 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         t = min(self.env.time, H_phys)
         capacity_block = self._capacity_block()  # (+ y_m in full-state mode, see GymSchedulingEnv)
 
-        max_dur = max(1.0, float(np.max(self.env.job_durations)))
-        max_wgt = max(1.0, float(np.max(self.env.job_weights)))
-        max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))
+        max_dur, max_wgt, max_res = self._job_scales()  # see GymSchedulingEnv._job_scales
 
         job_feats = np.zeros((J, self.obs_layout.job_slot_width), dtype=np.float32)
         if self.env.revealed_jobs:

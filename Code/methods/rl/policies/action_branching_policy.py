@@ -57,7 +57,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from Code.methods.rl.policies.pointer_policy import JobEncoder, MachineEncoder, GlobalContextHead
+from Code.methods.rl.policies.pointer_policy import JobEncoder, MachineEncoder, GlobalContextHead, build_value_head, critic_context
 from Code.methods.rl.policies.priority_pointer_policy import JobScoreHead
 
 
@@ -99,6 +99,8 @@ class ActionBranchingActorCritic(nn.Module):
         num_machines: int,
         num_resources: int,
         markov: bool = False,
+        lookahead: int = 0,
+        critic_dim: int = 0,
         embed_dim: int = 128,
         hidden: int = 64,
     ):
@@ -111,7 +113,7 @@ class ActionBranchingActorCritic(nn.Module):
         # exactly: [duration, deadline, weight, resource_0..R-1, scheduled]
         # -- same as pointer_policy.py's PointerActorCritic (no ATC offset
         # here, unlike priority_pointer_policy.py).
-        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov)
+        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov, lookahead=lookahead)
         job_feat_dim = self._layout.job_slot_width
         machine_feat_dim = self._layout.machine_feat_dim
 
@@ -122,7 +124,7 @@ class ActionBranchingActorCritic(nn.Module):
         context_dim = 2 * embed_dim + 1  # job_context + machine_context + time
         self.machine_score_head = MachineScoreHead(embed_dim, context_dim, hidden)
         self.idle_head = GlobalContextHead(context_dim, hidden)
-        self.value_head = GlobalContextHead(context_dim, hidden)
+        self.value_head, self.critic_encoder = build_value_head(context_dim, hidden, critic_dim)
 
     def _split_obs(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Same layout as pointer_policy.py::PointerActorCritic._split_obs --
@@ -187,7 +189,7 @@ class ActionBranchingActorCritic(nn.Module):
 
         context = torch.cat([job_context, machine_context, time_feat], dim=-1)  # (B, 2E+1)
         idle_logit = self.idle_head(context)  # (B, 1)
-        value = self.value_head(context)      # (B, 1)
+        value = self.value_head(critic_context(context, obs, self.critic_encoder))      # (B, 1)
 
         machine_logits = self.machine_score_head(machine_emb, context)  # (B, M), unmasked
 

@@ -17,7 +17,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from Code.methods.rl.policies.pointer_policy import JobEncoder, MachineEncoder, GlobalContextHead
+from Code.methods.rl.policies.pointer_policy import JobEncoder, MachineEncoder, GlobalContextHead, build_value_head, critic_context
 from Code.methods.rl.policies.priority_pointer_policy import JobScoreHead
 
 
@@ -30,6 +30,8 @@ class WindowedPriorityPointerActorCritic(nn.Module):
         num_machines: int,
         num_resources: int,
         markov: bool = False,
+        lookahead: int = 0,
+        critic_dim: int = 0,
         use_atc: bool = False,
         embed_dim: int = 128,
         hidden: int = 64,
@@ -43,7 +45,7 @@ class WindowedPriorityPointerActorCritic(nn.Module):
         # Must match WindowedPriorityGymSchedulingEnv._get_obs()'s per-slot
         # layout: [duration, deadline, weight, resource_0..R-1, scheduled]
         # (+ atc appended last, only when use_atc).
-        self._layout = ObsLayout(num_machines, num_resources, window_size, markov=markov)
+        self._layout = ObsLayout(num_machines, num_resources, window_size, markov=markov, lookahead=lookahead)
         self._slot_width = self._layout.job_slot_width + (1 if use_atc else 0)
         machine_feat_dim = self._layout.machine_feat_dim
 
@@ -55,7 +57,7 @@ class WindowedPriorityPointerActorCritic(nn.Module):
         # job_context + machine_context + time.
         context_dim = 2 * embed_dim + 1 + 1
         self.idle_head = GlobalContextHead(context_dim, hidden)
-        self.value_head = GlobalContextHead(context_dim, hidden)
+        self.value_head, self.critic_encoder = build_value_head(context_dim, hidden, critic_dim)
 
     def _split_obs(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         B = obs.shape[0]
@@ -85,7 +87,7 @@ class WindowedPriorityPointerActorCritic(nn.Module):
 
         context = torch.cat([job_context, machine_context, time_feat, backlog], dim=-1)  # (B, 2E+2)
         idle_logit = self.idle_head(context)  # (B, 1)
-        value = self.value_head(context)      # (B, 1)
+        value = self.value_head(critic_context(context, obs, self.critic_encoder))      # (B, 1)
 
         logits = torch.cat([job_logits, idle_logit], dim=-1)  # (B, J+1)
         return logits, value

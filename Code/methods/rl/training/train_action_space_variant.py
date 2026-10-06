@@ -66,7 +66,9 @@ from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
     RULE_NAMES, rule_kwargs_from_args, is_default_rule_kwargs,
 )
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
-from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty
+from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty, max_job_duration
+from Code.core.critic_input import critic_dim_of, wrap_critic_input
+from Code.methods.rl.policies.asymmetric_mlp_policy import AsymmetricMlpPolicy
 from Code.utils.training_diagnostics import build_diagnostics_callbacks
 
 
@@ -306,10 +308,14 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     else:
         raise ValueError(f"Unknown option {option!r} (expected '1', '2', '3', or '4')")
 
-    if policy != "MlpPolicy" and full_gym_env.obs_layout.markov:
-        # network policies slice the observation with the same layout (Code/core/obs_layout.py)
-        policy_kwargs = dict(policy_kwargs, markov=True)
-    monitored = Monitor(ActionMasker(env, mask_fn))
+    layout, critic_dim = full_gym_env.obs_layout, critic_dim_of(full_gym_env)
+    if policy != "MlpPolicy" and layout.markov:
+        # network policies slice the observation with the same layout (Code/core/obs_layout.py); their
+        # value head alone reads the critic-only block (Code/core/critic_input.py)
+        policy_kwargs = dict(policy_kwargs, markov=True, lookahead=layout.lookahead, critic_dim=critic_dim)
+    elif policy == "MlpPolicy" and critic_dim:
+        policy, policy_kwargs = AsymmetricMlpPolicy, dict(policy_kwargs, critic_dim=critic_dim)  # actor blind to it
+    monitored = Monitor(ActionMasker(wrap_critic_input(env, full_gym_env), mask_fn))
     return monitored, policy, policy_kwargs
 
 
@@ -382,15 +388,9 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     keyword arguments (everything except seed), and must stay picklable for
     SubprocVecEnv (see make_worker_env())."""
     kwargs = dict(base_env_kwargs)
-    work_conserving = kwargs.pop("work_conserving", False)
-    repair_placement = kwargs.pop("repair_placement", False)
-    markov_obs = kwargs.pop("markov_obs", False)
+    options = {k: kwargs.pop(k) for k in GymSchedulingEnv.OPTION_KEYS if k in kwargs}
     env = make_online_base_gym_env(seed=seed, **kwargs) if online else make_base_gym_env(seed=seed, **kwargs)
-    env.restrict_idle = work_conserving  # non-delay mode, see GymSchedulingEnv.idle_allowed()
-    env.repair_placement = repair_placement  # Option 4 only, see ActionBranchingGymSchedulingEnv.step()
-    if markov_obs:
-        env.set_markov_obs()  # full MDP state (report Methodology), Code/core/obs_layout.py
-    return env
+    return env.apply_options(**options)  # work-conserving, repair, full state, look-ahead, scaling, critic input
 
 
 def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, window_order,
@@ -548,6 +548,17 @@ def build_parser():
                          help="2026-10-06: full MDP state of the report's Methodology -- adds each job's "
                               "start time s_j and machine m_j and each machine's activation y_m "
                               "(Code/core/obs_layout.py). Default off keeps the original observation.")
+    parser.add_argument("--lookahead", action="store_true",
+                         help="2026-10-06, with --markov-obs: each machine's remaining capacity for the next K "
+                              "ticks, K = the preset's longest possible job (a function of the state; "
+                              "Code/core/obs_layout.py).")
+    parser.add_argument("--fixed-scaling", action="store_true",
+                         help="2026-10-06, with --markov-obs: job features scaled by fixed constants (durations "
+                              "by H, weights by the largest weight, requirements by machine capacity) instead "
+                              "of each instance's maxima (GymSchedulingEnv._job_scales).")
+    parser.add_argument("--critic-arrivals", action="store_true",
+                         help="2026-10-06: the critic (only) also sees a summary of the future arrivals -- an "
+                              "input-dependent baseline, unbiased (Code/core/critic_input.py).")
     parser.add_argument("--repair-placement", action="store_true",
                          help="2026-10-05, --option 4 only: if the chosen machine does not fit but another "
                               "does, place the job by FirstFit instead of idling (see the wrapper's step()).")
@@ -609,6 +620,8 @@ def env_spec_from_args(args):
         use_atc_feature=args.use_atc_feature, window_size=args.window_size, window_order=args.window_order,
         work_conserving=args.work_conserving, repair_placement=args.repair_placement,
         markov_obs=args.markov_obs, policy_arch=args.policy_arch if args.option == "0" else None,
+        lookahead=max_job_duration(DIFFICULTIES[args.difficulty]) if args.lookahead else 0,
+        fixed_scaling=args.fixed_scaling, critic_arrivals=args.critic_arrivals,
     )
 
 
@@ -648,8 +661,7 @@ def main(argv=None, extra_callbacks=None, save=True):
         reward_mode=args.reward_mode, use_potential_shaping=args.use_potential_shaping,
         shaping_gamma=args.gamma, job_weight_range=job_weight_range,
         objective=objective, difficulty=difficulty, extend_horizon=extend,
-        work_conserving=args.work_conserving, repair_placement=args.repair_placement,
-        markov_obs=args.markov_obs,
+        **{k: v for k, v in env_spec_from_args(args).items() if k in GymSchedulingEnv.OPTION_KEYS},
     )
     if args.online:
         base_env_kwargs.update(arrival_rate=args.arrival_rate, horizon=args.online_horizon,
@@ -724,10 +736,7 @@ def main(argv=None, extra_callbacks=None, save=True):
                 held_out_full = make_base_gym_env(seed=seed, job_weight_range=job_weight_range,
                                                   reward_mode=args.reward_mode, objective=objective,
                                                   difficulty=difficulty, extend_horizon=extend)
-            held_out_full.restrict_idle = args.work_conserving
-            held_out_full.repair_placement = args.repair_placement
-            if args.markov_obs:
-                held_out_full.set_markov_obs()
+            held_out_full.apply_options(**env_spec_from_args(args))
             held_out_env, _, _ = build_env_and_policy(args.option, full_gym_env=held_out_full,
                                                        window_size=args.window_size,
                                                        window_order=args.window_order,

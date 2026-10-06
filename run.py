@@ -79,10 +79,7 @@ def build_rl_eval_env(option, spec, config, env_kwargs):
     from Code.methods.rl.evaluation.eval_action_space_variant import build_eval_env
     from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import DEFAULT_PLACEMENTS
     gym_env = make_env(config, env_kwargs).env  # strip eval_rl_agent's full-action-space masker
-    gym_env.restrict_idle = bool(spec.get("work_conserving"))  # non-delay models evaluate non-delay
-    gym_env.repair_placement = bool(spec.get("repair_placement"))  # Option 4 placement repair
-    if spec.get("markov_obs"):
-        gym_env.set_markov_obs()  # full MDP state (report Methodology), Code/core/obs_layout.py
+    gym_env.apply_options(**spec)  # the model's env / observation options, exactly as in training
     return build_eval_env(option, gym_env, window_size=spec.get("window_size"),
                           window_order=spec.get("window_order") or "edf",
                           use_atc_feature=bool(spec.get("use_atc_feature")),

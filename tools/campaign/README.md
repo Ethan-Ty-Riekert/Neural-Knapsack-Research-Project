@@ -26,7 +26,8 @@ prints its worker jobs, and the last worker of each study prepends that study's 
 the queue. The tag reaches every job as `--checkpoint-tag`, which is how the runner and the watchdog
 find jobs. Tuning workers (`tune_...`) are not evaluated on test. Tags follow `v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>`. Modifiers: `c` Consolidate
 menu, `a` ATC feature, `p` pointer network (Option 0), `w` windowed, `t` per-tick, `n` work-conserving,
-`f` placement repair, `m` full-MDP (Markov) observation. The paper's tables (`Results/v2_objectives/
+`f` placement repair, `m` full-MDP (Markov) observation, `l` capacity look-ahead, `u` fixed feature
+scaling, `b` arrival-aware critic (input-dependent baseline). No `n` = free idling. The paper's tables (`Results/v2_objectives/
 ALL_RESULTS/`) include only `m` runs.
 
 Why the CPU limits: on 2026-10-05 a sustained 100% CPU load hard-reset the desktop

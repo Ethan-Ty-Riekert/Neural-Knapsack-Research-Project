@@ -2,6 +2,7 @@
 
 Layout: [ t/H | machine block | job slot 0 | ... | job slot max_jobs-1 ]
   machine block: per machine m, its remaining capacity R_mrt / C_r for every resource r
+                 (+ R_m,r,t+1 .. R_m,r,t+K / C_r for every r, the capacity look-ahead, when lookahead K > 0)
                  (+ y_m, whether the machine has been used, in full-state mode)
   job slot:      [p_j, d_j/H, w_j, a_j1..a_jR, scheduled]   (+ [s_j/H, (m_j+1)/|M|] in full-state mode)
 
@@ -16,6 +17,12 @@ determines when every running job completes and so every future capacity: it is 
 has not started, s_j and m_j are the sentinel 0 (m_j is encoded 1-based so 0 is never a real machine),
 and the 'scheduled' flag marks started, finished and unavailable slots. The default (markov=False)
 reproduces the original observation exactly (it omitted s_j, m_j and y).
+
+Capacity look-ahead (lookahead=K, 2026-10-06): each machine's remaining capacity over the next K ticks.
+Jobs are non-preemptive and every processing job's (s_j, p_j, m_j, A_j) is in F_t, so
+R_m,r,t' = C_r - sum_{j in P_t: m_j = m, s_j <= t' < s_j + p_j} A_jr is a function of the state: the window
+adds no information (the MDP is unchanged), it only pre-computes what the network would otherwise have
+to learn. K = the longest possible job (Code/core/difficulty.max_job_duration) covers every release.
 """
 from dataclasses import dataclass
 
@@ -26,10 +33,11 @@ class ObsLayout:
     num_resources: int
     max_jobs: int
     markov: bool = False
+    lookahead: int = 0
 
     @property
     def machine_feat_dim(self) -> int:
-        return self.num_resources + (1 if self.markov else 0)
+        return self.num_resources * (1 + self.lookahead) + (1 if self.markov else 0)
 
     @property
     def machine_block_end(self) -> int:

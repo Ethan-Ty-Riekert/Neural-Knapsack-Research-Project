@@ -60,6 +60,8 @@ class GymSchedulingEnv(gym.Env):
         self.horizon = env.horizon
         self.restrict_idle = restrict_idle
         self.job_resampler = job_resampler
+        self.fixed_scaling = False    # see set_markov_obs
+        self.critic_arrivals = False  # see apply_options / Code/core/critic_input.py
 
         # For normalisation later on
         self.initial_capacity = env.capacity[:, :, 0].copy()
@@ -85,23 +87,65 @@ class GymSchedulingEnv(gym.Env):
             low = 0.0, high=1.0, shape=(obs_dim,), dtype=np.float32
         )
 
-    def set_markov_obs(self):
+    def set_markov_obs(self, lookahead=0, fixed_scaling=False):
         """Switch to the full-state observation of the report's MDP (Code/core/obs_layout.py): adds each
         job's start time s_j and machine m_j, and each machine's activation y_m. Call before wrapping
-        with a reduced-action wrapper (they read the layout at construction)."""
-        self.obs_layout = ObsLayout(self.num_machines, self.num_resources, self.max_jobs, markov=True)
+        with a reduced-action wrapper (they read the layout at construction).
+
+        lookahead (2026-10-06): also each machine's remaining capacity for the next `lookahead` ticks
+        (a function of F_t, see obs_layout.py). fixed_scaling (2026-10-06): scale job features by fixed
+        constants (_job_scales) instead of this instance's maxima, so a job looks the same in every
+        instance and "fits" is the direct comparison A_jr / C_r <= R_mrt / C_r."""
+        self.obs_layout = ObsLayout(self.num_machines, self.num_resources, self.max_jobs, markov=True,
+                                    lookahead=lookahead)
+        self.fixed_scaling = fixed_scaling
         # s_j / H can exceed 1 under the extended horizon, so the box is unbounded above
         self.observation_space = gym.spaces.Box(low=0.0, high=np.inf, shape=(self.obs_layout.dim,),
                                                 dtype=np.float32)
 
     def _capacity_block(self):
         """(num_machines, machine_feat_dim): remaining capacity R_mrt / C_r at the current tick (clamped
-        index, as originally), plus y_m in full-state mode."""
-        t_idx = min(self.env.time, self.env.horizon - 1)
-        block = self.env.capacity[:, :, t_idx] / (self.initial_capacity + 1e-8)
+        index, as originally), then the look-ahead R_m,r,t+1..t+K / C_r (resource-major; ticks past the
+        physical window hold no job, so they are at full capacity), then y_m in full-state mode."""
+        t, H_phys, K = self.env.time, self.env.horizon, self.obs_layout.lookahead
+        cap = self.initial_capacity + 1e-8
+        parts = [self.env.capacity[:, :, min(t, H_phys - 1)] / cap]
+        if K:
+            ticks = np.arange(t + 1, t + 1 + K)
+            future = self.env.capacity[:, :, np.minimum(ticks, H_phys - 1)]
+            future = np.where(ticks < H_phys, future, self.initial_capacity[:, :, None])
+            parts.append((future / cap[:, :, None]).reshape(self.num_machines, -1))
         if self.obs_layout.markov:
-            block = np.concatenate([block, self.env.machine_active[:, None].astype(float)], axis=1)
-        return block
+            parts.append(self.env.machine_active[:, None].astype(float))
+        return np.concatenate(parts, axis=1)
+
+    def _job_scales(self):
+        """(duration, weight, per-resource requirement) scales of the job features. Default: this
+        instance's maxima (the original observation). Fixed scaling: durations by the preferred horizon H
+        (the unit of t, d_j and s_j), weights by the largest weight any preset draws, requirements by the
+        machine capacity C_r."""
+        if self.fixed_scaling:
+            from .difficulty import JOB_WEIGHT_MAX
+            return float(self.env.preferred_horizon), float(JOB_WEIGHT_MAX), self.initial_capacity.max(axis=0)
+        return (max(1.0, float(np.max(self.env.job_durations))), max(1.0, float(np.max(self.env.job_weights))),
+                np.maximum(1.0, np.max(self.env.job_resources, axis=0)))
+
+    # The env / observation options a model is trained with (keys of its sidecar spec), see apply_options.
+    OPTION_KEYS = ("work_conserving", "repair_placement", "markov_obs", "lookahead", "fixed_scaling",
+                   "critic_arrivals")
+
+    def apply_options(self, work_conserving=False, repair_placement=False, markov_obs=False, lookahead=0,
+                      fixed_scaling=False, critic_arrivals=False, **_):
+        """Apply a model's environment / observation options (its sidecar env spec) in one place, for
+        training, parallel workers, diagnostics and evaluation alike. Unknown spec keys are ignored."""
+        self.restrict_idle = bool(work_conserving)        # non-delay mode, see idle_allowed()
+        self.repair_placement = bool(repair_placement)    # Option 4, see ActionBranchingGymSchedulingEnv
+        if markov_obs:
+            self.set_markov_obs(lookahead=int(lookahead or 0), fixed_scaling=bool(fixed_scaling))
+        elif lookahead or fixed_scaling:
+            raise ValueError("lookahead / fixed_scaling require the full-state observation (markov_obs)")
+        self.critic_arrivals = bool(critic_arrivals)      # read by Code/core/critic_input.wrap_critic_input
+        return self
 
     def _add_markov_job_feats(self, job_feats, rows):
         """Full-state extras for the given job rows: s_j / H and (m_j + 1) / |M| for jobs that have
@@ -146,10 +190,7 @@ class GymSchedulingEnv(gym.Env):
         # (+ y_m in full-state mode -- see _capacity_block.)
         capacity_block = self._capacity_block()
 
-        # Precompute normalisation constants
-        max_dur = max(1.0, float(np.max(self.env.job_durations)))
-        max_wgt = max(1.0, float(np.max(self.env.job_weights)))
-        max_res = np.maximum(1.0, np.max(self.env.job_resources, axis=0))
+        max_dur, max_wgt, max_res = self._job_scales()  # normalisation constants
 
         # 3. Job features (max_jobs fixed-size slots; slots beyond this
         # instance's actual num_jobs are zero-padded and marked "scheduled" so

@@ -303,4 +303,87 @@ for opt in tov.OPTIONS:
                 assert "m" in m["mods"] and "n" in m["mods"] and m["preset"] in tov.FINAL_PRESETS[preset]
 print(" 10. Uniform protocol: every option x algorithm x preset carries its exact design flags")
 
+# 11. Observation fixes and the critic-only input (2026-10-06)
+#  a) the capacity look-ahead equals C_r - sum_{j in P_t, m_j = m, s_j <= t' < s_j + p_j} A_jr, computed from
+#     F_t alone (so it adds no information); b) fixed scaling gives A_jr / C_r and p_j / H; c) the critic
+#     block summarises only jobs not yet arrived (zero offline) and no design's actor depends on it.
+from Code.core.critic_input import critic_input_dim, future_arrival_summary  # noqa: E402
+from Code.core.difficulty import max_job_duration  # noqa: E402
+from Code.methods.rl.training.train_action_space_variant import make_full_gym_env  # noqa: E402
+from Code.variants.v2_objectives import objective_config  # noqa: E402
+
+_obj = objective_config(("tardiness_sq",), None, 1.0)
+for preset in ("on_rho095", "off_tf05"):
+    d = DIFFICULTIES[preset]
+    online = d.case == "online"
+    K = max_job_duration(d)
+    kw = dict(reward_mode="objective", objective=_obj, difficulty=d, extend_horizon=True, markov_obs=True,
+              work_conserving=True, lookahead=K, fixed_scaling=True, critic_arrivals=True)
+    kw.update(dict(arrival_rate=1.0, horizon=100, max_jobs=500, job_size_distribution="lognormal") if online
+              else dict(randomize_instances=True))
+    full = make_full_gym_env(online, kw, seed=4)
+    rng = np.random.default_rng(0)
+    full.reset()
+    L, base = full.obs_layout, full.env
+    M, R = full.num_machines, full.num_resources
+    C = base.machine_capacity
+    for step in range(60):
+        obs = full._get_obs()
+        t = base.time
+        mblock = obs[1:L.machine_block_end].reshape(M, L.machine_feat_dim)
+        running = np.flatnonzero((base.start_times >= 0) & (base.start_times + base.job_durations > t))
+        for k in range(K + 1):
+            expect = np.tile(C, (M, 1)).astype(float)
+            for j in running:
+                if base.start_times[j] <= t + k < base.start_times[j] + base.job_durations[j]:
+                    expect[base.job_machines[j]] -= base.job_resources[j]
+            got = mblock[:, :R] if k == 0 else mblock[:, R:R + R * K].reshape(M, R, K)[:, :, k - 1]
+            assert np.allclose(got, expect / C, atol=1e-6), (preset, step, k)
+        slots = obs[L.machine_block_end:].reshape(L.max_jobs, L.job_slot_width)
+        vis = sorted(base.revealed_jobs) if online else range(full.num_jobs)
+        for j in list(vis)[:5]:
+            assert np.allclose(slots[j, 3:3 + R], base.job_resources[j] / C, atol=1e-6)
+            assert np.isclose(slots[j, 0], base.job_durations[j] / base.preferred_horizon, atol=1e-6)
+        z = future_arrival_summary(full)
+        assert z.shape == (critic_input_dim(R),)
+        if online:  # job count in the summary = jobs still to arrive within the arrival horizon
+            n_future = ((base.arrival_times > t) & (base.arrival_times <= base.preferred_horizon)).sum()
+            assert np.isclose(z.reshape(-1, 3 + R)[:, 0].sum() * M * 5, n_future, atol=1e-3)
+        else:
+            assert not z.any(), "offline: every job is known at t = 0, nothing is critic-only"
+        m = full.get_action_mask()
+        full.step(int(rng.choice(np.flatnonzero(m))))
+    assert len(running) > 0 or step > 0
+print(" 11. Look-ahead = capacity formula from F_t; fixed scaling; critic block = future arrivals only")
+
+# 12. The unbiasedness precondition (Code/core/critic_input.py): pi(a | obs) must not depend on the critic-only
+#     block for any design, while the value estimate does (otherwise the critic would not use it).
+from sb3_contrib import MaskablePPO as _MPPO  # noqa: E402
+
+d = DIFFICULTIES["on_rho095"]
+kw = dict(reward_mode="objective", objective=_obj, difficulty=d, extend_horizon=True, markov_obs=True,
+          work_conserving=True, lookahead=max_job_duration(d), fixed_scaling=True, critic_arrivals=True,
+          arrival_rate=1.0, horizon=100, max_jobs=300, job_size_distribution="lognormal")
+for opt, extra in (("0", dict(policy_arch="pointer")), ("1", {}), ("2", {}), ("3", dict(window_size=20)), ("4", {})):
+    full = make_full_gym_env(True, kw, seed=2)
+    env_o, policy, pkw = build_env_and_policy(opt, full_gym_env=full, **extra)
+    model = _MPPO(policy, env_o, policy_kwargs=pkw, n_steps=8, batch_size=8, verbose=0)
+    o, info = env_o.reset()
+    for _ in range(20):
+        o, _, _, _, info = env_o.step(model.predict(o, action_masks=info["action_mask"])[0])
+    C = critic_input_dim(full.num_resources)
+    x = _torch.as_tensor(o[None])
+    y = x.clone()
+    y[:, -C:] = _torch.randn(1, C) * 5
+    dist = model.policy.get_distribution
+
+    def logits(z):
+        dd = dist(z)
+        return (_torch.cat([q.logits for q in dd.distributions], -1) if hasattr(dd, "distributions")
+                else dd.distribution.logits)
+    with _torch.no_grad():
+        assert _torch.equal(logits(x), logits(y)), f"Option {opt}: the actor reads the critic-only block"
+        assert not _torch.allclose(model.policy.predict_values(x), model.policy.predict_values(y)), opt
+print(" 12. Every design's actor ignores the critic-only block; every critic uses it")
+
 print("test_v2_variants: all checks passed")

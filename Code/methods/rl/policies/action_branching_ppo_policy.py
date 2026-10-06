@@ -41,6 +41,8 @@ class ActionBranchingMaskableActorCriticPolicy(MaskableActorCriticPolicy):
         num_machines: int,
         num_resources: int,
         markov: bool = False,
+        lookahead: int = 0,
+        critic_dim: int = 0,
         embed_dim: int = 128,
         hidden: int = 64,
         **kwargs: Any,
@@ -50,6 +52,8 @@ class ActionBranchingMaskableActorCriticPolicy(MaskableActorCriticPolicy):
             num_machines=num_machines,
             num_resources=num_resources,
             markov=markov,
+            lookahead=lookahead,
+            critic_dim=critic_dim,
             embed_dim=embed_dim,
             hidden=hidden,
         )

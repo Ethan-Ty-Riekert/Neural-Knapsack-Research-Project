@@ -40,6 +40,7 @@ from Code.methods.rl.evaluation.eval_rl_agent import run_heuristic
 from Code.methods.heuristics.registry import DEFAULT_HEURISTICS
 from Code.methods.rl.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
 from Code.utils.results_log import append_eval_result
+from Code.core.critic_input import wrap_critic_input
 
 
 def build_eval_env(option: str, full_gym_env, window_size=None, window_order="edf",
@@ -87,7 +88,7 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
         env = ActionBranchingGymSchedulingEnv(full_gym_env)
     else:
         raise ValueError(f"Unknown option {option!r}")
-    return ActionMasker(env, mask_fn)
+    return ActionMasker(wrap_critic_input(env, full_gym_env), mask_fn)  # critic-only block, if trained with it
 
 
 def load_model(option: str, template_env, checkpoint_tag=None, window_size=None, policy_arch=None):
@@ -114,7 +115,9 @@ def run_episode(model, env):
     obs, info = env.reset()
     done = truncated = False
     rewards = []
-    base_env = env.env.env
+    base_env = env
+    while not hasattr(base_env, "tardiness"):  # walk the wrapper chain (its depth depends on the model)
+        base_env = base_env.env
 
     while not (done or truncated):
         action, _ = model.predict(obs, action_masks=info["action_mask"], deterministic=True)

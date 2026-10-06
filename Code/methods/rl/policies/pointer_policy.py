@@ -100,6 +100,24 @@ class GlobalContextHead(nn.Module):
         """context: (B, context_dim) -> (B, 1)."""
         return self.net(context)
 
+def build_value_head(context_dim: int, hidden: int = 64, critic_dim: int = 0):
+    """(value_head, critic_encoder). critic_dim > 0: the value head also reads the critic-only block at
+    the end of the observation (Code/core/critic_input.py: summary of future arrivals, an
+    input-dependent baseline -- Mao et al. 2019; the actor never reads it). critic_dim = 0 keeps the
+    original value head exactly (same parameters, so existing checkpoints load unchanged)."""
+    if not critic_dim:
+        return GlobalContextHead(context_dim, hidden), None
+    encoder = nn.Sequential(nn.Linear(critic_dim, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh())
+    return GlobalContextHead(context_dim + hidden, hidden), encoder
+
+
+def critic_context(context: torch.Tensor, obs: torch.Tensor, critic_encoder) -> torch.Tensor:
+    """The value head's input: the shared context, plus the encoded critic-only block when present."""
+    if critic_encoder is None:
+        return context
+    critic_dim = critic_encoder[0].in_features
+    return torch.cat([context, critic_encoder(obs[:, -critic_dim:])], dim=-1)
+
 
 class PointerActorCritic(nn.Module):
     """Drop-in replacement for MaskableActorCritic: forward(obs) -> (logits, value)
@@ -117,6 +135,8 @@ class PointerActorCritic(nn.Module):
         num_machines: int,
         num_resources: int,
         markov: bool = False,
+        lookahead: int = 0,
+        critic_dim: int = 0,
         embed_dim: int = 128,
         hidden: int = 64,
         clip_c: float = 10.0,
@@ -128,7 +148,7 @@ class PointerActorCritic(nn.Module):
 
         # Must match GymSchedulingEnv._get_obs()'s per-job-slot feature layout
         # exactly: [duration, deadline, weight, resource_0..resource_{R-1}, scheduled].
-        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov)
+        self._layout = ObsLayout(num_machines, num_resources, max_jobs, markov=markov, lookahead=lookahead)
         job_feat_dim = self._layout.job_slot_width
         machine_feat_dim = self._layout.machine_feat_dim
 
@@ -138,7 +158,7 @@ class PointerActorCritic(nn.Module):
 
         context_dim = 2 * embed_dim + 1  # job_context + machine_context + time
         self.idle_head = GlobalContextHead(context_dim, hidden)
-        self.value_head = GlobalContextHead(context_dim, hidden)
+        self.value_head, self.critic_encoder = build_value_head(context_dim, hidden, critic_dim)
 
     def _split_obs(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Slice the flat (B, obs_dim) vector back into (time, machine_feats,
@@ -176,7 +196,7 @@ class PointerActorCritic(nn.Module):
 
         context = torch.cat([job_context, machine_context, time_feat], dim=-1)  # (B, 2E+1)
         idle_logit = self.idle_head(context)  # (B, 1)
-        value = self.value_head(context)      # (B, 1)
+        value = self.value_head(critic_context(context, obs, self.critic_encoder))      # (B, 1)
 
         logits = torch.cat([flat_pair_logits, idle_logit], dim=-1)  # (B, J*M+1)
         return logits, value

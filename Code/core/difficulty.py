@@ -130,3 +130,23 @@ DIFFICULTIES = {
     # online: deadline tightness at moderate load
     "on_rho075_tight": Difficulty("online", rho=0.75, slack=(5, 25), desc="online, rho 0.75, tight deadlines (slack 5-25)"),
 }
+
+# Largest job weight any preset can draw (weights Uniform{1..5}; unweighted presets use w = 1): the fixed
+# weight scale of the observation (GymSchedulingEnv fixed scaling).
+JOB_WEIGHT_MAX = max(d.weights[1] - 1 for d in DIFFICULTIES.values() if d.weights)
+
+
+def max_job_duration(difficulty: Difficulty) -> int:
+    """Longest job duration a preset can generate, read from the generators' own defaults (generate()
+    does not override them): offline Uniform{1..9} (generate_env_config, exclusive upper bound); online
+    lognormal clipped at job_duration_range[1] x heavy_tail_max_multiplier = 40 (uniform: 9). Used as the
+    capacity look-ahead length K: every processing job finishes within K ticks, so the window shows
+    every future capacity release (GymSchedulingEnv.set_markov_obs)."""
+    from inspect import signature
+    if difficulty.case == "offline":
+        return signature(generate_env_config).parameters["job_duration_range"].default[1] - 1
+    p = signature(generate_poisson_arrivals).parameters
+    high = p["job_duration_range"].default[1]
+    if difficulty.size_distribution == "lognormal":
+        return int(high * p["heavy_tail_max_multiplier"].default)
+    return high - 1
