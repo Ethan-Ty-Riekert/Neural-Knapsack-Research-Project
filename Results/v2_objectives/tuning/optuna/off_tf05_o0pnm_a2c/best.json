@@ -1,0 +1,23 @@
+{
+ "study": "off_tf05_o0pnm_a2c",
+ "best_trial": 15,
+ "validation_J": 113300.0,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 100000,
+ "hyperparameters": {
+  "learning-rate": 0.0003287391485030043,
+  "rollout-size": 320,
+  "gamma": 0.999,
+  "gae-lambda": 0.95,
+  "ent-coef": 0.029731628343256638
+ },
+ "counts": {
+  "COMPLETE": 11,
+  "PRUNED": 9,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "study": "on_rho095_o4nfm_a2c",
+ "best_trial": 3,
+ "validation_J": 331240.8,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 100000,
+ "hyperparameters": {
+  "learning-rate": 0.0006912670683424538,
+  "rollout-size": 80,
+  "gamma": 0.995,
+  "gae-lambda": 1.0,
+  "ent-coef": 0.00014098918363046996
+ },
+ "counts": {
+  "COMPLETE": 7,
+  "PRUNED": 13,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

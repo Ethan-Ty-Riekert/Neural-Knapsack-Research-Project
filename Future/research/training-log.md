@@ -32,6 +32,94 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- Uniform v2 protocol COMPLETE: test results, Options 0-4 x PPO/A2C
+
+**Config:** as in "Uniform v2 RL protocol launched" below. All 20 studies finished (no failed trials);
+90 final runs (300k x 3 seeds) scored on the 50 test instances. Whole campaign ran 00:49-16:03 (~15 h, far
+below the ~55 h estimate: pruning stopped 40-65% of trials at 25k steps).
+
+**Stats (test J, mean +/- sd over 3 seeds; lower is better):**
+```
+                        off_tf05 (weighted)   off_tf05_w1 (w=1)    on_rho095 (online)
+best heuristic          LST 39,536            LST 13,098           EDF+Consolidate 21,986
+CP-SAT 60 s/instance    35,681                16,469               -
+Opt0 pointer  PPO       35,327 +/- 886        54,031 +/- 28,396    191,736 +/- 44,795
+Opt0 pointer  A2C      164,997 +/- 83,711     68,515 +/- 17,419     44,321 +/- 528
+Opt1 rules+C  PPO       40,042 +/- 858        13,440 +/- 323        97,758 +/- 34,882
+Opt1 rules+C  A2C       51,541 +/- 20,794     13,318 +/- 380       241,202 +/- 68,853
+Opt2          PPO       74,554 +/- 5,619      34,741 +/- 5,423     257,946 +/- 118,607
+Opt2 (defaults) PPO     32,672 +/- 863        -                    -
+Opt2          A2C      112,430 +/- 19,461     32,474 +/- 8,169     297,299 +/- 95,802
+Opt3 window20 PPO       31,291 +/- 1,594      13,644 +/- 252        69,724 +/- 12,638
+Opt3 window20 A2C       58,182 +/- 158        24,908 +/- 8,586     110,323 +/- 64,298
+Opt4 +repair  PPO       39,978 +/- 3,164      15,343 +/- 1,186     361,878 +/- 62,540
+Opt4 +repair  A2C       90,512 +/- 38,601     42,678 +/- 28,830    365,388 +/- 65,057
+```
+**Observation:**
+- Weighted offline: Option 3 (PPO) 20.9% below LST and 12.3% below CP-SAT's 60-second incumbent; Option 0
+  (PPO) and Option 2 with defaults also beat LST. Every weight-aware heuristic (WSPT/ATC/WMDD/COVERT) is
+  worse than LST here.
+- Constant weights: no RL design beats LST; Option 1 reproduces it (13,098 on 2 of 6 runs), Option 3 is
+  within 4%. RL's offline advantage appears only when weights matter.
+- Online: every RL design loses to EDF+Consolidate; the best (Option 0 A2C) has twice its J.
+- PPO beats A2C in 13 of 15 (design, preset) cells; A2C is better only for Option 0 online and marginally
+  for Option 1 at w=1.
+- Tuning-budget artefact (entry above): Option 2's tuned configuration is worse than the defaults offline.
+  Observed for Option 2 only; untested for the other cells.
+
+**Conclusion / next step:** archive rebuilt (`Results/v2_objectives/ALL_RESULTS/`). Open user decision:
+how to handle the tuning-budget artefact (default-hyperparameter rows offline / everywhere / limitation only).
+Then update report Appendix E to this protocol.
+
+---
+
+## 2026-10-06 (S2W12) -- Option 2 ablation result: the regression is a tuning-budget artefact
+
+**Config:** as in the entry below (`v2_off_tf05_o2nm_s0-2`: full state + work-conserving, PPO defaults).
+
+**Stats (test, 50 instances):**
+```
+v2_off_tf05_o2nm_s0-2   (full state, work-conserving, defaults)  32,093 / 33,664 / 32,259  mean 32,672
+v2_off_tf05_o2_s0-4     (old obs, idling allowed, defaults)      mean 31,831
+v2_off_tf05_o2nm_tuned  (full state, work-conserving, tuned)     mean 74,554
+LST (best heuristic)                                              39,536
+```
+**Observation:** with the setup held fixed, the PPO defaults recover the old result (within ~3%) and beat LST
+by ~17%. The full state and work-conserving mode are therefore not the cause (observed, 3 seeds); the
+Optuna choice is. The 100k-step trials favoured a slow-learning configuration (18 updates in 300k steps)
+that the 300k-step final run cannot recover from.
+
+**Conclusion / next step:** the 100k-step tuning budget can select configurations that are worse than the
+defaults at the final 300k budget (a known short-horizon bias of multi-fidelity tuning). Other studies
+may be affected the same way. Decision for the user: whether to (a) report tuned and default rows side by
+side, or (b) re-run studies with the defaults enqueued as trial 0 and/or a longer trial budget.
+
+---
+
+## 2026-10-06 (S2W12) -- Option 2 regression under the uniform protocol: ablation queued (user-approved)
+
+**Config:** Option 2 off_tf05, full-state obs + work-conserving (same as `o2nm_tuned`), but the PPO
+defaults of the earlier `v2_off_tf05_o2_s*` runs (lr 3e-4, rollout 2048, batch 64, 10 epochs, gamma 0.99,
+lambda 0.95, ent 0); 300k steps x seeds 0-2; tags `v2_off_tf05_o2nm_s{0,1,2}`.
+
+**Stats (test, 50 instances):**
+```
+v2_off_tf05_o2_s0-4        (old obs, idling allowed, defaults)  mean 31,831  (29,494-33,801)
+v2_off_tf05_o2nm_tuned_s0-2 (full state, work-conserving, tuned) mean 74,554  (71,262-81,042)
+```
+**Observation:** the tuned configuration (lr 9.2e-5, rollout 16384) gives 18 policy updates in 300k steps
+vs 146 with the defaults. All 20 Option 2 trials were still poor at 100k steps (best validation J 62,353),
+and the top five all chose rollout 16384 with lr ~9e-5. Hypothesis (not yet tested): the 100k-step tuning
+budget selected a slow-learning configuration that is least bad early but under-trained at 300k. Option 3w,
+same pointer network and same full state, reaches 31,291 with faster tuned settings (lr 6.7e-4, rollout
+8192), which argues against the full state itself being the cause.
+
+**Conclusion / next step:** if the ablation recovers ~32k, the regression is a tuning-budget artefact and
+both rows are reported with this explanation; if it stays ~75k, the setup change (full state and/or
+work-conserving) hurts Option 2 and needs a further ablation.
+
+---
+
 ## 2026-10-06 (S2W12) -- Uniform v2 RL protocol launched: Optuna tuning + final runs for Options 0-4 x PPO/A2C
 
 **Config (approved by the user 2026-10-06; supersedes the 304-job queue, backed up as

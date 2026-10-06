@@ -1,0 +1,26 @@
+{
+ "study": "off_tf05_o4nfm",
+ "best_trial": 19,
+ "validation_J": 56257.1,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 100000,
+ "hyperparameters": {
+  "learning-rate": 0.000641908233179286,
+  "rollout-size": 2048,
+  "batch-size": 64,
+  "n-epochs": 10,
+  "gamma": 0.99,
+  "gae-lambda": 0.95,
+  "clip-range": 0.3,
+  "ent-coef": 0.0023650906014653366
+ },
+ "counts": {
+  "COMPLETE": 10,
+  "PRUNED": 10,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

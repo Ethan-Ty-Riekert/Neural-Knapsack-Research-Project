@@ -1,0 +1,26 @@
+{
+ "study": "on_rho095_o4nfm",
+ "best_trial": 7,
+ "validation_J": 61109.7,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 100000,
+ "hyperparameters": {
+  "learning-rate": 0.0007540181221018431,
+  "rollout-size": 4096,
+  "batch-size": 256,
+  "n-epochs": 3,
+  "gamma": 0.999,
+  "gae-lambda": 0.98,
+  "clip-range": 0.1,
+  "ent-coef": 0.000779308323413374
+ },
+ "counts": {
+  "COMPLETE": 8,
+  "PRUNED": 12,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

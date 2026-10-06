@@ -1,0 +1,26 @@
+{
+ "study": "on_rho095_o2nm",
+ "best_trial": 14,
+ "validation_J": 57277.0,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 100000,
+ "hyperparameters": {
+  "learning-rate": 0.0005707455304982565,
+  "rollout-size": 4096,
+  "batch-size": 256,
+  "n-epochs": 3,
+  "gamma": 0.999,
+  "gae-lambda": 0.98,
+  "clip-range": 0.1,
+  "ent-coef": 0.00034994006960312125
+ },
+ "counts": {
+  "COMPLETE": 14,
+  "PRUNED": 6,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}
