@@ -32,6 +32,27 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-06 (S2W12) -- v3 runs with FREE IDLING (user decision); pre-registered idling rule withdrawn
+
+**Config:** v3 is launched as `tune_optuna_v2 --protocol v3_idle` for all 6 designs x PPO/A2C x {off_tf05,
+on_rho095} (24 studies, 2 workers each), first priority in the campaign queue (~23:00). Tonight's
+default-hyperparameter runs (work-conserving and free idling, v2 observation) continue as lower-priority filler.
+
+**Why (user, 2026-10-06):** "the entire point is that it can leave space for new jobs" -- the research question
+requires the agent to be free to idle. Supporting argument: for regular objectives an optimal schedule exists among
+the active schedules but not necessarily among the non-delay ones (giffler1960active), so work-conserving
+dispatching can exclude the optimum even offline, and online it excludes capacity reservation entirely.
+Work-conserving had been added (2026-10-05) as a fix for a training failure (agents idling thousands of times
+with jobs waiting), observed under the old observation: no capacity look-ahead and a critic dominated by arrival
+noise -- the two things v3 changes.
+
+**The pre-registered rule (entries below) is withdrawn**, by user decision for a research-design reason, before
+any free-idling vs work-conserving comparison was computed; no result informed the change. Work-conserving results
+(v2 tuned, and the default-hyperparameter runs) remain the comparison: does freedom to idle help once the agent
+sees future capacity? If a v3 design idles degenerately, that is reported as a finding.
+
+---
+
 ## 2026-10-06 (S2W12) -- Added design "3": Option 3 (Option 2 + engineered ATC feature) over every job
 
 **Config (user request 2026-10-06):** the report defines Option 3 as Option 2 with the ATC index (eq:atc) as a
