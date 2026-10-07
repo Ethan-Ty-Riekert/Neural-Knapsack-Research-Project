@@ -32,6 +32,21 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-07 (S2W12) -- Machine slept 11:25-19:05 (no data lost); keep-awake added; slow studies parallelised
+
+**Config:** the desktop went to sleep at ~11:25 (system boot time unchanged since 2026-10-05: not a power loss);
+every job was frozen and resumed at ~19:05, so ~7.7 h of campaign time was lost but no results. Added
+`tools/campaign/keep_awake.py` (Win32 SetThreadExecutionState while the queue runner lives; no power settings
+changed). Scheduling only (protocol unchanged: 12 trials per study, same settings): the four slowest studies
+(online PPO, Options 0, 2, 3, 4; up to ~4 h per trial) now get 4 Optuna workers each (TPE seed = worker index),
+queued first, so their critical path shrinks; runner: target 90%, up to 9 jobs.
+
+**Stats (v4 after ~2.4 h of compute):** 3 of 24 studies finished (offline Option 0 PPO best 26,994 -- the defaults
+trial; offline Option 0 A2C 28,213; offline Option 1 PPO 37,169; online Option 1 PPO 68,172); their final runs are
+training. Critics learn in every v4 trial (explained variance 0.3-0.999).
+
+---
+
 ## 2026-10-07 (S2W12) -- Investigation of poor/unstable training; three fixes; v3 stopped, v4 launched
 
 **Request (user, 2026-10-07):** "investigate the terrible training and evaluation performance ... create 2 fixes ...
