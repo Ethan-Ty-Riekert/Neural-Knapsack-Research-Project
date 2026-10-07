@@ -61,6 +61,7 @@ class GymSchedulingEnv(gym.Env):
         self.restrict_idle = restrict_idle
         self.job_resampler = job_resampler
         self.fixed_scaling = False    # see set_markov_obs
+        self.event_idle = False       # see idle_step
         self.critic_arrivals = False  # see apply_options / Code/core/critic_input.py
 
         # For normalisation later on
@@ -132,10 +133,10 @@ class GymSchedulingEnv(gym.Env):
 
     # The env / observation options a model is trained with (keys of its sidecar spec), see apply_options.
     OPTION_KEYS = ("work_conserving", "repair_placement", "markov_obs", "lookahead", "fixed_scaling",
-                   "critic_arrivals")
+                   "critic_arrivals", "event_idle")
 
     def apply_options(self, work_conserving=False, repair_placement=False, markov_obs=False, lookahead=0,
-                      fixed_scaling=False, critic_arrivals=False, **_):
+                      fixed_scaling=False, critic_arrivals=False, event_idle=False, **_):
         """Apply a model's environment / observation options (its sidecar env spec) in one place, for
         training, parallel workers, diagnostics and evaluation alike. Unknown spec keys are ignored."""
         self.restrict_idle = bool(work_conserving)        # non-delay mode, see idle_allowed()
@@ -145,7 +146,55 @@ class GymSchedulingEnv(gym.Env):
         elif lookahead or fixed_scaling:
             raise ValueError("lookahead / fixed_scaling require the full-state observation (markov_obs)")
         self.critic_arrivals = bool(critic_arrivals)      # read by Code/core/critic_input.wrap_critic_input
+        self.event_idle = bool(event_idle)                # see idle_step
         return self
+
+    def next_event_time(self):
+        """The next tick at which the state can change other than through the clock: the earliest completion
+        of a running job or the earliest future arrival (online, within the arrival horizon). None if neither."""
+        t = self.env.time
+        start = np.asarray(self.env.start_times)
+        finish = start + np.asarray(self.env.job_durations)
+        events = finish[(start >= 0) & (finish > t)].tolist()
+        arrivals = getattr(self.env, "arrival_times", None)
+        if arrivals is not None:
+            arrivals = np.asarray(arrivals)
+            events += arrivals[(arrivals > t) & (arrivals <= self.env.preferred_horizon)].tolist()
+        return int(min(events)) if events else None
+
+    def idle_step(self):
+        """Execute one idle DECISION; every design's idle goes through here (2026-10-07). Returns
+        (obs, reward, done) like SchedulingEnv.step_idle().
+
+        Default: one tick. Event-driven mode (event_idle=True): wait until the next event (next_event_time).
+        Between two events the waiting jobs and the free capacity do not change, so a job that fits at an
+        intermediate tick also fits now, and starting it now finishes it earlier with the same capacity use
+        from the event on -- never worse for a regular objective; so waiting only matters up to an event and
+        nothing is lost (Giffler & Thompson 1960 build active schedules at such event times). An idle can then
+        never repeat from an unchanged state, and the number of idle decisions is bounded by the number of
+        arrivals and completions (see idle_allowed for the no-event case).
+
+        Lateness shaping stays exactly potential-based at the DECISION level: the k ticks of one wait use
+        gamma = 1 except the last, so their shaping terms telescope to gamma * Phi(s') - Phi(s)."""
+        if not self.event_idle:
+            return self.env.step_idle()
+        nxt = self.next_event_time()
+        ticks = max(1, nxt - self.env.time) if nxt is not None else 1
+        objective = getattr(self.env, "objective", None)
+        gamma = objective.cfg.shaping_gamma if objective is not None else None
+        total = 0.0
+        try:
+            for i in range(ticks):
+                if objective is not None:
+                    objective.cfg.shaping_gamma = 1.0 if i < ticks - 1 else gamma
+                obs, reward, done = self.env.step_idle()
+                total += reward
+                if done:
+                    break
+        finally:
+            if objective is not None:
+                objective.cfg.shaping_gamma = gamma
+        return obs, total, done
 
     def _add_markov_job_feats(self, job_feats, rows):
         """Full-state extras for the given job rows: s_j / H and (m_j + 1) / |M| for jobs that have
@@ -274,6 +323,11 @@ class GymSchedulingEnv(gym.Env):
         mode), idle is only legal when nothing can be placed -- the same rule every dispatching
         heuristic follows (non-delay schedules, Giffler & Thompson 1960). The single definition used
         by get_action_mask() and by every reduced-action wrapper's idle bit (2026-10-05)."""
+        if self.event_idle and any_job_feasible and self.next_event_time() is None:
+            # No running job and no future arrival: waiting changes nothing but the clock, and every waiting
+            # job's lateness can only grow -- idling is dominated (the rest of the schedule shifted earlier is
+            # feasible and no worse), so it is not offered.
+            return False
         return not (self.restrict_idle and any_job_feasible)
 
     def get_action_mask(self):
@@ -323,7 +377,7 @@ class GymSchedulingEnv(gym.Env):
         idle_action = self.max_jobs * self.num_machines
 
         if action_id == idle_action:
-            obs, reward, done = self.env.step_idle()
+            obs, reward, done = self.idle_step()
         else:
             job = action_id // self.num_machines
             machine = action_id % self.num_machines

@@ -185,7 +185,7 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
         job_actions = self._job_actions()
 
         if action_id == self.num_rules or not job_actions:
-            _, reward, done = self.env.step_idle()
+            _, reward, done = self._full.idle_step()
         elif self.decision_epoch == "tick":
             # One decision per tick: apply the chosen rule to every placement that fits this tick,
             # then advance the clock; the transition's reward is the sum over the tick (exact, since
@@ -199,7 +199,7 @@ class RuleSelectionGymSchedulingEnv(gym.Env):
                 reward += r
                 job_actions = self._job_actions()
             if not done and self.env.time == t0:
-                _, r, done = self.env.step_idle()
+                _, r, done = self._full.idle_step()
                 reward += r
             self._invalid_action_count = 0
         else:

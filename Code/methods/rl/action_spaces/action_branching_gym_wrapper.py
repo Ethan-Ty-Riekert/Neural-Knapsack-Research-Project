@@ -124,7 +124,7 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
 
         mask_mismatch = False
         if job == self.max_jobs:
-            _, reward, done = self.env.step_idle()
+            _, reward, done = self._full.idle_step()
         else:
             t = self.env.time
             if self.env.is_feasible(job, machine, t):
@@ -153,7 +153,7 @@ class ActionBranchingGymSchedulingEnv(gym.Env):
                     _, reward, done = self.env.step((job, first_fit(self.env, job, feasible, t)))
                     self._invalid_action_count = 0
                 else:
-                    _, reward, done = self.env.step_idle()
+                    _, reward, done = self._full.idle_step()
 
         obs = self._get_obs()
         info = {

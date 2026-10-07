@@ -156,12 +156,12 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
         job = self._window_jobs[action_id] if action_id < self.window_size else None
 
         if job is None:
-            _, reward, done = self.env.step_idle()
+            _, reward, done = self._full.idle_step()
         else:
             t = self.env.time
             feasible = np.flatnonzero(self._full.feasibility_matrix()[job]).tolist()
             if not feasible:
-                _, reward, done = self.env.step_idle()
+                _, reward, done = self._full.idle_step()
             else:
                 machine = first_fit(self.env, job, feasible, t)
                 was_pending = job in self.env.remaining_jobs

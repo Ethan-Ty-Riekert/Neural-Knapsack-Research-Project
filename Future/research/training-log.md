@@ -32,6 +32,56 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-07 (S2W12) -- Investigation of poor/unstable training; three fixes; v3 stopped, v4 launched
+
+**Request (user, 2026-10-07):** "investigate the terrible training and evaluation performance ... create 2 fixes ...
+backed up by logic or other papers, and then try and retrain. This is a sign of a poor environment and model."
+
+**Findings (all measured):**
+1. *The critic never learned.* Explained variance was 0.000 for the whole of training in every v3 offline run (PPO
+   and A2C) and in several v2 runs (Option 0 PPO/A2C, Option 1 offline, A2C online); value loss 1e3-6e5. Squared-
+   tardiness returns are in the hundreds to thousands; value and policy losses share one gradient clipped to
+   max_grad_norm = 0.5, so the value gradient leaves almost nothing of the policy gradient, and the baseline is noise.
+   A2C policies stayed near uniform (largest action probability 0.001 after 1M steps).
+2. *Greedy evaluation idled forever.* Idle is one action while "start a job" is split over many actions; an undecided
+   policy's single most probable action can be idle in every state (checkpoint: P(idle) 0.003 vs 0.002; argmax J 1.3e8,
+   sampled 2.0e5). This produced the 1e8-1e10 validation "swings"; training episodes themselves were normal.
+3. *The environment let idle repeat forever.* An idle advanced one tick and returned to an unchanged decision, so a
+   deterministic policy preferring idle in some state looped to the safety cap (online pilot: 6,432 consecutive idles,
+   J 4.4e7, while the same policy sampled scored 59,941).
+
+**Fixes (code, tests 14-15):**
+1. *Reward scaling* (`--normalize-reward`, `scale_rewards`): rewards divided by a running std of the discounted return,
+   no clipping (engstrom2020implementation; andrychowicz2021onpolicy).
+2. *Two-stage greedy rule* (`greedy_decoding.py`, all evaluation incl. tuning): idle iff P(idle) >= total job
+   probability, else the most probable job action (structure as in mao2019decima / tavakoli2018actionbranching).
+   Identical to argmax for confident policies.
+3. *Event-driven idling* (`--event-idle`, `GymSchedulingEnv.idle_step`): idle waits until the next completion or
+   arrival; not offered when neither exists (then idling is provably dominated). Waiting between events is
+   dominated (a job that fits at an intermediate tick fits now and finishes earlier), so no schedule is lost; idle
+   decisions are bounded by the number of events. Shaping kept exactly potential-based per decision (test 15).
+
+**Stats (pilots, 300k steps, default hyperparameters, free idling, validation instances 600000-600019):**
+```
+offline Option 0 A2C   : 234,116 -> 43,164 with reward scaling            (LST 37,324)
+offline Option 0 PPO   : 29,277 / 29,037 -> 26,449 / 26,403 (2 seeds); with all three fixes 26,994
+online  Option 3w PPO  : no scaling 105,320; scaling 70,171,546 (idle loop); all fixes 114,428 / 102,713 (EDF+Consolidate 30,857)
+online  Option 3w A2C  : 226,913 / 234,909 / 286,518 (no fix helps)
+critic explained variance at ~80k steps (offline Option 0): 0 -> 0.94 (PPO), 0.998 (A2C)
+```
+**Observation:** fixes 1-3 remove the critic failure, the evaluation artefact and the idle loop; offline RL now beats
+LST by ~28% on validation at 300k steps. Online, the greedy policy no longer idles pathologically (4% of decisions
+idle while a job fits) but chooses jobs poorly (queue grows to ~53): a learning-quality limit at this budget, not an
+environment artefact. Online A2C does not learn even with scaling.
+
+**Conclusion / next step:** v3_idle stopped (its pruning/selection used argmax evaluation and its critics did not
+learn); jobs kept in `rl_training/campaign/queue_v3_superseded.txt`, data in `Results/v2_objectives/tuning/
+optuna_v3_idle/`. v4_idle launched ~09:10 (v3_idle + fixes 1 and 3; fix 2 applies to all evaluation). Remaining
+default-hyperparameter runs held in `queue_after_main_protocol.txt`. v2 results were evaluated with argmax; with
+work-conserving dispatching idle is rarely available, so they should be unaffected -- to be re-checked.
+
+---
+
 ## 2026-10-07 (S2W12) -- Diagnosis: validation "swings" are an argmax-evaluation artefact, not training instability
 
 **Config:** v3 tuning logs; checkpoint `tune_off_tf05_o0pmlubr_t4/ckpt_100000_steps` (Option 0, PPO, free idling)

@@ -92,7 +92,7 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
         # "TypeError: unhashable type: 'numpy.ndarray'". Cast once, up front.
         action_id = int(action_id)
         if action_id == self.max_jobs:
-            _, reward, done = self.env.step_idle()
+            _, reward, done = self._full.idle_step()
         else:
             job = action_id
             feasible = self._feasible_machines(job)
@@ -101,7 +101,7 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
                 # said otherwise a step ago, or the job was already handled)
                 # -- fall through to idle rather than force a real invalid
                 # action through the underlying env.
-                _, reward, done = self.env.step_idle()
+                _, reward, done = self._full.idle_step()
             else:
                 machine = first_fit(self.env, job, feasible, self.env.time)
                 was_pending = job in self.env.remaining_jobs

@@ -51,7 +51,8 @@ MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "win
              "n": "non-delay", "f": "placement repair", "m": "Markov obs", "l": "look-ahead",
              "u": "fixed scaling", "b": "arrival-aware critic",
              "r": "lateness shaping",
-             "z": "reward scaling"}
+             "z": "reward scaling",
+             "e": "event-driven idle"}
 METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
            "active_machine_ticks", "dropped"]
 RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")

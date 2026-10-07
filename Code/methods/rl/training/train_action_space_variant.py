@@ -571,6 +571,9 @@ def build_parser():
                          help="2026-10-06, with --markov-obs: job features scaled by fixed constants (durations "
                               "by H, weights by the largest weight, requirements by machine capacity) instead "
                               "of each instance's maxima (GymSchedulingEnv._job_scales).")
+    parser.add_argument("--event-idle", action="store_true",
+                         help="2026-10-07: idle waits until the next arrival or completion instead of one tick, and "
+                              "is not offered when neither exists (GymSchedulingEnv.idle_step).")
     parser.add_argument("--normalize-reward", action="store_true",
                          help="2026-10-07: scale rewards by a running std of the discounted return (no clipping); "
                               "see scale_rewards(). Evaluation is unaffected (it uses J).")
@@ -643,7 +646,7 @@ def env_spec_from_args(args):
         work_conserving=args.work_conserving, repair_placement=args.repair_placement,
         markov_obs=args.markov_obs, policy_arch=args.policy_arch if args.option == "0" else None,
         lookahead=max_job_duration(DIFFICULTIES[args.difficulty]) if args.lookahead else 0,
-        fixed_scaling=args.fixed_scaling, critic_arrivals=args.critic_arrivals,
+        fixed_scaling=args.fixed_scaling, critic_arrivals=args.critic_arrivals, event_idle=args.event_idle,
         lateness_shaping=args.lateness_shaping,  # training reward only (provenance); evaluation uses J
         normalize_reward=args.normalize_reward,  # training only (provenance)
     )

@@ -461,4 +461,42 @@ ratios = [s / q for s, q in zip(scaled, raw) if abs(q) > 1e-12]
 assert ratios and all(x > 0 for x in ratios), "scaling must keep every reward's sign (a positive factor)"
 print(" 14. Two-stage greedy rule fixes the idle collapse, keeps confident choices; reward scaling unclipped, positive")
 
+# 15. Event-driven idling (GymSchedulingEnv.idle_step). A policy that idles WHENEVER idle is offered still finishes,
+#     every idle decision ends exactly at the next event (a completion or an arrival), idle is never offered when no
+#     event is left, and the lateness shaping stays exactly potential-based per decision even when one idle spans
+#     several ticks: reward * c = -(J increment) + gamma * Phi(s') - Phi(s), here with gamma = 0.9.
+import copy as _copy  # noqa: E402
+
+_sh = objective_config(("tardiness_sq",), None, 1.0, lateness_shaping=True)
+_sh.shaping_gamma = 0.9
+for preset in ("off_tf05", "on_rho095"):
+    d = DIFFICULTIES[preset]
+    online = d.case == "online"
+    kw = dict(reward_mode="objective", objective=_copy.deepcopy(_sh), difficulty=d, extend_horizon=True,
+              markov_obs=True, event_idle=True)
+    kw.update(dict(arrival_rate=1.0, horizon=100, max_jobs=300, job_size_distribution="lognormal") if online
+              else dict(randomize_instances=False))
+    full = make_full_gym_env(online, kw, seed=5)
+    full.reset()
+    base, ob = full.env, full.env.objective
+    idle, rng, done, n_idle, multi = full.max_jobs * full.num_machines, np.random.default_rng(0), False, 0, 0
+    while not done:
+        m = full.get_action_mask()
+        nxt = full.next_event_time()
+        if base.remaining_jobs and nxt is None:
+            assert not m[idle], "idle offered although no event can change the state"
+        if m[idle]:
+            t0, phi0, J0 = base.time, ob.phi, ob.objective_value()
+            _, r, done, _, _ = full.step(idle)
+            n_idle += 1
+            if not done:
+                assert base.time == (nxt if nxt is not None else t0 + 1), (base.time, nxt)
+                multi += base.time - t0 > 1
+                assert np.isclose(r * ob.c, -(ob.objective_value() - J0) + 0.9 * ob.phi - phi0, rtol=1e-9, atol=1e-6)
+        else:
+            _, r, done, _, _ = full.step(int(rng.choice(np.flatnonzero(m[:idle]))))
+        assert n_idle < 10 * full.max_jobs, "idle decisions must be bounded by the number of events"
+    assert multi > 0, "test setup: some idle decision should span several ticks"
+print(" 15. Event-driven idling: waits end at the next event, never loop; shaping exact per multi-tick decision")
+
 print("test_v2_variants: all checks passed")

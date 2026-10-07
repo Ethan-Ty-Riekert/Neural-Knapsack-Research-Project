@@ -92,7 +92,7 @@ class OnlineGymSchedulingEnv(GymSchedulingEnv):
         idle_action = self.max_jobs * self.num_machines
 
         if action_id == idle_action:
-            _, reward, done = self.env.step_idle()
+            _, reward, done = self.idle_step()
         else:
             job = action_id // self.num_machines
             machine = action_id % self.num_machines

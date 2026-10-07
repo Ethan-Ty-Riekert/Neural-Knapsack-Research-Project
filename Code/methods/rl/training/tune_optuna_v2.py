@@ -29,9 +29,11 @@ Future/research/2026-10-06-rl-improvement-plan.md) change, uniformly for every d
   (c) final runs of 1M steps offline; online 300k (2026-10-06 deadline cut: PPO-default online runs
       train at ~19 steps/s, so 1M online would take ~15 h per run).
 "v3_idle" is "v3" with free idling instead of work-conserving dispatching.
-"v4_idle" (2026-10-07) is "v3_idle" plus reward scaling (scale_rewards in train_action_space_variant), after the
-diagnosis that the critic never learned (explained variance 0) because squared-tardiness returns are large; all
-evaluation (validation and test) uses the two-stage greedy rule (Code/methods/rl/evaluation/greedy_decoding.py).
+"v4_idle" (2026-10-07) is "v3_idle" plus reward scaling (scale_rewards in train_action_space_variant; the critic
+never learned -- explained variance 0 -- because squared-tardiness returns are large) and event-driven idling
+(GymSchedulingEnv.idle_step: idle waits until the next arrival or completion, so a deterministic policy cannot
+idle forever); all evaluation (validation and test) uses the two-stage greedy rule
+(Code/methods/rl/evaluation/greedy_decoding.py).
 
 Trials train in-process (train_action_space_variant.main) through the exact command run.py builds,
 so a pruned trial stops mid-run. Several workers may share one study (Optuna journal storage).
@@ -92,9 +94,9 @@ PROTOCOLS = {
                    "lubr", True, 300_000),
     "v3_idle": Protocol("v3_idle", TUNING_DIR / "optuna_v3_idle", 12, 300_000, 75_000, 1_000_000,
                         _V3_FLAGS, False, "lubr", True, 300_000),
-    # v4 (2026-10-07): v3_idle + reward scaling; evaluation everywhere uses the two-stage greedy rule
+    # v4 (2026-10-07): v3_idle + reward scaling + event-driven idling; all evaluation uses the two-stage greedy rule
     "v4_idle": Protocol("v4_idle", TUNING_DIR / "optuna_v4_idle", 12, 300_000, 75_000, 1_000_000,
-                        _V3_FLAGS + ("--normalize-reward",), False, "lubrz", True, 300_000),
+                        _V3_FLAGS + ("--normalize-reward", "--event-idle"), False, "lubrze", True, 300_000),
 }
 V2 = PROTOCOLS["v2"]
 TRIAL_STEPS = V2.trial_steps  # v2 values, kept for tests/test_v2_variants.py
