@@ -341,11 +341,12 @@ def cmd_worker(a):
         return
     hp = write_results(study, a.option, a.algo, a.preset, proto)
     print(f"best trial {study.best_trial.number}: validation J {study.best_value:.0f}, {hp or 'defaults'}")
-    if a.enqueue_to:  # at the top of the queue, so finished studies yield results early
+    if a.enqueue_to:  # PPO finals at the top (results early); A2C finals at the end (user, 2026-10-07: A2C last)
         lines = final_job_lines(a.option, a.algo, a.preset, hp, proto)
         queue = Path(a.enqueue_to)
+        current = queue.read_text(encoding="utf-8").splitlines()
         tmp = queue.with_suffix(".tmp")
-        tmp.write_text("\n".join(lines + queue.read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
+        tmp.write_text("\n".join(current + lines if a.algo == "a2c" else lines + current) + "\n", encoding="utf-8")
         os.replace(tmp, queue)
         print(f"enqueued {len(lines)} final runs -> {a.enqueue_to}")
 
