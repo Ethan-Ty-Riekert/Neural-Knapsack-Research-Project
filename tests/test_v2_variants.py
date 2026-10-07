@@ -499,4 +499,27 @@ for preset in ("off_tf05", "on_rho095"):
     assert multi > 0, "test setup: some idle decision should span several ticks"
 print(" 15. Event-driven idling: waits end at the next event, never loop; shaping exact per multi-tick decision")
 
+# 16. Weight-aware variants of the best rules (2026-10-07), hand-computed at t = 3:
+#     job   p   d   w   slack d-p-t   d-t   lateness if started now t+p-d
+#      0    4  10   2        3          7         -3
+#      1    2   5   1        0          2          0
+#      2    3  30   5       24         27        -24
+#      3    2   4   3       -1          1          1   (already late: heavier must mean MORE urgent)
+from Code.methods.heuristics.priority_rules import wlst_key, wedf_key, mdc_key, ALL_PRIORITY_RULES  # noqa: E402
+from Code.methods.heuristics.registry import HEURISTICS  # noqa: E402
+
+env_w = types.SimpleNamespace(job_durations=np.array([4, 2, 3, 2]), job_deadlines=np.array([10, 5, 30, 4]),
+                              job_weights=np.array([2.0, 1.0, 5.0, 3.0]), time=3)
+# WLST: slack / w while >= 0, slack * w once negative -> 1.5, 0, 4.8, -3
+assert [wlst_key(env_w, j)[0] for j in range(4)] == [1.5, 0.0, 4.8, -3.0]
+# WEDF: (d - t) / w -> 3.5, 2.0, 5.4, 1/3
+assert np.allclose([wedf_key(env_w, j)[0] for j in range(4)], [3.5, 2.0, 5.4, 1 / 3])
+# MDC: -w[(late+1)_+^2 - late_+^2] / p -> job1 -1/2, job3 -3(4-1)/2 = -4.5, jobs 0 and 2 zero (tie -> least slack)
+assert [mdc_key(env_w, j)[0] for j in range(4)] == [-0.0, -0.5, -0.0, -4.5]
+for key in (wlst_key, wedf_key, mdc_key):
+    assert sorted(range(4), key=lambda j: key(env_w, j))[0] == 3, key.__name__  # the late heavy job first
+assert all(f"{r}+{pl}" in HEURISTICS for r in ("WLST", "WEDF", "MDC") for pl in ("FirstFit", "Consolidate"))
+assert list(PRIORITY_RULES) == ["EDF", "SPT", "LST", "FCFS", "LPT", "WSPT", "ATC"] and "MDC" in ALL_PRIORITY_RULES
+print(" 16. WLST / WEDF / MDC match hand-computed keys; a late heavy job ranks first; registry has them")
+
 print("test_v2_variants: all checks passed")

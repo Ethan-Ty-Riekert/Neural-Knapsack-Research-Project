@@ -32,6 +32,24 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-08 (S2W12) -- Weight-aware variants of the best rules: WLST, WEDF, MDC (user request)
+
+**Config:** the existing weight-aware rules (WSPT, ATC, WMDD, COVERT) all lose to the unweighted LST (offline) and
+EDF (online) under squared tardiness (off_tf05 test: LST 39,536, COVERT 49,836, WMDD 61,305, ATC 75,552, WSPT
+139,881). Three new priority rules (`Code/methods/heuristics/priority_rules.py`), each x 4 placement rules:
+- WLST: LST with the slack weight-scaled -- slack / w while >= 0, slack * w once negative (plain division would
+  rank a heavier LATE job as less urgent). Constructed for this project, not a published rule.
+- WEDF: the same scaling applied to the time to deadline d_j - t. Constructed here.
+- MDC (marginal delay cost): start the job with the largest w_j[(t+1+p_j-d_j)_+^2 - (t+p_j-d_j)_+^2] / p_j, i.e.
+  Smith's ratio rule (smith1956wspt; optimal for linear completion-time costs on one machine) applied to the current
+  marginal cost of squared tardiness; ties (jobs that can still finish on time) by least slack. A heuristic on
+  parallel multi-resource machines, no optimality guarantee.
+Option 1's rule menu is unchanged. Test 16 checks hand-computed keys (incl. a late heavy job ranking first).
+Evaluated on the 50 test instances of all 11 v2 presets (`heurW2_<preset>` jobs). Added after the RL results
+were seen; to be reported as added baselines.
+
+---
+
 ## 2026-10-07 (S2W12) -- Power cut (~22:15, reboot 23:02); v4 recovered with identical trials
 
 **Config:** a power cut killed every job (boot 23:02); status.txt lost its entries after 20:57 (unflushed writes).

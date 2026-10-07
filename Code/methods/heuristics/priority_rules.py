@@ -208,12 +208,55 @@ def covert_key(base_env, job, k: float = 2.0):
     return (-priority, base_env.job_deadlines[job])
 
 
+def _weight_scaled(value, weight):
+    """Weight-scale an urgency value where SMALLER is more urgent and the value may be negative (slack or
+    time to deadline of a job that is already late): value / w while value >= 0, value * w once negative.
+    On both sides a heavier job ranks as more urgent, and the result is continuous at 0. Plain division
+    would invert the effect for late jobs (a heavier late job would rank as LESS urgent)."""
+    w = max(float(weight), 1e-8)
+    return value / w if value >= 0 else value * w
+
+
+def wlst_key(base_env, job):
+    """Weighted Least Slack Time (added 2026-10-07, user request): LST with the slack weight-scaled by
+    _weight_scaled -- the best unweighted rule offline made weight-aware. Ties by earliest deadline. A
+    construction for this project, not a published rule (flagged)."""
+    slack = base_env.job_deadlines[job] - base_env.job_durations[job] - base_env.time
+    return (_weight_scaled(slack, base_env.job_weights[job]), base_env.job_deadlines[job])
+
+
+def wedf_key(base_env, job):
+    """Weighted Earliest Deadline First (added 2026-10-07, user request): the time to deadline d_j - t
+    weight-scaled by _weight_scaled (for unweighted jobs d_j - t orders exactly like EDF's d_j) -- the best
+    unweighted rule online made weight-aware. Ties by earliest deadline. Constructed here, not published."""
+    return (_weight_scaled(base_env.job_deadlines[job] - base_env.time, base_env.job_weights[job]),
+            base_env.job_deadlines[job])
+
+
+def mdc_key(base_env, job):
+    """Marginal Delay Cost ratio (added 2026-10-07, user request), derived from the objective
+    J = sum_j w_j T_j^2. Delaying job j by one tick raises its least possible squared tardiness by
+        dC_j(t) = w_j [ (t + 1 + p_j - d_j)_+^2 - (t + p_j - d_j)_+^2 ],
+    and the rule starts the job with the largest dC_j / p_j: Smith's ratio rule (Smith 1956, Naval Research
+    Logistics Quarterly 3; the logic of WSPT, optimal for linear completion-time costs on one machine,
+    proved by adjacent interchange) applied to the current marginal cost of squared tardiness. A heuristic
+    on parallel multi-resource machines, not a guarantee. Jobs with dC_j = 0 (still able to finish on time)
+    are ordered by least slack."""
+    p = base_env.job_durations[job]
+    late = base_env.time + p - base_env.job_deadlines[job]  # lateness if j started now (may be negative)
+    delay_cost = base_env.job_weights[job] * (max(0.0, late + 1.0) ** 2 - max(0.0, late) ** 2)
+    return (-delay_cost / max(p, 1e-8), base_env.job_deadlines[job] - p - base_env.time)
+
+
 # Option 1's rule menu (rule_selection_gym_wrapper.py) and the random rule-selection baselines draw from
 # PRIORITY_RULES only, so their action spaces and existing checkpoints stay unchanged. The heuristic
 # registry composes every rule (both dicts) with every placement rule.
 WEIGHTED_PRIORITY_RULES = {
     "WMDD": wmdd_key,
     "COVERT": covert_key,
+    "WLST": wlst_key,
+    "WEDF": wedf_key,
+    "MDC": mdc_key,
 }
 
 
