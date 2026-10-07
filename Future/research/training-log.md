@@ -32,6 +32,21 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-07 (S2W12) -- Power cut (~22:15, reboot 23:02); v4 recovered with identical trials
+
+**Config:** a power cut killed every job (boot 23:02); status.txt lost its entries after 20:57 (unflushed writes).
+Optuna journals were intact (every line valid JSON). New `tune_optuna_v2 recover`: each trial left RUNNING is
+marked FAIL with user_attr interrupted=True and re-queued with exactly the same hyperparameters (the defaults trial
+as the defaults trial); interrupted trials do not count towards the 3-failure stop rule (`genuine_failures`).
+Re-queued: online Option 0 PPO trials 1 and 3, online Option 0 A2C trial 9, and the defaults trials of online
+Options 2, 3 and 4 PPO (~2.5 h each, lost). 7 final runs that had not saved a model were re-queued (offline Option 0
+PPO s1-s2 and its constant-weight s0-s2, constant-weight offline Option 1 PPO s1-s2); 14 finished final models and
+their test evaluations were intact. Queue rebuilt (old copy: `queue_before_powercut_rebuild.txt`): slow online PPO
+studies (Options 0, 2, 3, 4) with 4 workers first, then the missing finals, then the other studies. Services
+(runner, auto_eval, watchdog, keep_awake) restarted 23:05.
+
+---
+
 ## 2026-10-07 (S2W12) -- Machine slept 11:25-19:05 (no data lost); keep-awake added; slow studies parallelised
 
 **Config:** the desktop went to sleep at ~11:25 (system boot time unchanged since 2026-10-05: not a power loss);

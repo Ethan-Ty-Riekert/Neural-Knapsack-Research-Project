@@ -44,6 +44,7 @@ runs at the top of the campaign queue.
     python -m Code.methods.rl.training.tune_optuna_v2 worker --protocol v3 --option 2 --algo ppo \
         --preset off_tf05 --checkpoint-tag tune_v3_off_tf05_o2nmlub_w0 --enqueue-to rl_training/campaign/queue.txt
     python -m Code.methods.rl.training.tune_optuna_v2 summary --protocol v3   # status of every study
+    python -m Code.methods.rl.training.tune_optuna_v2 recover --protocol v4_idle   # after a crash / power loss
 """
 import argparse
 import csv
@@ -261,6 +262,13 @@ def counts(study):
                                          TrialState.RUNNING)}
 
 
+def genuine_failures(study):
+    """Failed trials, not counting trials interrupted by a crash or power loss (see cmd_recover)."""
+    from optuna.trial import TrialState
+    return sum(1 for t in study.get_trials(deepcopy=False)
+               if t.state == TrialState.FAIL and not t.user_attrs.get("interrupted"))
+
+
 def final_job_lines(option, algo, preset, hp, proto=V2):
     """Campaign queue lines ("<tag> <run.py args>") of the final runs for one finished study."""
     return [f"v2_{p}_o{OPTIONS[option]['option']}{mods(option, proto)}{'_a2c' if algo == 'a2c' else ''}_tuned_s{s} "
@@ -315,8 +323,9 @@ def cmd_worker(a):
     objective = objective_fn(a.option, a.algo, a.preset, proto)
     while True:
         c = counts(study)
-        if c[TrialState.FAIL] >= MAX_FAILED_TRIALS:
-            raise SystemExit(f"{study.study_name}: {c[TrialState.FAIL]} failed trials -- stopping (see log)")
+        failed = genuine_failures(study)
+        if failed >= MAX_FAILED_TRIALS:
+            raise SystemExit(f"{study.study_name}: {failed} failed trials -- stopping (see log)")
         if c[TrialState.COMPLETE] + c[TrialState.PRUNED] + c[TrialState.RUNNING] >= proto.n_trials:
             break
         study.optimize(objective, n_trials=1, catch=(Exception,), gc_after_trial=True)
@@ -354,6 +363,32 @@ def cmd_jobs(a):
                   f"--enqueue-to {a.enqueue_to}")
 
 
+def cmd_recover(a):
+    """After a crash or power loss: every trial left RUNNING (its worker is gone) is marked FAIL with
+    user_attr interrupted=True and re-queued with exactly the same hyperparameters (the defaults trial as the
+    defaults trial), so each study still evaluates the same configurations. Refuses while workers are alive."""
+    import psutil
+    from optuna.trial import TrialState
+    proto = PROTOCOLS[a.protocol]
+    alive = [p for p in psutil.process_iter(["cmdline"])
+             if f"worker --protocol {proto.name} " in " ".join(p.info["cmdline"] or [])]
+    if alive:
+        raise SystemExit(f"{len(alive)} {proto.name} workers are running -- stop them before recovering")
+    for p in FINAL_PRESETS:
+        for o in designs(proto):
+            for al in ALGOS:
+                if not (study_dir(o, al, p, proto) / "journal.log").exists():
+                    continue
+                study = load_study(o, al, p, proto=proto, enqueue_defaults=False)
+                for t in study.get_trials(deepcopy=False, states=(TrialState.RUNNING,)):
+                    study._storage.set_trial_user_attr(t._trial_id, "interrupted", True)
+                    study._storage.set_trial_state_values(t._trial_id, TrialState.FAIL)
+                    attrs = {"rerun_of": t.number, **({"defaults": True} if t.user_attrs.get("defaults") else {})}
+                    study.enqueue_trial({} if t.user_attrs.get("defaults") else dict(t.params), user_attrs=attrs)
+                    print(f"{study.study_name}: trial {t.number} interrupted -> re-queued"
+                          f"{' (defaults)' if t.user_attrs.get('defaults') else ''}")
+
+
 def cmd_summary(a):
     from optuna.trial import TrialState
     proto = PROTOCOLS[a.protocol]
@@ -375,7 +410,7 @@ def cmd_summary(a):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("command", choices=["worker", "jobs", "summary"])
+    ap.add_argument("command", choices=["worker", "jobs", "summary", "recover"])
     ap.add_argument("--protocol", choices=sorted(PROTOCOLS), default="v2")
     ap.add_argument("--option", choices=sorted(OPTIONS))
     ap.add_argument("--algo", choices=ALGOS)
@@ -386,7 +421,7 @@ def main():
     a = ap.parse_args()
     if a.command == "worker" and not (a.option and a.algo and a.preset):
         ap.error("worker needs --option, --algo and --preset")
-    {"worker": cmd_worker, "jobs": cmd_jobs, "summary": cmd_summary}[a.command](a)
+    {"worker": cmd_worker, "jobs": cmd_jobs, "summary": cmd_summary, "recover": cmd_recover}[a.command](a)
 
 
 if __name__ == "__main__":
