@@ -41,6 +41,7 @@ from Code.methods.heuristics.registry import DEFAULT_HEURISTICS
 from Code.methods.rl.training.train_optimized import RANDOM_INSTANCE_SEED_CEILING
 from Code.utils.results_log import append_eval_result
 from Code.core.critic_input import wrap_critic_input
+from Code.methods.rl.evaluation.greedy_decoding import greedy_action
 
 
 def build_eval_env(option: str, full_gym_env, window_size=None, window_order="edf",
@@ -120,7 +121,7 @@ def run_episode(model, env):
         base_env = base_env.env
 
     while not (done or truncated):
-        action, _ = model.predict(obs, action_masks=info["action_mask"], deterministic=True)
+        action = greedy_action(model, obs, info["action_mask"])  # two-stage greedy rule (greedy_decoding.py)
         obs, reward, done, truncated, info = env.step(action)
         rewards.append(float(reward))
 

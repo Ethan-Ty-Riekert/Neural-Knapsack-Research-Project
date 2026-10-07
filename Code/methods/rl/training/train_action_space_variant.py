@@ -393,6 +393,21 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     return env.apply_options(**options)  # work-conserving, repair, full state, look-ahead, scaling, critic input
 
 
+def scale_rewards(env, gamma):
+    """Reward scaling (2026-10-07): divide every reward by a running estimate of the standard deviation of the
+    discounted return (SB3 VecNormalize, norm_reward only; observations untouched). Engstrom et al. 2020 (ICLR,
+    "Implementation Matters in Deep RL") identify this reward scaling as one of the code-level details that
+    most affects PPO; Andrychowicz et al. 2021 (ICLR) likewise find normalisation critical. Why it is needed
+    here: squared-tardiness returns are in the hundreds to thousands, the critic's MSE reached 1e3-6e5 and its
+    explained variance stayed at 0, and because the value and policy losses share one gradient clipped to
+    max_grad_norm, the value gradient left almost no room for the policy gradient. Reward clipping is disabled
+    (clip_reward=inf), so the reward stays the objective times a positive scale; evaluation uses the raw J."""
+    from stable_baselines3.common.vec_env import VecEnv, VecNormalize
+    if not isinstance(env, VecEnv):
+        env = DummyVecEnv([lambda e=env: e])
+    return VecNormalize(env, norm_obs=False, norm_reward=True, clip_reward=np.inf, gamma=gamma)
+
+
 def make_worker_env(worker_index, option, online, base_env_kwargs, window_size, window_order,
                     use_atc_feature, base_seed, rule_kwargs=None):
     """2026-10-04, S2W11: per-worker env factory for --n-envs > 1 parallel rollout
@@ -556,6 +571,9 @@ def build_parser():
                          help="2026-10-06, with --markov-obs: job features scaled by fixed constants (durations "
                               "by H, weights by the largest weight, requirements by machine capacity) instead "
                               "of each instance's maxima (GymSchedulingEnv._job_scales).")
+    parser.add_argument("--normalize-reward", action="store_true",
+                         help="2026-10-07: scale rewards by a running std of the discounted return (no clipping); "
+                              "see scale_rewards(). Evaluation is unaffected (it uses J).")
     parser.add_argument("--lateness-shaping", action="store_true",
                          help="2026-10-06, extended horizon: potential-based shaping on each unfinished job's "
                               "least remaining lateness (Code/core/objectives.py); optimal policy unchanged "
@@ -627,6 +645,7 @@ def env_spec_from_args(args):
         lookahead=max_job_duration(DIFFICULTIES[args.difficulty]) if args.lookahead else 0,
         fixed_scaling=args.fixed_scaling, critic_arrivals=args.critic_arrivals,
         lateness_shaping=args.lateness_shaping,  # training reward only (provenance); evaluation uses J
+        normalize_reward=args.normalize_reward,  # training only (provenance)
     )
 
 
@@ -707,6 +726,8 @@ def main(argv=None, extra_callbacks=None, save=True):
         print(f"Parallel rollout: n_envs={args.n_envs} (backend={args.vec_backend})")
     else:
         env = template_env
+    if args.normalize_reward:
+        env = scale_rewards(env, args.gamma)
 
     algo_kwargs, algo_spec = resolve_algo_kwargs(args, args.n_envs)
     policy_kwargs = dict(policy_kwargs or {}, **algo_kwargs.pop("policy_kwargs_update", {}))

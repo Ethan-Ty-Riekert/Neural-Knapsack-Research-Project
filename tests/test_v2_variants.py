@@ -431,4 +431,34 @@ for preset in ("off_tf05", "on_rho095"):
     assert online or n_idle_checked > 10
 print(" 13. Lateness shaping: shaped return = -J/c - Phi(s0)/c for every policy; idle penalty = delay's lateness")
 
+# 14. The 2026-10-07 fixes. (a) Two-stage greedy rule: idle only if pi(idle) >= total probability of starting a
+#     job; otherwise the most probable job action -- the 2026-10-07 collapse case (idle 0.003 vs 0.002 per action)
+#     no longer idles, confident policies are unchanged. (b) Reward scaling divides rewards by a running return std
+#     without clipping: the scaled rewards are the raw rewards times one positive factor per step.
+from Code.methods.rl.evaluation.greedy_decoding import two_stage_choice  # noqa: E402
+from Code.methods.rl.training.train_action_space_variant import scale_rewards  # noqa: E402
+
+collapse = np.full(1001, (1 - 0.003) / 1000)
+collapse[-1] = 0.003
+assert np.argmax(collapse) == 1000 and two_stage_choice(collapse) != 1000
+confident = np.array([0.01, 0.9, 0.04, 0.05])
+assert two_stage_choice(confident) == int(np.argmax(confident)) == 1
+waiting = np.array([0.1, 0.2, 0.7])
+assert two_stage_choice(waiting) == 2 and two_stage_choice(np.array([1.0])) == 0
+full = make_full_gym_env(False, dict(reward_mode="objective", objective=_obj, difficulty=DIFFICULTIES["off_tf05"],
+                                     extend_horizon=True, markov_obs=True, randomize_instances=False), seed=3)
+env_o, _, _ = build_env_and_policy("2", full_gym_env=full)
+venv = scale_rewards(env_o, 0.99)
+assert venv.clip_reward == np.inf and not venv.norm_obs
+venv.reset()
+raw, scaled = [], []
+for _ in range(40):
+    m = venv.env_method("action_masks")[0]
+    _, r, _, info = venv.step(np.array([int(np.flatnonzero(m)[0])]))
+    scaled.append(float(r[0]))
+    raw.append(float(venv.get_original_reward()[0]))
+ratios = [s / q for s, q in zip(scaled, raw) if abs(q) > 1e-12]
+assert ratios and all(x > 0 for x in ratios), "scaling must keep every reward's sign (a positive factor)"
+print(" 14. Two-stage greedy rule fixes the idle collapse, keeps confident choices; reward scaling unclipped, positive")
+
 print("test_v2_variants: all checks passed")
