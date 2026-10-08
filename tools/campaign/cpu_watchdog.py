@@ -13,7 +13,7 @@ import psutil
 
 from common import status
 
-PAUSE_ABOVE, RESUME_BELOW, WINDOW = 95.0, 80.0, 18  # 18 x 10 s = 3 min
+PAUSE_ABOVE, RESUME_BELOW, WINDOW = 95.0, 88.0, 18  # 18 x 10 s = 3 min; resume at 88 so jobs paused while the runners fill to ~88% are not starved (2026-10-09)
 
 
 def training_jobs():
@@ -38,7 +38,7 @@ def main():
     samples = collections.deque(maxlen=WINDOW)
     paused = []
     psutil.cpu_percent(interval=None)
-    status("watchdog started: pause above 95% (3-min avg), resume below 80%")
+    status(f"watchdog started: pause above {PAUSE_ABOVE:.0f}% (3-min avg), resume below {RESUME_BELOW:.0f}%")
     while True:
         time.sleep(10)
         samples.append(psutil.cpu_percent(interval=None))
