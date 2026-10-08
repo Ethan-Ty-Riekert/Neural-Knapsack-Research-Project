@@ -32,6 +32,25 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Quick multi-objective experiment: giving RL more metrics to optimise (user request)
+
+**Config:** Option 2 PPO, off_tf05, v4 setup (free idling, look-ahead, fixed scaling, arrival-aware critic, lateness
+shaping, reward scaling, event-driven idling), default hyperparameters, 300k steps x seeds 0-2. Only the training
+objective differs (tags `o2mlubrze`, `...q`, `...g`, `...qg`):
+```
+J only                          tardiness_sq
+J + late jobs (q)               tardiness_sq + lambda_U sum_j w_j U_j,  lambda_U = 146
+J + energy (g)                  tardiness_sq + lambda_E * active machine-ticks,  lambda_E = 153
+J + late jobs + energy (qg)     all three
+```
+lambda chosen so each added term equals J on the best heuristic's schedule (WLST on the 50 test instances: J 26,670,
+sum w_j U_j 183.2, active machine-ticks 173.8): scaling each objective by a reference solution's value so no
+term dominates by its units. A heuristic weighting for a quick look, not a Pareto study. All models are evaluated
+on the same 50 test instances with every metric (J reported = squared tardiness for all), so the effect of each
+added term on late jobs, energy and J is directly visible.
+
+---
+
 ## 2026-10-08 (S2W12) -- Deadline decision: three slow online PPO studies stopped early (user)
 
 **Config (user decision 2026-10-08, chosen among: stop now / cap at 8 trials / keep 12):** online PPO trials took

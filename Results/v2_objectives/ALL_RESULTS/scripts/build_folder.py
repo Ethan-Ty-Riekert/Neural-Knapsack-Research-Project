@@ -53,7 +53,8 @@ MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "win
              "u": "fixed scaling", "b": "arrival-aware critic",
              "r": "lateness shaping",
              "z": "reward scaling",
-             "e": "event-driven idle"}
+             "e": "event-driven idle",
+             "q": "+late-count objective", "g": "+energy objective"}
 # Every metric in one place: column -> (display label, decimals, higher is better). Tables, leaderboards
 # and HIGHLIGHTS.md all read from here. active_machine_ticks is the energy proxy (fewer = better).
 # metric -> (label, decimals, higher is better). Every metric is recorded per instance by run.py
