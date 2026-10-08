@@ -16,6 +16,7 @@ import csv
 import json
 import math
 import re
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -53,8 +54,26 @@ MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "win
              "r": "lateness shaping",
              "z": "reward scaling",
              "e": "event-driven idle"}
-METRICS = ["objective_J", "on_time_rate", "weighted_tardiness", "max_tardiness", "mean_wait",
-           "active_machine_ticks", "dropped"]
+# Every metric in one place: column -> (display label, decimals, higher is better). Tables, leaderboards
+# and HIGHLIGHTS.md all read from here. active_machine_ticks is the energy proxy (fewer = better).
+# metric -> (label, decimals, higher is better). Every metric is recorded per instance by run.py
+# (Code/core/metrics.schedule_metrics); the secondary metrics are reported but not optimised (2026-10-09: added
+# late jobs, p95 tardiness, flow time, makespan, utilisation and energy to the tables).
+METRIC_INFO = {"objective_J": ("J", 0, False), "on_time_rate": ("on-time rate", 3, True),
+               "late_jobs": ("late jobs", 1, False),
+               "weighted_tardiness": ("weighted tardiness", 0, False), "max_tardiness": ("max tardiness", 1, False),
+               "p95_tardiness": ("p95 tardiness", 1, False),
+               "mean_wait": ("mean wait", 2, False), "mean_flow_time": ("mean flow time", 2, False),
+               "makespan": ("makespan", 1, False),
+               "mean_active_utilisation": ("utilisation of active machines", 3, True),
+               "active_machine_ticks": ("active machine-ticks", 0, False),
+               "energy_specpower": ("energy (SPECpower)", 0, False),
+               "dropped": ("dropped jobs", 2, False)}
+METRICS = list(METRIC_INFO)
+# Shown in tables and leaderboards. "dropped" stays in the CSV only: under the extended horizon jobs never
+# expire, so it is 0 for every row.
+DISPLAY_METRICS = [m for m in METRICS if m != "dropped"]
+TOP_N = (5, 10)  # leaderboard sizes
 RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")
 BASELINES = ["EDF+FirstFit", "LST+FirstFit", "ATC+FirstFit", "RandomRule+FirstFit", "RandomRule+FirstFitConsolidate"]
 # Registry back-compat aliases of "<rule>+FirstFit" (Code/methods/heuristics/registry.py): same
@@ -188,12 +207,12 @@ def write_tables(results):
         if not recs:
             continue
         lines = [f"# {preset}: all methods (J = sum w_j T_j^2, lower is better)", "",
-                 "| rank | method | family | J | on-time rate | weighted tardiness | max tardiness | mean wait | "
-                 "active machine-ticks | seeds | instances |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+                 "| rank | method | family | " + " | ".join(METRIC_INFO[m][0] for m in DISPLAY_METRICS) +
+                 " | seeds | instances |", "|---" * (len(DISPLAY_METRICS) + 5) + "|"]
         for i, r in enumerate(recs, 1):
-            lines.append(f"| {i} | {r['method']} | {r['family']} | {fmt(r, 'objective_J')} | "
-                         f"{fmt(r, 'on_time_rate', 3)} | {fmt(r, 'weighted_tardiness')} | {fmt(r, 'max_tardiness', 1)} | "
-                         f"{fmt(r, 'mean_wait', 2)} | {fmt(r, 'active_machine_ticks')} | {r['n_seeds']} | {r['n_instances']} |")
+            lines.append(f"| {i} | {r['method']} | {r['family']} | " +
+                         " | ".join(fmt(r, m, METRIC_INFO[m][1]) for m in DISPLAY_METRICS) +
+                         f" | {r['n_seeds']} | {r['n_instances']} |")
         lines += ["", "Spread (+/-): std across seeds for multi-seed RL rows, otherwise std across instances "
                   "(instance heterogeneity; the figures use the standard error instead)."]
         (t / f"{preset}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -377,6 +396,138 @@ def fig_training_curves(figdir):
     return len(curves)
 
 
+def ranked(recs, metric):
+    """Methods best-first on one metric (ties broken by J); [] if the metric does not vary on this preset."""
+    have = [r for r in recs if metric in r]
+    if len({r[metric] for r in have}) < 2:
+        return []
+    sign = -1 if METRIC_INFO[metric][2] else 1
+    return sorted(have, key=lambda r: (sign * r[metric], r.get("objective_J", math.inf)))
+
+
+def direction(metric):
+    return "higher is better" if METRIC_INFO[metric][2] else "lower is better"
+
+
+def leaderboard_png(preset, metric, n):
+    """Path of one leaderboard figure, relative to ROOT (also used for the markdown links)."""
+    return f"figures/leaderboards/{preset}/top{n}_{metric}.png"
+
+
+def fig_leaderboards(results):
+    """Top-N dot plot per preset x metric. Dots (not bars) so close values stay readable on a zoomed axis."""
+    count = 0
+    for preset, recs in results.items():
+        for metric in DISPLAY_METRICS:
+            order = ranked(recs, metric)
+            if not order:  # e.g. mean wait offline: every job is released at t = 0
+                continue
+            for n in TOP_N:
+                if n > len(order) and n != TOP_N[0]:
+                    continue  # top-10 of a 5-method preset would just repeat the top-5
+                top = order[:n]
+                label, digits, _ = METRIC_INFO[metric]
+                fig, ax = plt.subplots(figsize=(9.5, 0.36 * len(top) + 1.4))
+                y = list(range(len(top)))[::-1]  # best at the top
+                for yi, r in zip(y, top):
+                    ax.errorbar(r[metric], yi, xerr=r.get(f"{metric}_err", 0), fmt="o", ms=8,
+                                color=FAMILY_COLORS[r["family"]], ecolor=MUTED, elinewidth=0.8, capsize=2,
+                                mec="white", mew=1.5, zorder=3)
+                    ax.annotate(f"{r[metric]:,.{digits}f}", (r[metric], yi), xytext=(8, 4),
+                                textcoords="offset points", fontsize=7, color=MUTED)
+                ax.set_yticks(y, [f"{i}. {r['method']}" + (f"  (n={r['n_seeds']})" if r["family"] == "RL" else "")
+                                  for i, r in enumerate(top, 1)], color=INK)
+                vals = [r[metric] for r in top]
+                if min(vals) > 0 and max(vals) / min(vals) > 20:
+                    ax.set_xscale("log")
+                ax.set_xlabel(f"{label}, mean over instances ({direction(metric)})\n"
+                              "error bars: std across seeds if n>1, otherwise standard error over instances",
+                              fontsize=7)
+                ax.set_title(f"{preset}: top {len(top)} by {label}", loc="left", fontsize=10, color=INK)
+                ax.margins(x=0.15, y=0.08)
+                style(ax)
+                family_legend(ax, {r["family"] for r in top})
+                fig.tight_layout()
+                out = ROOT / leaderboard_png(preset, metric, n)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                fig.savefig(out, dpi=150)
+                plt.close(fig)
+                count += 1
+    return count
+
+
+def write_leaderboards(results):
+    """leaderboards/<preset>.md: per metric, a top-10 table and the top-5 / top-10 figures side by side."""
+    for preset in PRESET_ORDER:
+        recs = results.get(preset)
+        if not recs:
+            continue
+        lines = [f"# {preset}: leaderboards", "",
+                 f"Top {max(TOP_N)} methods on each metric. Full ranking by J: [`tables/{preset}.md`]"
+                 f"(../tables/{preset}.md). Archive overview: [`HIGHLIGHTS.md`](../HIGHLIGHTS.md).", ""]
+        for metric in DISPLAY_METRICS:
+            order = ranked(recs, metric)
+            label, digits, _ = METRIC_INFO[metric]
+            lines += [f"## {label} ({direction(metric)})", ""]
+            if not order:
+                lines += ["Every method has the same value here, so there is no ranking.", ""]
+                continue
+            cols = [metric] + (["objective_J"] if metric != "objective_J" else [])  # J alongside, for context
+            lines += ["| rank | method | family | " + " | ".join(METRIC_INFO[c][0] for c in cols) + " |",
+                      "|---" * (len(cols) + 3) + "|"]
+            lines += [f"| {i} | {r['method']} | {r['family']} | " +
+                      " | ".join(fmt(r, c, METRIC_INFO[c][1]) for c in cols) + " |"
+                      for i, r in enumerate(order[:max(TOP_N)], 1)]
+            pngs = [(n, leaderboard_png(preset, metric, n)) for n in TOP_N if (ROOT / leaderboard_png(preset, metric, n)).exists()]
+            lines += ["", "| " + " | ".join(f"top {n}" for n, _ in pngs) + " |", "|---" * len(pngs) + "|",
+                      "| " + " | ".join(f"![top {n}](../{p})" for n, p in pngs) + " |", ""]
+        lines.append("Spread (+/-): std across seeds for multi-seed RL rows, otherwise std across instances.")
+        (ROOT / "leaderboards" / f"{preset}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_highlights(results, summary):
+    """HIGHLIGHTS.md: the entry page. Headline table, winner per metric, key figures, leaderboard index."""
+    presets = [p for p in PRESET_ORDER if p in results]
+    head = "| preset | " + " | ".join(f"{METRIC_INFO[m][0]} ({'max' if METRIC_INFO[m][2] else 'min'})"
+                                      for m in DISPLAY_METRICS) + " |"
+    sep = "|---" * (len(DISPLAY_METRICS) + 1) + "|"
+    winners, index = [head, sep], [head.replace(" (max)", "").replace(" (min)", ""), sep]
+    for p in presets:
+        cells, links = [], []
+        for m in DISPLAY_METRICS:
+            order = ranked(results[p], m)
+            cells.append(f"{order[0]['method']} ({fmt(order[0], m, METRIC_INFO[m][1]).split(' +/-')[0]})"
+                         if order else "(all equal)")
+            links.append(" / ".join(f"[top {n}]({leaderboard_png(p, m, n)})" for n in TOP_N
+                                    if (ROOT / leaderboard_png(p, m, n)).exists()) or "-")
+        winners.append(f"| [{p}](leaderboards/{p}.md) | " + " | ".join(cells) + " |")
+        index.append(f"| [{p}](leaderboards/{p}.md) | " + " | ".join(links) + " |")
+    per_preset = ["| preset | full table | J by method | leaderboards | training curves |", "|---|---|---|---|---|"]
+    for p in presets:
+        curves = f"figures/training_curves_{p}.png"
+        per_preset.append(f"| {p} | [table](tables/{p}.md) | [figure](figures/J_by_method_{p}.png) | "
+                          f"[top {' / '.join(map(str, TOP_N))}](leaderboards/{p}.md) | "
+                          + (f"[figure]({curves})" if (ROOT / curves).exists() else "-") + " |")
+    text = [
+        "# v2 results: highlights", "",
+        "Start here. Generated by `scripts/build_folder.py`; do not edit by hand. Setup, methods and caveats: "
+        "[`README.md`](README.md). J = sum w_j T_j^2 (lower is better); every row of one preset uses the same "
+        "held-out instances.", "",
+        "## 1. Headline: best of each method family", "", *summary, "",
+        "## 2. Best method on each metric", "",
+        "Click a preset for its top-" + " / top-".join(map(str, TOP_N)) + " leaderboards. "
+        "Value in brackets = mean over instances.", "", *winners, "",
+        "## 3. Key figures", "",
+        "**Best RL / PSO / CP-SAT vs the best heuristic, per preset**", "", "![regime map](figures/regime_map.png)", "",
+        "**Every heuristic relative to the best heuristic, per preset**", "",
+        "![heuristic heatmap](figures/heuristic_regime_heatmap.png)", "",
+        "## 4. Leaderboard figures (top " + " and top ".join(map(str, TOP_N)) + ")", "", *index, "",
+        "## 5. Everything per preset", "", *per_preset, "",
+        "Raw numbers for all of the above: [`data/all_results.csv`](data/all_results.csv).",
+    ]
+    (ROOT / "HIGHLIGHTS.md").write_text("\n".join(text) + "\n", encoding="utf-8")
+
+
 def main():
     # --include-partial-obs: also list RL runs trained on the earlier partial observation (no
     # running-job finish times), e.g. for the future with/without-Markov comparison.
@@ -390,6 +541,13 @@ def main():
     fig_regime_map(results, figdir)
     fig_heuristic_heatmap(results, figdir)
     n_curves = fig_training_curves(figdir)
+    for generated in (figdir / "leaderboards", ROOT / "leaderboards"):  # rebuilt from scratch: no stale presets
+        shutil.rmtree(generated, ignore_errors=True)
+    (ROOT / "leaderboards").mkdir()
+    n_boards = fig_leaderboards(results)
+    write_leaderboards(results)
+    write_highlights(results, summary)
+    print(f"{n_boards} leaderboard figures; entry page: {ROOT / 'HIGHLIGHTS.md'}")
     print(f"{len(rows)} method rows over {len(results)} presets; skipped {skipped} runs (not current objective), "
           f"{stale} runs (old instance protocol); "
           f"training-curve figures for {n_curves} presets")

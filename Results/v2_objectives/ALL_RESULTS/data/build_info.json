@@ -1,5 +1,5 @@
 {
- "n_rows": 381,
+ "n_rows": 550,
  "skipped_runs_not_current_objective": 177,
  "skipped_runs_old_instance_protocol": 380,
  "instances_per_preset": {
@@ -26,6 +26,7 @@
  },
  "presets": [
   "off_c_50",
+  "off_tf02_w1",
   "off_tf05_w1",
   "off_tf08_w1",
   "off_tf02",

@@ -6,12 +6,17 @@ Every v2 result under the current default objective, rebuilt from `../runs/` by 
 python Results/v2_objectives/ALL_RESULTS/scripts/build_folder.py
 ```
 
+**Start with [`HIGHLIGHTS.md`](HIGHLIGHTS.md)** (generated): best method per family and per metric,
+key figures, and links to every leaderboard.
+
 | Folder | Contents |
 |---|---|
+| `HIGHLIGHTS.md` | entry page: headline table, best method on each metric per preset, key figures, leaderboard index |
+| `leaderboards/<preset>.md` | top-10 table and top-5 / top-10 figures for each metric (J, on-time rate, weighted / max tardiness, mean wait, active machine-ticks) |
 | `data/all_results.csv` | one row per preset x method: mean and std of J and the schedule metrics, seeds, instances, git commits, source run folders |
 | `tables/<preset>.md` | every method on that preset, ranked by J |
 | `tables/summary.md` | best heuristic vs best RL vs PSO vs CP-SAT per preset |
-| `figures/` | `J_by_method_<preset>`, `regime_map`, `heuristic_regime_heatmap`, `training_curves_<preset>` (PNG + PDF) |
+| `figures/` | `J_by_method_<preset>`, `regime_map`, `heuristic_regime_heatmap`, `training_curves_<preset>` (PNG + PDF); `leaderboards/<preset>/top{5,10}_<metric>.png` |
 
 **Setup.** Objective J = sum_j w_j T_j^2 (difficulty presets: w_j ~ Uniform{1,...,5}, i.e. `weights=(1, 6)` with numpy's exclusive upper bound; `off_c_*` presets: w_j = 1), with an extended horizon: jobs never expire,
 and unfinished jobs keep accruing lateness past H. The RL reward is exactly -J / (number of jobs)
@@ -31,6 +36,9 @@ steps. Default PPO hyperparameters (gamma 0.99, GAE lambda 0.95), 4 parallel env
 rho 0.95 / 1.10 has 3 seeds; everything else 1 seed (first pass).
 
 ## Headline results (J, lower is better; from `tables/summary.md` and the per-preset tables)
+
+Hand-written snapshot with interpretation; it can lag new runs. The current numbers are always in
+[`HIGHLIGHTS.md`](HIGHLIGHTS.md) and `tables/`.
 
 | Preset | Best heuristic | Best RL | RL vs best heuristic | Random rule selection (best menu) | PSO |
 |---|---|---|---|---|---|

@@ -1,0 +1,19 @@
+{
+ "study": "off_tf05_o0pmlubrze",
+ "protocol": "v4_idle",
+ "best_trial": 0,
+ "validation_J": 26993.65,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 300000,
+ "best_is_defaults": true,
+ "hyperparameters": {},
+ "counts": {
+  "COMPLETE": 9,
+  "PRUNED": 3,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

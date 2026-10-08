@@ -1,13 +1,14 @@
 | preset | best heuristic (J) | best RL (J) | RL vs best heuristic | PSO (J) | CP-SAT (J) |
 |---|---|---|---|---|---|
 | off_c_50 | LST+FirstFit (98) | - | - | - | 234 |
-| off_tf05_w1 | LST+FirstFit (13098) | A2C Opt1 rule selection +Consolidate non-delay [tuned] (13318, 3 seeds) | +1.7% | - | 16469 |
-| off_tf08_w1 | ATC+FirstFit (210328) | - | - | - | - |
+| off_tf02_w1 | WLST+FirstFit (0) | - | - | - | - |
+| off_tf05_w1 | LST+FirstFit (13098) | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] (13098, 3 seeds) | +0.0% | - | 16469 |
+| off_tf08_w1 | WLST+FirstFit (129805) | - | - | - | - |
 | off_tf02 | EDF+FirstFit (0) | - | - | - | - |
-| off_tf05 | LST+FirstFit (39536) | PPO Opt3 ATC-prior score windowed non-delay [tuned] (31291, 3 seeds) | -20.9% | - | 35681 |
-| off_tf08 | LST+FirstFit (390493) | - | - | - | - |
-| on_rho050 | LST+Consolidate (4087) | - | - | - | - |
-| on_rho075 | LST+Consolidate (6051) | - | - | - | - |
-| on_rho075_tight | LST+Consolidate (29975) | - | - | - | - |
-| on_rho095 | EDF+Consolidate (21986) | A2C Opt0 full action space pointer non-delay [tuned] (44321, 3 seeds) | +101.6% | - | - |
-| on_rho110 | EDF+Consolidate (114142) | - | - | - | - |
+| off_tf05 | WLST+FirstFit (26670) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] (28061, 3 seeds) | +5.2% | - | 35681 |
+| off_tf08 | WLST+FirstFit (257155) | - | - | - | - |
+| on_rho050 | WLST+Consolidate (4085) | - | - | - | - |
+| on_rho075 | WLST+Consolidate (5990) | - | - | - | - |
+| on_rho075_tight | WLST+Consolidate (29502) | - | - | - | - |
+| on_rho095 | EDF+Consolidate (21986) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] (39947, 3 seeds) | +81.7% | - | - |
+| on_rho110 | MDC+Consolidate (106463) | - | - | - | - |

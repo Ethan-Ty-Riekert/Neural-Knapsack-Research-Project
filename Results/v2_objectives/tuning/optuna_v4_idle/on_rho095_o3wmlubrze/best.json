@@ -1,0 +1,29 @@
+{
+ "study": "on_rho095_o3wmlubrze",
+ "protocol": "v4_idle",
+ "best_trial": 2,
+ "validation_J": 53572.35,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 300000,
+ "best_is_defaults": false,
+ "hyperparameters": {
+  "learning-rate": 0.0008946769081974223,
+  "rollout-size": 16384,
+  "batch-size": 1024,
+  "n-epochs": 3,
+  "gamma": 0.99,
+  "gae-lambda": 0.98,
+  "clip-range": 0.3,
+  "ent-coef": 0.007133407671882763
+ },
+ "stopped_early": false,
+ "counts": {
+  "COMPLETE": 10,
+  "PRUNED": 2,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

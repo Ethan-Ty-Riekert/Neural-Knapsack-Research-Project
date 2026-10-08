@@ -1,0 +1,4 @@
+trial,state,validation_J_20,last_reported_step,last_reported_J,learning-rate,rollout-size,batch-size,n-epochs,gamma,gae-lambda,clip-range,ent-coef
+1,COMPLETE,38609.8,225000,34771.4,default,default,default,default,default,default,default,default
+4,COMPLETE,64128.55,225000,59368.0,0.0004944733002746453,4096,256,10,0.995,0.9,0.1,0.0012094311268425492
+3,COMPLETE,432023.8,225000,449892.6,0.00020554062603827,2048,1024,3,0.999,0.95,0.3,0.02655561084998941
