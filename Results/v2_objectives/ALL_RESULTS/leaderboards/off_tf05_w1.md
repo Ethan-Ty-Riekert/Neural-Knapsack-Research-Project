@@ -143,12 +143,12 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 | 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13207 +/- 28 |
 | 3 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13255 +/- 72 |
 | 4 | A2C Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13318 +/- 380 |
-| 5 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13438 +/- 133 |
-| 6 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13440 +/- 323 |
-| 7 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13502 +/- 118 |
-| 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13537 +/- 380 |
-| 9 | PPO Opt3 ATC-prior score windowed non-delay [tuned] | RL | 54.54 +/- 0.00 | 13644 +/- 252 |
-| 10 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 14209 +/- 719 |
+| 5 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13411 +/- 181 |
+| 6 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13438 +/- 133 |
+| 7 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13440 +/- 323 |
+| 8 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13502 +/- 118 |
+| 9 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13537 +/- 380 |
+| 10 | PPO Opt3 ATC-prior score windowed non-delay [tuned] | RL | 54.54 +/- 0.00 | 13644 +/- 252 |
 
 | top 5 | top 10 |
 |---|---|
