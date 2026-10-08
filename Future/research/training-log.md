@@ -32,6 +32,22 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Lead: online gap is largely a training-budget problem for Option 2 (2M runs queued)
+
+**Stats (on_rho095, 50 test instances; EDF+Consolidate 21,986):**
+```
+Option 2 PPO, seed 0:  300k steps 30,076  ->  1M steps 22,927 (+4.3% vs EDF+Consolidate)
+Option 0 PPO, seed 0:  300k steps 28,562  ->  1M steps 35,284 (worse)
+```
+**Observation:** for Option 2 the extra budget closes most of the gap to the best online heuristic (one seed so far;
+seeds 1-2 at 1M are training). Option 0 does not improve with budget (one seed). Next (GPU queue, ahead of the online
+energy check): Option 2 PPO at 2M steps, seeds 0-1 (tag `y`) -- can RL beat EDF+Consolidate online with more training?
+
+**Energy-stabilisation lead (update):** new seeds J-only 28,352 / 29,250, J+energy 36,944 -- not a clear effect so far;
+remaining seeds running.
+
+---
+
 ## 2026-10-09 (S2W12) -- Lead: does an energy term stabilise training? (follow-up queued); watchdog starvation fixed
 
 **Observation (multi-objective quick experiment, Option 2 PPO, off_tf05, 300k, defaults, test J):**
