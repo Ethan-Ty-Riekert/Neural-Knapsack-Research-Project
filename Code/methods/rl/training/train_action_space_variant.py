@@ -33,6 +33,7 @@ training-log.md's 2026-09-16 entry).
         --job-size-distribution lognormal
 """
 import argparse
+import os
 import functools
 import json
 import time
@@ -393,6 +394,44 @@ def make_full_gym_env(online, base_env_kwargs, seed=0):
     return env.apply_options(**options)  # work-conserving, repair, full state, look-ahead, scaling, critic input
 
 
+def resolve_device(name):
+    """Torch device for the networks (2026-10-09). "cpu" (default: every result so far), "auto", or
+    "dml[:<index>]" = an AMD/other GPU through DirectML (torch-directml; installed only in the separate GPU
+    environment, see docs/DEVELOPMENT.md). Environments always run on the CPU."""
+    if name.startswith("dml"):
+        import torch_directml
+        _directml_safe_categorical()
+        return torch_directml.device(int(name.split(":")[1]) if ":" in name else torch_directml.default_device())
+    return name
+
+
+def rebind_optimizer(model, device_name):
+    """DirectML only: SB3 builds the optimizer on the CPU and then moves the policy to the device; for DirectML
+    that move creates NEW parameter tensors, so the optimizer would keep updating the stale CPU copies and the
+    network on the GPU would never learn (observed 2026-10-09: approx_kl 0, explained variance ~0). Rebuild the
+    optimizer on the moved parameters, keeping its settings and state-free (called before any update)."""
+    if not device_name.startswith("dml"):
+        return
+    pol = model.policy
+    pol.optimizer = pol.optimizer_class(pol.parameters(), lr=model.lr_schedule(1), **pol.optimizer_kwargs)
+
+
+def _directml_safe_categorical():
+    """DirectML cannot back-propagate through torch's Categorical.log_prob (its gather becomes a scatter that
+    DirectML rejects). Replace it, for DirectML runs only, by the identical value
+    log_prob(a) = sum_k log_softmax(logits)_k * one_hot(a)_k, whose gradient needs no scatter."""
+    from torch.distributions import Categorical
+
+    def log_prob(self, value):
+        if self._validate_args:
+            self._validate_sample(value)
+        classes = torch.arange(self.logits.shape[-1], device=self.logits.device)
+        one_hot = (value.long().unsqueeze(-1) == classes).to(self.logits.dtype)  # no scatter (unlike F.one_hot)
+        return (self.logits * one_hot).sum(-1)  # Categorical.logits are already normalised log-probabilities
+
+    Categorical.log_prob = log_prob
+
+
 def scale_rewards(env, gamma):
     """Reward scaling (2026-10-07): divide every reward by a running estimate of the standard deviation of the
     discounted return (SB3 VecNormalize, norm_reward only; observations untouched). Engstrom et al. 2020 (ICLR,
@@ -571,6 +610,10 @@ def build_parser():
                          help="2026-10-06, with --markov-obs: job features scaled by fixed constants (durations "
                               "by H, weights by the largest weight, requirements by machine capacity) instead "
                               "of each instance's maxima (GymSchedulingEnv._job_scales).")
+    parser.add_argument("--device", default=os.environ.get("NK_TORCH_DEVICE", "cpu"),
+                         help="2026-10-09: torch device for the networks: cpu (default; env NK_TORCH_DEVICE overrides "
+                              "the default -- set by the GPU queue runner), auto, or dml[:index] (DirectML GPU; needs "
+                              "the GPU environment). See resolve_device().")
     parser.add_argument("--event-idle", action="store_true",
                          help="2026-10-07: idle waits until the next arrival or completion instead of one tick, and "
                               "is not offered when neither exists (GymSchedulingEnv.idle_step).")
@@ -743,8 +786,10 @@ def main(argv=None, extra_callbacks=None, save=True):
         ent_coef=args.ent_coef,
         gamma=args.gamma,
         seed=args.seed,
+        device=resolve_device(args.device),
         **algo_kwargs,
     )
+    rebind_optimizer(model, args.device)
 
     print(f"Option {args.option}: online={args.online}, action_space={env.action_space}, "
           f"obs_dim={env.observation_space.shape[0]}, timesteps={args.timesteps}, "
@@ -804,7 +849,8 @@ def main(argv=None, extra_callbacks=None, save=True):
         ckpts = sorted(ckpt_dir.glob("ckpt_*_steps.zip"), key=lambda p: int(p.stem.split("_")[-2]))
         if not ckpts:
             raise SystemExit(f"--resume: no checkpoints in {ckpt_dir}")
-        model = MaskablePPO.load(str(ckpts[-1]), env=env)
+        model = MaskablePPO.load(str(ckpts[-1]), env=env, device=resolve_device(args.device))
+        rebind_optimizer(model, args.device)
         reset_num_timesteps = False
         print(f"Option {args.option}: resumed from {ckpts[-1].name} ({model.num_timesteps} steps done)")
 
@@ -833,6 +879,11 @@ def main(argv=None, extra_callbacks=None, save=True):
         env.close()  # frees the SubprocVecEnv workers (also when a tuning trial is pruned)
     elapsed_min = (time.time() - t0) / 60.0
 
+    if args.device != "cpu":  # saved and evaluated models are always CPU models (GPU only speeds up training)
+        model.policy.to("cpu")
+        model.device = torch.device("cpu")
+        pol = model.policy  # fresh CPU optimizer: its GPU state cannot be saved portably (resume uses checkpoints)
+        pol.optimizer = pol.optimizer_class(pol.parameters(), lr=model.lr_schedule(1), **pol.optimizer_kwargs)
     if not save:
         return model
     model.save(str(save_path))

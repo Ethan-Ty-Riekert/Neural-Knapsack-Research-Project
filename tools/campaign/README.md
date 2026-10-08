@@ -12,6 +12,10 @@ evaluation of every finished model, and CPU protection. Scripts live here; runti
 | `keep_awake.py` | Stops Windows from sleeping while the queue runner is alive (the display may still turn off); no power settings are changed. |
 | `common.py` | Shared paths, the tag pattern and status logging. |
 
+Several runners can share the machine: `queue_runner.py --name gpu --queue queue_gpu.txt --settings
+runner_settings_gpu.json --python <GPU env python> --stay` runs a second queue on the GPU (see
+`docs/DEVELOPMENT.md`); a named runner ends its status lines with `[name]` and adopts only its own jobs.
+
 Start all three from this folder (in the background, Below Normal priority):
 
 ```
@@ -29,7 +33,7 @@ the queue. The tag reaches every job as `--checkpoint-tag`, which is how the run
 find jobs. Tuning workers (`tune_...`) are not evaluated on test. Tags follow `v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>`. Modifiers: `c` Consolidate
 menu, `a` ATC feature, `p` pointer network (Option 0), `w` windowed, `t` per-tick, `n` work-conserving,
 `f` placement repair, `m` full-MDP (Markov) observation, `l` capacity look-ahead, `u` fixed feature
-scaling, `b` arrival-aware critic (input-dependent baseline), `r` lateness reward shaping, `z` reward scaling, `e` event-driven idling, `q` + late-count objective, `g` + energy objective. No `n` = free idling. The paper's tables (`Results/v2_objectives/
+scaling, `b` arrival-aware critic (input-dependent baseline), `r` lateness reward shaping, `z` reward scaling, `e` event-driven idling, `q` + late-count objective, `g` + energy objective, `x` extended (1M-step) training budget. No `n` = free idling. The paper's tables (`Results/v2_objectives/
 ALL_RESULTS/`) include only `m` runs.
 
 Why the CPU limits: on 2026-10-05 a sustained 100% CPU load hard-reset the desktop
