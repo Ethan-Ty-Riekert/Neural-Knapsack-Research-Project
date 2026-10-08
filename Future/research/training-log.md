@@ -32,6 +32,25 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Lead: does an energy term stabilise training? (follow-up queued); watchdog starvation fixed
+
+**Observation (multi-objective quick experiment, Option 2 PPO, off_tf05, 300k, defaults, test J):**
+```
+J only               69,367 (s0)  pending (s1)  28,383 (s2)
+J + energy           30,628       29,500        30,155
+J + late jobs        34,161       32,944        30,456
+J + late + energy    36,502       31,397        34,893
+```
+With J alone one seed diverged (69k); with the energy term the three seeds are within 4%. Hypothesis (untested): the
+energy term charges cost at every placement, a dense signal that stabilises learning. Follow-up: seeds 3-7 of J-only
+and J+energy offline (CPU queue, top); online Option 2 PPO J-only vs J+energy, seeds 0-2, 300k (GPU queue).
+
+**Incident:** the CPU watchdog pauses a job above 95% (3-min average) but resumed only below 80%, while the runners
+filled the machine to ~88-93% -- so paused jobs were never resumed (J-only seed 1 frozen from 01:58; two GPU jobs from
+02:30). Resumed manually at ~03:15; watchdog now resumes below 88%; runner targets lowered to 88%.
+
+---
+
 ## 2026-10-09 (S2W12) -- GPU training enabled (RX 7900 XT, DirectML); online budget study started on the GPU
 
 **Config:** separate environment `../nk-gpu` (Python 3.11, torch 2.4.1 + torch-directml; same SB3 2.8.0 / sb3-contrib
