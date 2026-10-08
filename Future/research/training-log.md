@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- GPU training enabled (RX 7900 XT, DirectML); online budget study started on the GPU
+
+**Config:** separate environment `../nk-gpu` (Python 3.11, torch 2.4.1 + torch-directml; same SB3 2.8.0 / sb3-contrib
+2.8.0 / gymnasium 1.2.3 as the main environment). `--device dml:1` / env NK_TORCH_DEVICE. Two DirectML defects
+found and fixed: (1) SB3 creates the optimizer before moving the policy, and on DirectML the move creates new
+parameter tensors, so the optimizer updated stale CPU copies (observed: approx_kl 0, explained variance ~0) --
+`rebind_optimizer`; (2) Categorical.log_prob's gather back-propagates as a scatter DirectML rejects -- replaced, for
+DirectML runs only, by the identical log_softmax . one-hot sum (checked equal). Saved models are CPU models.
+Second queue runner `--name gpu` (queue_gpu.txt).
+
+**Stats:** online Option 2 PPO (defaults, v4 setup), 16,384 steps: CPU 559 s, GPU 183 s, with matching update
+statistics (explained variance 0.861 vs 0.856, approx_kl 0.0099 vs 0.0068). Under full campaign load the GPU jobs
+run at ~90-100 steps/s vs ~20-35 on the CPU; GPU compute engine ~24% with two jobs (environment stepping on the CPU
+is the limit).
+
+**Experiment (GPU queue):** is online RL's gap to EDF+Consolidate a training-budget problem? Online Options 0 and 2
+PPO (v4 setup, their studies' chosen settings = defaults) at 1M steps x seeds 0-2 (tag `x`), vs the 300k finals.
+
+---
+
 ## 2026-10-09 (S2W12) -- Quick multi-objective experiment: giving RL more metrics to optimise (user request)
 
 **Config:** Option 2 PPO, off_tf05, v4 setup (free idling, look-ahead, fixed scaling, arrival-aware critic, lateness
