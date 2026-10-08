@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-08 (S2W12) -- Deadline decision: three slow online PPO studies stopped early (user)
+
+**Config (user decision 2026-10-08, chosen among: stop now / cap at 8 trials / keep 12):** online PPO trials took
+4-5 h each (300k steps at ~20 steps/s; the median pruner never prunes before 5 trials), which would have pushed
+the results past the deadline. The studies for online PPO Options 0, 2 and 4 were stopped with
+`tune_optuna_v2 finalise` (new): running trials marked FAIL with stopped_early=True (not re-queued), the best
+COMPLETED trial selected as usual, best.json records stopped_early=true, final runs queued.
+```
+study (online PPO)   finished trials   best validation J   chosen
+Option 0             7 (5 complete)    35,669              defaults (trial 0)
+Option 2             3                 38,610              defaults (trial 1)
+Option 4             3                 84,998              tuned (trial 4)
+EDF+Consolidate on the same validation instances: 30,857
+```
+Online PPO Option 3 continues (9 of 12 trials finished). All other studies keep the full 12 trials.
+To report in the paper: these three studies were stopped at 3-7 trials because of compute; the defaults trial was
+best in two of them.
+
+---
+
 ## 2026-10-08 (S2W12) -- Weight-aware variants of the best rules: WLST, WEDF, MDC (user request)
 
 **Config:** the existing weight-aware rules (WSPT, ATC, WMDD, COVERT) all lose to the unweighted LST (offline) and

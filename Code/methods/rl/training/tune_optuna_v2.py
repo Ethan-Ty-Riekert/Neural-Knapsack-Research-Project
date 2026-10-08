@@ -276,7 +276,7 @@ def final_job_lines(option, algo, preset, hp, proto=V2):
             for p in FINAL_PRESETS[preset] for s in FINAL_SEEDS]
 
 
-def write_results(study, option, algo, preset, proto=V2):
+def write_results(study, option, algo, preset, proto=V2, stopped_early=False):
     """best.json, trials.csv and summary.md of a finished study; returns the best hyperparameters."""
     from optuna.trial import TrialState
     d = study_dir(option, algo, preset, proto)
@@ -286,7 +286,8 @@ def write_results(study, option, algo, preset, proto=V2):
         study=study.study_name, protocol=proto.name, best_trial=best.number, validation_J=best.value,
         validation_seeds=[VALIDATION_SEEDS.start, VALIDATION_SEEDS.stop - 1], trial_steps=proto.trial_steps,
         best_is_defaults=bool(best.user_attrs.get("defaults")), hyperparameters=hp,
-        counts={s.name: n for s, n in counts(study).items()}), indent=1), encoding="utf-8")
+        stopped_early=stopped_early, counts={s.name: n for s, n in counts(study).items()}), indent=1),
+        encoding="utf-8")
     trials = sorted(study.get_trials(states=(TrialState.COMPLETE, TrialState.PRUNED)),
                     key=lambda t: (t.state != TrialState.COMPLETE, t.value if t.value is not None else 0))
     keys = list(SPACE[algo])
@@ -341,13 +342,8 @@ def cmd_worker(a):
         return
     hp = write_results(study, a.option, a.algo, a.preset, proto)
     print(f"best trial {study.best_trial.number}: validation J {study.best_value:.0f}, {hp or 'defaults'}")
-    if a.enqueue_to:  # PPO finals at the top (results early); A2C finals at the end (user, 2026-10-07: A2C last)
-        lines = final_job_lines(a.option, a.algo, a.preset, hp, proto)
-        queue = Path(a.enqueue_to)
-        current = queue.read_text(encoding="utf-8").splitlines()
-        tmp = queue.with_suffix(".tmp")
-        tmp.write_text("\n".join(current + lines if a.algo == "a2c" else lines + current) + "\n", encoding="utf-8")
-        os.replace(tmp, queue)
+    if a.enqueue_to:
+        lines = enqueue_finals(a.enqueue_to, a.option, a.algo, a.preset, hp, proto)
         print(f"enqueued {len(lines)} final runs -> {a.enqueue_to}")
 
 
@@ -362,6 +358,41 @@ def cmd_jobs(a):
             print(f"{prefix}_{study_name(o, al, p, proto)}_w{w} -m Code.methods.rl.training.tune_optuna_v2 worker "
                   f"--protocol {proto.name} --option {o} --algo {al} --preset {p} --worker {w} "
                   f"--enqueue-to {a.enqueue_to}")
+
+
+def enqueue_finals(queue_path, option, algo, preset, hp, proto):
+    """Queue a finished study's final runs: PPO at the top (results early), A2C at the end (user: A2C last)."""
+    lines = final_job_lines(option, algo, preset, hp, proto)
+    queue = Path(queue_path)
+    current = queue.read_text(encoding="utf-8").splitlines()
+    tmp = queue.with_suffix(".tmp")
+    tmp.write_text("\n".join(current + lines if algo == "a2c" else lines + current) + "\n", encoding="utf-8")
+    os.replace(tmp, queue)
+    return lines
+
+
+def cmd_finalise(a):
+    """Stop a study's tuning now (deadline decision): trials still RUNNING are marked FAIL with user_attr
+    stopped_early=True (not re-queued), the best COMPLETED trial is selected as usual, results are written with
+    stopped_early=True, and the final runs are queued. Refuses while a worker of this study is alive."""
+    import psutil
+    from optuna.trial import TrialState
+    proto = PROTOCOLS[a.protocol]
+    name = study_name(a.option, a.algo, a.preset, proto)
+    alive = [p for p in psutil.process_iter(["cmdline"]) if f"--checkpoint-tag tune_{proto.name}_{name}_w"
+             in " ".join(p.info["cmdline"] or [])]
+    if alive:
+        raise SystemExit(f"{len(alive)} workers of {name} are alive -- stop them first")
+    study = load_study(a.option, a.algo, a.preset, proto=proto, enqueue_defaults=False)
+    for t in study.get_trials(deepcopy=False, states=(TrialState.RUNNING, TrialState.WAITING)):
+        study._storage.set_trial_user_attr(t._trial_id, "stopped_early", True)
+        study._storage.set_trial_state_values(t._trial_id, TrialState.FAIL)
+    with open(study_dir(a.option, a.algo, a.preset, proto) / "finalised", "x", encoding="utf-8") as f:
+        f.write("finalise (stopped early)")
+    hp = write_results(study, a.option, a.algo, a.preset, proto, stopped_early=True)
+    print(f"{name}: stopped early; best trial {study.best_trial.number} ({study.best_value:.0f}), {hp or 'defaults'}")
+    if a.enqueue_to:
+        print(f"enqueued {len(enqueue_finals(a.enqueue_to, a.option, a.algo, a.preset, hp, proto))} final runs")
 
 
 def cmd_recover(a):
@@ -411,7 +442,7 @@ def cmd_summary(a):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("command", choices=["worker", "jobs", "summary", "recover"])
+    ap.add_argument("command", choices=["worker", "jobs", "summary", "recover", "finalise"])
     ap.add_argument("--protocol", choices=sorted(PROTOCOLS), default="v2")
     ap.add_argument("--option", choices=sorted(OPTIONS))
     ap.add_argument("--algo", choices=ALGOS)
@@ -422,7 +453,8 @@ def main():
     a = ap.parse_args()
     if a.command == "worker" and not (a.option and a.algo and a.preset):
         ap.error("worker needs --option, --algo and --preset")
-    {"worker": cmd_worker, "jobs": cmd_jobs, "summary": cmd_summary, "recover": cmd_recover}[a.command](a)
+    {"worker": cmd_worker, "jobs": cmd_jobs, "summary": cmd_summary, "recover": cmd_recover,
+     "finalise": cmd_finalise}[a.command](a)
 
 
 if __name__ == "__main__":
