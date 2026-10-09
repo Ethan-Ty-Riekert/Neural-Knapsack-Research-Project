@@ -32,6 +32,27 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Lead results: online budget (supported); energy stabilisation (rejected)
+
+**Online budget (on_rho095, test J; EDF+Consolidate 21,986):**
+```
+                  300k (3 seeds)                    1M (3 seeds, GPU)
+Option 2 PPO      30,076 / 53,231 / 36,535 = 39,947 22,927 / 31,652 / 24,965 = 26,515  (+21%; best seed +4%)
+Option 0 PPO      28,562 / 59,780 / 59,870 = 49,404 35,284 / 36,826 / 29,788 = 33,966
+```
+More training closes most of the online gap for Option 2 and helps Option 0 on average. 2M runs (Option 2, seeds
+0-1) are training. Observed on 3 seeds; not proven to continue.
+
+**Energy-stabilisation lead -- rejected.** Offline Option 2 PPO, 300k, defaults, 8 seeds each (test J):
+```
+J only        69,367 28,763 28,383 28,352 29,251 29,671 28,792 30,925   (1 of 8 diverged)
+J + energy    30,628 29,500 30,155 36,944 32,134 31,629 32,344 34,948   (none diverged, all ~5-25% worse)
+```
+The energy term does not meaningfully stabilise training; it costs ~10% of J for lower energy, the expected
+multi-objective trade-off. One divergent J-only seed in eight is a reported risk of the J-only objective.
+
+---
+
 ## 2026-10-09 (S2W12) -- Lead: online gap is largely a training-budget problem for Option 2 (2M runs queued)
 
 **Stats (on_rho095, 50 test instances; EDF+Consolidate 21,986):**
