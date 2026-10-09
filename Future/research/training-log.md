@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Multi-objective: linear tardiness term added; RL beats WLST once it counts
+
+**Config:** `--lambda-tardiness` (lambda_T for the 'tardiness' term; it was fixed at 1, negligible next to J). Reference
+lambda_T = 15.8 (J / weighted tardiness on WLST's schedule: 26,670 / 1,685). Composite report
+(`ALL_RESULTS/scripts/multi_objective_report.py`) scores every method on J + lambda_T WT + lambda_U sum w U +
+lambda_E machine-ticks from the per-instance metrics (linear, so means combine exactly). Queued (CPU): Option 2 PPO
+off_tf05 trained on J + linear tardiness at multipliers 0.25-4 and on all four terms, 3 seeds; plus the J + late jobs
+and J + energy lambda sweeps; GPU: online Option 2 1M with J + late jobs and J + late + energy.
+
+**Stats (off_tf05 test; RL models trained on J only so far):**
+```
+objective                       best heuristic        best RL                       RL vs heuristic
+J + linear tardiness (x0.25)    WLST 33,328           Opt2 PPO 34,371               +3.1%
+J + linear tardiness (x0.5)     WLST 39,985           Opt2 PPO 40,682               +1.7%
+J + linear tardiness (x1)       WLST 53,300           Opt0 A2C 52,363               -1.8%
+J + linear tardiness (x2)       WLST 79,930           Opt0 A2C 75,031               -6.1%
+J + energy (x0.5 .. x4)         WLST+Consolidate      Opt2 PPO                      +4.5% .. +3.4%
+```
+**Observation:** once linear tardiness carries real weight, RL (even trained on J alone) beats the best heuristic --
+WLST is tuned to squared lateness; RL's schedules trade differently. The runs trained for each composite objective
+will show whether that margin grows.
+
+Also: `tools/campaign/auto_push.py` commits and pushes all changes (except EthanTravelDocs/, report.md) every 30 min,
+so results reach the remote for report writing on another machine.
+
+---
+
 ## 2026-10-09 (S2W12) -- Lead results: online budget (supported); energy stabilisation (rejected)
 
 **Online budget (on_rho095, test J; EDF+Consolidate 21,986):**
