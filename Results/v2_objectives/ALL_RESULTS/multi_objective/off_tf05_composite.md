@@ -13,12 +13,12 @@ J_comp = J + 15.8 m_T * weighted tardiness + 146 m_U * weighted late jobs + 153 
 | J + late jobs (x0.25) | WLST+FirstFit | 33,358 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 33,496 | +0.4% |
 | J + late jobs (x0.5) | WLST+FirstFit | 40,046 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 38,931 | -2.8% |
 | J + late jobs (x1) | WLST+FirstFit | 53,421 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 49,182 | -7.9% |
-| J + late jobs (x2) | COVERT+BestFit | 69,335 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (2 seeds) | 64,971 | -6.3% |
-| J + late jobs (x4) | COVERT+BestFit | 88,835 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (2 seeds) | 89,977 | +1.3% |
+| J + late jobs (x2) | COVERT+BestFit | 69,335 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 65,844 | -5.0% |
+| J + late jobs (x4) | COVERT+BestFit | 88,835 | A2C Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic (3 seeds) | 95,468 | +7.5% |
 | J + energy (x0.25) | WLST+Consolidate | 33,071 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 34,645 | +4.8% |
 | J + energy (x0.5) | WLST+Consolidate | 39,472 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 41,229 | +4.5% |
 | J + energy (x1) | WLST+Consolidate | 52,274 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 54,398 | +4.1% |
 | J + energy (x2) | WLST+Consolidate | 77,877 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 80,735 | +3.7% |
 | J + energy (x4) | WLST+Consolidate | 129,083 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 133,410 | +3.4% |
 | J + late jobs + energy (x1) | WLST+Consolidate | 79,024 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 75,820 | -4.1% |
-| all four terms (x1) | WLST+Consolidate | 105,654 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (2 seeds) | 99,233 | -6.1% |
+| all four terms (x1) | WLST+Consolidate | 105,654 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 99,798 | -5.5% |
