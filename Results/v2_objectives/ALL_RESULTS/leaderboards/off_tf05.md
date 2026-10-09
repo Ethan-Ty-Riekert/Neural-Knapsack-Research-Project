@@ -83,12 +83,12 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | rank | method | family | weighted tardiness | J |
 |---|---|---|---|---|
 | 1 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective [lambda x4] | RL | 1361 +/- 32 | 36564 +/- 3180 |
-| 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective [tuned] | RL | 1374 +/- 296 | 33181 +/- 5593 |
+| 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective [tuned] | RL | 1369 +/- 7 | 32668 +/- 725 |
 | 3 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1374 +/- 30 | 32551 +/- 1242 |
 | 4 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 1395 +/- 21 | 37423 +/- 1601 |
 | 5 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 1397 +/- 70 | 34638 +/- 1504 |
-| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective [tuned] | RL | 1405 +/- 288 | 32590 +/- 5605 |
-| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective [tuned] | RL | 1406 +/- 7 | 29899 +/- 5 |
+| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective [tuned] | RL | 1406 +/- 7 | 29899 +/- 5 |
+| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective [tuned] | RL | 1416 +/- 15 | 31964 +/- 886 |
 | 8 | COVERT+BestFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 9 | COVERT+Consolidate | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 10 | COVERT+FirstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
