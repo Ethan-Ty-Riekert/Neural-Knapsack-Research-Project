@@ -64,7 +64,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 | rank | method | family | weighted late jobs | J |
 |---|---|---|---|---|
 | 1 | A2C Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 60.3 +/- 0.7 | 13585 +/- 81 |
-| 2 | A2C Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 61.4 +/- 6.9 | 13725 +/- 3251 |
+| 2 | A2C Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 61.0 +/- 0.9 | 13781 +/- 646 |
 
 | top 5 |
 |---|
