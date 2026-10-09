@@ -260,6 +260,7 @@ def rl_command(variant_name, preset_name, method, args):
             cmd += ["--no-extend-horizon"]
         cmd += ["--reward-mode", "objective", "--objectives", args.objectives,
                 "--lambda-late", str(args.lambda_late), "--lambda-energy", str(args.lambda_energy),
+                "--lambda-tardiness", str(args.lambda_tardiness),
                 "--power-model", args.power_model]
         if args.drop_surcharge is not None:
             cmd += ["--drop-surcharge", str(args.drop_surcharge)]
@@ -414,6 +415,8 @@ def build_parser():
                     help="v2 only: fixed window H with dropped jobs (the pre-2026-09-29 behaviour) instead of "
                          "the default extended horizon, where unfinished jobs run past H and pay true lateness")
     ap.add_argument("--lambda-late", type=float, default=1.0, help="v2 only: weight of late_count")
+    ap.add_argument("--lambda-tardiness", type=float, default=1.0,
+                    help="v2 only: weight of linear weighted tardiness (objective 'tardiness')")
     ap.add_argument("--lambda-energy", type=float, default=1.0,
                     help="v2 only: weight of energy (late job-ticks per normalised energy unit)")
     ap.add_argument("--power-model", default="linear", choices=["linear", "specpower_ml110g5"],

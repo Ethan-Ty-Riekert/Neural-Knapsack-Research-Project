@@ -5,9 +5,9 @@ Uses the archive's own loading and aggregation (build_folder.load_runs / aggrega
 weighted late-job count sum_j w_j U_j and active machine-ticks (the linear energy measure). Because the composite
 objective is linear in these, its mean over instances is the same combination of the means:
 
-    J_comp(lambda_U, lambda_E) = J + lambda_U * sum_j w_j U_j + lambda_E * active machine-ticks
+    J_comp = J + lambda_T * weighted tardiness + lambda_U * sum_j w_j U_j + lambda_E * active machine-ticks
 
-with lambda_U = 146 * m_U and lambda_E = 153 * m_E (the reference weights equalise each term with J on WLST's
+with lambda_T = 15.8 * m_T, lambda_U = 146 * m_U and lambda_E = 153 * m_E (the reference weights equalise each term with J on WLST's
 schedule; m = the lambda multiplier, 1 when the tag has no _lam). Writes, per preset with data:
 
     multi_objective/<preset>_composite.md     best heuristic vs best RL on each composite objective
@@ -25,15 +25,19 @@ sys.path.insert(0, str(HERE))
 import build_folder as bf  # noqa: E402
 
 OUT = bf.ROOT / "multi_objective"
-REF_U, REF_E = 146.0, 153.0
-WEIGHTINGS = [("J only", 0, 0)] + [(f"J + late jobs (x{m:g})", m, 0) for m in (0.25, 0.5, 1, 2, 4)] \
-    + [(f"J + energy (x{m:g})", 0, m) for m in (0.25, 0.5, 1, 2, 4)] + [("J + late jobs + energy (x1)", 1, 1)]
+REF_T, REF_U, REF_E = 15.8, 146.0, 153.0
+M = (0.25, 0.5, 1, 2, 4)
+WEIGHTINGS = ([("J only", 0, 0, 0)] + [(f"J + linear tardiness (x{m:g})", m, 0, 0) for m in M]
+              + [(f"J + late jobs (x{m:g})", 0, m, 0) for m in M] + [(f"J + energy (x{m:g})", 0, 0, m) for m in M]
+              + [("J + late jobs + energy (x1)", 0, 1, 1), ("all four terms (x1)", 1, 1, 1)])
 
 
-def composite(rec, m_u, m_e):
-    if m_u and rec.get("weighted_late_jobs") is None or m_e and rec.get("active_machine_ticks") is None:
+def composite(rec, m_t, m_u, m_e):
+    terms = (("weighted_tardiness", REF_T * m_t), ("weighted_late_jobs", REF_U * m_u),
+             ("active_machine_ticks", REF_E * m_e))
+    if any(w and rec.get(k) is None for k, w in terms):
         return None
-    return rec["objective_J"] + REF_U * m_u * (rec.get("weighted_late_jobs") or 0) + REF_E * m_e * (rec.get("active_machine_ticks") or 0)
+    return rec["objective_J"] + sum(w * (rec.get(k) or 0) for k, w in terms)
 
 
 def pareto_front(points):
@@ -52,10 +56,11 @@ def is_multi(label):
 
 def write_composite(preset, recs):
     lines = [f"# {preset}: best heuristic vs best RL on composite objectives (50 test instances, lower is better)", "",
-             f"J_comp = J + {REF_U:g} m_U * weighted late jobs + {REF_E:g} m_E * active machine-ticks.", "",
+             f"J_comp = J + {REF_T:g} m_T * weighted tardiness + {REF_U:g} m_U * weighted late jobs + "
+             f"{REF_E:g} m_E * active machine-ticks.", "",
              "| objective | best heuristic | J_comp | best RL | J_comp | RL vs heuristic |", "|---|---|---|---|---|---|"]
-    for name, m_u, m_e in WEIGHTINGS:
-        scored = [(composite(r, m_u, m_e), r) for r in recs]
+    for name, m_t, m_u, m_e in WEIGHTINGS:
+        scored = [(composite(r, m_t, m_u, m_e), r) for r in recs]
         scored = [(v, r) for v, r in scored if v is not None]
         heur = min((x for x in scored if x[1]["family"] == "Heuristic"), default=None, key=lambda x: x[0])
         rl = min((x for x in scored if x[1]["family"] == "RL"), default=None, key=lambda x: x[0])

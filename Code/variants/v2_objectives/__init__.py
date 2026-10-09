@@ -41,14 +41,14 @@ def instances(preset_name: str):
 
 def objective_config(objectives=("tardiness_sq",), drop_surcharge=None, lambda_late=1.0,
                      drop_shaping=False, lambda_energy=1.0, power_model="linear",
-                     lateness_shaping=False) -> ObjectiveConfig:
+                     lateness_shaping=False, lambda_tardiness=1.0) -> ObjectiveConfig:
     """Build the ObjectiveConfig for a run. drop_shaping defaults to False for evaluating fixed
     policies (heuristics/PSO/CP-SAT): then reward = -J/c exactly. RL training turns it on."""
     unknown = set(objectives) - set(OBJECTIVES)
     if unknown:
         raise ValueError(f"unknown objectives {sorted(unknown)}; choose from {OBJECTIVES}")
     return ObjectiveConfig(
-        tardiness=1.0 if "tardiness" in objectives else 0.0,
+        tardiness=lambda_tardiness if "tardiness" in objectives else 0.0,  # lambda_T (2026-10-09; was fixed 1)
         tardiness_sq=1.0 if "tardiness_sq" in objectives else 0.0,
         # a dropped job (fixed-window mode only) counts as finishing that late in each SELECTED
         # lateness measure: linear drop cost only when linear lateness is selected (squared drop
@@ -72,6 +72,7 @@ def env_kwargs(args) -> dict:
     cfg = objective_config(objectives, getattr(args, "drop_surcharge", None),
                            getattr(args, "lambda_late", 1.0),
                            lambda_energy=getattr(args, "lambda_energy", 1.0),
-                           power_model=getattr(args, "power_model", "linear"))
+                           power_model=getattr(args, "power_model", "linear"),
+                           lambda_tardiness=getattr(args, "lambda_tardiness", 1.0))
     return {"reward_mode": "objective", "objective": cfg,
             "extend_horizon": not getattr(args, "no_extend_horizon", False)}

@@ -539,6 +539,8 @@ def build_parser():
                               "tardiness_sq (default),tardiness,late_count,energy; dropped-job cost is always on.")
     parser.add_argument("--drop-surcharge", type=float, default=None, help="v2: B in ticks (default H)")
     parser.add_argument("--lambda-late", type=float, default=1.0)
+    parser.add_argument("--lambda-tardiness", type=float, default=1.0,
+                         help="2026-10-09: weight of linear weighted tardiness (objective 'tardiness'); was fixed at 1")
     parser.add_argument("--lambda-energy", type=float, default=1.0)
     parser.add_argument("--power-model", default="linear", choices=["linear", "specpower_ml110g5"])
     parser.add_argument("--no-extend-horizon", action="store_true",
@@ -719,7 +721,8 @@ def main(argv=None, extra_callbacks=None, save=True):
         objective = objective_config(tuple(o.strip() for o in args.objectives.split(",")), args.drop_surcharge,
                                      args.lambda_late, drop_shaping=not args.no_drop_shaping,
                                      lateness_shaping=args.lateness_shaping,
-                                     lambda_energy=args.lambda_energy, power_model=args.power_model)
+                                     lambda_energy=args.lambda_energy, power_model=args.power_model,
+                                     lambda_tardiness=args.lambda_tardiness)
         objective.shaping_gamma = args.gamma
     difficulty = DIFFICULTIES[args.difficulty] if args.difficulty else None
     extend = args.reward_mode == "objective" and not args.no_extend_horizon  # v2 default (2026-09-29)
