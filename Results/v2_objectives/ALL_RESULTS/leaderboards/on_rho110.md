@@ -15,7 +15,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 7 | LST+Consolidate | Heuristic | 144386 +/- 97469 |
 | 8 | WEDF+BestFit | Heuristic | 148158 +/- 82230 |
 | 9 | WEDF+FirstFit | Heuristic | 149937 +/- 93909 |
-| 10 | WLST+BestFit | Heuristic | 152726 +/- 87886 |
+| 10 | COVERT+Consolidate | Heuristic | 150616 +/- 88508 |
 
 | top 5 | top 10 |
 |---|---|
@@ -28,13 +28,13 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 1 | ATC+Consolidate | Heuristic | 0.935 +/- 0.013 | 159315 +/- 88420 |
 | 2 | ATC+BestFit | Heuristic | 0.933 +/- 0.012 | 191577 +/- 108044 |
 | 3 | ATC+FirstFit | Heuristic | 0.930 +/- 0.012 | 205642 +/- 98055 |
-| 4 | SPT+Consolidate | Heuristic | 0.923 +/- 0.013 | 391147 +/- 161979 |
-| 5 | SPT+BestFit | Heuristic | 0.921 +/- 0.013 | 408295 +/- 157784 |
-| 6 | ATC+WorstFit | Heuristic | 0.919 +/- 0.011 | 312216 +/- 120179 |
-| 7 | WSPT+Consolidate | Heuristic | 0.919 +/- 0.014 | 339583 +/- 134907 |
-| 8 | WSPT+BestFit | Heuristic | 0.918 +/- 0.013 | 367881 +/- 141653 |
-| 9 | SPT+FirstFit | Heuristic | 0.918 +/- 0.012 | 445610 +/- 154209 |
-| 10 | EDF+BestFit | Heuristic | 0.917 +/- 0.021 | 155351 +/- 109761 |
+| 4 | COVERT+Consolidate | Heuristic | 0.924 +/- 0.016 | 150616 +/- 88508 |
+| 5 | COVERT+BestFit | Heuristic | 0.924 +/- 0.014 | 187862 +/- 102012 |
+| 6 | SPT+Consolidate | Heuristic | 0.923 +/- 0.013 | 391147 +/- 161979 |
+| 7 | SPT+BestFit | Heuristic | 0.921 +/- 0.013 | 408295 +/- 157784 |
+| 8 | COVERT+FirstFit | Heuristic | 0.921 +/- 0.016 | 180812 +/- 108182 |
+| 9 | ATC+WorstFit | Heuristic | 0.919 +/- 0.011 | 312216 +/- 120179 |
+| 10 | WSPT+Consolidate | Heuristic | 0.919 +/- 0.014 | 339583 +/- 134907 |
 
 | top 5 | top 10 |
 |---|---|
@@ -47,13 +47,13 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 1 | ATC+Consolidate | Heuristic | 69.4 +/- 13.5 | 159315 +/- 88420 |
 | 2 | ATC+BestFit | Heuristic | 70.9 +/- 13.5 | 191577 +/- 108044 |
 | 3 | ATC+FirstFit | Heuristic | 74.5 +/- 13.6 | 205642 +/- 98055 |
-| 4 | SPT+Consolidate | Heuristic | 82.0 +/- 14.3 | 391147 +/- 161979 |
-| 5 | SPT+BestFit | Heuristic | 83.8 +/- 15.2 | 408295 +/- 157784 |
-| 6 | ATC+WorstFit | Heuristic | 85.5 +/- 11.8 | 312216 +/- 120179 |
-| 7 | WSPT+Consolidate | Heuristic | 85.8 +/- 15.8 | 339583 +/- 134907 |
-| 8 | WSPT+BestFit | Heuristic | 86.8 +/- 14.4 | 367881 +/- 141653 |
-| 9 | SPT+FirstFit | Heuristic | 86.9 +/- 13.1 | 445610 +/- 154209 |
-| 10 | EDF+BestFit | Heuristic | 88.4 +/- 23.3 | 155351 +/- 109761 |
+| 4 | COVERT+Consolidate | Heuristic | 80.5 +/- 17.9 | 150616 +/- 88508 |
+| 5 | COVERT+BestFit | Heuristic | 80.7 +/- 16.0 | 187862 +/- 102012 |
+| 6 | SPT+Consolidate | Heuristic | 82.0 +/- 14.3 | 391147 +/- 161979 |
+| 7 | SPT+BestFit | Heuristic | 83.8 +/- 15.2 | 408295 +/- 157784 |
+| 8 | COVERT+FirstFit | Heuristic | 83.9 +/- 18.1 | 180812 +/- 108182 |
+| 9 | ATC+WorstFit | Heuristic | 85.5 +/- 11.8 | 312216 +/- 120179 |
+| 10 | WSPT+Consolidate | Heuristic | 85.8 +/- 15.8 | 339583 +/- 134907 |
 
 | top 5 | top 10 |
 |---|---|
@@ -61,7 +61,22 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 
 ## weighted late jobs (lower is better)
 
-Every method has the same value here, so there is no ranking.
+| rank | method | family | weighted late jobs | J |
+|---|---|---|---|---|
+| 1 | ATC+Consolidate | Heuristic | 183.8 +/- 38.6 | 159315 +/- 88420 |
+| 2 | ATC+BestFit | Heuristic | 189.3 +/- 41.2 | 191577 +/- 108044 |
+| 3 | ATC+FirstFit | Heuristic | 198.9 +/- 40.6 | 205642 +/- 98055 |
+| 4 | COVERT+Consolidate | Heuristic | 226.2 +/- 53.6 | 150616 +/- 88508 |
+| 5 | ATC+WorstFit | Heuristic | 231.6 +/- 35.8 | 312216 +/- 120179 |
+| 6 | COVERT+BestFit | Heuristic | 231.8 +/- 48.1 | 187862 +/- 102012 |
+| 7 | COVERT+FirstFit | Heuristic | 240.1 +/- 55.4 | 180812 +/- 108182 |
+| 8 | EDF+BestFit | Heuristic | 263.7 +/- 71.4 | 155351 +/- 109761 |
+| 9 | EDF+Consolidate | Heuristic | 264.6 +/- 67.1 | 114142 +/- 68444 |
+| 10 | COVERT+WorstFit | Heuristic | 271.4 +/- 47.5 | 305427 +/- 138995 |
+
+| top 5 | top 10 |
+|---|---|
+| ![top 5](../figures/leaderboards/on_rho110/top5_weighted_late_jobs.png) | ![top 10](../figures/leaderboards/on_rho110/top10_weighted_late_jobs.png) |
 
 ## weighted tardiness (lower is better)
 
@@ -69,14 +84,14 @@ Every method has the same value here, so there is no ranking.
 |---|---|---|---|---|
 | 1 | ATC+Consolidate | Heuristic | 3604 +/- 1430 | 159315 +/- 88420 |
 | 2 | MDC+Consolidate | Heuristic | 3763 +/- 1913 | 106463 +/- 87144 |
-| 3 | WEDF+Consolidate | Heuristic | 4031 +/- 1856 | 107519 +/- 73473 |
-| 4 | ATC+BestFit | Heuristic | 4081 +/- 1699 | 191577 +/- 108044 |
-| 5 | EDF+Consolidate | Heuristic | 4229 +/- 1758 | 114142 +/- 68444 |
-| 6 | MDC+BestFit | Heuristic | 4310 +/- 1904 | 138364 +/- 93785 |
-| 7 | ATC+FirstFit | Heuristic | 4331 +/- 1549 | 205642 +/- 98055 |
-| 8 | MDC+FirstFit | Heuristic | 4343 +/- 1731 | 135268 +/- 81598 |
-| 9 | WLST+Consolidate | Heuristic | 4648 +/- 2155 | 139904 +/- 104537 |
-| 10 | WEDF+BestFit | Heuristic | 4691 +/- 1734 | 148158 +/- 82230 |
+| 3 | COVERT+Consolidate | Heuristic | 3867 +/- 1565 | 150616 +/- 88508 |
+| 4 | WEDF+Consolidate | Heuristic | 4031 +/- 1856 | 107519 +/- 73473 |
+| 5 | ATC+BestFit | Heuristic | 4081 +/- 1699 | 191577 +/- 108044 |
+| 6 | EDF+Consolidate | Heuristic | 4229 +/- 1758 | 114142 +/- 68444 |
+| 7 | MDC+BestFit | Heuristic | 4310 +/- 1904 | 138364 +/- 93785 |
+| 8 | ATC+FirstFit | Heuristic | 4331 +/- 1549 | 205642 +/- 98055 |
+| 9 | MDC+FirstFit | Heuristic | 4343 +/- 1731 | 135268 +/- 81598 |
+| 10 | COVERT+BestFit | Heuristic | 4412 +/- 1776 | 187862 +/- 102012 |
 
 | top 5 | top 10 |
 |---|---|
@@ -107,14 +122,14 @@ Every method has the same value here, so there is no ranking.
 |---|---|---|---|---|
 | 1 | ATC+Consolidate | Heuristic | 4.7 +/- 3.5 | 159315 +/- 88420 |
 | 2 | ATC+BestFit | Heuristic | 5.7 +/- 4.5 | 191577 +/- 108044 |
-| 3 | ATC+FirstFit | Heuristic | 6.5 +/- 4.3 | 205642 +/- 98055 |
-| 4 | MDC+Consolidate | Heuristic | 7.8 +/- 4.7 | 106463 +/- 87144 |
-| 5 | MDC+FirstFit | Heuristic | 9.0 +/- 4.8 | 135268 +/- 81598 |
-| 6 | MDC+BestFit | Heuristic | 9.3 +/- 5.2 | 138364 +/- 93785 |
-| 7 | EDF+Consolidate | Heuristic | 9.7 +/- 5.5 | 114142 +/- 68444 |
-| 8 | ATC+WorstFit | Heuristic | 10.7 +/- 5.4 | 312216 +/- 120179 |
-| 9 | EDF+BestFit | Heuristic | 10.9 +/- 6.8 | 155351 +/- 109761 |
-| 10 | WEDF+Consolidate | Heuristic | 10.9 +/- 5.4 | 107519 +/- 73473 |
+| 3 | COVERT+Consolidate | Heuristic | 6.1 +/- 3.9 | 150616 +/- 88508 |
+| 4 | ATC+FirstFit | Heuristic | 6.5 +/- 4.3 | 205642 +/- 98055 |
+| 5 | COVERT+BestFit | Heuristic | 6.9 +/- 4.6 | 187862 +/- 102012 |
+| 6 | COVERT+FirstFit | Heuristic | 7.5 +/- 5.3 | 180812 +/- 108182 |
+| 7 | MDC+Consolidate | Heuristic | 7.8 +/- 4.7 | 106463 +/- 87144 |
+| 8 | MDC+FirstFit | Heuristic | 9.0 +/- 4.8 | 135268 +/- 81598 |
+| 9 | MDC+BestFit | Heuristic | 9.3 +/- 5.2 | 138364 +/- 93785 |
+| 10 | EDF+Consolidate | Heuristic | 9.7 +/- 5.5 | 114142 +/- 68444 |
 
 | top 5 | top 10 |
 |---|---|
@@ -189,8 +204,8 @@ Every method has the same value here, so there is no ranking.
 | 6 | MDC+Consolidate | Heuristic | 0.978 +/- 0.005 | 106463 +/- 87144 |
 | 7 | LST+BestFit | Heuristic | 0.977 +/- 0.006 | 178161 +/- 110493 |
 | 8 | MDC+BestFit | Heuristic | 0.977 +/- 0.005 | 138364 +/- 93785 |
-| 9 | LST+FirstFit | Heuristic | 0.976 +/- 0.005 | 187603 +/- 117291 |
-| 10 | WLST+BestFit | Heuristic | 0.976 +/- 0.006 | 152726 +/- 87886 |
+| 9 | COVERT+Consolidate | Heuristic | 0.977 +/- 0.005 | 150616 +/- 88508 |
+| 10 | LST+FirstFit | Heuristic | 0.976 +/- 0.005 | 187603 +/- 117291 |
 
 | top 5 | top 10 |
 |---|---|

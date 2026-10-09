@@ -63,12 +63,20 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 
 | rank | method | family | weighted late jobs | J |
 |---|---|---|---|---|
-| 1 | A2C Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 60.3 +/- 0.7 | 13585 +/- 81 |
-| 2 | A2C Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 61.0 +/- 0.9 | 13781 +/- 646 |
+| 1 | WMDD+BestFit | Heuristic | 32.2 +/- 3.5 | 34664 +/- 8792 |
+| 2 | WMDD+Consolidate | Heuristic | 32.2 +/- 3.5 | 34664 +/- 8792 |
+| 3 | WMDD+FirstFit | Heuristic | 32.2 +/- 3.5 | 34664 +/- 8792 |
+| 4 | WMDD+WorstFit | Heuristic | 32.2 +/- 3.5 | 34664 +/- 8792 |
+| 5 | COVERT+BestFit | Heuristic | 34.0 +/- 4.2 | 29854 +/- 7496 |
+| 6 | COVERT+Consolidate | Heuristic | 34.0 +/- 4.2 | 29854 +/- 7496 |
+| 7 | COVERT+FirstFit | Heuristic | 34.0 +/- 4.2 | 29854 +/- 7496 |
+| 8 | COVERT+WorstFit | Heuristic | 34.0 +/- 4.2 | 29854 +/- 7496 |
+| 9 | ATC+FirstFit | Heuristic | 34.4 +/- 3.6 | 47080 +/- 11231 |
+| 10 | ATC+BestFit | Heuristic | 34.4 +/- 3.6 | 47080 +/- 11231 |
 
-| top 5 |
-|---|
-| ![top 5](../figures/leaderboards/off_tf05_w1/top5_weighted_late_jobs.png) |
+| top 5 | top 10 |
+|---|---|
+| ![top 5](../figures/leaderboards/off_tf05_w1/top5_weighted_late_jobs.png) | ![top 10](../figures/leaderboards/off_tf05_w1/top10_weighted_late_jobs.png) |
 
 ## weighted tardiness (lower is better)
 
