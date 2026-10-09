@@ -75,6 +75,7 @@ def schedule_metrics(env) -> dict:
         "completion_rate": _stat(np.mean, sched[arrived].astype(float), 1.0),
         "on_time_rate": _stat(np.mean, on_time[arrived].astype(float), 1.0),
         "late_jobs": int((t_sched > 0).sum()),
+        "weighted_late_jobs": float((w * (tard > 0))[sched].sum()),  # sum_j w_j U_j (lambda_U term), 2026-10-09
         "tardiness": float(t_sched.sum()),
         "weighted_tardiness": float((tard * w)[sched].sum()),
         "weighted_sq_tardiness": float((tard ** 2 * w)[sched].sum()),  # the v2 default objective (2026-09-30)

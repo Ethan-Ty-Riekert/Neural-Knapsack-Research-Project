@@ -64,6 +64,7 @@ MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "win
 # late jobs, p95 tardiness, flow time, makespan, utilisation and energy to the tables).
 METRIC_INFO = {"objective_J": ("J", 0, False), "on_time_rate": ("on-time rate", 3, True),
                "late_jobs": ("late jobs", 1, False),
+               "weighted_late_jobs": ("weighted late jobs", 1, False),
                "weighted_tardiness": ("weighted tardiness", 0, False), "max_tardiness": ("max tardiness", 1, False),
                "p95_tardiness": ("p95 tardiness", 1, False),
                "mean_wait": ("mean wait", 2, False), "mean_flow_time": ("mean flow time", 2, False),
@@ -77,7 +78,7 @@ METRICS = list(METRIC_INFO)
 # expire, so it is 0 for every row.
 DISPLAY_METRICS = [m for m in METRICS if m != "dropped"]
 TOP_N = (5, 10)  # leaderboard sizes
-RL_TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")
+from Code.utils.run_tags import TAG as RL_TAG  # noqa: E402  (shared with tools/campaign)
 BASELINES = ["EDF+FirstFit", "LST+FirstFit", "ATC+FirstFit", "RandomRule+FirstFit", "RandomRule+FirstFitConsolidate"]
 # Registry back-compat aliases of "<rule>+FirstFit" (Code/methods/heuristics/registry.py): same
 # function, so they are folded into the canonical name (newest run wins) instead of listed twice.
@@ -97,7 +98,8 @@ def rl_label(m, opt):
     algo = "A2C" if m.group("algo") else "PPO"
     mods = " ".join(MOD_NAMES.get(c, c) for c in m.group("mods") if c != "m")  # every paper row is Markov
     hp = f" [{m.group('hp').lstrip('_')}]" if m.group("hp") else ""
-    return f"{algo} Opt{opt} {OPTION_NAMES.get(opt, '')}" + (f" {mods}" if mods else "") + hp
+    lam = f" [lambda x{m.group('lam')}]" if m.group("lam") else ""
+    return f"{algo} Opt{opt} {OPTION_NAMES.get(opt, '')}" + (f" {mods}" if mods else "") + hp + lam
 
 
 def family_and_label(method):

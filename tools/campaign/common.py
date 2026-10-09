@@ -20,8 +20,9 @@ QUEUE, STATUS, EVALS, SETTINGS = (CAMPAIGN / n for n in ("queue.txt", "status.tx
 LEGACY_LOG_DIRS = [Path(r"C:\Users\ethan\AppData\Local\Temp\claude\D--University-Year3-ResearchProject"
                         r"\78ffef64-b2d7-4e00-a333-89fa3cfc7472\scratchpad\overnight\logs")]
 
-# v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>
-TAG = re.compile(r"^v2_(?P<preset>.+?)_o(?P<opt>\d)(?P<mods>[a-z]*)(?P<algo>_a2c)?(?P<hp>_hp\d+|_tuned)?_s(?P<seed>\d+)$")
+import sys  # noqa: E402
+sys.path.insert(0, str(REPO))
+from Code.utils.run_tags import TAG  # noqa: E402,F401  (the single tag definition)
 
 
 def status(msg):
