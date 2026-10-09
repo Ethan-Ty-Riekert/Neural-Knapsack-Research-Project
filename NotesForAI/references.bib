@@ -1,0 +1,1132 @@
+% references.bib -- shared bibliography for the Neural-Knapsack-Research-Project.
+% Rule (CLAUDE.md, added 2026-09-17 S2W10): every new research resource or
+% paper found gets an entry here, whether or not it also appears in a dated
+% doc's own References section. Keys: <firstauthor><year><shortslug>.
+% Backfilled 2026-09-17 from every existing Future/research/*.md References
+% section; add new entries going forward rather than starting a second file.
+
+% ---------------------------------------------------------------------
+% Scheduling / RL-for-scheduling
+% ---------------------------------------------------------------------
+
+@inproceedings{mao2016deeprm,
+  author    = {Mao, Hongzi and Alizadeh, Mohammad and Menache, Ishai and Kandula, Srikanth},
+  title     = {Resource Management with Deep Reinforcement Learning},
+  booktitle = {Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets)},
+  year      = {2016}
+}
+
+@inproceedings{mao2019decima,
+  author    = {Mao, Hongzi and Schwarzkopf, Malte and Venkatakrishnan, Shaileshh Bojja and Meng, Zili and Alizadeh, Mohammad},
+  title     = {Learning Scheduling Algorithms for Data Processing Clusters},
+  booktitle = {Proceedings of the ACM Special Interest Group on Data Communication (SIGCOMM)},
+  year      = {2019}
+}
+
+@article{vepsalainen1987atc,
+  author  = {Vepsalainen, Ari P. J. and Morton, Thomas E.},
+  title   = {Priority Rules for Job Shops with Weighted Tardiness Costs},
+  journal = {Management Science},
+  volume  = {33},
+  number  = {8},
+  pages   = {1035--1047},
+  year    = {1987}
+}
+
+@article{min2022atctuning,
+  author  = {Min, Boae and Kim, Chang Ouk},
+  title   = {State-Dependent Parameter Tuning of the Apparent Tardiness Cost Dispatching Rule Using Deep Reinforcement Learning},
+  journal = {IEEE Access},
+  volume  = {10},
+  pages   = {20187--20198},
+  year    = {2022}
+}
+
+@book{pinedo2016scheduling,
+  author    = {Pinedo, Michael L.},
+  title     = {Scheduling: Theory, Algorithms, and Systems},
+  edition   = {5th},
+  publisher = {Springer},
+  year      = {2016}
+}
+
+@article{graham1969lpt,
+  author  = {Graham, Ronald L.},
+  title   = {Bounds on Multiprocessing Timing Anomalies},
+  journal = {SIAM Journal on Applied Mathematics},
+  volume  = {17},
+  number  = {2},
+  pages   = {416--429},
+  year    = {1969}
+}
+
+@article{smith1956wspt,
+  author  = {Smith, Wayne E.},
+  title   = {Various Optimizers for Single-Stage Production},
+  journal = {Naval Research Logistics Quarterly},
+  volume  = {3},
+  number  = {1-2},
+  pages   = {59--66},
+  year    = {1956}
+}
+
+@article{johnson1973binpacking,
+  author  = {Johnson, David S.},
+  title   = {Near-Optimal Bin Packing Algorithms},
+  journal = {Journal of the ACM},
+  year    = {1973}
+}
+
+@article{grandl2014tetris,
+  author  = {Grandl, Robert and Ananthanarayanan, Ganesh and Kandula, Srikanth and Rao, Sriram and Akella, Aditya},
+  title   = {Multi-Resource Packing for Cluster Schedulers},
+  journal = {ACM SIGCOMM Computer Communication Review},
+  volume  = {44},
+  number  = {4},
+  pages   = {455--466},
+  year    = {2014}
+}
+
+@article{lenstra1977complexity,
+  author  = {Lenstra, Jan Karel and Rinnooy Kan, Alexander H. G. and Brucker, Peter},
+  title   = {Complexity of Machine Scheduling Problems},
+  journal = {Annals of Discrete Mathematics},
+  volume  = {1},
+  pages   = {343--362},
+  year    = {1977}
+}
+
+@misc{ortools,
+  author       = {Perron, Laurent and Furnon, Vincent},
+  title        = {OR-Tools},
+  howpublished = {Google},
+  url          = {https://developers.google.com/optimization/cp/cp_solver}
+}
+
+@article{lassoued2026hyperheuristic,
+  author  = {Lassoued, Sofiene and Gobachew, Asrat and Lier, Stefan and Schwung, Andreas},
+  title   = {Policy-Based Deep Reinforcement Learning Hyperheuristics for Job-Shop Scheduling Problems},
+  journal = {arXiv preprint arXiv:2601.11189},
+  year    = {2026}
+}
+
+@article{cie2025dispatchruleselection,
+  author  = {Marques, Nuno and Figueira, Gon{\c{c}}alo and Guimar{\~a}es, Lu{\'i}s},
+  title   = {Dynamic Dispatching Rule Selection for the Job Shop Scheduling Problem},
+  journal = {Computers and Industrial Engineering},
+  volume  = {210},
+  pages   = {111471},
+  doi     = {10.1016/j.cie.2025.111471},
+  year    = {2025}
+}
+
+% ---------------------------------------------------------------------
+% Neural network architecture (pointer / attention)
+% ---------------------------------------------------------------------
+
+@inproceedings{vinyals2015pointernet,
+  author    = {Vinyals, Oriol and Fortunato, Meire and Jaitly, Navdeep},
+  title     = {Pointer Networks},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2015}
+}
+
+@inproceedings{kool2019attention,
+  author    = {Kool, Wouter and van Hoof, Herke and Welling, Max},
+  title     = {Attention, Learn to Solve Routing Problems!},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+@article{song2023daniel,
+  author  = {Song, Wen and others},
+  title   = {Flexible Job Shop Scheduling via Dual Attention Network Based Reinforcement Learning},
+  journal = {arXiv preprint arXiv:2305.05119},
+  year    = {2023}
+}
+
+@article{hu2021attend2pack,
+  author  = {Zhang, Jingwei and Zi, Bin and Ge, Xiaoyu},
+  title   = {Attend2Pack: Bin Packing through Deep Reinforcement Learning with Attention},
+  journal = {arXiv preprint arXiv:2107.04333},
+  year    = {2021}
+}
+
+@article{gnn2024jsspsurvey,
+  title   = {Graph Neural Networks for Job Shop Scheduling Problems: A Survey},
+  journal = {arXiv preprint arXiv:2406.14096},
+  year    = {2024}
+}
+
+@techreport{tavakoli2018actionbranching,
+  author      = {Tavakoli, Arash and Pardo, Fabio and Kormushev, Petar},
+  title       = {Action Branching Architectures for Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1711.08946},
+  year        = {2018}
+}
+
+@techreport{dulacarnold2015largeactionspaces,
+  author      = {Dulac-Arnold, Gabriel and Evans, Richard and van Hasselt, Hado and Sunehag, Peter and Lillicrap, Timothy and Hunt, Jonathan and Mann, Timothy and Weber, Theophane and Degris, Thomas and Coppin, Ben},
+  title       = {Deep Reinforcement Learning in Large Discrete Action Spaces},
+  institution = {arXiv},
+  number      = {1512.07679},
+  year        = {2015}
+}
+
+@article{sutton1999options,
+  author  = {Sutton, Richard S. and Precup, Doina and Singh, Satinder},
+  title   = {Between MDPs and Semi-MDPs: A Framework for Temporal Abstraction in Reinforcement Learning},
+  journal = {Artificial Intelligence},
+  volume  = {112},
+  number  = {1-2},
+  pages   = {181--211},
+  year    = {1999}
+}
+
+@inproceedings{huang2020invalidmasking,
+  author    = {Huang, Shengyi and Onta{\~n}{\'o}n, Santiago},
+  title     = {A Closer Look at Invalid Action Masking in Policy Gradient Algorithms},
+  booktitle = {Proceedings of the International FLAIRS Conference},
+  year      = {2020}
+}
+
+% ---------------------------------------------------------------------
+% RL theory / reward shaping / constrained RL
+% ---------------------------------------------------------------------
+
+@inproceedings{ng1999shaping,
+  author    = {Ng, Andrew Y. and Harada, Daishi and Russell, Stuart},
+  title     = {Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {1999}
+}
+
+@inproceedings{tessler2019rcpo,
+  author    = {Tessler, Chen and Mankowitz, Daniel J. and Mannor, Shie},
+  title     = {Reward Constrained Policy Optimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+@techreport{borkar2008stochasticapprox,
+  author      = {Borkar, Vivek S.},
+  title       = {Stochastic Approximation: A Dynamical Systems Viewpoint},
+  institution = {Cambridge University Press / Hindustan Book Agency},
+  year        = {2008}
+}
+
+@article{roijers2013morl,
+  author  = {Roijers, Diederik M. and Vamplew, Peter and Whiteson, Shimon and Dazeley, Richard},
+  title   = {A Survey of Multi-Objective Sequential Decision-Making},
+  journal = {Journal of Artificial Intelligence Research},
+  volume  = {48},
+  pages   = {67--113},
+  year    = {2013}
+}
+
+@techreport{eimer2023hyperparams,
+  author      = {Eimer, Theresa and Lindauer, Marius and Raileanu, Roberta},
+  title       = {Hyperparameters in Reinforcement Learning and How To Tune Them},
+  institution = {arXiv},
+  number      = {2306.01324},
+  year        = {2023}
+}
+
+@techreport{ray2019safeexploration,
+  author      = {Ray, Alex and Achiam, Joshua and Amodei, Dario},
+  title       = {Benchmarking Safe Exploration in Deep Reinforcement Learning},
+  institution = {arXiv},
+  number      = {1910.01708},
+  year        = {2019}
+}
+
+@inproceedings{stooke2020pidlagrangian,
+  author    = {Stooke, Adam and Achiam, Joshua and Abbeel, Pieter},
+  title     = {Responsive Safety in Reinforcement Learning by PID Lagrangian Methods},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2020}
+}
+
+@techreport{amodei2016concreteproblems,
+  author      = {Amodei, Dario and Olah, Chris and Steinhardt, Jacob and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
+  title       = {Concrete Problems in AI Safety},
+  institution = {arXiv},
+  number      = {1606.06565},
+  year        = {2016}
+}
+
+@article{skalse2022rewardhacking,
+  author  = {Skalse, Joar and Howe, Nikolaus and Krasheninnikov, Dmitrii and Krueger, David},
+  title   = {Defining and Characterizing Reward Hacking},
+  journal = {arXiv preprint arXiv:2209.13085},
+  year    = {2022}
+}
+
+% ---------------------------------------------------------------------
+% Optimization / multi-objective tooling
+% ---------------------------------------------------------------------
+
+@article{deb2002nsga2,
+  author  = {Deb, Kalyanmoy and Pratap, Amrit and Agarwal, Sameer and Meyarivan, T.},
+  title   = {A Fast and Elitist Multiobjective Genetic Algorithm: NSGA-II},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {6},
+  number  = {2},
+  pages   = {182--197},
+  year    = {2002}
+}
+
+@inproceedings{akiba2019optuna,
+  author    = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru and Koyama, Masanori},
+  title     = {Optuna: A Next-Generation Hyperparameter Optimization Framework},
+  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining (KDD)},
+  year      = {2019}
+}
+
+@misc{alkhalifa2025comparative,
+  title         = {A Comparative Review of Parallel Exact, Heuristic, Metaheuristic, and Hybrid Optimization Techniques for the Traveling Salesman Problem},
+  author        = {Alkhalifa, Rabab and Alkhomayes, Fatima and Almazroua, Boushra and Alhaidan, Dana and Alothman, Maryam and Almuhaidib, Jumana},
+  year          = {2025},
+  eprint        = {2505.18278},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.DC},
+  url           = {https://arxiv.org/abs/2505.18278}
+}
+
+% ---------------------------------------------------------------------
+% Queueing theory (online / dynamic-arrival case)
+% ---------------------------------------------------------------------
+
+@book{kleinrock1975queueing,
+  author    = {Kleinrock, Leonard},
+  title     = {Queueing Systems, Volume 1: Theory},
+  publisher = {Wiley},
+  year      = {1975}
+}
+
+@article{little1961law,
+  author  = {Little, John D. C.},
+  title   = {A Proof for the Queuing Formula: L = lambda W},
+  journal = {Operations Research},
+  volume  = {9},
+  number  = {3},
+  pages   = {383--387},
+  year    = {1961}
+}
+
+% ---------------------------------------------------------------------
+% Real-world cloud workload characterization (heavy-tailed arrivals, S2W10)
+% ---------------------------------------------------------------------
+
+@inproceedings{reiss2012googletrace,
+  author    = {Reiss, Charles and Tumanov, Alexey and Ganger, Gregory R. and Katz, Randy H. and Kozuch, Michael A.},
+  title     = {Heterogeneity and Dynamicity of Clouds at Scale: Google Trace Analysis},
+  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  year      = {2012}
+}
+
+@inproceedings{cortez2017resourcecentral,
+  author    = {Cortez, Eli and Bonde, Anand and Muzio, Alexandre and Russinovich, Mark and Fontoura, Marcus and Bianchini, Ricardo},
+  title     = {Resource Central: Understanding and Predicting Workloads for Improved Resource Management in Large Cloud Platforms},
+  booktitle = {Proceedings of the 26th ACM Symposium on Operating Systems Principles (SOSP)},
+  year      = {2017}
+}
+
+% ---------------------------------------------------------------------
+% Cloud resource allocation background / literature review
+% Merged 2026-09-17 from NotesForAI/ethansreferences.bib (the user's own
+% collection, mostly cited in the paper's abstract/introduction rather than
+% a Future/research dated doc). No key collisions with the sections above at
+% merge time -- see hu2021attend2pack's note above for the one semantic
+% duplicate (same arXiv ID, conflicting author lists, not yet resolved).
+% ---------------------------------------------------------------------
+
+@book{huawei2022,
+  author    = {Huawei Technologies},
+  title     = {Introduction to Cloud Computing Computing},
+  publisher = {Springer},
+  address   = {New York},
+  year      = {2022},
+  booktitle = {Cloud Computing Technology},
+  url       = {https://link.springer.com/book/10.1007/978-981-19-3026-3}
+}
+
+@article{saidi2023,
+  author  = {Saidi, Karima and Bardou, Dalal},
+  title   = {Task Scheduling and VM Placement to Resource Allocation in Cloud Computing: Challenges and Opportunities},
+  journal = {Cluster Computing},
+  volume  = {26},
+  number  = {5},
+  pages   = {3069--3087},
+  year    = {2023},
+  doi     = {10.1007/s10586-023-04098-4},
+  url     = {www.proquest.com/docview/2918267010}
+}
+
+@article{sdn2021,
+  author  = {Mohamed, Arwa and Hamdan, Mosab and Khan, Suleman and Abdelaziz, Ahmed and Babiker, Sharief F. and Imran, Muhammad and Marsono, M. N.},
+  title   = {Software-defined networks for resource allocation in cloud computing: A survey},
+  journal = {Computer Networks},
+  volume  = {195},
+  pages   = {108151},
+  year    = {2021},
+  doi     = {10.1016/j.comnet.2021.108151},
+  url     = {https://www.sciencedirect.com/science/article/abs/pii/S1389128621002152}
+}
+
+% Outdated
+@article{vinothina2012,
+  author  = {Vinothina, V. V. and Sridaran, R. and Ganapathi, P.},
+  title   = {A Survey on Resource Allocation Strategies in Cloud Computing},
+  journal = {International Journal of Advanced Computer Science and Applications},
+  year    = {2012},
+  doi     = {10.14569/IJACSA.2012.030616},
+  url     = { https://doi.org/10.14569/IJACSA.2012}
+
+}
+
+% Outdated
+@inproceedings{parikh2013,
+  author    = {Parikh, S. M.},
+  title     = {A Survey on Cloud Computing Resource Allocation Techniques},
+  booktitle = {2013 Nirma University International Conference on Engineering (NUiCONE)},
+  pages     = {1--5},
+  year      = {2013},
+  doi       = {10.1109/NUiCONE.2013.6780076},
+  publisher = {IEEE},
+url         = {https://doi.org/10.1109/NUiCONE.2013.6780076}
+}
+
+@article{mohamaddiah2014,
+  author  = {Mohamaddiah, M. H. and Abdullah, A. and Subramaniam, S. and Hussin, M.},
+  title   = {A Survey on Resource Allocation and Monitoring in Cloud Computing},
+  journal = {International Journal of Machine Learning and Computing},
+  volume  = {4},
+  number  = {1},
+  pages   = {31--38},
+  year    = {2014},
+  doi     = {10.7763/IJMLC.2014.V4.382},
+  url     = {https://doi.org/10.7763/IJMLC.2014.V4.382 }
+}
+
+@article{anuradha2014,
+  author  = {Anuradha, V. and Sumathi, D.},
+  title   = {A Survey on Resource Allocation Strategies in Cloud Computing},
+  journal = {International Conference on Information Communication and Embedded Systems (ICICES2014)},
+  pages   = {1--7},
+  year    = {2014}
+}
+
+@incollection{dynamic2026,
+  author    = {Bhatnagar, S. and Mahant, R.},
+  title     = {Dynamic Resource Allocation in Cloud Computing Environments: AI-Driven Approaches for Optimizing Workload Distribution and Cost Efficiency},
+  booktitle = {Proceedings of International Conference on Paradigms of Communication, Computing and Data Analytics (PCCDA 2025)},
+  editor    = {Nanda, S. J. and Mittal, H. and Lim, M. H.},
+  series    = {Algorithms for Intelligent Systems},
+  publisher = {Springer},
+  address   = {Singapore},
+  year      = {2026},
+  doi       = {10.1007/978-981-96-6843-4\_23},
+  url       = {https://link.springer.com/chapter/10.1007/978-981-96-6843-4\_23}
+}
+
+@incollection{dvbpp2026,
+  author    = {Lee, Zong Yu and Tang, Xueyan},
+  title     = {Evaluation of Dynamic Vector Bin Packing for Virtual Machine Placement},
+  booktitle = {arXiv preprint},
+  year      = {2026},
+  url       = {https://arxiv.org/html/2602.14704v1}
+}
+
+@article{lbts2024,
+  author  = {Devi, Nisha and Dalal, Sandeep and Solanki, Kamna and others},
+  title   = {A Systematic Literature Review for Load Balancing and Task Scheduling Techniques in Cloud Computing},
+  journal = {Artificial Intelligence Review},
+  volume  = {57},
+  pages   = {276},
+  year    = {2024},
+  doi     = {10.1007/s10462-024-10925-w},
+  url     = {https://link.springer.com/article/10.1007/s10462-024-10925-w}
+}
+
+@article{autoscaling2023,
+  author  = {Alharthi, S. and Alshamsi, A. and Alseiari, A. and Alwarafy, A.},
+  title   = {Auto-Scaling Techniques in Cloud Computing: Issues and Research Directions},
+  journal = {Sensors},
+  volume  = {24},
+  number  = {17},
+  pages   = {5551},
+  year    = {2024},
+  doi     = {10.3390/s24175551},
+  url     = {https://www.mdpi.com/1424-8220/24/17/5551}
+}
+
+@inproceedings{lb2024,
+  author    = {Makkar, R. and Mangla, N.},
+  title     = {Load Balancing and Task Scheduling Methods in Cloud Computing -- A Review},
+  booktitle = {2024 7th International Conference on Contemporary Computing and Informatics (IC3I)},
+  pages     = {1037--1043},
+  year      = {2024},
+  doi       = {https://ieeexplore.ieee.org/document/10829119/},
+  publisher = {IEEE}
+}
+
+@phdthesis{approx2015,
+  author = {Khan, Arindam},
+  title  = {Approximation Algorithms for Multidimensional Bin Packing},
+  school = {Georgia Institute of Technology},
+  year   = {2015},
+  url    = {https://www.proquest.com/dissertations-theses/approximation-algorithms-multidimensional-bin/docview/3275489033/se-2}
+}
+
+@inproceedings{sla2013,
+  author    = {Hasan, M. S. and Huh, E.},
+  title     = {Maximizing SLA and QoE in Heterogeneous Cloud Computing Environment},
+  booktitle = {World Congress in Computer Science, Computer Engineering and Applied Computing (WorldComp)},
+  year      = {2013},
+  publisher = {The Steering Committee of WorldComp},
+  url       = {https://www.proquest.com/conference-papers-proceedings/maximizing-sla-qoe-heterogeneous-cloud-computing/docview/1490902207/se-2}
+}
+
+@article{cloudkpi2010,
+  author  = {Zhang, Qi and Cheng, Lu and Boutaba, Raouf},
+  title   = {Cloud Computing: State-of-the-Art and Research Challenges},
+  journal = {Journal of Internet Services and Applications},
+  volume  = {1},
+  pages   = {7--18},
+  year    = {2010},
+  doi     = {10.1007/s13174-010-0007-6},
+  url     = {https://link.springer.com/article/10.1007/s13174-010-0007-6}
+}
+
+@article{migration2020,
+  author  = {Shirvani, Mirsaeid Hosseini and Rahmani, Amir Masoud and Sahafi, Amir},
+  title   = {A Survey Study on Virtual Machine Migration and Server Consolidation Techniques in DVFS-Enabled Cloud Datacenter: Taxonomy and Challenges},
+  journal = {Journal of King Saud University - Computer and Information Sciences},
+  volume  = {32},
+  number  = {3},
+  pages   = {267--286},
+  year    = {2020},
+  doi     = {10.1016/j.jksuci.2018.07.001},
+  url     = {https://www.sciencedirect.com/science/article/pii/S1319157818302842}
+}
+
+@article{binpacking2019,
+  author  = {Kumaraswamy, S. and Nair, M. K.},
+  title   = {Bin Packing Algorithms for Virtual Machine Placement in Cloud Computing: A Review},
+  journal = {International Journal of Electrical and Computer Engineering},
+  volume  = {9},
+  number  = {1},
+  pages   = {512--524},
+  year    = {2019},
+  url     = {https://www.proquest.com/scholarly-journals/bin-packing-algorithms-virtual-machine-placement/docview/2205380596/se-2}
+}
+
+@article{energyaware2012,
+  author  = {Beloglazov, Anton and Abawajy, Jemal and Buyya, Rajkumar},
+  title   = {Energy-Aware Resource Allocation Heuristics for Efficient Management of Data Centers for Cloud Computing},
+  journal = {Future Generation Computer Systems},
+  volume  = {28},
+  number  = {5},
+  pages   = {755--768},
+  year    = {2012},
+  doi     = {10.1016/j.future.2011.04.017},
+  url     = {https://www.sciencedirect.com/science/article/pii/S0167739X11000689?via\%3Dihub}
+}
+
+@inproceedings{fan2007powerprovisioning,
+  author    = {Fan, Xiaobo and Weber, Wolf-Dietrich and Barroso, Luiz Andr\'{e}},
+  title     = {Power Provisioning for a Warehouse-sized Computer},
+  booktitle = {Proceedings of the 34th Annual International Symposium on Computer Architecture (ISCA)},
+  year      = {2007},
+  pages     = {13--23},
+  doi       = {10.1145/1250662.1250665},
+  url       = {https://www.barroso.org/publications/PowerProvisioning.pdf}
+}
+
+@article{ranking2013,
+  author  = {Fox, Geoffrey and Pallickara, Shrideep and Garg, Saurabh Kumar and Versteeg, Steve and Buyya, Rajkumar},
+  title   = {A Framework for Ranking of Cloud Computing Services},
+  journal = {Future Generation Computer Systems},
+  volume  = {29},
+  number  = {4},
+  pages   = {1012--1023},
+  year    = {2013},
+  doi     = {10.1016/j.future.2012.06.006}
+}
+
+% Very good on exploring RL for cloud computing RA. Researches current research papers and aims to answer a set of questions. Moreover, explains everything about RL, how it works, and mathematic formulation and algorithms. Even talks about the different methodologies and RL algorithms used for different BP problems. Even mentions public datasets, and RL structures.
+@article{ml_ra_litrev2025,
+    author = {Rathee, Ajay and Dalal, Sandeep},
+    year={2025},
+    month={09},
+    title={A systematic literature review of machine learning-based resource allocation techniques in cloud computing},
+    journal={Computing.Archives for Informatics and Numerical Computation},
+    volume={107},
+    number={9},
+    pages={179},
+    isbn={0010485X},
+    language={English},
+    url={https://www.proquest.com/scholarly-journals/systematic-literature-review-machine-learning/docview/3239203131/se-2},
+}
+
+% Good on understanding RL for bin packing and the advancements.
+% VERY VERY VERY GOOD PAPER
+@article{DAHMANI2025100616,
+title = {Reinforcement learning based intelligent optimisation for bin packing problems: A review},
+journal = {Array},
+volume = {28},
+pages = {100616},
+year = {2025},
+issn = {2590-0056},
+doi = {https://doi.org/10.1016/j.array.2025.100616},
+url = {https://www.sciencedirect.com/science/article/pii/S2590005625002437},
+author = {Nadia Dahmani and Amril Nazir and Ikbal Taleb and Syed M. Salman Bukhari},
+keywords = {Reinforcement learning, Bin packing problems, Deep reinforcement learning, Algorithmic performance, Logistics and manufacturing optimisation},
+abstract = {The convergence of Reinforcement Learning (RL) and Bin Packing Problems (BPP) is a critical field of study that has profound ramifications in logistics, manufacturing, computer, and retail industries. This paper thoroughly examines the progression from simple rule-based tactics to advanced Deep Reinforcement Learning (DRL) techniques in solving BPPs. By conducting a thorough review of 231 papers conducted between 2019 and 2024, we address and provide answers to important research inquiries, such as “To what extent has academic research explored the use of RL for BPP during this time frame?” and “Which specific areas of application and methodologies have been predominantly used?” Our examination highlights a significant and rapid growth in research activity in this field. The study reveals a clear inclination towards DRL compared to traditional RL techniques, especially in complex, multi-dimensional BPP situations. It also identifies a growing interest in hybrid models and transfer learning methods as potential solutions to the challenges of scalability, computational requirements, and the exploration-exploitation trade-off. This study shows that some DRL models are highly effective in complex BPP scenarios. It suggests that future research should focus on scalability, operational efficiency, and the practical implementation of theoretical achievements in industry. This study aims to promote multidisciplinary discourse and collaboration in optimisation and artificial intelligence by comprehensively analysing current achievements and identifying the remaining problems.}
+}
+
+% RL approach to bin packing (not cloud related)
+@article{10854610,
+  author={Wang, Baoying and Lin, Zhaohui and Kong, Weijie and Dong, Huixu},
+  journal={IEEE Robotics and Automation Letters},
+  title={Bin Packing Optimization via Deep Reinforcement Learning},
+  year={2025},
+  volume={10},
+  number={3},
+  pages={2542-2549},
+  keywords={Three-dimensional displays;Genetic algorithms;Costs;Deep reinforcement learning;Decoding;Accuracy;Search problems;Logistics;Convolutional neural networks;Reinforcement learning;Robot sensing systems;Reinforcement learning;manipulation planning;bin packing problem (BPP);robot packing},
+  doi={10.1109/LRA.2025.3534070}
+  }
+
+% RESOLVED (2026-09-18, S2W9): this was a DBLP-exported duplicate of
+% hu2021attend2pack above (same paper, arXiv:2107.04333). The "conflicting
+% author lists" note that used to justify keeping both was itself stale --
+% hu2021attend2pack's author field was already corrected to Zhang/Zi/Ge
+% (matching this entry exactly) earlier the same day, so there was no longer
+% any actual conflict, just a pure duplicate under a raw DBLP export key
+% (violating this file's own <author><year><slug> key convention). Removed;
+% cite hu2021attend2pack for this paper.
+
+% Used the system implementation section
+@ARTICLE{7039233,
+  author={Hadji, Makhlouf and Zeghlache, Djamal},
+  journal={IEEE Transactions on Cloud Computing},
+  title={Mathematical Programming Approach for Revenue Maximization in Cloud Federations},
+  year={2017},
+  volume={5},
+  number={1},
+  pages={99-111},
+  keywords={Pricing;Outsourcing;Cloud computing;Mathematical model;Resource management;Computational modeling;Optimization;Cloud federation;resource allocation;mathematical programming;linear integer programming;pricing},
+  doi={10.1109/TCC.2015.2402674}}
+
+% Good problem formulation using VMs however paper is about particle swarm optimisation
+@ARTICLE{6782394,
+  author={Rodriguez, Maria Alejandra and Buyya, Rajkumar},
+  journal={IEEE Transactions on Cloud Computing},
+  title={Deadline Based Resource Provisioningand Scheduling Algorithm for Scientific Workflows on Clouds},
+  year={2014},
+  volume={2},
+  number={2},
+  pages={222-235},
+  keywords={Quality of service;Cloud computing;Processor scheduling;Computational modeling;Distributed processing;Computer applications;Mathematical model;Cloud computing;resource provisioning;scheduling;scientific workflow},
+  doi={10.1109/TCC.2014.2314655}}
+
+% Outlines deep reinforcement learning
+@article{DRL_Intrusion,
+author={Yang,Wanrong and Acuto,Alberto and Zhou,Yihang and Wojtczak,Dominik},
+year={2026},
+month={Jun 01},
+title={A Survey for Deep Reinforcement Learning Based Network Intrusion Detection},
+journal={Applied AI Letters},
+volume={7},
+number={2},
+pages={22},
+url={https://www.proquest.com/scholarly-journals/survey-deep-reinforcement-learning-based-network/docview/3314625396/se-2},
+}
+
+% Explores deep reinforcement learning
+@article{LADOSZ20221,
+title = {Exploration in deep reinforcement learning: A survey},
+journal = {Information Fusion},
+volume = {85},
+pages = {1-22},
+year = {2022},
+issn = {1566-2535},
+doi = {https://doi.org/10.1016/j.inffus.2022.03.003},
+url = {https://www.sciencedirect.com/science/article/pii/S1566253522000288},
+author = {Pawel Ladosz and Lilian Weng and Minwoo Kim and Hyondong Oh},
+keywords = {Deep reinforcement learning, Exploration, Intrinsic motivation, Sparse reward problems}
+}
+
+% Introduction to reinforcement learning
+@ARTICLE{8103164,
+  author={Arulkumaran, Kai and Deisenroth, Marc Peter and Brundage, Miles and Bharath, Anil Anthony},
+  journal={IEEE Signal Processing Magazine},
+  title={Deep Reinforcement Learning: A Brief Survey},
+  year={2017},
+  volume={34},
+  number={6},
+  pages={26-38},
+  keywords={Artificial intelligence;Signal processing algorithms;Visualization;Machine learning;Learning (artificial intelligence);Neural networks},
+  doi={10.1109/MSP.2017.2743240}}
+
+@article{vanheeswijk2021fourpolicies,
+  title        = {The Four Policy Classes of Reinforcement Learning},
+  author       = {van Heeswijk, Wouter},
+  journal      = {Towards Data Science},
+  year         = {2021},
+  month        = {May},
+  url          = {https://towardsdatascience.com/the-four-policy-classes-of-reinforcement-learning-38185daa6c8a}
+}
+
+@article{williams1992reinforce,
+  author    = {Ronald J. Williams},
+  title     = {Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning},
+  journal   = {Machine Learning},
+  year      = {1992},
+  volume    = {8},
+  number    = {3--4},
+  pages     = {229--256},
+  month     = may,
+  doi       = {10.1007/BF00992696},
+  url       = {https://doi.org/10.1007/BF00992696},
+  issn      = {0885-6125},
+  publisher = {Springer}
+}
+
+@inproceedings{sutton2000policy,
+  author    = {Richard S. Sutton and David A. McAllester and Satinder P. Singh and Yishay Mansour},
+  title     = {Policy Gradient Methods for Reinforcement Learning with Function Approximation},
+  booktitle = {Advances in Neural Information Processing Systems 12 (NIPS 1999)},
+  editor    = {S. A. Solla and T. K. Leen and K.-R. M{\"u}ller},
+  year      = {2000},
+  pages     = {1057--1063},
+  publisher = {MIT Press},
+  url       = {https://papers.nips.cc/paper_files/paper/1999/hash/464d828b85b0bed98e80ade0a5c43b0f-Abstract.html}
+}
+
+@inproceedings{konda1999actorcritic,
+  title        = {Actor-Critic Algorithms},
+  author       = {Konda, Vijay R. and Tsitsiklis, John N.},
+  booktitle    = {Advances in Neural Information Processing Systems},
+  volume       = {12},
+  pages        = {1008--1014},
+  year         = {1999},
+  publisher    = {MIT Press},
+  url          = {https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf}
+}
+
+@article{schulman2017ppo,
+  author  = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
+  title   = {Proximal Policy Optimization Algorithms},
+  journal = {arXiv preprint arXiv:1707.06347},
+  year    = {2017}
+}
+
+@inproceedings{schulman2015trpo,
+  author    = {Schulman, John and Levine, Sergey and Abbeel, Pieter and Jordan, Michael and Moritz, Philipp},
+  title     = {Trust Region Policy Optimization},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2015}
+}
+
+@inproceedings{mnih2016a3c,
+  author    = {Mnih, Volodymyr and Badia, Adri{\`a} Puigdom{\`e}nech and Mirza, Mehdi and Graves, Alex and Lillicrap, Timothy and Harley, Tim and Silver, David and Kavukcuoglu, Koray},
+  title     = {Asynchronous Methods for Deep Reinforcement Learning},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2016}
+}
+
+@article{lehmann2024policygradients,
+  title={The Definitive Guide to Policy Gradients in Deep Reinforcement Learning: Theory, Algorithms and Implementations},
+  author={Lehmann, Matthias},
+  journal={arXiv preprint arXiv:2401.13662},
+  year={2024},
+  url={https://arxiv.org/abs/2401.13662}
+}
+
+@article{chadia2023understandingRL,
+  title={Understanding Reinforcement Learning Algorithms: The Progress from Basic Q-learning to Proximal Policy Optimization},
+  author={Chadia, Mohamed-Amine and Mousannifa, Hajar},
+  journal={arXiv preprint arXiv:2304.00026},
+  year={2023},
+  url={https://arxiv.org/abs/2304.00026}
+}
+
+@misc{aigreeksActorCritic,
+  author       = {AI Greeks},
+  title        = {Types of Actor{-}Critic Algorithms in Reinforcement Learning},
+  year         = {2024},
+  howpublished = {\url{https://aigreeks.com/types-of-actor-critic-algorithms-in-reinforcement/}}
+}
+
+@misc{apxml_a2c_a3c_2026,
+  title        = {A2C and A3C Algorithms},
+  author       = {{ApX Machine Learning}},
+  howpublished = {\url{https://apxml.com/courses/advanced-reinforcement-learning/chapter-3-advanced-policy-gradients-actor-critic/a2c-a3c}},
+  year         = {2026}
+}
+
+@misc{yu2022mappo,
+  author      = {Yu, Chao and Velu, Akash and Vinitsky, Eugene and Gao, Jiaxuan and Wang, Yu and Bayen, Alexandre and Wu, Yi},
+  title       = {The Surprising Effectiveness of PPO in Cooperative, Multi-Agent Games},
+  howpublished = {arXiv preprint arXiv:2103.01955},
+  year        = {2022}
+}
+
+@inproceedings{rashid2018qmix,
+  author    = {Rashid, Tabish and Samvelyan, Mikayel and Schroeder, Christian and Farquhar, Gregory and Foerster, Jakob and Whiteson, Shimon},
+  title     = {QMIX: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  volume    = {80},
+  pages     = {4295--4304},
+  year      = {2018}
+}
+
+@article{hady2025marlsurvey,
+  author  = {Hady, Mahardhika Ahmad and Hu, Shu and Pratama, Mahardhika and Cao, Zehong and Kowalczyk, Ryszard},
+  title   = {Multi-Agent Reinforcement Learning for Resources Allocation Optimization: A Survey},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {11},
+  pages   = {354},
+  year    = {2025},
+  doi     = {10.1007/s10462-025-11340-5}
+}
+
+@article{burke2013hyperheuristicsurvey,
+  author  = {Burke, Edmund K. and Gendreau, Michel and Hyde, Matthew and Kendall, Graham and Ochoa, Gabriela and \"{O}zcan, Ender and Qu, Rong},
+  title   = {Hyper-heuristics: A Survey of the State of the Art},
+  journal = {Journal of the Operational Research Society},
+  volume  = {64},
+  number  = {12},
+  pages   = {1695--1724},
+  year    = {2013},
+  doi     = {10.1057/jors.2013.71}
+}
+
+@article{xu2025learntooptimise,
+  author  = {Xu, Meng and Mei, Yi and Zhang, Fangfang and Zhang, Mengjie},
+  title   = {Learn to Optimise for Job Shop Scheduling: A Survey with Comparison Between Genetic Programming and Reinforcement Learning},
+  journal = {Artificial Intelligence Review},
+  volume  = {58},
+  number  = {6},
+  year    = {2025},
+  doi     = {10.1007/s10462-024-11059-9}
+}
+
+@article{chen2024drlgphh,
+  author  = {Chen, Xinan and Bai, Ruibin and Qu, Rong and Dong, Jiawei and Jin, Yuan},
+  title   = {Deep Reinforcement Learning Assisted Genetic Programming Ensemble Hyper-Heuristics for Dynamic Scheduling of Container Port Trucks},
+  journal = {IEEE Transactions on Evolutionary Computation},
+  volume  = {29},
+  number  = {4},
+  year    = {2024},
+  doi     = {10.1109/TEVC.2024.3381042}
+}
+
+% ---------------------------------------------------------------------
+% Single-machine RL scheduling precedents (Online Case section)
+% ---------------------------------------------------------------------
+
+@article{wang2005reinforcement,
+  author  = {Wang, Yi-Chi and Usher, John M.},
+  title   = {Application of Reinforcement Learning for Agent-Based Production Scheduling},
+  journal = {Engineering Applications of Artificial Intelligence},
+  volume  = {18},
+  number  = {1},
+  pages   = {73--82},
+  year    = {2005},
+  doi     = {10.1016/j.engappai.2004.08.018}
+}
+
+@article{chen2013flexible,
+  author  = {Chen, Bo and Matis, Timothy I.},
+  title   = {A Flexible Dispatching Rule for Minimizing Tardiness in Job Shop Scheduling},
+  journal = {International Journal of Production Economics},
+  volume  = {141},
+  number  = {1},
+  pages   = {360--365},
+  year    = {2013},
+  doi     = {10.1016/j.ijpe.2012.08.017}
+}
+
+% ---- Added 2026-09-28 (S2W11) for the objective-redesign discussion
+% (Future/research/2026-09-28-objective-redesign-discussion.md). Bibliographic details
+% verified online (publisher / dblp pages) unless a note says otherwise.
+
+@article{barroso2007energyproportional,
+  author  = {Barroso, Luiz Andr\'{e} and H\"{o}lzle, Urs},
+  title   = {The Case for Energy-Proportional Computing},
+  journal = {IEEE Computer},
+  volume  = {40},
+  number  = {12},
+  pages   = {33--37},
+  year    = {2007},
+  doi     = {10.1109/MC.2007.443}
+}
+
+@inproceedings{wong2016peas,
+  author    = {Wong, Daniel},
+  title     = {Peak Efficiency Aware Scheduling for Highly Energy Proportional Servers},
+  booktitle = {Proceedings of the 43rd International Symposium on Computer Architecture (ISCA)},
+  pages     = {481--492},
+  year      = {2016}
+}
+
+@inproceedings{ruan2015pprgear,
+  author    = {Ruan, Xiaojun and Chen, Haiquan},
+  title     = {Performance-to-Power Ratio Aware Virtual Machine (VM) Allocation in Energy-Efficient Clouds},
+  booktitle = {IEEE International Conference on Cluster Computing (CLUSTER)},
+  year      = {2015}
+}
+
+@misc{specpower2008,
+  author       = {{Standard Performance Evaluation Corporation}},
+  title        = {{SPECpower\_ssj2008} Benchmark and Run and Reporting Rules},
+  howpublished = {\url{https://www.spec.org/power_ssj2008/}},
+  year         = {2008}
+}
+
+@article{beloglazov2012optimalconsolidation,
+  author  = {Beloglazov, Anton and Buyya, Rajkumar},
+  title   = {Optimal Online Deterministic Algorithms and Adaptive Heuristics for Energy and Performance Efficient Dynamic Consolidation of Virtual Machines in Cloud Data Centers},
+  journal = {Concurrency and Computation: Practice and Experience},
+  volume  = {24},
+  number  = {13},
+  pages   = {1397--1420},
+  year    = {2012},
+  doi     = {10.1002/cpe.1867}
+}
+
+@inproceedings{verma2015borg,
+  author    = {Verma, Abhishek and Pedrosa, Luis and Korupolu, Madhukar and Oppenheimer, David and Tune, Eric and Wilkes, John},
+  title     = {Large-Scale Cluster Management at {Google} with {Borg}},
+  booktitle = {Proceedings of the Tenth European Conference on Computer Systems (EuroSys)},
+  year      = {2015},
+  doi       = {10.1145/2741948.2741964}
+}
+
+@inproceedings{tirmazi2020borgnext,
+  author    = {Tirmazi, Muhammad and Barker, Adam and Deng, Nan and Haque, Md E. and Qin, Zhijing Gene and Hand, Steven and Harchol-Balter, Mor and Wilkes, John},
+  title     = {Borg: The Next Generation},
+  booktitle = {Proceedings of the Fifteenth European Conference on Computer Systems (EuroSys)},
+  year      = {2020},
+  doi       = {10.1145/3342195.3387517}
+}
+
+@inproceedings{hadary2020protean,
+  author    = {Hadary, Ori and Marshall, Luke and Menache, Ishai and Pan, Abhisek and others},
+  title     = {Protean: {VM} Allocation Service at Scale},
+  booktitle = {14th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2020}
+}
+
+@inproceedings{tian2019alibabadag,
+  author    = {Tian, Huangshi and Zheng, Yunchuan and Wang, Wei},
+  title     = {Characterizing and Synthesizing Task Dependencies of Data-Parallel Jobs in {Alibaba} Cloud},
+  booktitle = {Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  year      = {2019},
+  doi       = {10.1145/3357223.3362710}
+}
+
+@article{dean2013tail,
+  author  = {Dean, Jeffrey and Barroso, Luiz Andr\'{e}},
+  title   = {The Tail at Scale},
+  journal = {Communications of the ACM},
+  volume  = {56},
+  number  = {2},
+  pages   = {74--80},
+  year    = {2013},
+  doi     = {10.1145/2408776.2408794}
+}
+
+@inproceedings{grandl2016graphene,
+  author    = {Grandl, Robert and Kandula, Srikanth and Rao, Sriram and Akella, Aditya and Kulkarni, Janardhan},
+  title     = {{GRAPHENE}: Packing and Dependency-Aware Scheduling for Data-Parallel Clusters},
+  booktitle = {12th USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2016}
+}
+
+@article{hayes2022morlguide,
+  author  = {Hayes, Conor F. and R\u{a}dulescu, Roxana and Bargiacchi, Eugenio and K\"{a}llstr\"{o}m, Johan and Macfarlane, Matthew and Reymond, Mathieu and others},
+  title   = {A Practical Guide to Multi-Objective Reinforcement Learning and Planning},
+  journal = {Autonomous Agents and Multi-Agent Systems},
+  volume  = {36},
+  number  = {1},
+  pages   = {26},
+  year    = {2022},
+  doi     = {10.1007/s10458-022-09552-y}
+}
+
+@inproceedings{abels2019dynamicweights,
+  author    = {Abels, Axel and Roijers, Diederik and Lenaerts, Tom and Now\'{e}, Ann and Steckelmacher, Denis},
+  title     = {Dynamic Weights in Multi-Objective Deep Reinforcement Learning},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  series    = {PMLR},
+  volume    = {97},
+  pages     = {11--20},
+  year      = {2019}
+}
+
+@article{bartal2000rejection,
+  author  = {Bartal, Yair and Leonardi, Stefano and Marchetti-Spaccamela, Alberto and Sgall, Ji\v{r}\'{i} and Stougie, Leen},
+  title   = {Multiprocessor Scheduling with Rejection},
+  journal = {SIAM Journal on Discrete Mathematics},
+  volume  = {13},
+  number  = {1},
+  pages   = {64--78},
+  year    = {2000}
+}
+
+@article{kanet2000insertedidle,
+  author  = {Kanet, John J. and Sridharan, V.},
+  title   = {Scheduling with Inserted Idle Time: Problem Taxonomy and Literature Review},
+  journal = {Operations Research},
+  volume  = {48},
+  number  = {1},
+  pages   = {99--110},
+  year    = {2000},
+  doi     = {10.1287/opre.48.1.99.12447}
+}
+
+@article{potts1985wtardiness,
+  author  = {Potts, Chris N. and Van Wassenhove, Luk N.},
+  title   = {A Branch and Bound Algorithm for the Total Weighted Tardiness Problem},
+  journal = {Operations Research},
+  volume  = {33},
+  number  = {2},
+  pages   = {363--377},
+  year    = {1985},
+  doi     = {10.1287/opre.33.2.363}
+}
+
+@book{pinedo2022scheduling,
+  author    = {Pinedo, Michael L.},
+  title     = {Scheduling: Theory, Algorithms, and Systems},
+  edition   = {6},
+  publisher = {Springer},
+  year      = {2022},
+  doi       = {10.1007/978-3-031-05921-6}
+}
+
+@article{nagabushnam2025energizingfog,
+  author  = {Nagabushnam, G. and Choi, Y. and Kim, K. H.},
+  title   = {Energizing the Fog: A Systematic Survey on Task Scheduling Strategies for Energy Optimization},
+  journal = {Cluster Computing},
+  volume  = {28},
+  pages   = {375},
+  year    = {2025},
+  doi     = {10.1007/s10586-025-05200-8}
+}
+
+@misc{huang2022a2cppo,
+  author        = {Huang, Shengyi and Kanervisto, Anssi and Raffin, Antonin and Wang, Weixun and Onta{\~n}{\'o}n, Santiago and Dossa, Rousslan Fernand Julien},
+  title         = {{A2C} is a Special Case of {PPO}},
+  year          = {2022},
+  eprint        = {2205.09123},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
+}
+
+@article{raffin2021sb3,
+  author  = {Raffin, Antonin and Hill, Ashley and Gleave, Adam and Kanervisto, Anssi and Ernestus, Maximilian and Dormann, Noah},
+  title   = {{Stable-Baselines3}: Reliable Reinforcement Learning Implementations},
+  journal = {Journal of Machine Learning Research},
+  year    = {2021},
+  volume  = {22},
+  number  = {268},
+  pages   = {1--8}
+}
+
+@article{kanet2004wmdd,
+  author  = {Kanet, John J. and Li, Xiaoming},
+  title   = {A Weighted Modified Due Date Rule for Sequencing to Minimize Weighted Tardiness},
+  journal = {Journal of Scheduling},
+  volume  = {7},
+  number  = {4},
+  pages   = {261--276},
+  year    = {2004}
+}
+
+@phdthesis{carroll1965covert,
+  author  = {Carroll, Donald C.},
+  title   = {Heuristic Sequencing of Single and Multiple Component Jobs},
+  school  = {Sloan School of Management, Massachusetts Institute of Technology},
+  year    = {1965}
+}
+
+@inproceedings{andrychowicz2021onpolicy,
+  author    = {Andrychowicz, Marcin and Raichuk, Anton and Sta{\'n}czyk, Piotr and Orsini, Manu and Girgin, Sertan and Marinier, Rapha{\"e}l and Hussenot, L{\'e}onard and Geist, Matthieu and Pietquin, Olivier and Michalski, Marcin and Gelly, Sylvain and Bachem, Olivier},
+  title     = {What Matters for On-Policy Deep Actor-Critic Methods? A Large-Scale Study},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2021}
+}
+
+@article{bergstra2012randomsearch,
+  author  = {Bergstra, James and Bengio, Yoshua},
+  title   = {Random Search for Hyper-Parameter Optimization},
+  journal = {Journal of Machine Learning Research},
+  volume  = {13},
+  pages   = {281--305},
+  year    = {2012}
+}
+
+@article{giffler1960active,
+  author  = {Giffler, B. and Thompson, G. L.},
+  title   = {Algorithms for Solving Production-Scheduling Problems},
+  journal = {Operations Research},
+  volume  = {8},
+  number  = {4},
+  pages   = {487--503},
+  year    = {1960}
+}
+
+@inproceedings{bergstra2011tpe,
+  author    = {Bergstra, James and Bardenet, R{\'e}mi and Bengio, Yoshua and K{\'e}gl, Bal{\'a}zs},
+  title     = {Algorithms for Hyper-Parameter Optimization},
+  booktitle = {Advances in Neural Information Processing Systems 24 (NeurIPS 2011)},
+  pages     = {2546--2554},
+  year      = {2011}
+}
+
+@inproceedings{mao2019variance,
+  author    = {Mao, Hongzi and Venkatakrishnan, Shaileshh Bojja and Schwarzkopf, Malte and Alizadeh, Mohammad},
+  title     = {Variance Reduction for Reinforcement Learning in Input-Driven Environments},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+@inproceedings{pinto2018asymmetric,
+  author    = {Pinto, Lerrel and Andrychowicz, Marcin and Welinder, Peter and Zaremba, Wojciech and Abbeel, Pieter},
+  title     = {Asymmetric Actor Critic for Image-Based Robot Learning},
+  booktitle = {Robotics: Science and Systems (RSS)},
+  year      = {2018}
+}
+
+@inproceedings{engstrom2020implementation,
+  author    = {Engstrom, Logan and Ilyas, Andrew and Santurkar, Shibani and Tsipras, Dimitris and Janoos, Firdaus and Rudolph, Larry and Madry, Aleksander},
+  title     = {Implementation Matters in Deep Policy Gradients: A Case Study on {PPO} and {TRPO}},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2020}
+}
+
+@inproceedings{kennedy1995pso,
+  author    = {Kennedy, James and Eberhart, Russell},
+  title     = {Particle Swarm Optimization},
+  booktitle = {Proceedings of ICNN'95 -- International Conference on Neural Networks},
+  volume    = {4},
+  pages     = {1942--1948},
+  year      = {1995},
+  doi       = {10.1109/ICNN.1995.488968}
+}
+@unknown{cloud_rco,
+author = {Anayat, Rakshanda},
+year = {2024},
+month = {11},
+pages = {},
+title = {Cloud-Based Reinforcement Learning in Resource-Constrained Environments: Real-Time Performance Optimization in Autonomous Systems},
+doi = {10.13140/RG.2.2.24832.24326}
+}

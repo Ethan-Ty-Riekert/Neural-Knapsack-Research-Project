@@ -7,9 +7,9 @@ J_comp = J + 15.8 m_T * weighted tardiness + 146 m_U * weighted late jobs + 153 
 | J only | WLST+FirstFit | 26,670 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 28,061 | +5.2% |
 | J + linear tardiness (x0.25) | WLST+FirstFit | 33,328 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 34,371 | +3.1% |
 | J + linear tardiness (x0.5) | WLST+FirstFit | 39,985 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 40,682 | +1.7% |
-| J + linear tardiness (x1) | WLST+FirstFit | 53,300 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aw (3 seeds) | 52,363 | -1.8% |
-| J + linear tardiness (x2) | WLST+FirstFit | 79,930 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aw (3 seeds) | 75,031 | -6.1% |
-| J + linear tardiness (x4) | WLST+FirstFit | 133,190 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-awa (3 seeds) | 119,419 | -10.3% |
+| J + linear tardiness (x1) | WLST+FirstFit | 53,300 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (1 seeds) | 52,188 | -2.1% |
+| J + linear tardiness (x2) | WLST+FirstFit | 79,930 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (1 seeds) | 74,481 | -6.8% |
+| J + linear tardiness (x4) | WLST+FirstFit | 133,190 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (1 seeds) | 119,067 | -10.6% |
 | J + late jobs (x0.25) | WLST+FirstFit | 33,358 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 33,496 | +0.4% |
 | J + late jobs (x0.5) | WLST+FirstFit | 40,046 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 38,931 | -2.8% |
 | J + late jobs (x1) | WLST+FirstFit | 53,421 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (1 seeds) | 47,234 | -11.6% |

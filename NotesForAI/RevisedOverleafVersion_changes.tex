@@ -1,7 +1,7 @@
 \documentclass[12pt]{article}
 %DIF LATEXDIFF DIFFERENCE FILE
 %DIF DEL old.tex   Sat Oct 10 00:54:32 2026
-%DIF ADD new.tex   Sat Oct 10 00:54:32 2026
+%DIF ADD new.tex   Sat Oct 10 01:57:14 2026
 
 \usepackage{graphicx}
 \usepackage{caption}
@@ -662,17 +662,15 @@ Constraint programming which models the scheduling problem and environment exact
 \addtocounter{paragraph}{-1}%DIFAUXCMD
 \DIFdel{instances use the same setup with addition of Poisson arrivals over $[0, H)$ at loads $\rho\in\{0.50, 0.75, 0.95, 1.10\}$ and deadline slack drawn between 10 }\DIFdelend \DIFaddbegin \DIFadd{$\{1, \dots, 9\}$, and weights from $\{1, \dots, 5\}$. Deadline tightness is set by the tardiness factor TF \mbox{%DIFAUXCMD
 \cite{potts1985wtardiness}}\hskip0pt%DIFAUXCMD
-: larger TF means tighter deadlines on average. The main setting uses TF $= 0.5$ (medium), with 0.2 }\DIFaddend and \DIFdelbegin \DIFdel{60. Moreover job resource }\DIFdelend \DIFaddbegin \DIFadd{0.8 as loose and tight variants. A unit-weight setting ($w_j = 1$) isolates the effect of job weights. Online instances add Poisson arrivals at loads $\rho \in \{0.50, 0.75, 0.95, 1.10\}$; each job's deadline is its arrival time plus a random slack, the online counterpart of TF. Online job }\DIFaddend sizes are log-normal \DIFdelbegin \DIFdel{, mean-matched to the offline distribution. }\DIFdelend \DIFaddbegin \DIFadd{(right-skewed, like real cluster traces \mbox{%DIFAUXCMD
+: larger TF means tighter deadlines on average. The main setting uses TF $= 0.5$ (medium), with 0.2 }\DIFaddend and \DIFdelbegin \DIFdel{60. Moreover job resource }\DIFdelend \DIFaddbegin \DIFadd{0.8 as loose and tight variants. A unit-weight setting ($w_j = 1$) isolates the effect of job weights. Online instances always use weighted jobs (there is no unit-weight online setting) and add Poisson arrivals at loads $\rho \in \{0.50, 0.75, 0.95, 1.10\}$; each job's deadline is its arrival time plus a random slack, the online counterpart of TF. Online job }\DIFaddend sizes are log-normal \DIFdelbegin \DIFdel{, mean-matched to the offline distribution. }\DIFdelend \DIFaddbegin \DIFadd{(right-skewed, like real cluster traces \mbox{%DIFAUXCMD
 \cite{reiss2012googletrace, cortez2017resourcecentral}}\hskip0pt%DIFAUXCMD
-). Agents were trained on TF $= 0.5$ offline and $\rho = 0.95$ online. Appendix~\ref{sec:AppendixD} gives the exact distributions.
+). Because every RL study takes hours to days of compute, RL agents were trained and evaluated in one offline setting (TF $= 0.5$, with weighted and unit weights) and one online setting ($\rho = 0.95$: heavy load, but below saturation, so scheduling decisions matter most). The other loads and deadline tightnesses were run for the heuristics only. Appendix~\ref{sec:AppendixD} gives the exact distributions.
 
 }\DIFaddend 
 
 \DIFdelbegin \paragraph{\DIFdel{Training}}%DIFAUXCMD
 \addtocounter{paragraph}{-1}%DIFAUXCMD
-\DIFdel{.
-
-}\DIFdelend \DIFaddbegin \paragraph{\DIFadd{Training and tuning.}} \DIFaddend An agent learns \DIFdelbegin \DIFdel{by interacting with an environment over a sequence of episodes. One episode is one complete problem instance, i.e an instance of making decisions until the horizon $H$ is reached for some given environment. Every episode uses a newly generated random instanceof job parameters so that the agent never sees }\DIFdelend \DIFaddbegin \DIFadd{over episodes, each a complete, newly generated problem instance, so it never trains on }\DIFaddend the same problem twice\DIFdelbegin \DIFdel{and can thereby generalise. Every RL action design was trained with PPO and A2C, }\DIFdelend \DIFaddbegin \DIFadd{. Training, validation (20 instances) and test (50 instances) use disjoint random seeds, so test instances are never seen in training or tuning. Every combination of design (6), algorithm (2) and case (2) had its own hyperparameter search, 24 studies in all, run }\DIFaddend with the same \DIFdelbegin \DIFdel{tuning and training budgets. Hyperparameters were tuned with Optuna \mbox{%DIFAUXCMD
+\DIFdel{. }\DIFdelend \DIFaddbegin \paragraph{\DIFadd{Training and tuning.}} \DIFaddend An agent learns \DIFdelbegin \DIFdel{by interacting with an environment over a sequence of episodes. One episode is one complete problem instance, i.e an instance of making decisions until the horizon $H$ is reached for some given environment. Every episode uses a newly generated random instanceof job parameters so that the agent never sees }\DIFdelend \DIFaddbegin \DIFadd{over episodes, each a complete, newly generated problem instance, so it never trains on }\DIFaddend the same problem twice\DIFdelbegin \DIFdel{and can thereby generalise. Every RL action design was trained with PPO and A2C, }\DIFdelend \DIFaddbegin \DIFadd{. Training, validation (20 instances) and test (50 instances) use disjoint random seeds, so test instances are never seen in training or tuning. Every combination of design (6), algorithm (2) and case (2) had its own hyperparameter search, 24 studies in all, run }\DIFaddend with the same \DIFdelbegin \DIFdel{tuning and training budgets. Hyperparameters were tuned with Optuna \mbox{%DIFAUXCMD
 \cite{akiba2019optuna} }\hskip0pt%DIFAUXCMD
 using }\DIFdelend \DIFaddbegin \DIFadd{protocol: Optuna \mbox{%DIFAUXCMD
 \cite{akiba2019optuna} }\hskip0pt%DIFAUXCMD
@@ -699,19 +697,23 @@ Every method - RL and heuristic included - }\DIFdelend \DIFaddbegin \paragraph{\
 }
 
 %DIF >  =====================================================================
-\DIFaddend \section{Results}\DIFdelbegin \DIFdel{Please review the github }\DIFdelend \DIFaddbegin \label{sec:results}
-\DIFadd{All results below are on the 50 held-out test instances; lower $J$ is better. Full tables for every setting and metric are on the project's GitHub }\DIFaddend \href{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/tree/main/Results}{results page}\DIFdelbegin \DIFdel{for all obtained results. }
+\DIFaddend \section{Results}\DIFdelbegin \DIFdel{Please review the github }\href{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/tree/main/Results}{\DIFdel{results page}} %DIFAUXCMD
+\DIFdel{for all obtained results .
+}
 %DIFAUXCMD
 \addtocounter{subsection}{-1}%DIFAUXCMD
 
 %DIFAUXCMD
 \addtocounter{subsubsection}{-1}%DIFAUXCMD
 \DIFdel{The interactive results page can be seen }\href{https://htmlpreview.github.io/?https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/blob/main/Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html}{\DIFdel{here}}%DIFAUXCMD
-\DIFdel{, the main findings are expressed below. }%DIFDELCMD < \\
+\DIFdel{, the main findings are expressed below.
+
+}%DIFDELCMD < \\
 %DIFDELCMD < %%%
-\DIFdel{Importantly, the v1 objective did not capture scheduling quality as intended, meaning that the raw reward signal aloneis not a reliable indicator of performance. On reward, the RL methods A2C and PPOmatched or beat the highest-reward heuristic, LPT+FirstFit (\mbox{%DIFAUXCMD
-\cref{fig:v1-reward}}\hskip0pt%DIFAUXCMD
-). On tardiness, however, no correctly functioning RL method beat the best heuristic}\DIFdelend \DIFaddbegin \DIFadd{.
+\DIFdel{Importantly, the v1 objective did not capture scheduling quality as intended, meaning that the raw reward signal alone is not a reliable indicator of performance. On reward, the RL methods A2C and PPO matched or beat the highest-reward heuristic, LPT}\DIFdelend \DIFaddbegin \label{sec:results}
+\DIFadd{All results below are on the 50 held-out test instances; lower $J$ is better. RL results are for the three settings RL was trained on: offline with weighted jobs, offline with unit weights, and online (weighted jobs) at $\rho = 0.95$. The other loads and deadline settings appear only in the heuristic comparison (\mbox{%DIFAUXCMD
+\cref{sec:res-other}}\hskip0pt%DIFAUXCMD
+). Full tables for every setting and metric are on the project's GitHub }\href{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/tree/main/Results}{\DIFadd{results page}}\DIFadd{.
 
 }
 
@@ -720,19 +722,17 @@ Every method - RL and heuristic included - }\DIFdelend \DIFaddbegin \paragraph{\
 \Cref{tab:main} }\hskip0pt%DIFAUXCMD
 and \mbox{%DIFAUXCMD
 \cref{fig:offline} }\hskip0pt%DIFAUXCMD
-summarise the main comparison. Offline, with weighted jobs, the best RL agent (Option 2, PPO) reaches $J = 28{,}061$}\DIFaddend , \DIFdelbegin \DIFdel{LST}\DIFdelend \DIFaddbegin \DIFadd{5.2\% above the best heuristic, WLST ($26{,}670$). RL's standard deviation across seeds is small (219), so the gap is not an artefact of one unlucky seed. Every design except Option 1 lands within 12\% of WLST, and all of them beat every published rule: the best of these}\DIFaddend , \DIFdelbegin \DIFdel{and all of them also scheduled fewer jobs and had more late jobs than }\DIFdelend LST\DIFdelbegin \DIFdel{(\mbox{%DIFAUXCMD
-\cref{fig:v1-tard,fig:v1-sched,fig:v1-late}}\hskip0pt%DIFAUXCMD
-) . The top five methods on reward, tardiness}\DIFdelend , \DIFdelbegin \DIFdel{jobs scheduled and late jobs are shown in \mbox{%DIFAUXCMD
-\cref{fig:v1-reward,fig:v1-tard,fig:v1-sched,fig:v1-late}}\hskip0pt%DIFAUXCMD
-. Note that these results are for the constant weight scenario. The uniform weight distribution was only introduced late into v1 and no RL method could beat heuristics. }\DIFdelend \DIFaddbegin \DIFadd{scores $39{,}536$, 29\% worse than the best RL agent. The weighted rules WLST, WEDF and MDC were designed for this project after RL had beaten LST, and only WLST beats RL. CP-SAT's best schedule after 60 seconds ($35{,}681$) is worse than both RL and WLST, so it gives no useful bound on how far either is from optimal at this size. On 15-job instances, however, CP-SAT proved 13 of 15 instances optimal, and LST matched the optimum on every one.
-
-}\DIFaddend 
-
-\DIFaddbegin \DIFadd{When every job has the same weight, the problem is easier for the heuristics: LST scores $13{,}098$, and the best RL agents either reproduce it exactly (Option 1) or come within 0.8\% (Option 2).
+summarise the main comparison. Offline, with weighted jobs, the best RL agent (Option 2, PPO) reaches $J = 28{,}061$, 5.2\% above the best heuristic, WLST ($26{,}670$). RL's standard deviation across seeds is small (219), so the gap is not an artefact of one unlucky seed. Every design except Option 1 lands within 12\% of WLST, and all of them beat every published rule: the best of these, LST, scores $39{,}536$, 29\% worse than the best RL agent. The weighted rules WLST, WEDF and MDC were designed for this project after RL had beaten LST, and only WLST beats RL. CP-SAT's best schedule after 60 seconds ($35{,}681$) is worse than both RL and WLST, so it gives no useful bound on how far either is from optimal at this size. On 15-job instances, however, CP-SAT proved 13 of 15 instances optimal, and LST matched the optimum on every one.
 
 }
 
-\DIFadd{Online at $\rho = 0.95$, under the standard protocol (300,000 steps), every RL design is far behind the best heuristic, EDF+Consolidate ($21{,}986$): the best is Option 1 A2C at $37{,}812$ (+72\%). The online gap is mainly a training-budget problem (\mbox{%DIFAUXCMD
+\DIFadd{When every job has the same weight, the problem is easier for the heuristics: LST scores $13{,}098$, and the best RL agents either reproduce it exactly (Option 1) or come within 0.8\% (Option 2).
+
+}
+
+\DIFadd{Online at $\rho = 0.95$, under the standard protocol (300,000 steps), every RL design is far behind the best heuristic, EDF}\DIFaddend +\DIFdelbegin \DIFdel{FirstFit (\mbox{%DIFAUXCMD
+\cref{fig:v1-reward}}\hskip0pt%DIFAUXCMD
+). On tardiness, however, no correctly functioning RL method beat }\DIFdelend \DIFaddbegin \DIFadd{Consolidate ($21{,}986$): the best is Option 1 A2C at $37{,}812$ (+72\%). The online gap is mainly a training-budget problem (\mbox{%DIFAUXCMD
 \cref{sec:res-online}}\hskip0pt%DIFAUXCMD
 ).
 
@@ -765,83 +765,89 @@ Best RL vs best heuristic & +5.2\% & 0.0\% & +72\% \\
 \end{table}
 %DIF >  NOTE (Ty): Option 3w is left out to keep the table small (offline 28,695 +/- 1,133; online 56,493 +/- 11,019).
 
-\DIFaddend \begin{figure}[htbp]
+\begin{figure}[htbp]
 \centering
-\DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_reward_top5.png}
-%DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \includegraphics[width=\linewidth]{Images/v2_offline_designs.png}
+\includegraphics[width=\linewidth]{Images/v2_offline_designs.png}
 \caption{\DIFaddFL{Offline results: the best final agent of each design (orange, mean $\pm$ s.d.\ over 3 seeds) against the leading heuristics (blue) and CP-SAT's 60-second schedule (grey). Left: weighted jobs; right: unit weights.}}
 \label{fig:offline}
 \end{figure}
 
 \subsection{\DIFadd{Combined objectives}}\label{sec:res-mo}
-\DIFadd{When the objective rewards more than squared tardiness, RL overtakes the best heuristic offline (\mbox{%DIFAUXCMD
-\cref{fig:mo}}\hskip0pt%DIFAUXCMD
-, \mbox{%DIFAUXCMD
-\cref{tab:mo}}\hskip0pt%DIFAUXCMD
-). Once linear tardiness is weighted at least as heavily as the reference ($\times 1$), the best RL agent beats the best heuristic by 1.8--10.3\%; with late jobs added at weights $\times 0.5$ to $\times 4$, by 1.4--10.0\%; and with all four terms, by 8.6\%. The advantage grows with the weight of the added term up to $\times 2$--$\times 4$. At moderate weights, the winning agents were trained on $J$ alone; at the largest weights, agents trained on the composite objective win.
+\DIFadd{\mbox{%DIFAUXCMD
+\Cref{fig:regime} }\hskip0pt%DIFAUXCMD
+answers the research question in one view: for each objective and setting, it compares the best RL agent with the best heuristic. Offline with weighted jobs, RL overtakes }\DIFaddend the best heuristic \DIFdelbegin \DIFdel{, LST, and all of them also scheduled fewer jobs and had more late jobs than LST (\mbox{%DIFAUXCMD
+\cref{fig:v1-tard,fig:v1-sched,fig:v1-late}}\hskip0pt%DIFAUXCMD
+). The top five methods on reward, tardiness, jobs scheduled and late jobsare shown in \mbox{%DIFAUXCMD
+\cref{fig:v1-reward,fig:v1-tard,fig:v1-sched,fig:v1-late}}\hskip0pt%DIFAUXCMD
+.
+
+Note that these results are for the constant weight scenario. The uniform weight distribution was only introduced late into v1 and no RL method could beat heuristics.
+
+}\DIFdelend \DIFaddbegin \DIFadd{once the objective rewards more than squared tardiness. Once linear tardiness counts at least as much as the reference ($\times 1$), RL is better by 1.8--10.3\%; with late jobs added at weights $\times 0.5$ to $\times 4$, by 1.4--10.0\%; and with all four terms, by 8.6\%. At moderate weights the winning agents were trained on $J$ alone; at the largest weights, agents trained on the combined objective win. Energy is the exception: RL loses by 3.4--4.8\% at every weight.
+
+}\DIFaddend 
+
+\DIFaddbegin \DIFadd{This advantage depends on job weights and on the setting. With unit weights, RL never beats LST (0.0\% to +10.8\%). Online, RL trails the best heuristic by 5.8--15.7\% on every combined objective.
 
 }
 
-\DIFadd{This advantage depends on job weights and on the setting. With unit weights, RL never beats LST on any composite objective (0.0\% to +10.8\%). Online, the best RL agent stays within 0.1--6.5\% of the best heuristic on every composite but never beats it, and that agent is a single seed.
+\DIFadd{\mbox{%DIFAUXCMD
+\Cref{fig:tradeoff} }\hskip0pt%DIFAUXCMD
+shows why RL wins offline. WLST reaches the lowest $J$ by accepting many late jobs (a weighted count of 183). Every heuristic lies on or above the dashed line of the best trade-offs any heuristic achieves, but most RL agents lie below it: for a similar $J$, they finish noticeably more jobs on time. Agents trained on a combined objective (green) move further towards fewer late jobs.
 
 }
 
-\begin{table}[htbp]
+\DIFaddend \begin{figure}[htbp]
 \centering
-\DIFaddendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by v1 reward }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Best RL agent against the best heuristic }\DIFaddendFL on \DIFdelbeginFL \DIFdelFL{50 held-out }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{composite objectives, }\DIFaddendFL offline \DIFdelbeginFL \DIFdelFL{instances (higher }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{with weighted jobs. Negative means RL }\DIFaddendFL is better\DIFdelbeginFL \DIFdelFL{)}\DIFdelendFL . \DIFdelbeginFL \DIFdelFL{The two highest-reward methods both have very high tardiness, showing that }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Weights are multiples of }\DIFaddendFL the \DIFdelbeginFL \DIFdelFL{v1 reward did
-not measure scheduling quality}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{reference values ($\lambda_T = 15.8$, $\lambda_U = 146$, $\lambda_E = 153$)}\DIFaddendFL .}
+\DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_reward_top5.png}
+%DIFDELCMD < %%%
+\DIFdelendFL \DIFaddbeginFL \includegraphics[width=0.85\linewidth]{Images/v2_regime_grid.png}
+\DIFaddendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by v1 reward }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{When does RL win? Best RL agent against the best heuristic }\DIFaddendFL on \DIFdelbeginFL \DIFdelFL{50 held-out offline instances }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{each objective }\DIFaddendFL (\DIFdelbeginFL \DIFdelFL{higher }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{rows) and setting (columns); blue means RL }\DIFaddendFL is better\DIFdelbeginFL \DIFdelFL{)}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{, red means the heuristic is better}\DIFaddendFL . \DIFdelbeginFL \DIFdelFL{The two highest-reward methods both have very high tardiness}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Weights are multiples of the reference values}\DIFaddendFL , \DIFdelbeginFL \DIFdelFL{showing that }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{which make each added term equal to $J$ on }\DIFaddendFL the \DIFdelbeginFL \DIFdelFL{v1 reward did
+not measure scheduling quality}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{best heuristic's schedule}\DIFaddendFL . \DIFaddbeginFL \DIFaddFL{Only RL agents with at least two evaluated seeds are included.}\DIFaddendFL }
 \DIFdelbeginFL %DIFDELCMD < \label{fig:v1-reward}
-%DIFDELCMD < \end{figure}
-%DIFDELCMD < 
-%%%
-\DIFdelendFL \DIFaddbeginFL \label{tab:mo}
-\begin{tabular}{lrrr}
-\toprule
-Objective & Best heuristic & Best RL & RL vs heuristic \\
-\midrule
-$J$ only & 26,670 & 28,061 & +5.2\% \\
-$J$ + linear tardiness ($\times 1$) & 53,300 & 52,363 & $-1.8$\% \\
-$J$ + linear tardiness ($\times 4$) & 133,190 & 119,419 & $-10.3$\% \\
-$J$ + late jobs ($\times 1$) & 53,421 & 48,101 & $-10.0$\% \\
-$J$ + late jobs ($\times 4$) & 88,835 & 87,569 & $-1.4$\% \\
-$J$ + energy ($\times 1$) & 52,274 & 54,398 & +4.1\% \\
-All four terms ($\times 1$) & 105,654 & 96,541 & $-8.6$\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\DIFaddend 
+%DIFDELCMD < %%%
+\DIFdelendFL \DIFaddbeginFL \label{fig:regime}
+\DIFaddendFL \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_tard_top5.png}
 %DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \includegraphics[width=\linewidth]{Images/v2_multiobjective_gap.png}
-\DIFaddendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by mean total tardiness under v1 }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Best RL agent relative to the best heuristic as the weight of each added term grows }\DIFaddendFL (\DIFdelbeginFL \DIFdelFL{lower is }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{below zero: RL }\DIFaddendFL better). \DIFdelbeginFL \DIFdelFL{The only method below LST achieves it by abandoning about 45\% of the }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Left: offline, weighted }\DIFaddendFL jobs\DIFaddbeginFL \DIFaddFL{; middle: offline, unit weights (RL agents trained on $J$ only); right: online, $\rho = 0.95$ (best RL agent is a single seed)}\DIFaddendFL .}
+\DIFdelendFL \DIFaddbeginFL \includegraphics[width=0.85\linewidth]{Images/v2_tradeoff_late.png}
+\DIFaddendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by mean total tardiness under v1 }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Offline, weighted jobs: $J$ against the weighted number of late jobs }\DIFaddendFL (\DIFaddbeginFL \DIFaddFL{both }\DIFaddendFL lower is better) \DIFaddbeginFL \DIFaddFL{for every heuristic and every RL agent with at least two seeds}\DIFaddendFL . The \DIFdelbeginFL \DIFdelFL{only method }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{dashed line joins the best trade-offs among the heuristics; points }\DIFaddendFL below \DIFdelbeginFL \DIFdelFL{LST achieves }\DIFdelendFL it \DIFdelbeginFL \DIFdelFL{by abandoning about 45\% of the jobs}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{achieve combinations no heuristic reaches}\DIFaddendFL .}
 \DIFdelbeginFL %DIFDELCMD < \label{fig:v1-tard}
 %DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \label{fig:mo}
+\DIFdelendFL \DIFaddbeginFL \label{fig:tradeoff}
 \DIFaddendFL \end{figure}
 
 \DIFdelbegin %DIFDELCMD < \begin{figure}[htbp]
+%DIFDELCMD < \centering
+%DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_sched_top5.png}
 %DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \subsection{\DIFaddFL{Online training budget}}\label{sec:res-online}
-\DIFaddFL{More training closes most of the online gap for Option 2 but not for Option 0 (\mbox{%DIFAUXCMD
+%DIFDELCMD < \caption{%
+{%DIFAUXCMD
+\DIFdelFL{Top five methods by mean number of jobs scheduled, out of 100, under v1 (higher is better). Scheduling nearly every job does not imply they all met
+deadlines.}}
+%DIFAUXCMD
+%DIFDELCMD < \label{fig:v1-sched}
+%DIFDELCMD < \end{figure}
+%DIFDELCMD < 
+%%%
+\DIFdelend \DIFaddbegin \subsection{\DIFadd{Online training budget}}\label{sec:res-online}
+\DIFadd{More training closes most of the online gap for Option 2 but not for Option 0 (\mbox{%DIFAUXCMD
 \cref{tab:budget}}\hskip0pt%DIFAUXCMD
-, \mbox{%DIFAUXCMD
-\cref{fig:budget}}\hskip0pt%DIFAUXCMD
-). Option 2's mean $J$ falls from $39{,}947$ at 300k steps to $26{,}515$ at 1M (+21\% over EDF+Consolidate) and $24{,}921$ at 2M (+13\%, 2 seeds), and its best 1M seed is within 4.3\% of the heuristic. Option 0 improves on average but remains 55\% behind at 1M. The single best online run, an Option 2 agent trained for 1M steps on $J$ plus linear tardiness, matched EDF+Consolidate ($22{,}000$ vs $21{,}986$, +0.1\%), but this is one seed. Online A2C did not learn: Option 0 A2C produced the same schedule as FCFS+FirstFit ($J = 44{,}920$) on all three seeds.
+). Option 2's mean $J$ falls from $39{,}947$ at 300k steps to $26{,}515$ at 1M (+21\% over EDF+Consolidate) and $24{,}921$ at 2M (+13\%, 2 seeds), and its best 1M seed is within 4.3\% of the heuristic. Option 0 improves on average but remains 55\% behind at 1M. One Option 2 agent trained for 1M steps on $J$ plus linear tardiness matched EDF+Consolidate ($22{,}000$ vs $21{,}986$), but a second seed of the same setup scored about $30{,}100$, so this was not reproducible. Online A2C did not learn: Option 0 A2C produced the same schedule as FCFS+FirstFit ($J = 44{,}920$) on all three seeds.
 
-}
+}\DIFaddend 
 
-\begin{table}[htbp]
-\DIFaddendFL \centering
-\DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_sched_top5.png}
+\DIFdelbegin %DIFDELCMD < \begin{figure}[htbp]
 %DIFDELCMD < %%%
-\DIFdelendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Online ($\rho = 0.95$) }\DIFaddendFL mean \DIFdelbeginFL \DIFdelFL{number of jobs scheduled}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{test $J$ by training budget}\DIFaddendFL , \DIFdelbeginFL \DIFdelFL{out of 100}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{PPO}\DIFaddendFL , \DIFdelbeginFL \DIFdelFL{under v1 }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{mean $\pm$ s.d.\ over seeds }\DIFaddendFL (\DIFdelbeginFL \DIFdelFL{higher is better}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{EDF+Consolidate: 21,986}\DIFaddendFL ).\DIFdelbeginFL \DIFdelFL{Scheduling nearly every job does not imply they all met
-deadlines.}\DIFdelendFL }
-\DIFdelbeginFL %DIFDELCMD < \label{fig:v1-sched}
+\DIFdelendFL \DIFaddbeginFL \begin{table}[htbp]
+\DIFaddendFL \centering
+\DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_late_top5.png}
+%DIFDELCMD < %%%
+\DIFdelendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Online ($\rho = 0.95$) }\DIFaddendFL mean \DIFdelbeginFL \DIFdelFL{number of late jobs}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{test $J$ by training budget}\DIFaddendFL , \DIFdelbeginFL \DIFdelFL{out of 100}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{PPO}\DIFaddendFL , \DIFdelbeginFL \DIFdelFL{under v1 }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{mean $\pm$ s.d.\ over seeds }\DIFaddendFL (\DIFdelbeginFL \DIFdelFL{lower is better}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{EDF+Consolidate: 21,986}\DIFaddendFL ).}
+\DIFdelbeginFL %DIFDELCMD < \label{fig:v1-late}
 %DIFDELCMD < \end{figure}
 %DIFDELCMD < 
 %%%
@@ -859,17 +865,6 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 \DIFaddend 
 
-\begin{figure}[htbp]
-\centering
-\DIFdelbeginFL %DIFDELCMD < \includegraphics[width=0.85\linewidth]{Images/v1_off_c_50_late_top5.png}
-%DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \includegraphics[width=0.75\linewidth]{Images/v2_online_budget.png}
-\DIFaddendFL \caption{\DIFdelbeginFL \DIFdelFL{Top five methods by mean number }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{Online test $J$ }\DIFaddendFL of \DIFdelbeginFL \DIFdelFL{late jobs, out of 100, under v1 (lower }\DIFdelendFL \DIFaddbeginFL \DIFaddFL{PPO Options 0 and 2 by training budget; dots are individual seeds. The dashed line }\DIFaddendFL is \DIFdelbeginFL \DIFdelFL{better)}\DIFdelendFL \DIFaddbeginFL \DIFaddFL{the best heuristic}\DIFaddendFL .}
-\DIFdelbeginFL %DIFDELCMD < \label{fig:v1-late}
-%DIFDELCMD < %%%
-\DIFdelendFL \DIFaddbeginFL \label{fig:budget}
-\DIFaddendFL \end{figure}
-
 \DIFdelbegin 
 %DIFAUXCMD
 \addtocounter{subsubsection}{-1}%DIFAUXCMD
@@ -882,7 +877,9 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 }
 
-\paragraph{\DIFadd{Energy.}} \DIFadd{RL lost to }\DIFaddend the best heuristic \DIFdelbegin \DIFdel{in either constant weights or uniform weight distribution}\DIFdelend \DIFaddbegin \DIFadd{(WLST+Consolidate) on every $J$ + energy objective, by 3.4--4.8\%. Training with the energy term made no run diverge in 8 seeds, but it did not make training meaningfully more stable either: those runs were 5--25\% worse on $J$, the expected cost of trading $J$ for energy}\DIFaddend .
+\paragraph{\DIFadd{Energy.}} \DIFadd{RL lost to }\DIFaddend the best heuristic \DIFdelbegin \DIFdel{in either constant weightsor uniform weight distribution. }\DIFdelend \DIFaddbegin \DIFadd{(WLST+Consolidate) on every $J$ + energy objective, by 3.4--4.8\%. Training with the energy term made no run diverge in 8 seeds, but it did not make training meaningfully more stable either: those runs were 5--25\% worse on $J$, the expected cost of trading $J$ for energy.
+
+}\DIFaddend 
 
 \DIFdelbegin 
 
@@ -900,7 +897,7 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 \DIFaddend \section{Discussion}\DIFaddbegin \label{sec:discussion}
 \paragraph{\DIFadd{When does RL beat the heuristics?}} \DIFadd{Our results suggest three conditions. First, }\emph{\DIFadd{the objective must not be one that a simple rule already solves well}}\DIFadd{. With unit weights and squared tardiness, LST matched every proven optimum on small instances, and RL could at best reproduce it. When the objective mixes several goals (\mbox{%DIFAUXCMD
 \cref{sec:res-mo}}\hskip0pt%DIFAUXCMD
-), no single rule is designed for the combination, and RL won by up to 10\%. Second, }\emph{\DIFadd{jobs must differ in importance}}\DIFadd{. The offline multi-objective advantage disappeared with unit weights. Weights give a learned priority more to work with, since the right order now depends jointly on deadline, length and weight. Third, }\emph{\DIFadd{the agent must be trained enough for the setting}}\DIFadd{. Offline, 1M steps was enough to come within 5\% of the best heuristic. Online, 300k steps left RL 70\% behind, and 1--2M steps closed most of the gap for the best design.
+), no single rule is designed for the combination, and RL won by up to 10\%. Second, }\emph{\DIFadd{jobs must differ in importance}}\DIFadd{. The offline multi-objective advantage disappeared with unit weights. Weights give a learned priority more to work with, since the right order now depends jointly on deadline, length and weight. This condition was tested offline only, because every online setting used weighted jobs. Third, }\emph{\DIFadd{the agent must be trained enough for the setting}}\DIFadd{. Offline, 1M steps was enough to come within 5\% of the best heuristic. Online, 300k steps left RL 70\% behind, and 1--2M steps closed most of the gap for the best design.
 
 }\DIFaddend 
 
@@ -908,7 +905,9 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 }
 
-\paragraph{\DIFadd{Why the multi-objective gains need care.}} \DIFadd{At moderate weights, the agents that won the composite objectives were trained on $J$ alone. Their schedules happened to have fewer late jobs and lower linear tardiness than WLST's (for example, Option 0 A2C: 52.7 late jobs against 61.7). WLST is tuned for squared tardiness and gives up the other metrics to get it. This part of the advantage is therefore a side effect of how RL schedules, not a trade-off it learned, and it is exactly the kind of pattern in non-optimised metrics that must not be over-interpreted. At larger weights, agents trained on the composite objective took over, which does indicate learning. Re-running these agents with the tuned settings and full 1M-step budget is in progress.
+\paragraph{\DIFadd{Why the multi-objective gains need care.}} \DIFadd{At moderate weights, the agents that won the composite objectives were trained on $J$ alone. Their schedules happened to have fewer late jobs and lower linear tardiness than WLST's (for example, Option 0 A2C: 52.7 late jobs against 61.7; \mbox{%DIFAUXCMD
+\cref{fig:tradeoff}}\hskip0pt%DIFAUXCMD
+). WLST is tuned for squared tardiness and gives up the other metrics to get it. This part of the advantage is therefore a side effect of how RL schedules, not a trade-off it learned, and it is exactly the kind of pattern in non-optimised metrics that must not be over-interpreted. At larger weights, agents trained on the composite objective took over, which does indicate learning. Re-running these agents with the tuned settings and full 1M-step budget is in progress.
 
 }
 
@@ -932,7 +931,7 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 }
 
-\paragraph{\DIFadd{Limitations.}} \DIFadd{All instances are synthetic and of one size (100 jobs, 10 machines), and results use 3 seeds. Picking the best of many RL variants on the test set slightly favours RL, although the best heuristic is picked the same way. CP-SAT did not reach optimality at 100 jobs, so the distance of RL and WLST from the optimum is unknown. The online multi-objective and 2M-step results rest on one and two seeds, and three online studies were stopped early.
+\paragraph{\DIFadd{Limitations.}} \DIFadd{All instances are synthetic and of one size (100 jobs, 10 machines), and results use 3 seeds. Picking the best of many RL variants on the test set slightly favours RL, although the best heuristic is picked the same way. CP-SAT did not reach optimality at 100 jobs, so the distance of RL and WLST from the optimum is unknown. The online 2M-step results rest on two seeds, and three online studies were stopped early.
 
 }
 
@@ -944,7 +943,7 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 \section{Future Work}
 \begin{itemize}
-    \item \DIFdelbegin \DIFdel{More research and consideration into the online case. The online case remains incredibly complex and this project only touches on it briefly. }\DIFdelend \DIFaddbegin \DIFadd{Extend the online study with longer training and more seeds, since the online gap was mainly a training-budget problem.
+    \item \DIFdelbegin \DIFdel{More research and consideration into the online case. The online case remains incredibly complex and this projectonly touches on it briefly. }\DIFdelend \DIFaddbegin \DIFadd{Extend the online study with longer training and more seeds, since the online gap was mainly a training-budget problem.
     }\DIFaddend \item \DIFdelbegin \DIFdel{Look more into hybrid architectures \mbox{%DIFAUXCMD
 \cite{ml_ra_litrev2025}
     }\hskip0pt%DIFAUXCMD
@@ -963,7 +962,9 @@ or Azure's \mbox{%DIFAUXCMD
 , and try graph neural network encoders \mbox{%DIFAUXCMD
 \cite{gnn2024jsspsurvey}}\hskip0pt%DIFAUXCMD
 .
-    }\DIFaddend \item \DIFdelbegin \DIFdel{Examine the large action-space failure of policy-based methods, and evaluate how different methods compare and potentially aid in this project's future findings. This includes replacing the current pointer network encoding with graph neural networks for job/machine encoding \mbox{%DIFAUXCMD
+    }\DIFaddend \item \DIFdelbegin \DIFdel{Examine the large action-space failure of policy-based methods, and evaluate how different methods compare and potentially aid in this project's future findings.
+
+This includes replacing the current pointer network encoding with graph neural networks for job /machine encoding \mbox{%DIFAUXCMD
 \cite{gnn2024jsspsurvey}}\hskip0pt%DIFAUXCMD
 , and a variety of action-space reductions and branching \mbox{%DIFAUXCMD
 \cite{tavakoli2018actionbranching}
@@ -971,13 +972,15 @@ or Azure's \mbox{%DIFAUXCMD
 }%DIFDELCMD < \item %%%
 
 \DIFdel{Evaluate large discrete action space methods such as the Wolpertinger architecture \mbox{%DIFAUXCMD
-\cite{dulacarnold2015largeactionspaces}}\hskip0pt%DIFAUXCMD
+\cite{dulacarnold2015largeactionspaces}
+    }\hskip0pt%DIFAUXCMD
 }%DIFDELCMD < \item %%%
 
 \DIFdel{Investigate more improvements to many models like RCPO, ATC dispatching, rule-selection and other algorithms implemented
     }%DIFDELCMD < \item %%%
 
-\DIFdel{Evaluate the trained policies against real-world data from e. g Googlecluster trace or Microsoft Azuretrace
+\DIFdel{Evaluate the trained policies against real-world data from e.
+    g Googlecluster trace or Microsoft Azuretrace
     }%DIFDELCMD < \item %%%
 
 \DIFdel{Conduct a formulation and environmental review of problem structure for different goals.

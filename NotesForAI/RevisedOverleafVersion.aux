@@ -189,9 +189,9 @@
 \@writefile{toc}{\contentsline {section}{\numberline {4}Results}{10}{section.4}\protected@file@percent }
 \newlabel{sec:results}{{4}{10}{Results}{section.4}{}}
 \newlabel{sec:results@cref}{{[section][4][]4}{[1][10][]10}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}RL against heuristics on the main objective}{10}{subsection.4.1}\protected@file@percent }
-\newlabel{sec:res-main}{{4.1}{10}{RL against heuristics on the main objective}{subsection.4.1}{}}
-\newlabel{sec:res-main@cref}{{[subsection][1][4]4.1}{[1][10][]10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}RL against heuristics on the main objective}{11}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:res-main}{{4.1}{11}{RL against heuristics on the main objective}{subsection.4.1}{}}
+\newlabel{sec:res-main@cref}{{[subsection][1][4]4.1}{[1][10][]11}{}{}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Mean $J$ on 50 test instances (lower is better). RL: mean $\pm $ standard deviation over 3 seeds, best algorithm per design; heuristics are deterministic. Online RL is shown at the standard 300k-step budget; longer budgets are in \cref  {tab:budget}.}}{11}{table.caption.15}\protected@file@percent }
 \newlabel{tab:main}{{1}{11}{Mean $J$ on 50 test instances (lower is better). RL: mean $\pm $ standard deviation over 3 seeds, best algorithm per design; heuristics are deterministic. Online RL is shown at the standard 300k-step budget; longer budgets are in \cref {tab:budget}}{table.caption.15}{}}
 \newlabel{tab:main@cref}{{[table][1][]1}{[1][11][]11}{}{}{}}
@@ -201,100 +201,169 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Offline results: the best final agent of each design (orange, mean $\pm $ s.d.\ over 3 seeds) against the leading heuristics (blue) and CP-SAT's 60-second schedule (grey). Left: weighted jobs; right: unit weights.}}{12}{figure.caption.16}\protected@file@percent }
 \newlabel{fig:offline}{{2}{12}{Offline results: the best final agent of each design (orange, mean $\pm $ s.d.\ over 3 seeds) against the leading heuristics (blue) and CP-SAT's 60-second schedule (grey). Left: weighted jobs; right: unit weights}{figure.caption.16}{}}
 \newlabel{fig:offline@cref}{{[figure][2][]2}{[1][11][]12}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Best RL agent against the best heuristic on composite objectives, offline with weighted jobs. Negative means RL is better. Weights are multiples of the reference values ($\lambda _T = 15.8$, $\lambda _U = 146$, $\lambda _E = 153$).}}{12}{table.caption.17}\protected@file@percent }
-\newlabel{tab:mo}{{2}{12}{Best RL agent against the best heuristic on composite objectives, offline with weighted jobs. Negative means RL is better. Weights are multiples of the reference values ($\lambda _T = 15.8$, $\lambda _U = 146$, $\lambda _E = 153$)}{table.caption.17}{}}
-\newlabel{tab:mo@cref}{{[table][2][]2}{[1][11][]12}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Best RL agent relative to the best heuristic as the weight of each added term grows (below zero: RL better). Left: offline, weighted jobs; middle: offline, unit weights (RL agents trained on $J$ only); right: online, $\rho = 0.95$ (best RL agent is a single seed).}}{13}{figure.caption.18}\protected@file@percent }
-\newlabel{fig:mo}{{3}{13}{Best RL agent relative to the best heuristic as the weight of each added term grows (below zero: RL better). Left: offline, weighted jobs; middle: offline, unit weights (RL agents trained on $J$ only); right: online, $\rho = 0.95$ (best RL agent is a single seed)}{figure.caption.18}{}}
-\newlabel{fig:mo@cref}{{[figure][3][]3}{[1][11][]13}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Online training budget}{13}{subsection.4.3}\protected@file@percent }
-\newlabel{sec:res-online}{{4.3}{13}{Online training budget}{subsection.4.3}{}}
-\newlabel{sec:res-online@cref}{{[subsection][3][4]4.3}{[1][11][]13}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Online ($\rho = 0.95$) mean test $J$ by training budget, PPO, mean $\pm $ s.d.\ over seeds (EDF+Consolidate: 21,986).}}{13}{table.caption.19}\protected@file@percent }
-\newlabel{tab:budget}{{3}{13}{Online ($\rho = 0.95$) mean test $J$ by training budget, PPO, mean $\pm $ s.d.\ over seeds (EDF+Consolidate: 21,986)}{table.caption.19}{}}
-\newlabel{tab:budget@cref}{{[table][3][]3}{[1][13][]13}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Other findings}{13}{subsection.4.4}\protected@file@percent }
-\newlabel{sec:res-other}{{4.4}{13}{Other findings}{subsection.4.4}{}}
-\newlabel{sec:res-other@cref}{{[subsection][4][4]4.4}{[1][13][]13}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Action-space design.}{13}{section*.21}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Online test $J$ of PPO Options 0 and 2 by training budget; dots are individual seeds. The dashed line is the best heuristic.}}{14}{figure.caption.20}\protected@file@percent }
-\newlabel{fig:budget}{{4}{14}{Online test $J$ of PPO Options 0 and 2 by training budget; dots are individual seeds. The dashed line is the best heuristic}{figure.caption.20}{}}
-\newlabel{fig:budget@cref}{{[figure][4][]4}{[1][13][]14}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Training stability.}{14}{section*.22}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Energy.}{14}{section*.23}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{No single heuristic wins everywhere.}{14}{section*.24}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Hyperparameter tuning.}{14}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Online training budget}{12}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:res-online}{{4.3}{12}{Online training budget}{subsection.4.3}{}}
+\newlabel{sec:res-online@cref}{{[subsection][3][4]4.3}{[1][12][]12}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces When does RL win? Best RL agent against the best heuristic on each objective (rows) and setting (columns); blue means RL is better, red means the heuristic is better. Weights are multiples of the reference values, which make each added term equal to $J$ on the best heuristic's schedule. Only RL agents with at least two evaluated seeds are included.}}{13}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:regime}{{3}{13}{When does RL win? Best RL agent against the best heuristic on each objective (rows) and setting (columns); blue means RL is better, red means the heuristic is better. Weights are multiples of the reference values, which make each added term equal to $J$ on the best heuristic's schedule. Only RL agents with at least two evaluated seeds are included}{figure.caption.17}{}}
+\newlabel{fig:regime@cref}{{[figure][3][]3}{[1][12][]13}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Offline, weighted jobs: $J$ against the weighted number of late jobs (both lower is better) for every heuristic and every RL agent with at least two seeds. The dashed line joins the best trade-offs among the heuristics; points below it achieve combinations no heuristic reaches.}}{13}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:tradeoff}{{4}{13}{Offline, weighted jobs: $J$ against the weighted number of late jobs (both lower is better) for every heuristic and every RL agent with at least two seeds. The dashed line joins the best trade-offs among the heuristics; points below it achieve combinations no heuristic reaches}{figure.caption.18}{}}
+\newlabel{fig:tradeoff@cref}{{[figure][4][]4}{[1][12][]13}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Online ($\rho = 0.95$) mean test $J$ by training budget, PPO, mean $\pm $ s.d.\ over seeds (EDF+Consolidate: 21,986).}}{14}{table.caption.19}\protected@file@percent }
+\newlabel{tab:budget}{{2}{14}{Online ($\rho = 0.95$) mean test $J$ by training budget, PPO, mean $\pm $ s.d.\ over seeds (EDF+Consolidate: 21,986)}{table.caption.19}{}}
+\newlabel{tab:budget@cref}{{[table][2][]2}{[1][12][]14}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Other findings}{14}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:res-other}{{4.4}{14}{Other findings}{subsection.4.4}{}}
+\newlabel{sec:res-other@cref}{{[subsection][4][4]4.4}{[1][12][]14}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Action-space design.}{14}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Training stability.}{14}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Energy.}{14}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{No single heuristic wins everywhere.}{14}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hyperparameter tuning.}{14}{section*.24}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{14}{section.5}\protected@file@percent }
 \newlabel{sec:discussion}{{5}{14}{Discussion}{section.5}{}}
 \newlabel{sec:discussion@cref}{{[section][5][]5}{[1][14][]14}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{When does RL beat the heuristics?}{14}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{When does RL beat the heuristics?}{14}{section*.25}\protected@file@percent }
 \citation{mao2019variance}
 \citation{dulacarnold2015largeactionspaces}
 \citation{mao2016deeprm}
 \citation{mao2019decima}
 \citation{eimer2023hyperparams}
-\@writefile{toc}{\contentsline {paragraph}{RL and heuristic design.}{15}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Why the multi-objective gains need care.}{15}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Why online is harder.}{15}{section*.29}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Action spaces and energy.}{15}{section*.30}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Practical considerations.}{15}{section*.31}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Limitations.}{15}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RL and heuristic design.}{15}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why the multi-objective gains need care.}{15}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why online is harder.}{15}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Action spaces and energy.}{15}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Practical considerations.}{15}{section*.30}\protected@file@percent }
 \citation{reiss2012googletrace}
 \citation{cortez2017resourcecentral}
 \citation{abels2019dynamicweights}
 \citation{hayes2022morlguide}
 \citation{gnn2024jsspsurvey}
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{16}{section*.31}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{16}{section.6}\protected@file@percent }
 \newlabel{sec:conclusion}{{6}{16}{Conclusion}{section.6}{}}
 \newlabel{sec:conclusion@cref}{{[section][6][]6}{[1][16][]16}{}{}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {7}Future Work}{16}{section.7}\protected@file@percent }
 \bibstyle{IEEEtran}
 \bibdata{references}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Nomenclature}{18}{appendix.A}\protected@file@percent }
-\newlabel{sec:AppendixA}{{A}{18}{Nomenclature}{appendix.A}{}}
-\newlabel{sec:AppendixA@cref}{{[section][1][]A}{[1][18][]18}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Nomenclature}}{18}{table.caption.35}\protected@file@percent }
-\newlabel{tab:nomenclature}{{4}{18}{Nomenclature}{table.caption.35}{}}
-\newlabel{tab:nomenclature@cref}{{[table][4][]4}{[1][18][]18}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {B}Constraints}{18}{appendix.B}\protected@file@percent }
-\newlabel{sec:AppendixB}{{B}{18}{Constraints}{appendix.B}{}}
-\newlabel{sec:AppendixB@cref}{{[section][2][]B}{[1][18][]18}{}{}{}}
+\bibcite{saidi2023}{1}
+\bibcite{sdn2021}{2}
+\bibcite{vinothina2012}{3}
+\bibcite{parikh2013}{4}
+\bibcite{mohamaddiah2014}{5}
+\bibcite{lbts2024}{6}
+\bibcite{10854610}{7}
+\bibcite{DAHMANI2025100616}{8}
+\bibcite{autoscaling2023}{9}
+\bibcite{dynamic2026}{10}
+\bibcite{huawei2022}{11}
+\bibcite{cloudkpi2010}{12}
+\bibcite{dvbpp2026}{13}
+\bibcite{anuradha2014}{14}
+\bibcite{lb2024}{15}
+\bibcite{alkhalifa2025comparative}{16}
+\bibcite{lenstra1977complexity}{17}
+\bibcite{ml_ra_litrev2025}{18}
+\bibcite{hu2021attend2pack}{19}
+\bibcite{mao2016deeprm}{20}
+\bibcite{mao2019decima}{21}
+\bibcite{schulman2017ppo}{22}
+\bibcite{mnih2016a3c}{23}
+\bibcite{konda1999actorcritic}{24}
+\bibcite{chadia2023understandingRL}{25}
+\bibcite{burke2013hyperheuristicsurvey}{26}
+\bibcite{lassoued2026hyperheuristic}{27}
+\bibcite{cie2025dispatchruleselection}{28}
+\bibcite{min2022atctuning}{29}
+\bibcite{chen2024drlgphh}{30}
+\bibcite{vepsalainen1987atc}{31}
+\bibcite{ortools}{32}
+\bibcite{cloud_rco}{33}
+\bibcite{DRL_Intrusion}{34}
+\bibcite{huang2020invalidmasking}{35}
+\bibcite{LADOSZ20221}{36}
+\bibcite{williams1992reinforce}{37}
+\bibcite{skalse2022rewardhacking}{38}
+\bibcite{energyaware2012}{39}
+\bibcite{fan2007powerprovisioning}{40}
+\bibcite{kleinrock1975queueing}{41}
+\bibcite{giffler1960active}{42}
+\bibcite{ng1999shaping}{43}
+\bibcite{dulacarnold2015largeactionspaces}{44}
+\bibcite{vinyals2015pointernet}{45}
+\bibcite{kool2019attention}{46}
+\bibcite{tavakoli2018actionbranching}{47}
+\bibcite{raffin2021sb3}{48}
+\bibcite{huang2022a2cppo}{49}
+\bibcite{tessler2019rcpo}{50}
+\bibcite{stooke2020pidlagrangian}{51}
+\bibcite{engstrom2020implementation}{52}
+\bibcite{andrychowicz2021onpolicy}{53}
+\bibcite{mao2019variance}{54}
+\bibcite{pinto2018asymmetric}{55}
+\bibcite{pinedo2016scheduling}{56}
+\bibcite{graham1969lpt}{57}
+\bibcite{smith1956wspt}{58}
+\bibcite{kanet2004wmdd}{59}
+\bibcite{carroll1965covert}{60}
+\bibcite{johnson1973binpacking}{61}
+\bibcite{grandl2014tetris}{62}
+\bibcite{kennedy1995pso}{63}
+\bibcite{potts1985wtardiness}{64}
+\bibcite{reiss2012googletrace}{65}
+\bibcite{cortez2017resourcecentral}{66}
+\bibcite{akiba2019optuna}{67}
+\bibcite{bergstra2011tpe}{68}
+\bibcite{eimer2023hyperparams}{69}
+\bibcite{abels2019dynamicweights}{70}
+\bibcite{hayes2022morlguide}{71}
+\bibcite{gnn2024jsspsurvey}{72}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Nomenclature}{24}{appendix.A}\protected@file@percent }
+\newlabel{sec:AppendixA}{{A}{24}{Nomenclature}{appendix.A}{}}
+\newlabel{sec:AppendixA@cref}{{[section][1][]A}{[1][24][]24}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Nomenclature}}{24}{table.caption.35}\protected@file@percent }
+\newlabel{tab:nomenclature}{{3}{24}{Nomenclature}{table.caption.35}{}}
+\newlabel{tab:nomenclature@cref}{{[table][3][]3}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Constraints}{24}{appendix.B}\protected@file@percent }
+\newlabel{sec:AppendixB}{{B}{24}{Constraints}{appendix.B}{}}
+\newlabel{sec:AppendixB@cref}{{[section][2][]B}{[1][24][]24}{}{}{}}
 \citation{andrychowicz2021onpolicy}
 \citation{andrychowicz2021onpolicy}
 \citation{potts1985wtardiness}
-\@writefile{toc}{\contentsline {paragraph}{Assignment.}{19}{section*.36}\protected@file@percent }
-\newlabel{con:assign}{{10}{19}{Assignment}{equation.10}{}}
-\newlabel{con:assign@cref}{{[equation][10][]10}{[1][18][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Offline start rate.}{19}{section*.37}\protected@file@percent }
-\newlabel{con:one-start}{{11}{19}{Offline start rate}{equation.11}{}}
-\newlabel{con:one-start@cref}{{[equation][11][]11}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Machine activation.}{19}{section*.38}\protected@file@percent }
-\newlabel{con:machine-use}{{12}{19}{Machine activation}{equation.12}{}}
-\newlabel{con:machine-use@cref}{{[equation][12][]12}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Start time.}{19}{section*.39}\protected@file@percent }
-\newlabel{con:start-time}{{13}{19}{Start time}{equation.13}{}}
-\newlabel{con:start-time@cref}{{[equation][13][]13}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Resource usage and capacity.}{19}{section*.40}\protected@file@percent }
-\newlabel{con:resource-usage}{{14}{19}{Resource usage and capacity}{equation.14}{}}
-\newlabel{con:resource-usage@cref}{{[equation][14][]14}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Tardiness, late jobs and peak utilisation.}{19}{section*.41}\protected@file@percent }
-\newlabel{con:tardiness}{{15}{19}{Tardiness, late jobs and peak utilisation}{equation.15}{}}
-\newlabel{con:tardiness@cref}{{[equation][15][]15}{[1][19][]19}{}{}{}}
-\newlabel{con:theta}{{16}{19}{Tardiness, late jobs and peak utilisation}{equation.16}{}}
-\newlabel{con:theta@cref}{{[equation][16][]16}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {C}Hyperparameter Search Space}{19}{appendix.C}\protected@file@percent }
-\newlabel{sec:AppendixC}{{C}{19}{Hyperparameter Search Space}{appendix.C}{}}
-\newlabel{sec:AppendixC@cref}{{[section][3][]C}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {D}Experimental Details}{19}{appendix.D}\protected@file@percent }
-\newlabel{sec:AppendixD}{{D}{19}{Experimental Details}{appendix.D}{}}
-\newlabel{sec:AppendixD@cref}{{[section][4][]D}{[1][19][]19}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Offline deadlines.}{19}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Assignment.}{25}{section*.36}\protected@file@percent }
+\newlabel{con:assign}{{10}{25}{Assignment}{equation.10}{}}
+\newlabel{con:assign@cref}{{[equation][10][]10}{[1][24][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Offline start rate.}{25}{section*.37}\protected@file@percent }
+\newlabel{con:one-start}{{11}{25}{Offline start rate}{equation.11}{}}
+\newlabel{con:one-start@cref}{{[equation][11][]11}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Machine activation.}{25}{section*.38}\protected@file@percent }
+\newlabel{con:machine-use}{{12}{25}{Machine activation}{equation.12}{}}
+\newlabel{con:machine-use@cref}{{[equation][12][]12}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Start time.}{25}{section*.39}\protected@file@percent }
+\newlabel{con:start-time}{{13}{25}{Start time}{equation.13}{}}
+\newlabel{con:start-time@cref}{{[equation][13][]13}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Resource usage and capacity.}{25}{section*.40}\protected@file@percent }
+\newlabel{con:resource-usage}{{14}{25}{Resource usage and capacity}{equation.14}{}}
+\newlabel{con:resource-usage@cref}{{[equation][14][]14}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Tardiness, late jobs and peak utilisation.}{25}{section*.41}\protected@file@percent }
+\newlabel{con:tardiness}{{15}{25}{Tardiness, late jobs and peak utilisation}{equation.15}{}}
+\newlabel{con:tardiness@cref}{{[equation][15][]15}{[1][25][]25}{}{}{}}
+\newlabel{con:theta}{{16}{25}{Tardiness, late jobs and peak utilisation}{equation.16}{}}
+\newlabel{con:theta@cref}{{[equation][16][]16}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Hyperparameter Search Space}{25}{appendix.C}\protected@file@percent }
+\newlabel{sec:AppendixC}{{C}{25}{Hyperparameter Search Space}{appendix.C}{}}
+\newlabel{sec:AppendixC@cref}{{[section][3][]C}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Experimental Details}{25}{appendix.D}\protected@file@percent }
+\newlabel{sec:AppendixD}{{D}{25}{Experimental Details}{appendix.D}{}}
+\newlabel{sec:AppendixD@cref}{{[section][4][]D}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Offline deadlines.}{25}{section*.43}\protected@file@percent }
 \citation{engstrom2020implementation}
 \citation{andrychowicz2021onpolicy}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Hyperparameters searched by Optuna (ranges after \cite  {andrychowicz2021onpolicy}). ``log'' means sampled log-uniformly; lists are categorical choices. Trial 0 of every study used the library defaults instead.}}{20}{table.caption.42}\protected@file@percent }
-\newlabel{tab:hp}{{5}{20}{Hyperparameters searched by Optuna (ranges after \cite {andrychowicz2021onpolicy}). ``log'' means sampled log-uniformly; lists are categorical choices. Trial 0 of every study used the library defaults instead}{table.caption.42}{}}
-\newlabel{tab:hp@cref}{{[table][5][]5}{[1][19][]20}{}{}{}}
-\@writefile{toc}{\contentsline {paragraph}{Online deadlines and job sizes.}{20}{section*.44}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Tuning protocol.}{20}{section*.45}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Faults fixed in the final training version.}{20}{section*.46}\protected@file@percent }
-\gdef \@abspage@last{21}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Hyperparameters searched by Optuna (ranges after \cite  {andrychowicz2021onpolicy}). ``log'' means sampled log-uniformly; lists are categorical choices. Trial 0 of every study used the library defaults instead.}}{26}{table.caption.42}\protected@file@percent }
+\newlabel{tab:hp}{{4}{26}{Hyperparameters searched by Optuna (ranges after \cite {andrychowicz2021onpolicy}). ``log'' means sampled log-uniformly; lists are categorical choices. Trial 0 of every study used the library defaults instead}{table.caption.42}{}}
+\newlabel{tab:hp@cref}{{[table][4][]4}{[1][25][]26}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Online deadlines and job sizes.}{26}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tuning protocol.}{26}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Faults fixed in the final training version.}{26}{section*.46}\protected@file@percent }
+\gdef \@abspage@last{27}

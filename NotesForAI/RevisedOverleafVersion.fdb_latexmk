@@ -1,14 +1,14 @@
 # Fdb version 4
 ["bibtex RevisedOverleafVersion"] 0 "RevisedOverleafVersion.aux" "RevisedOverleafVersion.bbl" "RevisedOverleafVersion" 0 -1
-  "C:/Users/ethan/AppData/Local/Programs/MiKTeX/bibtex/bib/feupphdteses/references.bib" 1366811700 2206 985e03fb36d872d306e76cfacc160693 ""
+  "./references.bib" 1791567203 46463 964202541f417c497ed3ad4067b7126b ""
   "C:/Users/ethan/AppData/Local/Programs/MiKTeX/bibtex/bst/ieeetran/IEEEtran.bst" 1440622569 57748 7c8250ecf02814ce6ddc0cdbb63df1dd ""
-  "RevisedOverleafVersion.aux" 1791560367 21691 0e4f7fc97967895231db9dab5cc9ea98 "pdflatex"
+  "RevisedOverleafVersion.aux" 1791568637 23778 9a91857d4bcc0ebbb07436a9b1a710cd "pdflatex"
   (generated)
   "RevisedOverleafVersion.bbl"
   "RevisedOverleafVersion.blg"
   (rewritten before read)
-["pdflatex"] 1791560276.42334 "d:/University/Year3/ResearchProject/Neural-Knapsack-Research-Project/NotesForAI/RevisedOverleafVersion.tex" "RevisedOverleafVersion.pdf" "RevisedOverleafVersion" 1791560382.33225 2
-  "C:/Users/ethan/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1791560381 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
+["pdflatex"] 1791568635.1485 "d:/University/Year3/ResearchProject/Neural-Knapsack-Research-Project/NotesForAI/RevisedOverleafVersion.tex" "RevisedOverleafVersion.pdf" "RevisedOverleafVersion" 1791568638.8087 2
+  "C:/Users/ethan/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1791565534 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/ethan/AppData/Local/MiKTeX/fonts/pk/ljfour/jknappen/ec/dpi600/tcrm1200.pk" 1791560368 14064 ed32545c909a03013c4d7c8170d820ea ""
   "C:/Users/ethan/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1791560288 13333487 0c602652f8fe640e2ad92468442df5f8 ""
   "C:/Users/ethan/AppData/Local/Programs/MiKTeX/fonts/tfm/jknappen/ec/tcrm1200.tfm" 993062508 1444 95ffe0f19b974d50849790c8225c7ef7 ""
@@ -126,14 +126,14 @@
   "C:/Users/ethan/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/ethan/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
   "Images/MDP_Diagram.png" 0 -1 0 ""
-  "Images/v2_multiobjective_gap.png" 1791559566 153905 9d4ae9914f2125d019b09234cddf6d7c ""
-  "Images/v2_offline_designs.png" 1791559566 266489 3e3fb1ef593bc4c44eda6d46572af0f5 ""
-  "Images/v2_online_budget.png" 1791559566 101366 328be3b1ed39fa614921a43f7e61dc85 ""
-  "RevisedOverleafVersion.aux" 1791560367 21691 0e4f7fc97967895231db9dab5cc9ea98 "pdflatex"
-  "RevisedOverleafVersion.bbl" 0 -1 0 "bibtex RevisedOverleafVersion"
-  "RevisedOverleafVersion.out" 1791560367 4296 e6250e1a398c144feeaea68a29d02223 "pdflatex"
-  "RevisedOverleafVersion.tex" 1791559561 57069 fddf8e1046cebc51ab9eb50ec3684ee9 ""
-  "d:/University/Year3/ResearchProject/Neural-Knapsack-Research-Project/NotesForAI/RevisedOverleafVersion.tex" 1791559561 57069 fddf8e1046cebc51ab9eb50ec3684ee9 ""
+  "Images/v2_offline_designs.png" 1791568630 266489 3e3fb1ef593bc4c44eda6d46572af0f5 ""
+  "Images/v2_regime_grid.png" 1791568630 167859 02b9ab8cbf8f98e08323fd5ea87ec686 ""
+  "Images/v2_tradeoff_late.png" 1791568630 139746 b8fc793acf736b71343ce1c926dea232 ""
+  "RevisedOverleafVersion.aux" 1791568637 23778 9a91857d4bcc0ebbb07436a9b1a710cd "pdflatex"
+  "RevisedOverleafVersion.bbl" 1791568037 20875 86659d8b17be79b2ddd65edb309e7ab2 "bibtex RevisedOverleafVersion"
+  "RevisedOverleafVersion.out" 1791568637 4296 e6250e1a398c144feeaea68a29d02223 "pdflatex"
+  "RevisedOverleafVersion.tex" 1791568625 57551 2fa36a46a00253700a5bc04cf15c712d ""
+  "d:/University/Year3/ResearchProject/Neural-Knapsack-Research-Project/NotesForAI/RevisedOverleafVersion.tex" 1791568625 57551 2fa36a46a00253700a5bc04cf15c712d ""
   (generated)
   "RevisedOverleafVersion.aux"
   "RevisedOverleafVersion.log"

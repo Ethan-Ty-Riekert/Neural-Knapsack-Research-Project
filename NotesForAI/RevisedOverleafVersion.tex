@@ -184,7 +184,7 @@ In total, the twelve priority rules and four placement rules give 48 heuristics,
 The environment, agents and evaluation pipeline are implemented in Python\footnote{\url{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project}} using Gymnasium and Stable-Baselines3 \cite{raffin2021sb3}. The environment and the translation of the mathematical formulation into code were written by hand; model implementation, training and evaluation were done with the help of Claude Code (see the Generative AI Use Statement).
 
 \subsection{Experimental Setup}\label{sec:setup}
-\paragraph{Instances.} Offline instances have 100 jobs, 10 machines and 4 resources with $C_r = 30$, and $H = 100$. Job durations and resource demands are drawn uniformly from $\{1, \dots, 9\}$, and weights from $\{1, \dots, 5\}$. Deadline tightness is set by the tardiness factor TF \cite{potts1985wtardiness}: larger TF means tighter deadlines on average. The main setting uses TF $= 0.5$ (medium), with 0.2 and 0.8 as loose and tight variants. A unit-weight setting ($w_j = 1$) isolates the effect of job weights. Online instances add Poisson arrivals at loads $\rho \in \{0.50, 0.75, 0.95, 1.10\}$; each job's deadline is its arrival time plus a random slack, the online counterpart of TF. Online job sizes are log-normal (right-skewed, like real cluster traces \cite{reiss2012googletrace, cortez2017resourcecentral}). Agents were trained on TF $= 0.5$ offline and $\rho = 0.95$ online. Appendix~\ref{sec:AppendixD} gives the exact distributions.
+\paragraph{Instances.} Offline instances have 100 jobs, 10 machines and 4 resources with $C_r = 30$, and $H = 100$. Job durations and resource demands are drawn uniformly from $\{1, \dots, 9\}$, and weights from $\{1, \dots, 5\}$. Deadline tightness is set by the tardiness factor TF \cite{potts1985wtardiness}: larger TF means tighter deadlines on average. The main setting uses TF $= 0.5$ (medium), with 0.2 and 0.8 as loose and tight variants. A unit-weight setting ($w_j = 1$) isolates the effect of job weights. Online instances always use weighted jobs (there is no unit-weight online setting) and add Poisson arrivals at loads $\rho \in \{0.50, 0.75, 0.95, 1.10\}$; each job's deadline is its arrival time plus a random slack, the online counterpart of TF. Online job sizes are log-normal (right-skewed, like real cluster traces \cite{reiss2012googletrace, cortez2017resourcecentral}). Because every RL study takes hours to days of compute, RL agents were trained and evaluated in one offline setting (TF $= 0.5$, with weighted and unit weights) and one online setting ($\rho = 0.95$: heavy load, but below saturation, so scheduling decisions matter most). The other loads and deadline tightnesses were run for the heuristics only. Appendix~\ref{sec:AppendixD} gives the exact distributions.
 
 \paragraph{Training and tuning.} An agent learns over episodes, each a complete, newly generated problem instance, so it never trains on the same problem twice. Training, validation (20 instances) and test (50 instances) use disjoint random seeds, so test instances are never seen in training or tuning. Every combination of design (6), algorithm (2) and case (2) had its own hyperparameter search, 24 studies in all, run with the same protocol: Optuna \cite{akiba2019optuna} with the TPE sampler \cite{bergstra2011tpe}, 12 trials of 300,000 steps, the first trial always being the library defaults. Poor trials were stopped early by median pruning, which compares a trial's validation $J$ with the median of earlier trials \emph{at the same training step}. Each study keeps one best configuration, chosen on the 20 validation instances. That configuration was then retrained with 3 random seeds for 1,000,000 steps offline and 300,000 steps online, and results are the mean and standard deviation over the seeds. A follow-up trained online Options 0, 2 and 3 (PPO) for 1,000,000 steps, and Option 2 for 2,000,000. Appendices~\ref{sec:AppendixC} and~\ref{sec:AppendixD} list the search space and protocol details.
 
@@ -196,7 +196,7 @@ We also record metrics that were not optimised, such as the on-time rate, number
 
 % =====================================================================
 \section{Results}\label{sec:results}
-All results below are on the 50 held-out test instances; lower $J$ is better. Full tables for every setting and metric are on the project's GitHub \href{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/tree/main/Results}{results page}.
+All results below are on the 50 held-out test instances; lower $J$ is better. RL results are for the three settings RL was trained on: offline with weighted jobs, offline with unit weights, and online (weighted jobs) at $\rho = 0.95$. The other loads and deadline settings appear only in the heuristic comparison (\cref{sec:res-other}). Full tables for every setting and metric are on the project's GitHub \href{https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/tree/main/Results}{results page}.
 
 \subsection{RL against heuristics on the main objective}\label{sec:res-main}
 \Cref{tab:main} and \cref{fig:offline} summarise the main comparison. Offline, with weighted jobs, the best RL agent (Option 2, PPO) reaches $J = 28{,}061$, 5.2\% above the best heuristic, WLST ($26{,}670$). RL's standard deviation across seeds is small (219), so the gap is not an artefact of one unlucky seed. Every design except Option 1 lands within 12\% of WLST, and all of them beat every published rule: the best of these, LST, scores $39{,}536$, 29\% worse than the best RL agent. The weighted rules WLST, WEDF and MDC were designed for this project after RL had beaten LST, and only WLST beats RL. CP-SAT's best schedule after 60 seconds ($35{,}681$) is worse than both RL and WLST, so it gives no useful bound on how far either is from optimal at this size. On 15-job instances, however, CP-SAT proved 13 of 15 instances optimal, and LST matched the optimum on every one.
@@ -238,38 +238,28 @@ Best RL vs best heuristic & +5.2\% & 0.0\% & +72\% \\
 \end{figure}
 
 \subsection{Combined objectives}\label{sec:res-mo}
-When the objective rewards more than squared tardiness, RL overtakes the best heuristic offline (\cref{fig:mo}, \cref{tab:mo}). Once linear tardiness is weighted at least as heavily as the reference ($\times 1$), the best RL agent beats the best heuristic by 1.8--10.3\%; with late jobs added at weights $\times 0.5$ to $\times 4$, by 1.4--10.0\%; and with all four terms, by 8.6\%. The advantage grows with the weight of the added term up to $\times 2$--$\times 4$. At moderate weights, the winning agents were trained on $J$ alone; at the largest weights, agents trained on the composite objective win.
+\Cref{fig:regime} answers the research question in one view: for each objective and setting, it compares the best RL agent with the best heuristic. Offline with weighted jobs, RL overtakes the best heuristic once the objective rewards more than squared tardiness. Once linear tardiness counts at least as much as the reference ($\times 1$), RL is better by 1.8--10.3\%; with late jobs added at weights $\times 0.5$ to $\times 4$, by 1.4--10.0\%; and with all four terms, by 8.6\%. At moderate weights the winning agents were trained on $J$ alone; at the largest weights, agents trained on the combined objective win. Energy is the exception: RL loses by 3.4--4.8\% at every weight.
 
-This advantage depends on job weights and on the setting. With unit weights, RL never beats LST on any composite objective (0.0\% to +10.8\%). Online, the best RL agent stays within 0.1--6.5\% of the best heuristic on every composite but never beats it, and that agent is a single seed.
+This advantage depends on job weights and on the setting. With unit weights, RL never beats LST (0.0\% to +10.8\%). Online, RL trails the best heuristic by 5.8--15.7\% on every combined objective.
 
-\begin{table}[htbp]
-\centering
-\caption{Best RL agent against the best heuristic on composite objectives, offline with weighted jobs. Negative means RL is better. Weights are multiples of the reference values ($\lambda_T = 15.8$, $\lambda_U = 146$, $\lambda_E = 153$).}
-\label{tab:mo}
-\begin{tabular}{lrrr}
-\toprule
-Objective & Best heuristic & Best RL & RL vs heuristic \\
-\midrule
-$J$ only & 26,670 & 28,061 & +5.2\% \\
-$J$ + linear tardiness ($\times 1$) & 53,300 & 52,363 & $-1.8$\% \\
-$J$ + linear tardiness ($\times 4$) & 133,190 & 119,419 & $-10.3$\% \\
-$J$ + late jobs ($\times 1$) & 53,421 & 48,101 & $-10.0$\% \\
-$J$ + late jobs ($\times 4$) & 88,835 & 87,569 & $-1.4$\% \\
-$J$ + energy ($\times 1$) & 52,274 & 54,398 & +4.1\% \\
-All four terms ($\times 1$) & 105,654 & 96,541 & $-8.6$\% \\
-\bottomrule
-\end{tabular}
-\end{table}
+\Cref{fig:tradeoff} shows why RL wins offline. WLST reaches the lowest $J$ by accepting many late jobs (a weighted count of 183). Every heuristic lies on or above the dashed line of the best trade-offs any heuristic achieves, but most RL agents lie below it: for a similar $J$, they finish noticeably more jobs on time. Agents trained on a combined objective (green) move further towards fewer late jobs.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{Images/v2_multiobjective_gap.png}
-\caption{Best RL agent relative to the best heuristic as the weight of each added term grows (below zero: RL better). Left: offline, weighted jobs; middle: offline, unit weights (RL agents trained on $J$ only); right: online, $\rho = 0.95$ (best RL agent is a single seed).}
-\label{fig:mo}
+\includegraphics[width=0.85\linewidth]{Images/v2_regime_grid.png}
+\caption{When does RL win? Best RL agent against the best heuristic on each objective (rows) and setting (columns); blue means RL is better, red means the heuristic is better. Weights are multiples of the reference values, which make each added term equal to $J$ on the best heuristic's schedule. Only RL agents with at least two evaluated seeds are included.}
+\label{fig:regime}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{Images/v2_tradeoff_late.png}
+\caption{Offline, weighted jobs: $J$ against the weighted number of late jobs (both lower is better) for every heuristic and every RL agent with at least two seeds. The dashed line joins the best trade-offs among the heuristics; points below it achieve combinations no heuristic reaches.}
+\label{fig:tradeoff}
 \end{figure}
 
 \subsection{Online training budget}\label{sec:res-online}
-More training closes most of the online gap for Option 2 but not for Option 0 (\cref{tab:budget}, \cref{fig:budget}). Option 2's mean $J$ falls from $39{,}947$ at 300k steps to $26{,}515$ at 1M (+21\% over EDF+Consolidate) and $24{,}921$ at 2M (+13\%, 2 seeds), and its best 1M seed is within 4.3\% of the heuristic. Option 0 improves on average but remains 55\% behind at 1M. The single best online run, an Option 2 agent trained for 1M steps on $J$ plus linear tardiness, matched EDF+Consolidate ($22{,}000$ vs $21{,}986$, +0.1\%), but this is one seed. Online A2C did not learn: Option 0 A2C produced the same schedule as FCFS+FirstFit ($J = 44{,}920$) on all three seeds.
+More training closes most of the online gap for Option 2 but not for Option 0 (\cref{tab:budget}). Option 2's mean $J$ falls from $39{,}947$ at 300k steps to $26{,}515$ at 1M (+21\% over EDF+Consolidate) and $24{,}921$ at 2M (+13\%, 2 seeds), and its best 1M seed is within 4.3\% of the heuristic. Option 0 improves on average but remains 55\% behind at 1M. One Option 2 agent trained for 1M steps on $J$ plus linear tardiness matched EDF+Consolidate ($22{,}000$ vs $21{,}986$), but a second seed of the same setup scored about $30{,}100$, so this was not reproducible. Online A2C did not learn: Option 0 A2C produced the same schedule as FCFS+FirstFit ($J = 44{,}920$) on all three seeds.
 
 \begin{table}[htbp]
 \centering
@@ -286,13 +276,6 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\linewidth]{Images/v2_online_budget.png}
-\caption{Online test $J$ of PPO Options 0 and 2 by training budget; dots are individual seeds. The dashed line is the best heuristic.}
-\label{fig:budget}
-\end{figure}
-
 \subsection{Other findings}\label{sec:res-other}
 \paragraph{Action-space design.} Learning a job priority (Options 2 and 3) worked best in every setting. Picking job-machine pairs directly (Option 0) was 6\% worse offline and still 55\% behind online after 1M steps, and choosing job and machine with two heads (Option 4), competitive offline, failed online ($J = 139{,}721$). Rule selection (Option 1) mostly collapsed onto a single rule: with unit weights it reproduced LST exactly on all three seeds, and with weighted jobs its schedules had the same number of late jobs as LST (61.0) and a similar $J$ (within 2.3\% of LST).
 
@@ -306,11 +289,11 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 % =====================================================================
 \section{Discussion}\label{sec:discussion}
-\paragraph{When does RL beat the heuristics?} Our results suggest three conditions. First, \emph{the objective must not be one that a simple rule already solves well}. With unit weights and squared tardiness, LST matched every proven optimum on small instances, and RL could at best reproduce it. When the objective mixes several goals (\cref{sec:res-mo}), no single rule is designed for the combination, and RL won by up to 10\%. Second, \emph{jobs must differ in importance}. The offline multi-objective advantage disappeared with unit weights. Weights give a learned priority more to work with, since the right order now depends jointly on deadline, length and weight. Third, \emph{the agent must be trained enough for the setting}. Offline, 1M steps was enough to come within 5\% of the best heuristic. Online, 300k steps left RL 70\% behind, and 1--2M steps closed most of the gap for the best design.
+\paragraph{When does RL beat the heuristics?} Our results suggest three conditions. First, \emph{the objective must not be one that a simple rule already solves well}. With unit weights and squared tardiness, LST matched every proven optimum on small instances, and RL could at best reproduce it. When the objective mixes several goals (\cref{sec:res-mo}), no single rule is designed for the combination, and RL won by up to 10\%. Second, \emph{jobs must differ in importance}. The offline multi-objective advantage disappeared with unit weights. Weights give a learned priority more to work with, since the right order now depends jointly on deadline, length and weight. This condition was tested offline only, because every online setting used weighted jobs. Third, \emph{the agent must be trained enough for the setting}. Offline, 1M steps was enough to come within 5\% of the best heuristic. Online, 300k steps left RL 70\% behind, and 1--2M steps closed most of the gap for the best design.
 
 \paragraph{RL and heuristic design.} The best offline heuristic, WLST, did not exist at the start of the project: it was constructed after RL agents had beaten every published rule by 29\%. One reading is that RL lost to WLST. A fairer reading is that RL found, automatically and within 5\%, a level of performance that took a purpose-built rule to match. This suggests that RL could also serve as a tool for heuristic design, by revealing that better rules exist for a new objective. It also shows how much results depend on the choice of baselines. Studies that compare RL only with standard rules would have reported a clear RL win here.
 
-\paragraph{Why the multi-objective gains need care.} At moderate weights, the agents that won the composite objectives were trained on $J$ alone. Their schedules happened to have fewer late jobs and lower linear tardiness than WLST's (for example, Option 0 A2C: 52.7 late jobs against 61.7). WLST is tuned for squared tardiness and gives up the other metrics to get it. This part of the advantage is therefore a side effect of how RL schedules, not a trade-off it learned, and it is exactly the kind of pattern in non-optimised metrics that must not be over-interpreted. At larger weights, agents trained on the composite objective took over, which does indicate learning. Re-running these agents with the tuned settings and full 1M-step budget is in progress.
+\paragraph{Why the multi-objective gains need care.} At moderate weights, the agents that won the composite objectives were trained on $J$ alone. Their schedules happened to have fewer late jobs and lower linear tardiness than WLST's (for example, Option 0 A2C: 52.7 late jobs against 61.7; \cref{fig:tradeoff}). WLST is tuned for squared tardiness and gives up the other metrics to get it. This part of the advantage is therefore a side effect of how RL schedules, not a trade-off it learned, and it is exactly the kind of pattern in non-optimised metrics that must not be over-interpreted. At larger weights, agents trained on the composite objective took over, which does indicate learning. Re-running these agents with the tuned settings and full 1M-step budget is in progress.
 
 \paragraph{Why online is harder.} Online returns depend heavily on the random arrival sequence, which the agent cannot predict, so the training signal is much noisier than offline \cite{mao2019variance}. Online episodes are also roughly ten times longer, and the observation has to cover over a thousand job slots. Both effects mean more samples are needed, consistent with the budget results. Option 0's much larger action space compounds the problem \cite{dulacarnold2015largeactionspaces}.
 
@@ -318,7 +301,7 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 
 \paragraph{Practical considerations.} RL training is unstable (one diverged run in eight) and expensive, and tuning helped little: the defaults were best in 8 of 24 studies, consistent with the known sensitivity of RL to hyperparameters and the small tuning budgets typically used \cite{eimer2023hyperparams}. A heuristic needs no training and behaves the same every time. RL is therefore worth its cost mainly where the objective is complex and weighted, and where enough compute is available.
 
-\paragraph{Limitations.} All instances are synthetic and of one size (100 jobs, 10 machines), and results use 3 seeds. Picking the best of many RL variants on the test set slightly favours RL, although the best heuristic is picked the same way. CP-SAT did not reach optimality at 100 jobs, so the distance of RL and WLST from the optimum is unknown. The online multi-objective and 2M-step results rest on one and two seeds, and three online studies were stopped early.
+\paragraph{Limitations.} All instances are synthetic and of one size (100 jobs, 10 machines), and results use 3 seeds. Picking the best of many RL variants on the test set slightly favours RL, although the best heuristic is picked the same way. CP-SAT did not reach optimality at 100 jobs, so the distance of RL and WLST from the optimum is unknown. The online 2M-step results rest on two seeds, and three online studies were stopped early.
 
 % =====================================================================
 \section{Conclusion}\label{sec:conclusion}
