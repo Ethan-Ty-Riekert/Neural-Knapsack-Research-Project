@@ -64,15 +64,15 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | rank | method | family | weighted late jobs | J |
 |---|---|---|---|---|
 | 1 | ATC+Consolidate | Heuristic | 97.2 +/- 28.5 | 40676 +/- 28529 |
-| 2 | ATC+BestFit | Heuristic | 107.1 +/- 29.9 | 46117 +/- 31644 |
-| 3 | ATC+FirstFit | Heuristic | 113.9 +/- 31.6 | 59081 +/- 40133 |
-| 4 | COVERT+Consolidate | Heuristic | 117.9 +/- 39.5 | 26019 +/- 23766 |
-| 5 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 122.3 +/- 2.4 | 30611 +/- 1909 |
-| 6 | EDF+Consolidate | Heuristic | 124.6 +/- 49.2 | 21986 +/- 16435 |
-| 7 | COVERT+FirstFit | Heuristic | 126.2 +/- 41.2 | 36166 +/- 28065 |
-| 8 | COVERT+BestFit | Heuristic | 127.9 +/- 37.4 | 38459 +/- 30772 |
-| 9 | EDF+BestFit | Heuristic | 143.9 +/- 52.0 | 35250 +/- 28408 |
-| 10 | EDF+FirstFit | Heuristic | 146.9 +/- 51.6 | 40381 +/- 36669 |
+| 2 | WMDD+Consolidate | Heuristic | 97.2 +/- 29.9 | 36190 +/- 23110 |
+| 3 | ATC+BestFit | Heuristic | 107.1 +/- 29.9 | 46117 +/- 31644 |
+| 4 | WMDD+BestFit | Heuristic | 108.5 +/- 34.9 | 47163 +/- 34402 |
+| 5 | WMDD+FirstFit | Heuristic | 108.8 +/- 29.1 | 45044 +/- 27550 |
+| 6 | ATC+FirstFit | Heuristic | 113.9 +/- 31.6 | 59081 +/- 40133 |
+| 7 | COVERT+Consolidate | Heuristic | 117.9 +/- 39.5 | 26019 +/- 23766 |
+| 8 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 122.3 +/- 2.4 | 30611 +/- 1909 |
+| 9 | EDF+Consolidate | Heuristic | 124.6 +/- 49.2 | 21986 +/- 16435 |
+| 10 | WSPT+Consolidate | Heuristic | 125.3 +/- 32.7 | 107362 +/- 58122 |
 
 | top 5 | top 10 |
 |---|---|
