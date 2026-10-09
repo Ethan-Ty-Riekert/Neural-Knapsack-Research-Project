@@ -294,7 +294,7 @@ Option 3 & 44,827 $\pm$ 2,890 & 30,611 $\pm$ 1,909 & -- \\
 \end{figure}
 
 \subsection{Other findings}\label{sec:res-other}
-\paragraph{Action-space design.} Learning a job priority (Options 2 and 3) worked best in every setting. Picking job-machine pairs directly (Option 0) was 6\% worse offline and least stable online. Rule selection (Option 1) mostly collapsed onto a single rule: with unit weights it reproduced LST exactly on all three seeds, and with weighted jobs its schedules had the same number of late jobs as LST (61.0) and a similar $J$ (within 2.3\% of LST).
+\paragraph{Action-space design.} Learning a job priority (Options 2 and 3) worked best in every setting. Picking job-machine pairs directly (Option 0) was 6\% worse offline and still 55\% behind online after 1M steps, and choosing job and machine with two heads (Option 4), competitive offline, failed online ($J = 139{,}721$). Rule selection (Option 1) mostly collapsed onto a single rule: with unit weights it reproduced LST exactly on all three seeds, and with weighted jobs its schedules had the same number of late jobs as LST (61.0) and a similar $J$ (within 2.3\% of LST).
 
 \paragraph{Training stability.} In 8 independent offline runs of the same Option 2 configuration (default hyperparameters, 300k steps), one diverged ($J = 69{,}367$ against $28{,}352$--$30{,}925$ for the other seven). Online seeds differ much more: Option 2 at 300k steps ranged from $30{,}076$ to $53{,}231$.
 
