@@ -32,6 +32,29 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Online multi-objective reruns (online weights): calibration was the main cause
+
+**Config:** Option 2 PPO, on_rho095, 1M steps, weights = REFERENCE_LAMBDAS["on_rho095"] (17.6 / 176 / 17.6); seed 0.
+
+**Stats (test J, 50 instances; previous run with offline weights in brackets):**
+```
+EDF+Consolidate (best heuristic)   21,986
+J only, Opt2 PPO 1M (3 seeds)      22,927 / 31,652 / 24,965
+J + linear tardiness (k) s0        22,000            (stopped before finishing)
+J + late jobs (q) s0               43,554            [51,555]
+J + late jobs + energy (qg) s0     62,031            [434,115]
+```
+
+**Observation:** the energy collapse is gone with the online weights (434k -> 62k), which supports miscalibration as
+the main cause; J + late jobs is still far behind. J + linear tardiness s0 is the best online RL run so far: J
+22,000 vs EDF+Consolidate 21,986 (+0.1%), and within 0.1-1.5% of the best heuristic on every composite objective. One
+seed only -- not yet a result.
+
+**Conclusion / next step:** queued (CPU): k seeds 2-4, k at lambda x2 and x4 (seeds 0, 1), third seeds of q / qg / kqg.
+GPU still runs k / kqg / q / qg seed 1.
+
+---
+
 ## 2026-10-09 (S2W12) -- Online multi-objective runs used offline weights: set aside, rerun with online references
 
 **Config:** the online (on_rho095) multi-objective runs (Option 2 PPO, 1M steps, q / qg / k / kqg) were launched with the
