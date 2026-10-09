@@ -83,15 +83,15 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | rank | method | family | weighted tardiness | J |
 |---|---|---|---|---|
 | 1 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective [lambda x4] | RL | 1361 +/- 32 | 36564 +/- 3180 |
-| 2 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1404 +/- 330 | 31368 +/- 7172 |
-| 3 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 1413 +/- 249 | 37434 +/- 7259 |
+| 2 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1374 +/- 42 | 32606 +/- 1751 |
+| 3 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 1393 +/- 28 | 36625 +/- 1144 |
 | 4 | COVERT+BestFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 5 | COVERT+Consolidate | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 6 | COVERT+FirstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 7 | COVERT+WorstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
 | 8 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1428 +/- 29 | 34412 +/- 418 |
 | 9 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 1435 +/- 29 | 29696 +/- 833 |
-| 10 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 1437 +/- 306 | 33523 +/- 5692 |
+| 10 | WMDD+BestFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
 
 | top 5 | top 10 |
 |---|---|
@@ -196,7 +196,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | utilisation of active machines | J |
 |---|---|---|---|---|
-| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 0.705 +/- 0.028 | 48660 +/- 8117 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 0.682 +/- 0.032 | 44627 +/- 5704 |
 | 2 | LPT+Consolidate | Heuristic | 0.665 +/- 0.022 | 193356 +/- 31197 |
 | 3 | LST+Consolidate | Heuristic | 0.650 +/- 0.021 | 39536 +/- 9861 |
 | 4 | LPT+BestFit | Heuristic | 0.648 +/- 0.025 | 193356 +/- 31197 |
@@ -215,7 +215,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | active machine-ticks | J |
 |---|---|---|---|---|
-| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 148 +/- 12 | 48660 +/- 8117 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 154 +/- 9 | 44627 +/- 5704 |
 | 2 | LPT+Consolidate | Heuristic | 162 +/- 9 | 193356 +/- 31197 |
 | 3 | LPT+BestFit | Heuristic | 165 +/- 10 | 193356 +/- 31197 |
 | 4 | LST+Consolidate | Heuristic | 166 +/- 9 | 39536 +/- 9861 |
@@ -234,7 +234,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | energy (SPECpower) | J |
 |---|---|---|---|---|
-| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 129 +/- 10 | 48660 +/- 8117 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 134 +/- 6 | 44627 +/- 5704 |
 | 2 | LPT+Consolidate | Heuristic | 139 +/- 8 | 193356 +/- 31197 |
 | 3 | LPT+BestFit | Heuristic | 141 +/- 8 | 193356 +/- 31197 |
 | 4 | LST+Consolidate | Heuristic | 142 +/- 8 | 39536 +/- 9861 |
