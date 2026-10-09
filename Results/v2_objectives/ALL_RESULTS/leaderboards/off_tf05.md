@@ -91,7 +91,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 7 | WMDD+Consolidate | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
 | 8 | WMDD+FirstFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
 | 9 | WMDD+WorstFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
-| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective [lambda x2] | RL | 1450 +/- 83 | 34084 +/- 5287 |
+| 10 | PPO Opt3 ATC-prior score windowed non-delay [tuned] | RL | 1459 +/- 30 | 31291 +/- 1594 |
 
 | top 5 | top 10 |
 |---|---|
@@ -165,9 +165,9 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 5 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +energy objective [lambda x0.25] | RL | 54.54 +/- 0.00 | 29406 +/- 891 |
 | 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective [lambda x0.25] | RL | 54.54 +/- 0.00 | 29596 +/- 916 |
 | 7 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 29696 +/- 833 |
-| 8 | PPO Opt3 ATC-prior score non-delay | RL | 54.54 +/- 0.00 | 31145 +/- 1639 |
-| 9 | PPO Opt3 ATC-prior score windowed non-delay [tuned] | RL | 54.54 +/- 0.00 | 31291 +/- 1594 |
-| 10 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 31817 +/- 467 |
+| 8 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +energy objective [lambda x0.5] | RL | 54.54 +/- 0.00 | 29925 +/- 1145 |
+| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective [lambda x0.5] | RL | 54.54 +/- 0.00 | 30517 +/- 1748 |
+| 10 | PPO Opt3 ATC-prior score non-delay | RL | 54.54 +/- 0.00 | 31145 +/- 1639 |
 
 | top 5 | top 10 |
 |---|---|
