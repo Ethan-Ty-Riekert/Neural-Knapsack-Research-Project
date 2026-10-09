@@ -83,15 +83,15 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | rank | method | family | weighted tardiness | J |
 |---|---|---|---|---|
 | 1 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective [lambda x4] | RL | 1361 +/- 32 | 36564 +/- 3180 |
-| 2 | COVERT+BestFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
-| 3 | COVERT+Consolidate | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
-| 4 | COVERT+FirstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
-| 5 | COVERT+WorstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
-| 6 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 1435 +/- 29 | 29696 +/- 833 |
-| 7 | WMDD+BestFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
-| 8 | WMDD+Consolidate | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
-| 9 | WMDD+FirstFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
-| 10 | WMDD+WorstFit | Heuristic | 1444 +/- 269 | 61305 +/- 14033 |
+| 2 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1404 +/- 330 | 31368 +/- 7172 |
+| 3 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 1413 +/- 249 | 37434 +/- 7259 |
+| 4 | COVERT+BestFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
+| 5 | COVERT+Consolidate | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
+| 6 | COVERT+FirstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
+| 7 | COVERT+WorstFit | Heuristic | 1418 +/- 302 | 49836 +/- 13084 |
+| 8 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 1428 +/- 29 | 34412 +/- 418 |
+| 9 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 1435 +/- 29 | 29696 +/- 833 |
+| 10 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 1437 +/- 306 | 33523 +/- 5692 |
 
 | top 5 | top 10 |
 |---|---|
@@ -196,16 +196,16 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | utilisation of active machines | J |
 |---|---|---|---|---|
-| 1 | LPT+Consolidate | Heuristic | 0.665 +/- 0.022 | 193356 +/- 31197 |
-| 2 | LST+Consolidate | Heuristic | 0.650 +/- 0.021 | 39536 +/- 9861 |
-| 3 | LPT+BestFit | Heuristic | 0.648 +/- 0.025 | 193356 +/- 31197 |
-| 4 | COVERT+Consolidate | Heuristic | 0.648 +/- 0.019 | 49836 +/- 13084 |
-| 5 | MDC+Consolidate | Heuristic | 0.648 +/- 0.020 | 33312 +/- 9055 |
-| 6 | SPT+Consolidate | Heuristic | 0.647 +/- 0.024 | 240824 +/- 32589 |
-| 7 | LPT+FirstFit | Heuristic | 0.647 +/- 0.022 | 193356 +/- 31197 |
-| 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 0.646 +/- 0.006 | 40124 +/- 1020 |
-| 9 | WMDD+Consolidate | Heuristic | 0.645 +/- 0.014 | 61305 +/- 14033 |
-| 10 | FCFS+Consolidate | Heuristic | 0.645 +/- 0.020 | 209940 +/- 32735 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 0.705 +/- 0.028 | 48660 +/- 8117 |
+| 2 | LPT+Consolidate | Heuristic | 0.665 +/- 0.022 | 193356 +/- 31197 |
+| 3 | LST+Consolidate | Heuristic | 0.650 +/- 0.021 | 39536 +/- 9861 |
+| 4 | LPT+BestFit | Heuristic | 0.648 +/- 0.025 | 193356 +/- 31197 |
+| 5 | COVERT+Consolidate | Heuristic | 0.648 +/- 0.019 | 49836 +/- 13084 |
+| 6 | MDC+Consolidate | Heuristic | 0.648 +/- 0.020 | 33312 +/- 9055 |
+| 7 | SPT+Consolidate | Heuristic | 0.647 +/- 0.024 | 240824 +/- 32589 |
+| 8 | LPT+FirstFit | Heuristic | 0.647 +/- 0.022 | 193356 +/- 31197 |
+| 9 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 0.646 +/- 0.006 | 40124 +/- 1020 |
+| 10 | WMDD+Consolidate | Heuristic | 0.645 +/- 0.014 | 61305 +/- 14033 |
 
 | top 5 | top 10 |
 |---|---|
@@ -215,16 +215,16 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | active machine-ticks | J |
 |---|---|---|---|---|
-| 1 | LPT+Consolidate | Heuristic | 162 +/- 9 | 193356 +/- 31197 |
-| 2 | LPT+BestFit | Heuristic | 165 +/- 10 | 193356 +/- 31197 |
-| 3 | LST+Consolidate | Heuristic | 166 +/- 9 | 39536 +/- 9861 |
-| 4 | COVERT+Consolidate | Heuristic | 166 +/- 9 | 49836 +/- 13084 |
-| 5 | LPT+FirstFit | Heuristic | 166 +/- 10 | 193356 +/- 31197 |
-| 6 | MDC+Consolidate | Heuristic | 166 +/- 9 | 33312 +/- 9055 |
-| 7 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 167 +/- 2 | 40124 +/- 1020 |
-| 8 | SPT+Consolidate | Heuristic | 167 +/- 7 | 240824 +/- 32589 |
-| 9 | FCFS+Consolidate | Heuristic | 167 +/- 11 | 209940 +/- 32735 |
-| 10 | WMDD+Consolidate | Heuristic | 167 +/- 10 | 61305 +/- 14033 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 148 +/- 12 | 48660 +/- 8117 |
+| 2 | LPT+Consolidate | Heuristic | 162 +/- 9 | 193356 +/- 31197 |
+| 3 | LPT+BestFit | Heuristic | 165 +/- 10 | 193356 +/- 31197 |
+| 4 | LST+Consolidate | Heuristic | 166 +/- 9 | 39536 +/- 9861 |
+| 5 | COVERT+Consolidate | Heuristic | 166 +/- 9 | 49836 +/- 13084 |
+| 6 | LPT+FirstFit | Heuristic | 166 +/- 10 | 193356 +/- 31197 |
+| 7 | MDC+Consolidate | Heuristic | 166 +/- 9 | 33312 +/- 9055 |
+| 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 167 +/- 2 | 40124 +/- 1020 |
+| 9 | SPT+Consolidate | Heuristic | 167 +/- 7 | 240824 +/- 32589 |
+| 10 | FCFS+Consolidate | Heuristic | 167 +/- 11 | 209940 +/- 32735 |
 
 | top 5 | top 10 |
 |---|---|
@@ -234,16 +234,16 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 
 | rank | method | family | energy (SPECpower) | J |
 |---|---|---|---|---|
-| 1 | LPT+Consolidate | Heuristic | 139 +/- 8 | 193356 +/- 31197 |
-| 2 | LPT+BestFit | Heuristic | 141 +/- 8 | 193356 +/- 31197 |
-| 3 | LST+Consolidate | Heuristic | 142 +/- 8 | 39536 +/- 9861 |
-| 4 | COVERT+Consolidate | Heuristic | 142 +/- 8 | 49836 +/- 13084 |
-| 5 | LPT+FirstFit | Heuristic | 142 +/- 9 | 193356 +/- 31197 |
-| 6 | MDC+Consolidate | Heuristic | 142 +/- 8 | 33312 +/- 9055 |
-| 7 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 142 +/- 1 | 40124 +/- 1020 |
-| 8 | FCFS+Consolidate | Heuristic | 143 +/- 9 | 209940 +/- 32735 |
-| 9 | SPT+Consolidate | Heuristic | 143 +/- 7 | 240824 +/- 32589 |
-| 10 | WMDD+Consolidate | Heuristic | 143 +/- 9 | 61305 +/- 14033 |
+| 1 | A2C Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 129 +/- 10 | 48660 +/- 8117 |
+| 2 | LPT+Consolidate | Heuristic | 139 +/- 8 | 193356 +/- 31197 |
+| 3 | LPT+BestFit | Heuristic | 141 +/- 8 | 193356 +/- 31197 |
+| 4 | LST+Consolidate | Heuristic | 142 +/- 8 | 39536 +/- 9861 |
+| 5 | COVERT+Consolidate | Heuristic | 142 +/- 8 | 49836 +/- 13084 |
+| 6 | LPT+FirstFit | Heuristic | 142 +/- 9 | 193356 +/- 31197 |
+| 7 | MDC+Consolidate | Heuristic | 142 +/- 8 | 33312 +/- 9055 |
+| 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 142 +/- 1 | 40124 +/- 1020 |
+| 9 | FCFS+Consolidate | Heuristic | 143 +/- 9 | 209940 +/- 32735 |
+| 10 | SPT+Consolidate | Heuristic | 143 +/- 7 | 240824 +/- 32589 |
 
 | top 5 | top 10 |
 |---|---|
