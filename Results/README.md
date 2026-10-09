@@ -1,12 +1,16 @@
 # Results
 
+**Looking for the main results? Open
+[`v2_objectives/ALL_RESULTS/HIGHLIGHTS.md`](v2_objectives/ALL_RESULTS/HIGHLIGHTS.md)**: best methods,
+key figures, and top-5 / top-10 leaderboards per metric and preset.
+
 One folder per **problem variant**: a variant fixes the reward/objective and the instance generator.
 Numbers are only comparable **within one variant and one preset** (same instances, same reward).
 
 | Variant | Status | Definition | Contents |
 |---|---|---|---|
 | [`v1_legacy_reward/`](v1_legacy_reward/) | frozen | [`Code/variants/v1_legacy_reward/`](../Code/variants/v1_legacy_reward/README.md) | Every result from 2026-07-24 to 2026-09-28, plus new `runs/` of the legacy reward |
-| [`v2_objectives/`](v2_objectives/) | active | [`Code/variants/v2_objectives/`](../Code/variants/v2_objectives/README.md) | Reward = selected objectives; `comparisons/` holds ranked tables, `runs/` per-run manifests, `ALL_RESULTS/` the auto-built archive (tables + figures, rebuilt from `runs/`). Summary: `Future/research/2026-09-29-v2-build-and-first-results.md` |
+| [`v2_objectives/`](v2_objectives/) | active | [`Code/variants/v2_objectives/`](../Code/variants/v2_objectives/README.md) | Reward = selected objectives; `comparisons/` holds ranked tables, `runs/` per-run manifests, `ALL_RESULTS/` the auto-built archive (tables, figures, leaderboards and `HIGHLIGHTS.md`, rebuilt from `runs/`). Summary: `Future/research/2026-09-29-v2-build-and-first-results.md` |
 
 ## Layout inside a variant
 

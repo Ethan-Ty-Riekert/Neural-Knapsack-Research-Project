@@ -59,6 +59,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_c_50.md`](../tabl
 |---|---|
 | ![top 5](../figures/leaderboards/off_c_50/top5_late_jobs.png) | ![top 10](../figures/leaderboards/off_c_50/top10_late_jobs.png) |
 
+## weighted late jobs (lower is better)
+
+Every method has the same value here, so there is no ranking.
+
 ## weighted tardiness (lower is better)
 
 | rank | method | family | weighted tardiness | J |

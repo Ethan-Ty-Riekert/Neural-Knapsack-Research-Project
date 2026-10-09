@@ -136,3 +136,16 @@
 {"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":11,"step":75000,"intermediate_value":45660.0}
 {"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":11,"step":150000,"intermediate_value":45660.0}
 {"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":11,"step":225000,"intermediate_value":45660.0}
+{"op_code":6,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":11,"state":1,"values":[52716.9],"datetime_complete":"2026-10-09T01:21:38.004529"}
+{"op_code":4,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","study_id":0,"datetime_start":"2026-10-09T01:21:38.238886"}
+{"op_code":5,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"param_name":"learning-rate","param_value_internal":0.0029163145211297575,"distribution":"{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 0.0001, \"high\": 0.003, \"log\": true}}"}
+{"op_code":5,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"param_name":"rollout-size","param_value_internal":1,"distribution":"{\"name\": \"CategoricalDistribution\", \"attributes\": {\"choices\": [20, 80, 320]}}"}
+{"op_code":5,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"param_name":"gamma","param_value_internal":0,"distribution":"{\"name\": \"CategoricalDistribution\", \"attributes\": {\"choices\": [0.99, 0.995, 0.999]}}"}
+{"op_code":5,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"param_name":"gae-lambda","param_value_internal":1,"distribution":"{\"name\": \"CategoricalDistribution\", \"attributes\": {\"choices\": [0.9, 0.95, 1.0]}}"}
+{"op_code":5,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"param_name":"ent-coef","param_value_internal":0.0017548579357497497,"distribution":"{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 0.0001, \"high\": 0.03, \"log\": true}}"}
+{"op_code":8,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"user_attr":{"train_argv":"--option 0 --reward-mode objective --objectives tardiness_sq --lambda-late 1.0 --lambda-energy 1.0 --power-model linear --difficulty on_rho095 --timesteps 300000 --save-tag tune_on_rho095_o0pmlubrze_a2c_t12 --n-envs 4 --vec-backend subproc --seed 0 --algo a2c --markov-obs --lookahead --fixed-scaling --critic-arrivals --lateness-shaping --normalize-reward --event-idle --policy-arch pointer --learning-rate 0.00291631 --rollout-size 80 --gamma 0.99 --gae-lambda 0.95 --ent-coef 0.00175486"}}
+{"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"step":75000,"intermediate_value":42850.0}
+{"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"step":150000,"intermediate_value":45660.0}
+{"op_code":7,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"step":225000,"intermediate_value":42850.0}
+{"op_code":6,"worker_id":"edcf60b5-ac19-46d7-900a-d195b3d34408-34168","trial_id":12,"state":1,"values":[52716.9],"datetime_complete":"2026-10-09T03:48:01.167740"}
+{"op_code":0,"worker_id":"65337475-12c4-4ecb-af7b-62ba2d8b16bf-35068","study_name":"on_rho095_o0pmlubrze_a2c","directions":[1]}

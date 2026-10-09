@@ -11,11 +11,11 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 3 | WLST+Consolidate | Heuristic | 24874 +/- 21375 |
 | 4 | WEDF+Consolidate | Heuristic | 25689 +/- 22866 |
 | 5 | COVERT+Consolidate | Heuristic | 26019 +/- 23766 |
-| 6 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
-| 7 | MDC+FirstFit | Heuristic | 30421 +/- 24573 |
-| 8 | MDC+BestFit | Heuristic | 32592 +/- 26659 |
-| 9 | WLST+BestFit | Heuristic | 34508 +/- 29217 |
-| 10 | WEDF+BestFit | Heuristic | 34871 +/- 27407 |
+| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 26515 +/- 4564 |
+| 7 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
+| 8 | MDC+FirstFit | Heuristic | 30421 +/- 24573 |
+| 9 | MDC+BestFit | Heuristic | 32592 +/- 26659 |
+| 10 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 33966 +/- 3699 |
 
 | top 5 | top 10 |
 |---|---|
@@ -59,6 +59,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 |---|---|
 | ![top 5](../figures/leaderboards/on_rho095/top5_late_jobs.png) | ![top 10](../figures/leaderboards/on_rho095/top10_late_jobs.png) |
 
+## weighted late jobs (lower is better)
+
+Every method has the same value here, so there is no ranking.
+
 ## weighted tardiness (lower is better)
 
 | rank | method | family | weighted tardiness | J |
@@ -87,11 +91,11 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 3 | LST+FirstFit | Heuristic | 33.7 +/- 9.4 | 38831 +/- 31768 |
 | 4 | WLST+Consolidate | Heuristic | 33.9 +/- 11.4 | 24874 +/- 21375 |
 | 5 | MDC+Consolidate | Heuristic | 34.4 +/- 13.0 | 22646 +/- 22184 |
-| 6 | LST+BestFit | Heuristic | 36.3 +/- 11.5 | 39115 +/- 28826 |
-| 7 | EDF+BestFit | Heuristic | 36.5 +/- 11.7 | 35250 +/- 28408 |
-| 8 | WEDF+Consolidate | Heuristic | 36.6 +/- 12.6 | 25689 +/- 22866 |
-| 9 | EDF+FirstFit | Heuristic | 38.7 +/- 12.9 | 40381 +/- 36669 |
-| 10 | FCFS+Consolidate | Heuristic | 39.6 +/- 11.8 | 39709 +/- 37565 |
+| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 35.1 +/- 5.1 | 26515 +/- 4564 |
+| 7 | LST+BestFit | Heuristic | 36.3 +/- 11.5 | 39115 +/- 28826 |
+| 8 | EDF+BestFit | Heuristic | 36.5 +/- 11.7 | 35250 +/- 28408 |
+| 9 | WEDF+Consolidate | Heuristic | 36.6 +/- 12.6 | 25689 +/- 22866 |
+| 10 | EDF+FirstFit | Heuristic | 38.7 +/- 12.9 | 40381 +/- 36669 |
 
 | top 5 | top 10 |
 |---|---|

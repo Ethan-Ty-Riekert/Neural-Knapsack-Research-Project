@@ -6,7 +6,8 @@ Student: Ty Riekert. Supervisor: Elham Mardaneh. Co-supervisor: Tony Mathew.
 This repository contains the code, experiment protocol and results behind the project's research
 paper. **Reviewers: the paper's results are reproduced from the tagged release cited in the paper**
 (see [Citing this work](#citing-this-work)); the results themselves are in
-[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/).
+[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/), starting from
+[`HIGHLIGHTS.md`](Results/v2_objectives/ALL_RESULTS/HIGHLIGHTS.md).
 
 ## Overview
 
@@ -96,7 +97,19 @@ only. Each configuration is then trained with 3 seeds and evaluated on 50 held-o
 
 ## Results
 
-### Interactive results explorer
+### Final results (v2 objective)
+
+**Start with [`HIGHLIGHTS.md`](Results/v2_objectives/ALL_RESULTS/HIGHLIGHTS.md)**: the best method of
+each family per preset, the best method on every metric (J, on-time rate, weighted and max tardiness,
+mean wait, active machine-ticks), the key figures, and top-5 / top-10 leaderboards for every metric on
+every preset. It is regenerated with the tables and figures, so it always matches the data.
+
+The tables, figures and per-run data behind the paper (weighted squared tardiness) are in
+[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/). Each number there traces
+back to a run folder in `Results/v2_objectives/runs/` that records the git commit, machine, full
+configuration and per-instance metrics.
+
+### Earlier phase: interactive results explorer (v1 objective)
 
 **[Open the Scheduler Results Atlas](https://ethan-ty-riekert.github.io/Neural-Knapsack-Research-Project/Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html)**
 ([alternative link](https://htmlpreview.github.io/?https://github.com/Ethan-Ty-Riekert/Neural-Knapsack-Research-Project/blob/main/Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/scheduler_results_atlas.html),
@@ -108,13 +121,6 @@ job weights. Start with its "Start here" box: the settings marked **main** are t
 conclusions rest on, and "Key results" shows the best method of each family. Note that v1 used the
 earlier objective, total weighted tardiness $\sum_j w_j T_j$; the folder's own
 [README](Results/v1_legacy_reward/ALL_RESULTS_2026-07-24_to_2026-09-22/README.md) explains its sources.
-
-### Final results (v2 objective)
-
-The tables, figures and per-run data behind the paper (weighted squared tardiness) are in
-[`Results/v2_objectives/ALL_RESULTS/`](Results/v2_objectives/ALL_RESULTS/) (start with its README and
-`tables/summary.md`). Each number there traces back to a run folder in `Results/v2_objectives/runs/`
-that records the git commit, machine, full configuration and per-instance metrics.
 
 <!-- RESULTS SUMMARY: filled in from tables/summary.md when the final (v3) runs are complete. -->
 

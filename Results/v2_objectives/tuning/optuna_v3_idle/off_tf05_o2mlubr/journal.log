@@ -1,0 +1,5 @@
+{"op_code":0,"worker_id":"e67202d8-cd10-4344-afa4-ec4ab0bc19e8-14680","study_name":"off_tf05_o2mlubr","directions":[1]}
+{"op_code":4,"worker_id":"e67202d8-cd10-4344-afa4-ec4ab0bc19e8-14680","study_id":0,"datetime_start":null,"state":4,"value":null,"values":null,"distributions":{},"params":{},"user_attrs":{"defaults":true},"system_attrs":{"fixed_params":{}},"intermediate_values":{}}
+{"op_code":6,"worker_id":"e67202d8-cd10-4344-afa4-ec4ab0bc19e8-14680","trial_id":0,"state":0,"values":null,"datetime_start":"2026-10-07T07:36:50.685377"}
+{"op_code":8,"worker_id":"e67202d8-cd10-4344-afa4-ec4ab0bc19e8-14680","trial_id":0,"user_attr":{"train_argv":"--option 2 --reward-mode objective --objectives tardiness_sq --lambda-late 1.0 --lambda-energy 1.0 --power-model linear --difficulty off_tf05 --timesteps 300000 --save-tag tune_off_tf05_o2mlubr_t0 --n-envs 4 --vec-backend subproc --seed 0 --algo ppo --markov-obs --lookahead --fixed-scaling --critic-arrivals --lateness-shaping"}}
+{"op_code":6,"worker_id":"e67202d8-cd10-4344-afa4-ec4ab0bc19e8-14680","trial_id":0,"state":3,"values":null,"datetime_complete":"2026-10-07T07:41:07.294652"}

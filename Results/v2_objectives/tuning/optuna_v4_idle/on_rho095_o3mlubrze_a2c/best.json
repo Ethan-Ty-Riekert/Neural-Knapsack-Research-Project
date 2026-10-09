@@ -1,0 +1,20 @@
+{
+ "study": "on_rho095_o3mlubrze_a2c",
+ "protocol": "v4_idle",
+ "best_trial": 0,
+ "validation_J": 90349.85,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 300000,
+ "best_is_defaults": true,
+ "hyperparameters": {},
+ "stopped_early": false,
+ "counts": {
+  "COMPLETE": 7,
+  "PRUNED": 5,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

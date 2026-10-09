@@ -1,0 +1,16 @@
+tag,preset,option,validation_J
+v2_off_tf05_o2nm_s0,off_tf05,2,29956.25
+v2_off_tf05_o2nm_s1,off_tf05,2,32004.70
+v2_off_tf05_o2nm_s2,off_tf05,2,30194.65
+v2_on_rho095_o1cnm_s0,on_rho095,1,171392.10
+v2_on_rho095_o1cnm_s1,on_rho095,1,30856.90
+v2_on_rho095_o1cnm_s2,on_rho095,1,142196.85
+v2_on_rho095_o3wnm_s0,on_rho095,3,343537.40
+v2_on_rho095_o3wnm_s1,on_rho095,3,113860.20
+v2_on_rho095_o3wnm_s2,on_rho095,3,79393.30
+v2_on_rho095_o0pnm_a2c_s0,on_rho095,0,134555.00
+v2_on_rho095_o0pnm_a2c_s1,on_rho095,0,375281.25
+v2_on_rho095_o1cnm_a2c_s0,on_rho095,1,120999.10
+v2_on_rho095_o1cnm_a2c_s1,on_rho095,1,43668.10
+v2_on_rho095_o1cnm_a2c_s2,on_rho095,1,303955.65
+v2_on_rho095_o0pnm_a2c_s2,on_rho095,0,299711.60

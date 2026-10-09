@@ -10,5 +10,5 @@
 | on_rho050 | WLST+Consolidate (4085) | - | - | - | - |
 | on_rho075 | WLST+Consolidate (5990) | - | - | - | - |
 | on_rho075_tight | WLST+Consolidate (29502) | - | - | - | - |
-| on_rho095 | EDF+Consolidate (21986) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] (39947, 3 seeds) | +81.7% | - | - |
+| on_rho095 | EDF+Consolidate (21986) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] (26515, 3 seeds) | +20.6% | - | - |
 | on_rho110 | MDC+Consolidate (106463) | - | - | - | - |

@@ -1,0 +1,26 @@
+{
+ "study": "off_tf05_o3mlubrze_a2c",
+ "protocol": "v4_idle",
+ "best_trial": 2,
+ "validation_J": 31539.3,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 300000,
+ "best_is_defaults": false,
+ "hyperparameters": {
+  "learning-rate": 0.0006042851578845063,
+  "rollout-size": 80,
+  "gamma": 0.999,
+  "gae-lambda": 1.0,
+  "ent-coef": 0.009541412354586892
+ },
+ "stopped_early": false,
+ "counts": {
+  "COMPLETE": 6,
+  "PRUNED": 6,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}

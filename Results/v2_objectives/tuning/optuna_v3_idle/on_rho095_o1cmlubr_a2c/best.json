@@ -1,0 +1,25 @@
+{
+ "study": "on_rho095_o1cmlubr_a2c",
+ "protocol": "v3_idle",
+ "best_trial": 3,
+ "validation_J": 30856.9,
+ "validation_seeds": [
+  600000,
+  600019
+ ],
+ "trial_steps": 300000,
+ "best_is_defaults": false,
+ "hyperparameters": {
+  "learning-rate": 0.0004804641349751479,
+  "rollout-size": 20,
+  "gamma": 0.995,
+  "gae-lambda": 1.0,
+  "ent-coef": 0.001348775545730254
+ },
+ "counts": {
+  "COMPLETE": 6,
+  "PRUNED": 6,
+  "FAIL": 0,
+  "RUNNING": 0
+ }
+}
