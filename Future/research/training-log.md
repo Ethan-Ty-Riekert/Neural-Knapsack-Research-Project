@@ -32,6 +32,39 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Online multi-objective runs used offline weights: set aside, rerun with online references
+
+**Config:** the online (on_rho095) multi-objective runs (Option 2 PPO, 1M steps, q / qg / k / kqg) were launched with the
+OFFLINE reference weights (lambda_T 15.8, lambda_U 146, lambda_E 153: each term equal to J on WLST's off_tf05 schedule).
+The rule is per preset: lambda = J / term on the preset's best J heuristic. Online that is EDF+Consolidate (J 21,986,
+weighted tardiness 1,252, weighted late jobs 124.6, machine-ticks 1,251), giving lambda_T 17.6, lambda_U 176,
+lambda_E 17.6. The weights now live in one place, `Code/variants/v2_objectives.REFERENCE_LAMBDAS`, used by the
+composite report; the 8 reruns (4 objectives x seeds 0, 1) are on the GPU queue under the same tags.
+
+**Stats (invalid, offline weights; kept in `Results/v2_objectives/invalid_runs/online_mo_offline_lambdas/`):**
+```
+                       J        w.tardiness  w.late jobs  machine-ticks  makespan
+EDF+Consolidate      21,986      1,252        124.6        1,251         139.8
+Opt2 PPO J only s0   22,927      1,473          -          1,296         162.0
+qx s0 (J+late)       51,555      2,183        166.6        1,352         152.4
+qx s1 (J+late)       35,197
+qgx s0 (+energy)    434,115      8,772        319.2        1,449         196.6
+```
+
+**Observation:** with offline lambda_E online the energy term is ~8.7x J (153 x 1,251 = 191k vs 22k), so the reward is
+almost all energy. The qg model did not even reduce energy: it used more machine-ticks than the J-only model and its
+schedules ran 35 ticks longer, i.e. training broke down rather than trading J for energy. This is a likely cause, not
+a proven one; the reruns test it. lambda_T and lambda_U were only 10-20% off, but every online run is rerun so that the
+protocol is the same for all of them. The J+late runs (qx) were worse than EDF+Consolidate on BOTH J and late jobs, so
+calibration may not be the whole story online. Also found: the online heuristics were scored before the weighted
+late-job count was recorded, so the online late-job rows of the composite table were missing; `heurMO_on_rho095` re-scores
+them (as `heurMO_off_tf05` did offline this morning). `auto_eval` now skips tags whose model has been set aside.
+
+**Conclusion / next step:** compare the reruns with the J-only Option 2 1M runs (22,927 / 31,652 / 24,965). If the online
+multi-objective runs still lose on both axes, report that RL's multi-objective advantage holds offline only.
+
+---
+
 ## 2026-10-09 (S2W12) -- Multi-objective: linear tardiness term added; RL beats WLST once it counts
 
 **Config:** `--lambda-tardiness` (lambda_T for the 'tardiness' term; it was fixed at 1, negligible next to J). Reference

@@ -2,7 +2,9 @@
 
 Every 60 s: each tag with a 'DONE <tag> rc=0' line in status.txt and no scored line in evals.txt is
 evaluated through run.py (rl-eval:<option>:<tag>, which rebuilds the env from the model's sidecar spec).
-Tuning trials (_hp<k>) are never evaluated on test -- they are ranked on validation by tune_v2.py.
+Tuning trials (_hp<k>) are never evaluated on test -- they are ranked on validation by tune_v2.py. A tag whose model
+is no longer in rl_training/models (set aside as invalid, e.g. into rl_training/invalid_models/) is skipped, so it can
+be rerun under the same tag.
 A failed evaluation is retried up to 3 times. Runs at BELOW_NORMAL priority.
 
     python tools/campaign/auto_eval.py
@@ -37,6 +39,10 @@ def evaluate(tag):
         f.write(f"{time.strftime('%H:%M')} eval {tag} rc={rc} {mean.group(0) if mean else ''}\n")
 
 
+def has_model(tag):
+    return any((REPO / "rl_training" / "models").glob(f"*_{tag}.zip"))
+
+
 def main():
     psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     failures = {}
@@ -45,7 +51,7 @@ def main():
         for tag in dict.fromkeys(done):
             m = TAG.match(tag)
             is_trial = bool(m and (m["hp"] or "").startswith("_hp"))  # validation-only, never test
-            if m and not is_trial and tag not in scored() and failures.get(tag, 0) < MAX_ATTEMPTS:
+            if m and not is_trial and has_model(tag) and tag not in scored() and failures.get(tag, 0) < MAX_ATTEMPTS:
                 evaluate(tag)
                 if tag not in scored():
                     failures[tag] = failures.get(tag, 0) + 1

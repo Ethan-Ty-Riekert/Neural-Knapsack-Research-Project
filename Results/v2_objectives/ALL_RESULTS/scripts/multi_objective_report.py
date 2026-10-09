@@ -7,8 +7,9 @@ objective is linear in these, its mean over instances is the same combination of
 
     J_comp = J + lambda_T * weighted tardiness + lambda_U * sum_j w_j U_j + lambda_E * active machine-ticks
 
-with lambda_T = 15.8 * m_T, lambda_U = 146 * m_U and lambda_E = 153 * m_E (the reference weights equalise each term with J on WLST's
-schedule; m = the lambda multiplier, 1 when the tag has no _lam). Writes, per preset with data:
+with lambda = reference * m, the per-preset reference weights from Code.variants.v2_objectives.REFERENCE_LAMBDAS (each
+equalises its term with J on the preset's best J heuristic's schedule; m = the lambda multiplier, 1 when the tag has
+no _lam). Writes, per preset with data:
 
     multi_objective/<preset>_composite.md     best heuristic vs best RL on each composite objective
     multi_objective/<preset>_pareto_*.png      J vs weighted late jobs, J vs machine-ticks: heuristics (and their
@@ -23,18 +24,19 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import build_folder as bf  # noqa: E402
+from Code.variants.v2_objectives import REFERENCE_LAMBDAS  # noqa: E402
 
 OUT = bf.ROOT / "multi_objective"
-REF_T, REF_U, REF_E = 15.8, 146.0, 153.0
 M = (0.25, 0.5, 1, 2, 4)
 WEIGHTINGS = ([("J only", 0, 0, 0)] + [(f"J + linear tardiness (x{m:g})", m, 0, 0) for m in M]
               + [(f"J + late jobs (x{m:g})", 0, m, 0) for m in M] + [(f"J + energy (x{m:g})", 0, 0, m) for m in M]
               + [("J + late jobs + energy (x1)", 0, 1, 1), ("all four terms (x1)", 1, 1, 1)])
 
 
-def composite(rec, m_t, m_u, m_e):
-    terms = (("weighted_tardiness", REF_T * m_t), ("weighted_late_jobs", REF_U * m_u),
-             ("active_machine_ticks", REF_E * m_e))
+def composite(rec, m_t, m_u, m_e, refs):
+    ref_t, ref_u, ref_e = refs
+    terms = (("weighted_tardiness", ref_t * m_t), ("weighted_late_jobs", ref_u * m_u),
+             ("active_machine_ticks", ref_e * m_e))
     if any(w and rec.get(k) is None for k, w in terms):
         return None
     return rec["objective_J"] + sum(w * (rec.get(k) or 0) for k, w in terms)
@@ -55,12 +57,13 @@ def is_multi(label):
 
 
 def write_composite(preset, recs):
+    refs = REFERENCE_LAMBDAS[preset]
     lines = [f"# {preset}: best heuristic vs best RL on composite objectives (50 test instances, lower is better)", "",
-             f"J_comp = J + {REF_T:g} m_T * weighted tardiness + {REF_U:g} m_U * weighted late jobs + "
-             f"{REF_E:g} m_E * active machine-ticks.", "",
+             f"J_comp = J + {refs[0]:g} m_T * weighted tardiness + {refs[1]:g} m_U * weighted late jobs + "
+             f"{refs[2]:g} m_E * active machine-ticks.", "",
              "| objective | best heuristic | J_comp | best RL | J_comp | RL vs heuristic |", "|---|---|---|---|---|---|"]
     for name, m_t, m_u, m_e in WEIGHTINGS:
-        scored = [(composite(r, m_t, m_u, m_e), r) for r in recs]
+        scored = [(composite(r, m_t, m_u, m_e, refs), r) for r in recs]
         scored = [(v, r) for v, r in scored if v is not None]
         heur = min((x for x in scored if x[1]["family"] == "Heuristic"), default=None, key=lambda x: x[0])
         rl = min((x for x in scored if x[1]["family"] == "RL"), default=None, key=lambda x: x[0])
@@ -76,8 +79,8 @@ def write_composite(preset, recs):
 def fig_pareto(preset, recs, metric, xlabel, fname):
     import matplotlib.pyplot as plt
     pts = [(r["objective_J"], r[metric], r) for r in recs if r.get(metric) is not None]
-    if not pts:
-        return
+    if not any(r["family"] == "Heuristic" for _, _, r in pts):
+        return  # nothing to compare against (heuristics evaluated before the metric was recorded)
     fig, ax = plt.subplots(figsize=(7.5, 5))
     heur = [(x, y) for x, y, r in pts if r["family"] == "Heuristic"]
     rl_single = [(x, y) for x, y, r in pts if r["family"] == "RL" and not is_multi(r["method"])]

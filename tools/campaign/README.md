@@ -7,7 +7,7 @@ evaluation of every finished model, and CPU protection. Scripts live here; runti
 | Script | Role |
 |---|---|
 | `queue_runner.py` | Starts jobs from `rl_training/campaign/queue.txt` while CPU stays at or below `target_cpu` (`runner_settings.json`, re-read live). Jobs run at Below Normal priority. Adopts jobs left running by an earlier runner. |
-| `auto_eval.py` | Evaluates every finished model on its preset's 50 test instances (`run.py rl-eval:<option>:<tag>`). Tuning trials (`_hp<k>`) are never evaluated on test. |
+| `auto_eval.py` | Evaluates every finished model on its preset's 50 test instances (`run.py rl-eval:<option>:<tag>`). Tuning trials (`_hp<k>`) are never evaluated on test. A tag whose model was moved out of `rl_training/models/` (set aside as invalid) is skipped, so it can be rerun under the same tag. |
 | `cpu_watchdog.py` | Pauses the newest training job if the 3-minute average CPU exceeds 95%, resumes it below 80%. |
 | `auto_push.py` | Every 30 min: rebuilds the results archive and multi-objective report, commits all changes except the author's private drafts (`EthanTravelDocs/`, `report.md`) and pushes. |
 | `keep_awake.py` | Stops Windows from sleeping while the queue runner is alive (the display may still turn off); no power settings are changed. |
