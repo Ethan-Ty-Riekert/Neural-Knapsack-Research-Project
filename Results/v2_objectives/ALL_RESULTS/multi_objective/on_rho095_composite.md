@@ -8,8 +8,8 @@ J_comp = J + 15.8 m_T * weighted tardiness + 146 m_U * weighted late jobs + 153 
 | J + linear tardiness (x0.25) | EDF+Consolidate | 26,934 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 32,649 | +21.2% |
 | J + linear tardiness (x0.5) | EDF+Consolidate | 31,881 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 38,782 | +21.6% |
 | J + linear tardiness (x1) | EDF+Consolidate | 41,776 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 51,050 | +22.2% |
-| J + linear tardiness (x2) | EDF+Consolidate | 61,565 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 75,585 | +22.8% |
-| J + linear tardiness (x4) | EDF+Consolidate | 101,143 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 124,656 | +23.2% |
+| J + linear tardiness (x2) | EDF+Consolidate | 61,565 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic (1 seeds) | 73,465 | +19.3% |
+| J + linear tardiness (x4) | EDF+Consolidate | 101,143 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic (1 seeds) | 116,471 | +15.2% |
 | J + energy (x0.25) | MDC+Consolidate | 69,721 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 75,828 | +8.8% |
 | J + energy (x0.5) | MDC+Consolidate | 116,797 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 125,141 | +7.1% |
 | J + energy (x1) | MDC+Consolidate | 210,949 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic  (3 seeds) | 223,768 | +6.1% |
