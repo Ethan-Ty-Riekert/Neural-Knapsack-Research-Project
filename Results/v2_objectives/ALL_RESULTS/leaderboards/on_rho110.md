@@ -70,9 +70,9 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 5 | ATC+WorstFit | Heuristic | 231.6 +/- 35.8 | 312216 +/- 120179 |
 | 6 | COVERT+BestFit | Heuristic | 231.8 +/- 48.1 | 187862 +/- 102012 |
 | 7 | COVERT+FirstFit | Heuristic | 240.1 +/- 55.4 | 180812 +/- 108182 |
-| 8 | EDF+BestFit | Heuristic | 263.7 +/- 71.4 | 155351 +/- 109761 |
-| 9 | EDF+Consolidate | Heuristic | 264.6 +/- 67.1 | 114142 +/- 68444 |
-| 10 | COVERT+WorstFit | Heuristic | 271.4 +/- 47.5 | 305427 +/- 138995 |
+| 8 | SPT+Consolidate | Heuristic | 246.3 +/- 44.0 | 391147 +/- 161979 |
+| 9 | SPT+BestFit | Heuristic | 251.4 +/- 48.1 | 408295 +/- 157784 |
+| 10 | SPT+FirstFit | Heuristic | 260.2 +/- 42.7 | 445610 +/- 154209 |
 
 | top 5 | top 10 |
 |---|---|
