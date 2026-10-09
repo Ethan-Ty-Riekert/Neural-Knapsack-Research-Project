@@ -107,7 +107,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     newest, _, _ = bf.load_runs()
     results = bf.aggregate(newest)
-    for preset in ("off_tf05", "on_rho095"):
+    for preset in REFERENCE_LAMBDAS:
         recs = [r for r in results.get(preset, []) if r.get("objective_J") is not None]
         if not recs:
             continue

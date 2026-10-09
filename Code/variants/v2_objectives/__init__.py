@@ -33,12 +33,14 @@ DEFAULT_OBJECTIVES = "tardiness_sq"
 # Reference weights for multi-objective runs (lambda_T, lambda_U, lambda_E), per preset (2026-10-09). Each
 # equalises its term with J on the schedule of the preset's best J heuristic (mean over the 50 test
 # instances): lambda = J / term. off_tf05: WLST; on_rho095: EDF+Consolidate (J 21,986, weighted tardiness
-# 1,252, weighted late jobs 124.6, active machine-ticks 1,251). A run's weights are these times its _lam
+# 1,252, weighted late jobs 124.6, active machine-ticks 1,251); off_tf05_w1: LST+FirstFit (J 13,098, tardiness 785,
+# late jobs 61.0, machine-ticks 173). A run's weights are these times its _lam
 # multiplier (Code/utils/run_tags.py). The online values must not be reused from offline: J per machine-tick
 # differs ~9x between the presets, so offline lambda_E online makes energy dominate the reward.
 REFERENCE_LAMBDAS = {
     "off_tf05": (15.8, 146.0, 153.0),
     "on_rho095": (17.6, 176.0, 17.6),
+    "off_tf05_w1": (16.7, 215.0, 75.7),
 }
 
 

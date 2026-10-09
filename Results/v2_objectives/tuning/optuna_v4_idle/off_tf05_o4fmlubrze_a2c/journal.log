@@ -116,3 +116,4 @@
 {"op_code":6,"worker_id":"0f349210-d222-4789-8104-1d956f0262d7-21628","trial_id":9,"state":2,"values":[29731.0],"datetime_complete":"2026-10-09T07:36:26.932940"}
 {"op_code":7,"worker_id":"3bfc3970-acb7-418d-91c9-a7fa8b019a01-39216","trial_id":11,"step":75000,"intermediate_value":64913.2}
 {"op_code":6,"worker_id":"3bfc3970-acb7-418d-91c9-a7fa8b019a01-39216","trial_id":11,"state":2,"values":[64913.2],"datetime_complete":"2026-10-09T07:36:33.329546"}
+{"op_code":0,"worker_id":"b75abe47-99f0-4f0c-9668-852fa2f0aae0-39076","study_name":"off_tf05_o4fmlubrze_a2c","directions":[1]}

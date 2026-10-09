@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-09 (S2W12) -- Four new experiments queued (user-approved): MO at final protocol, energy gap, unit weights, generalisation
+
+**Config:**
+1. *Offline multi-objective at the final protocol* (GPU, 12 runs): Option 2 PPO, off_tf05 tuned hyperparameters, 1M
+   steps, objectives q / k / kqg / qg, seeds 0-2 (tags `v2_off_tf05_o2mlubrze<obj>_tuned_s<seed>`). The earlier offline
+   MO runs used default hyperparameters at 300k while the J-only finals they are ranked against used tuned ones at 1M.
+   (Checked online too: online Option 2's tuning picked the defaults, so the online `_tuned` runs are consistent.)
+2. *Energy-gap hypothesis* (3 runs): RL loses J + energy by 3-5% to WLST+Consolidate. Hypothesis: Options 2/3 have no
+   consolidating placement action. Option 1 (whose menu includes Consolidate) trained on J + energy, 300k, default
+   hyperparameters, compared with the Option 2 J + energy runs at the same budget.
+3. *Unit-weight preset* (6 runs): off_tf05_w1, Option 2, J + late jobs and J + linear tardiness, 300k, 3 seeds; reference
+   weights from LST+FirstFit (lambda_T 16.7, lambda_U 215, lambda_E 75.7; added to REFERENCE_LAMBDAS). Tests whether the
+   offline multi-objective advantage depends on job weights.
+4. *Generalisation* (84 evaluations, no retraining): 30 off_tf05 models (J-only finals, all designs; Option 2 MO
+   runs) scored on off_tf08 (tighter deadlines); 27 on_rho095 models scored on on_rho075 and on_rho110 (lighter /
+   heavier load). off_tf02 is excluded: the best heuristic already reaches J = 0 there. Heuristics on these presets
+   are re-scored with all metrics first (`heurMO_<preset>`).
+
+**Stats:** first data point -- Option 2 tuned s0 on off_tf08: J 327,957 vs WLST+FirstFit 257,155.
+
+**Observation:** pending.
+
+**Conclusion / next step:** composite report now covers every preset in REFERENCE_LAMBDAS. The 189 held older-setup runs
+stay on hold (user, 2026-10-09).
+
+---
+
 ## 2026-10-09 (S2W12) -- Online multi-objective reruns (online weights): calibration was the main cause
 
 **Config:** Option 2 PPO, on_rho095, 1M steps, weights = REFERENCE_LAMBDAS["on_rho095"] (17.6 / 176 / 17.6); seed 0.

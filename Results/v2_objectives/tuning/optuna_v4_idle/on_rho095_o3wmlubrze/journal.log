@@ -162,3 +162,4 @@
 {"op_code":6,"worker_id":"528f6b05-7acf-4f0b-afec-1269f3b4d66c-12016","trial_id":10,"state":1,"values":[75532.65],"datetime_complete":"2026-10-08T23:10:03.377422"}
 {"op_code":0,"worker_id":"1d2d3fff-89d0-44a6-862b-c2b51c204b35-36512","study_name":"on_rho095_o3wmlubrze","directions":[1]}
 {"op_code":0,"worker_id":"07aadea1-2e07-4961-8407-6d6da652dafc-14944","study_name":"on_rho095_o3wmlubrze","directions":[1]}
+{"op_code":0,"worker_id":"1058ba2b-85da-4334-abf7-513a4797671c-39076","study_name":"on_rho095_o3wmlubrze","directions":[1]}
