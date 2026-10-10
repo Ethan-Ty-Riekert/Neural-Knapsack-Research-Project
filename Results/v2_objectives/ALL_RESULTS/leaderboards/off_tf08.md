@@ -110,7 +110,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 7 | EDF+Consolidate | Heuristic | 57.1 +/- 1.3 | 394149 +/- 45422 |
 | 8 | EDF+WorstFit | Heuristic | 57.1 +/- 1.3 | 394149 +/- 45422 |
 | 9 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 59.7 +/- 0.5 | 367492 +/- 17181 |
-| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 61.2 +/- 1.3 | 352456 +/- 25354 |
+| 10 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 59.9 +/- 0.9 | 378472 +/- 9787 |
 
 | top 5 | top 10 |
 |---|---|
@@ -129,7 +129,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 7 | EDF+BestFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
 | 8 | EDF+Consolidate | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
 | 9 | EDF+WorstFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
-| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 55.3 +/- 1.1 | 352456 +/- 25354 |
+| 10 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 53.6 +/- 0.7 | 378472 +/- 9787 |
 
 | top 5 | top 10 |
 |---|---|
@@ -151,8 +151,8 @@ Every method has the same value here, so there is no ranking.
 | 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 352456 +/- 25354 |
 | 7 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 364339 +/- 27920 |
 | 8 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 367492 +/- 17181 |
-| 9 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 385013 +/- 436 |
-| 10 | WLST+FirstFit | Heuristic | 54.54 +/- 0.27 | 257155 +/- 33291 |
+| 9 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 378472 +/- 9787 |
+| 10 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 385013 +/- 436 |
 
 | top 5 | top 10 |
 |---|---|
