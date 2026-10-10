@@ -14,7 +14,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 6 | COVERT+Consolidate | Heuristic | 26019 +/- 23766 |
 | 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 26515 +/- 4564 |
 | 8 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
-| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 28322 +/- 4228 |
+| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 30296 +/- 5736 |
 | 10 | MDC+FirstFit | Heuristic | 30421 +/- 24573 |
 
 | top 5 | top 10 |
