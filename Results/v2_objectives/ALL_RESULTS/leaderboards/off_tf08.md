@@ -14,8 +14,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | WEDF+BestFit | Heuristic | 264519 +/- 34606 |
 | 7 | WEDF+WorstFit | Heuristic | 264519 +/- 34606 |
 | 8 | WEDF+Consolidate | Heuristic | 264519 +/- 34606 |
-| 9 | MDC+FirstFit | Heuristic | 321610 +/- 43049 |
-| 10 | MDC+BestFit | Heuristic | 321610 +/- 43049 |
+| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 309725 +/- 21486 |
+| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 312681 +/- 25455 |
 
 | top 5 | top 10 |
 |---|---|
@@ -109,8 +109,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | EDF+BestFit | Heuristic | 57.1 +/- 1.3 | 394149 +/- 45422 |
 | 7 | EDF+Consolidate | Heuristic | 57.1 +/- 1.3 | 394149 +/- 45422 |
 | 8 | EDF+WorstFit | Heuristic | 57.1 +/- 1.3 | 394149 +/- 45422 |
-| 9 | RandomRule+FirstFitConsolidate | Heuristic | 81.3 +/- 6.2 | 523933 +/- 63359 |
-| 10 | WLST+FirstFit | Heuristic | 83.4 +/- 4.3 | 257155 +/- 33291 |
+| 9 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 59.7 +/- 0.5 | 367492 +/- 17181 |
+| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 61.2 +/- 1.3 | 352456 +/- 25354 |
 
 | top 5 | top 10 |
 |---|---|
@@ -124,12 +124,12 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 2 | LST+BestFit | Heuristic | 52.3 +/- 1.5 | 390493 +/- 44235 |
 | 3 | LST+Consolidate | Heuristic | 52.3 +/- 1.5 | 390493 +/- 44235 |
 | 4 | LST+WorstFit | Heuristic | 52.3 +/- 1.5 | 390493 +/- 44235 |
-| 5 | EDF+FirstFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
-| 6 | EDF+BestFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
-| 7 | EDF+Consolidate | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
-| 8 | EDF+WorstFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
-| 9 | RandomRule+FirstFitConsolidate | Heuristic | 75.7 +/- 5.4 | 523933 +/- 63359 |
-| 10 | WEDF+FirstFit | Heuristic | 78.2 +/- 3.6 | 264519 +/- 34606 |
+| 5 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 53.1 +/- 0.4 | 367492 +/- 17181 |
+| 6 | EDF+FirstFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
+| 7 | EDF+BestFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
+| 8 | EDF+Consolidate | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
+| 9 | EDF+WorstFit | Heuristic | 53.2 +/- 1.7 | 394149 +/- 45422 |
+| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 55.3 +/- 1.1 | 352456 +/- 25354 |
 
 | top 5 | top 10 |
 |---|---|
@@ -141,7 +141,22 @@ Every method has the same value here, so there is no ranking.
 
 ## mean flow time (lower is better)
 
-Every method has the same value here, so there is no ranking.
+| rank | method | family | mean flow time | J |
+|---|---|---|---|---|
+| 1 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 309725 +/- 21486 |
+| 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 54.54 +/- 0.00 | 312681 +/- 25455 |
+| 3 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 54.54 +/- 0.00 | 314741 +/- 6746 |
+| 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 336513 +/- 48347 |
+| 5 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 343950 +/- 43078 |
+| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 352456 +/- 25354 |
+| 7 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 364339 +/- 27920 |
+| 8 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 367492 +/- 17181 |
+| 9 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 385013 +/- 436 |
+| 10 | WLST+FirstFit | Heuristic | 54.54 +/- 0.27 | 257155 +/- 33291 |
+
+| top 5 | top 10 |
+|---|---|
+| ![top 5](../figures/leaderboards/off_tf08/top5_mean_flow_time.png) | ![top 10](../figures/leaderboards/off_tf08/top10_mean_flow_time.png) |
 
 ## makespan (lower is better)
 
@@ -155,8 +170,8 @@ Every method has the same value here, so there is no ranking.
 | 6 | LST+BestFit | Heuristic | 102.3 +/- 1.4 | 390493 +/- 44235 |
 | 7 | LST+Consolidate | Heuristic | 102.3 +/- 1.4 | 390493 +/- 44235 |
 | 8 | LST+WorstFit | Heuristic | 102.3 +/- 1.4 | 390493 +/- 44235 |
-| 9 | WLST+FirstFit | Heuristic | 104.9 +/- 1.5 | 257155 +/- 33291 |
-| 10 | WLST+BestFit | Heuristic | 104.9 +/- 1.5 | 257155 +/- 33291 |
+| 9 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 104.5 +/- 0.2 | 367492 +/- 17181 |
+| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 104.5 +/- 0.3 | 352456 +/- 25354 |
 
 | top 5 | top 10 |
 |---|---|

@@ -6,7 +6,7 @@
 | off_tf08_w1 | WLST+FirstFit (129805) | - | - | - | - |
 | off_tf02 | EDF+FirstFit (0) | - | - | - | - |
 | off_tf05 | WLST+FirstFit (26670) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] (28061, 3 seeds) | +5.2% | - | 35681 |
-| off_tf08 | WLST+FirstFit (257155) | - | - | - | - |
+| off_tf08 | WLST+FirstFit (257155) | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective (309725, 3 seeds) | +20.4% | - | - |
 | on_rho050 | WLST+Consolidate (4085) | - | - | - | - |
 | on_rho075 | WLST+Consolidate (5990) | - | - | - | - |
 | on_rho075_tight | WLST+Consolidate (29502) | - | - | - | - |
