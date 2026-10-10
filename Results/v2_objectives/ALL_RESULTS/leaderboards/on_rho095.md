@@ -12,9 +12,9 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 2M-step budget [tuned] | RL | 24921 +/- 2555 |
 | 5 | WEDF+Consolidate | Heuristic | 25689 +/- 22866 |
 | 6 | COVERT+Consolidate | Heuristic | 26019 +/- 23766 |
-| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 26048 +/- 5725 |
-| 8 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 26515 +/- 4564 |
-| 9 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
+| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 26515 +/- 4564 |
+| 8 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
+| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 28322 +/- 4228 |
 | 10 | MDC+FirstFit | Heuristic | 30421 +/- 24573 |
 
 | top 5 | top 10 |
@@ -90,8 +90,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 6 | WEDF+Consolidate | Heuristic | 1346 +/- 830 | 25689 +/- 22866 |
 | 7 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 1385 +/- 35 | 30611 +/- 1909 |
 | 8 | WLST+Consolidate | Heuristic | 1406 +/- 826 | 24874 +/- 21375 |
-| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 1421 +/- 237 | 26048 +/- 5725 |
-| 10 | WMDD+FirstFit | Heuristic | 1439 +/- 614 | 45044 +/- 27550 |
+| 9 | WMDD+FirstFit | Heuristic | 1439 +/- 614 | 45044 +/- 27550 |
+| 10 | COVERT+FirstFit | Heuristic | 1452 +/- 756 | 36166 +/- 28065 |
 
 | top 5 | top 10 |
 |---|---|
