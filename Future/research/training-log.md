@@ -32,6 +32,81 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Critic pass 1: corrections to the A6 / A0 entries and changes to the A3 protocol
+
+**Config:** independent reviewer pass (rubric in the plan). Scores: grounding 2/5, literature honesty 4/5, statistics
+2.5/5, headroom 3/5, implementation 3.5/5. Actions taken, one per finding:
+
+1. *Tier mismatch.* The CSV labels the FirstFit 1M rows "[tuned]" and the A6 rows not. Checked the model sidecars:
+   the online Option 2 tuning chose the defaults, and the hyperparameters recorded in `v2_on_rho095_o2mlubrzex_tuned_s0`
+   and `v2_on_rho095_o2cmlubrzex_s0` are identical (lr 3e-4, rollout 2048, batch 64, 10 epochs, clip 0.2, gae 0.95,
+   vf 0.5). The A6 vs FirstFit comparison is therefore like for like; only the label differs. No re-run needed.
+2. *Correction (to the earlier entry today):* "the FirstFit-placement RL beats every FirstFit heuristic by ~25-30%" is
+   wrong against the best FirstFit heuristic. MDC+FirstFit is 30,421: Option 2 at 1M (26,515) is 13% better, at 2M
+   (24,921) 18% better, and at 300k (39,947) it is worse. The 25-30% holds only against EDF/WLST-type FirstFit rules.
+   The conclusion that the remaining gap to EDF+Consolidate is "the size of the placement effect" is withdrawn: A6
+   shows placement does not close it.
+3. *Statistics.* A6 "no effect" rests on 3 seeds (standard error of a mean ~3.5k): it shows no effect larger than
+   the seed noise, not that the effect is zero. All A3 comparisons will use 5 seeds, mean with a bootstrap interval over
+   seeds, and a paired per-instance difference. Heuristic rows are single deterministic runs: their "std" is across
+   instances, RL rows' across seeds (the archive's `spread` column says which); never compare them as like for like.
+4. *BC validation.* Clone agreement in `imitation.py` is measured on its own training states. The pre-queue sanity
+   check (clone vs EDF+Consolidate) was launched on the first 10 of the 50 TEST instances; it is a fidelity check, not a
+   model choice, and nothing is selected on it, but it is disclosed here. Any selection among seeds or variants will use
+   validation instances (seeds 600000+), never the test instances.
+5. *Critic warm-up.* The value head reads the shared job/machine encoders, so during warm-up the critic fits frozen
+   BC features (intended: the actor must not move). `reset_num_timesteps` accounting is handled in the caller
+   (False after warm-up). Not yet checked empirically: whether PPO's first updates after unfreezing damage the clone;
+   the plan is a J-versus-step curve from the diagnostics at 100k-step intervals, and a lower-learning-rate variant
+   (to be announced) if it degrades.
+6. Citations: 2006.05990 supports "PPO implementation details matter", not "initialisation sensitivity"; the claim in
+   `imitation.py` is softened accordingly. All arXiv IDs remain "to be verified".
+
+**Observation:** online CP-SAT or a relaxation bound is missing, so how far the heuristic is from optimal is unknown.
+
+**Conclusion / next step:** report "matches the best heuristic with lower variance" as a legitimate outcome of A3 if
+that is what the data show. Memory note: the BC dataset is ~0.2 GB per iteration (float16, stride 4); 3 parallel runs fit.
+
+---
+
+## 2026-10-20 (S2W14) -- A6 result: Consolidate placement does not help Option 2; seed variance is the problem; A3 (behaviour-cloning warm start) announced
+
+**Config:** A6 = Option 2 + Consolidate placement (tag `c`), Tier 2 (default hyperparameters), v4 setup, on_rho095, 1M steps.
+Seeds 0-2 finished; seeds 3-4 still training. Same protocol as the FirstFit Option 2 `x` runs (1M, 3 seeds).
+
+**Stats (on_rho095 test J, 50 instances; EDF+Consolidate 21,986):**
+```
+                                  seed 0   seed 1   seed 2   mean
+Option 2, FirstFit placement 1M   22,927   31,652   24,965   26,515
+Option 2, Consolidate placement   28,947   30,323   23,164   27,478   (+25% vs EDF+Consolidate)
+instances where RL beats EDF+C:   A6 12 / 11 / 23 of 50; FirstFit runs 22 / 9 / 16 of 50
+```
+On the 5 instances where EDF+Consolidate is worst, RL is within +/-10% of it (A6 seeds: 315k / 323k / 297k vs 291k); the
+losses come from the other 45 "ordinary" instances (seed 0: 1.13M vs 0.81M) -- the poor seeds are worse everywhere.
+
+**Observation:** the placement hypothesis (A6) is not supported: equal mean to the FirstFit runs within seed noise
+(three seeds; per-seed range 23k-32k). The FirstFit policy had apparently learned a job order that works with
+FirstFit. What differs between seeds is the quality of the converged policy (good seeds win ~half the instances with
+a ~0 median difference; poor seeds lose systematically), i.e. optimisation variance, not a representational limit.
+
+**Decision announced (A3, Tier 2): behaviour-cloning warm start from EDF+Consolidate, then PPO.** Justification:
+the best online heuristic is a simple fixed policy, and PPO from scratch reaches it on only some seeds. Starting PPO at
+the heuristic removes the seed lottery and makes any gain a gain over the heuristic (Hester et al. 2018, DQfD,
+arXiv:1704.03732; Rajeswaran et al. 2018, DAPG, arXiv:1709.10087; Ross et al. 2011, DAgger, arXiv:1011.0686; all to be
+verified before formal citation). Implementation `Code/methods/rl/training/imitation.py`, flags `--bc-episodes`,
+`--bc-iterations`, `--bc-expert`, `--critic-warmup-steps`, tag letter `i`: (1) DAgger cloning of EDF's job choice
+(expert rollouts, then rollouts of the cloned policy labelled by the expert; placement Consolidate) ; (2) critic
+warm-up with the cloned actor frozen (a fresh critic would give PPO garbage advantages); (3) ordinary PPO with default
+hyperparameters; warm-up steps count towards the 1M budget, expert rollouts do not (reported). Free idling and the action
+space are unchanged. Cost of expert rollouts: ~1,000 env steps per episode. Seeds 0-4, same budget as A6. A BC-only
+sanity check (does the clone reproduce EDF+Consolidate's J?) comes first.
+
+**Conclusion / next step:** if the clone reproduces ~22k and PPO fine-tuning keeps or improves it over 5 seeds, that
+is the online RL result; if fine-tuning degrades it, report that and try a lower fine-tuning learning rate (to be
+announced). A6 seeds 3-4 and the rho075/rho110 Consolidate runs continue for the record.
+
+---
+
 ## 2026-10-20 (S2W14) -- Final-week loop starts: learning-curve check; online gap traced to placement (A6 queued)
 
 **Config:** plan = `2026-10-20-final-week-plan.md` (user-approved: Tier 1 = full tuned protocol, Tier 2 = default

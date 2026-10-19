@@ -645,6 +645,7 @@ def build_parser():
                         help="Options 2/3: behaviour-cloning warm start from --bc-expert, this many episodes per "
                              "DAgger iteration (0 = off; see imitation.py).")
     parser.add_argument("--bc-iterations", type=int, default=2, help="DAgger iterations of the warm start.")
+    parser.add_argument("--bc-epochs", type=int, default=8, help="Supervised epochs per DAgger iteration.")
     parser.add_argument("--bc-expert", default="EDF", help="Priority rule imitated (placement = --rule-placements).")
     parser.add_argument("--critic-warmup-steps", type=int, default=0,
                         help="With --bc-episodes: env steps of PPO with the cloned actor frozen, training only the "
@@ -881,7 +882,7 @@ def main(argv=None, extra_callbacks=None, save=True):
             raise SystemExit("--bc-episodes applies to the unwindowed Options 2/3 only.")
         from Code.methods.rl.training import imitation
         bc_stats, actor_params = imitation.warm_start(model, template_env, args.bc_expert, args.bc_episodes,
-                                                      args.bc_iterations, seed=args.seed)
+                                                      args.bc_iterations, epochs=args.bc_epochs, seed=args.seed)
         if args.critic_warmup_steps:
             imitation.critic_warmup(model, actor_params, args.critic_warmup_steps)
             reset_num_timesteps = False  # the warm-up steps count towards --timesteps

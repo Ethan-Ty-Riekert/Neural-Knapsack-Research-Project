@@ -13,8 +13,8 @@ Three stages (all inside one training run, the action space and free idling unto
      log-likelihood of the expert action under the masked policy distribution.
   2. critic_warmup: with every parameter the cloning step trained frozen, PPO collects rollouts from the cloned
      policy and trains only the value side (a freshly initialised critic would otherwise feed PPO garbage
-     advantages that destroy the cloned policy in the first updates; Andrychowicz et al. 2021, arXiv:2006.05990, on
-     PPO initialisation sensitivity). Also warms the reward-scaling statistics.
+     advantages that destroy the cloned policy in the first updates -- an engineering precaution, not a cited result;
+     Andrychowicz et al. 2021, arXiv:2006.05990, show PPO implementation details matter). Also warms the reward-scaling statistics.
   3. the caller then unfreezes and continues ordinary PPO; the warm-up steps count towards the training budget
      (the expert rollouts used for cloning do not, and are reported).
 """
@@ -100,7 +100,7 @@ def clone(model, obs, masks, actions, epochs, batch_size=128, lr=1e-3, seed=0):
     return loss_val, agree / n, trained
 
 
-def warm_start(model, env, rule="EDF", episodes=30, iterations=2, epochs=8, seed=0):
+def warm_start(model, env, rule="EDF", episodes=30, iterations=2, epochs=8, seed=0):  # epochs per iteration
     """Stage 1 (see the module docstring). env: the single (non-vectorised) training env, i.e. template_env.
     Returns a stats dict and the set of actor-side parameter ids."""
     wrapper = job_selection_wrapper(env)
