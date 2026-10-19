@@ -22,6 +22,24 @@ DATA_CSV = ARCHIVE / "data" / "all_results.csv"
 HEURISTIC = "Heuristic"
 
 
+# Full archive labels list every design modifier ("PPO Opt2 priority score look-ahead ... [tuned]"); the demo shows
+# the parts an audience cares about. Order = order shown.
+_SHORT_TAGS = (("+EDF imitation warm start", "imitation"), ("+Consolidate", "Consolidate"),
+               ("+linear-tardiness objective", "+tardiness obj"), ("+late-count objective", "+late-job obj"),
+               ("+energy objective", "+energy obj"), ("2M-step budget", "2M steps"), ("1M-step budget", "1M steps"),
+               ("[tuned]", "tuned"))
+
+
+def short_label(method):
+    """'PPO Opt2 priority score ... 1M-step budget [tuned]' -> 'PPO Opt2 | 1M steps, tuned'. Heuristic and other
+    labels are already short and pass through unchanged."""
+    if not method.startswith(("PPO", "A2C")):
+        return method
+    head = " ".join(method.split()[:2])
+    tags = [short for key, short in _SHORT_TAGS if key in method]
+    return head + (" | " + ", ".join(tags) if tags else "")
+
+
 def load_results(path=DATA_CSV):
     return pd.read_csv(path)
 

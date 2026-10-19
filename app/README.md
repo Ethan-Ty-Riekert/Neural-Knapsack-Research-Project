@@ -17,5 +17,5 @@ streamlit run app/app.py
   `build_folder.METRIC_INFO` (the single definition).
 - Test: `python -m tests.test_demo_scoring`.
 
-Status (2026-10-20): skeleton. Planned: short method labels, Pareto plot, one-click "best model for this objective",
+Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`). Planned: Pareto plot, one-click "best model for this objective",
 frozen data bundle for the laptop.

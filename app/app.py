@@ -12,7 +12,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scoring import (DISPLAY_METRICS, best_by_family, load_results, metric_label, presets, score,  # noqa: E402
-                     HEURISTIC)
+                     short_label, HEURISTIC)
 
 SLIDES = sorted((Path(__file__).resolve().parent / "slides").glob("*.png"))
 PRESET_NOTES = {"off": "offline: whole job set known up front", "on": "online: jobs arrive over time"}
@@ -50,17 +50,18 @@ with tab_explore:
             st.warning("Give at least one metric a weight above zero.")
         else:
             scored = score(sub, weights, normalise)
+            scored["model"] = scored["method"].map(short_label)
             best = best_by_family(scored)
             cols = st.columns(max(len(best), 1))
             for col, (fam, row) in zip(cols, sorted(best.items())):
                 col.metric(f"Best {fam}", f"{row['score']:.3f}", help=row["method"])
-                col.caption(row["method"][:80])
+                col.caption(short_label(row["method"]))
             if "RL" in best and HEURISTIC in best:
                 gap = (best["RL"]["score"] - best[HEURISTIC]["score"]) / abs(best[HEURISTIC]["score"]) * 100
                 st.subheader(f"Best RL vs best heuristic: {gap:+.1f}% ({'RL ahead' if gap < 0 else 'heuristic ahead'})")
-            view = scored.head(top_n)[["method", "family", "n_seeds", "score"] + [m for m in DISPLAY_METRICS
+            view = scored.head(top_n)[["model", "family", "n_seeds", "score"] + [m for m in DISPLAY_METRICS
                                                                                     if weights[m]]]
             view = view.rename(columns={m: metric_label(m) for m in DISPLAY_METRICS})
             st.dataframe(view, use_container_width=True, hide_index=True)
-            chart = scored.head(top_n).set_index("method")["score"]
+            chart = scored.head(top_n).set_index("model")["score"]
             st.bar_chart(chart.sort_values(ascending=False), horizontal=True)

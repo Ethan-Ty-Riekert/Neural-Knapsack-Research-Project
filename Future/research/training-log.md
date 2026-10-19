@@ -32,6 +32,31 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A3 sanity result: strong behaviour-cloning clone reproduces EDF+Consolidate; A3 seeds 0-4 queued
+
+**Config:** A3 with the stronger cloning configuration (60 episodes x 3 DAgger iterations x 20 epochs, 46k labelled states,
+stride 4, float16), then 4,096 PPO steps (2,048 critic warm-up). The weaker configuration (30 x 2 x 8) is kept for
+a pilot (seed 90) only: it is not one of the reported seeds.
+
+**Stats (first 10 of the 50 test instances, J; a fidelity check, nothing selected on it):**
+```
+EDF+Consolidate                         19,556
+clone, 30 x 2 x 8   (agreement 95.8%)   24,385   (+24.7%)
+clone, 60 x 3 x 20  (agreement 96.4%)   19,847   (+1.5%)
+```
+
+**Observation:** 96% training-state agreement hides a 25% J loss for the weak clone (errors compound over ~1,000-step
+episodes); more data (46k vs 15k states) and 20 epochs remove it. Cloning cost: ~1.5-2 h on one CPU process under load
+(online observations are 14k floats, DAgger rollouts step the full environment), before the 1M PPO steps.
+
+**Conclusion / next step:** queued on the GPU queue, Tier 2: A3 seeds 0-4, 1M steps, same defaults as the A6 and FirstFit
+arms (warm-up 100k counted in the 1M, checkpoint every 100k steps), tags `v2_on_rho095_o2cimlubrzex_s0-4`. Success
+criterion decided in advance: mean J over 5 seeds below the 5-seed FirstFit and A6 means (~26.3k) with a bootstrap
+interval over seeds that excludes them; "matches EDF+Consolidate with lower variance" is reported as such. Analysis on
+the 50 test instances only after all seeds finish; the checkpoint curve from the pilot is read on validation instances.
+
+---
+
 ## 2026-10-20 (S2W14) -- A6 final (5 seeds): Consolidate placement has no effect on Option 2 online; pilot bug fixed
 
 **Config:** Option 2 + Consolidate placement vs Option 2 FirstFit placement, on_rho095, 1M steps, identical default
