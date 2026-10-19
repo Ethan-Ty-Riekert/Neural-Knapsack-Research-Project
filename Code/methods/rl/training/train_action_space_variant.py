@@ -641,6 +641,14 @@ def build_parser():
                          help="--option 1 only: one rule choice per job placement (default) or per tick "
                               "(the rule fills the tick, then time advances; online only -- offline the two "
                               "are identical).")
+    parser.add_argument("--bc-episodes", type=int, default=0,
+                        help="Options 2/3: behaviour-cloning warm start from --bc-expert, this many episodes per "
+                             "DAgger iteration (0 = off; see imitation.py).")
+    parser.add_argument("--bc-iterations", type=int, default=2, help="DAgger iterations of the warm start.")
+    parser.add_argument("--bc-expert", default="EDF", help="Priority rule imitated (placement = --rule-placements).")
+    parser.add_argument("--critic-warmup-steps", type=int, default=0,
+                        help="With --bc-episodes: env steps of PPO with the cloned actor frozen, training only the "
+                             "critic; counted in --timesteps.")
     parser.add_argument("--rule-placements", default="FirstFit",
                          help="2026-10-05: only meaningful with --option 1. Comma-separated placement "
                               "rules offered with each priority rule, e.g. FirstFit,Consolidate "
@@ -867,6 +875,16 @@ def main(argv=None, extra_callbacks=None, save=True):
         callbacks.append(CheckpointCallback(save_freq=args.checkpoint_every, save_path=str(ckpt_dir),
                                             name_prefix="ckpt"))
     from stable_baselines3.common.callbacks import CallbackList
+    bc_stats = None
+    if args.bc_episodes and not args.resume:
+        if args.option not in ("2", "3") or args.window_size is not None:
+            raise SystemExit("--bc-episodes applies to the unwindowed Options 2/3 only.")
+        from Code.methods.rl.training import imitation
+        bc_stats, actor_params = imitation.warm_start(model, template_env, args.bc_expert, args.bc_episodes,
+                                                      args.bc_iterations, seed=args.seed)
+        if args.critic_warmup_steps:
+            imitation.critic_warmup(model, actor_params, args.critic_warmup_steps)
+            reset_num_timesteps = False  # the warm-up steps count towards --timesteps
     remaining = max(0, args.timesteps - (model.num_timesteps if not reset_num_timesteps else 0))
 
     t0 = time.time()
@@ -896,7 +914,7 @@ def main(argv=None, extra_callbacks=None, save=True):
         reward_mode=args.reward_mode, objectives=args.objectives if args.reward_mode == "objective" else None,
         difficulty=args.difficulty, online=args.online, timesteps=args.timesteps, n_envs=args.n_envs,
         seed=args.seed, gamma=args.gamma, ent_coef=args.ent_coef, algo=args.algo, algo_hparams=algo_spec,
-        train_minutes=round(elapsed_min, 1),
+        train_minutes=round(elapsed_min, 1), imitation=bc_stats,
     ))
     print(f"Option {args.option}: trained {args.timesteps} timesteps in {elapsed_min:.1f} min, "
           f"saved to {save_path}")
