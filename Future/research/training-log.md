@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A6 final (5 seeds): Consolidate placement has no effect on Option 2 online; pilot bug fixed
+
+**Config:** Option 2 + Consolidate placement vs Option 2 FirstFit placement, on_rho095, 1M steps, identical default
+hyperparameters (verified from the sidecars); A6 seeds 0-4, FirstFit seeds 0-2 so far (seeds 3-4 queued on the GPU).
+
+**Stats (test J, 50 instances; EDF+Consolidate 21,986):**
+```
+Option 2 + Consolidate, 1M:   28,947  30,323  23,164  26,884  22,054   mean 26,274 (std across seeds 3,500)
+Option 2 FirstFit, 1M:        22,927  31,652  24,965     (3 seeds)     mean 26,515
+```
+
+**Observation:** the difference of means is 241 against a standard error of about 2,000 per arm: no detectable effect of
+placement. The best A6 seed (22,054) and best FirstFit seed (22,927) are within 4% of EDF+Consolidate; the worst seeds
+are 30-40% above it. Seed variance, not placement, separates RL from the heuristic.
+
+**Bug fixed (found by the A3 pilot's first launch, tag `..cimlubrzex_s90`, rc=1 after 0.4 min):** with
+`--critic-arrivals` the diagnostics setup walked `template_env.env.env`, which stops at the critic-input wrapper;
+now `wrapper_chain.selection_wrapper` (shared with `imitation.py`). Separately, `--diagnostics-interval` cannot be
+combined with `--normalize-reward` (the held-out EvalCallback cannot synchronise the VecNormalize statistics; unchanged
+behaviour, not caused by today's changes), so the pilot records checkpoints every 100k steps instead.
+
+**Conclusion / next step:** placement is closed as a lever. A3 (behaviour-cloning warm start) pilot is running
+(seed 90, weaker BC configuration, 1M steps: not one of the reported seeds). Stronger clone (60 episodes x 3 DAgger
+iterations x 20 epochs): training-state agreement 96.4% (loss 0.056, 46k samples); its J versus EDF+Consolidate is
+checked next.
+
+---
+
 ## 2026-10-20 (S2W14) -- Critic pass 1: corrections to the A6 / A0 entries and changes to the A3 protocol
 
 **Config:** independent reviewer pass (rubric in the plan). Scores: grounding 2/5, literature honesty 4/5, statistics

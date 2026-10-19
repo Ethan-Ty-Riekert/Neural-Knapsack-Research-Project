@@ -66,6 +66,7 @@ from Code.methods.rl.training.train_optimized import (
 from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
     RULE_NAMES, rule_kwargs_from_args, check_rule_kwargs, priority_placement,
 )
+from Code.methods.rl.action_spaces.wrapper_chain import selection_wrapper
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty, max_job_duration
 from Code.core.critic_input import critic_dim_of, wrap_critic_input
@@ -843,7 +844,7 @@ def main(argv=None, extra_callbacks=None, save=True):
         # have this attribute chain) -- max_jobs/num_machines live on the
         # innermost wrapper (RuleSelectionGymSchedulingEnv etc.), same chain-walk
         # eval_action_space_variant.py's run_episode() uses (base_env = env.env.env).
-        inner_env = template_env.env.env
+        inner_env = selection_wrapper(template_env)
         callback = build_diagnostics_callbacks(
             args.option, held_out_envs=held_out_envs, diagnostics_interval=args.diagnostics_interval,
             rule_names=getattr(inner_env, "rule_names", RULE_NAMES), max_jobs=inner_env.max_jobs,

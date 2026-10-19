@@ -22,6 +22,7 @@ import numpy as np
 import torch
 
 from Code.methods.heuristics.priority_rules import ALL_PRIORITY_RULES
+from Code.methods.rl.action_spaces.wrapper_chain import selection_wrapper
 
 
 def expert_action(wrapper, mask, rule):
@@ -31,14 +32,6 @@ def expert_action(wrapper, mask, rule):
         return wrapper.max_jobs
     key = ALL_PRIORITY_RULES[rule]
     return int(min(valid, key=lambda j: (key(wrapper.env, j), j)))
-
-
-def job_selection_wrapper(env):
-    """The innermost job-selection wrapper (has max_jobs and get_action_mask) under Monitor / ActionMasker / the
-    critic-input wrapper."""
-    while not (hasattr(env, "max_jobs") and hasattr(env, "get_action_mask")):
-        env = env.env
-    return env
 
 
 def collect(env, wrapper, n_episodes, rule, model=None, stride=4):
@@ -103,7 +96,7 @@ def clone(model, obs, masks, actions, epochs, batch_size=128, lr=1e-3, seed=0):
 def warm_start(model, env, rule="EDF", episodes=30, iterations=2, epochs=8, seed=0):  # epochs per iteration
     """Stage 1 (see the module docstring). env: the single (non-vectorised) training env, i.e. template_env.
     Returns a stats dict and the set of actor-side parameter ids."""
-    wrapper = job_selection_wrapper(env)
+    wrapper = selection_wrapper(env)
     all_obs, all_masks, all_actions = [], [], []
     stats = {"rule": rule, "episodes_per_iteration": episodes, "iterations": iterations}
     trained = set()
