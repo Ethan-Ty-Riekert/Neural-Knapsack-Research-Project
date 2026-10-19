@@ -84,6 +84,25 @@ def is_default_rule_kwargs(rule_kwargs):
             and rk.get("decision_epoch", "placement") == "placement")
 
 
+def check_rule_kwargs(option, rule_kwargs):
+    """Validates --rule-placements / --decision-epoch for an option (2026-10-20, S2W14). Option 1 takes
+    any menu; Options 2/3 take exactly one placement rule (the rule that places the chosen job; default
+    FirstFit) and the default decision epoch; other options take the defaults only."""
+    rk = rule_kwargs or {}
+    if option == "1" or is_default_rule_kwargs(rk):
+        return
+    if option in ("2", "3") and len(rk.get("placements", DEFAULT_PLACEMENTS)) == 1             and rk.get("decision_epoch", "placement") == "placement":
+        return
+    raise ValueError("--rule-placements / --decision-epoch only apply to --option 1; Options 2/3 accept a "
+                     "single --rule-placements rule (e.g. Consolidate).")
+
+
+def priority_placement(rule_kwargs):
+    """The single placement rule an Option 2/3 wrapper uses (FirstFit unless --rule-placements says
+    otherwise)."""
+    return tuple((rule_kwargs or {}).get("placements", DEFAULT_PLACEMENTS))[0]
+
+
 def parse_placements(text):
     """--rule-placements CLI value ("FirstFit,Consolidate") -> placements tuple. Shared by the
     training/evaluation scripts and run.py so the format is defined once."""

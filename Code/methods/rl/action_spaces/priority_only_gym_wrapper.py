@@ -6,8 +6,10 @@ the three options).
 
 RL picks WHICH job slot to run next (DeepRM's own action-space pattern --
 Mao et al. 2016, HotNets: pick a job, let the system place it), not which
-(job, machine) pair. Placement, once a job is chosen, is FirstFit
-(Code/methods/heuristics/placement_rules.py, already implemented/validated), not
+(job, machine) pair. Placement, once a job is chosen, is FirstFit by
+default (or the single rule named by `placement`, e.g. Consolidate, added 2026-10-20: online
+Consolidate cuts every priority rule's J by ~30-40%, so a FirstFit-only Option 2/3 cannot reach the
+best heuristic by construction), from Code/methods/heuristics/placement_rules.py, not
 learned. Action space shrinks from max_jobs*num_machines+1 to max_jobs+1.
 
 Option 2 (use_atc=False): job-slot observation features are exactly today's
@@ -27,14 +29,14 @@ duplicating either's _get_obs().
 import gymnasium as gym
 import numpy as np
 
-from Code.methods.heuristics.placement_rules import first_fit
+from Code.methods.heuristics.placement_rules import PLACEMENT_RULES
 from Code.methods.rl.action_spaces.obs_atc_feature import append_atc_priority_feature
 
 
 class PriorityOnlyGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, full_gym_env, use_atc: bool = False):
+    def __init__(self, full_gym_env, use_atc: bool = False, placement: str = "FirstFit"):
         super().__init__()
         self._full = full_gym_env
         self.env = full_gym_env.env
@@ -43,6 +45,7 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
         self.num_resources = full_gym_env.num_resources
         self.horizon = full_gym_env.horizon
         self.use_atc = use_atc
+        self._place = PLACEMENT_RULES[placement]  # the rule that places the chosen job (not learned)
 
         # Must match GymSchedulingEnv._get_obs()'s per-job-slot layout:
         # [duration, deadline, weight, resource_0..R-1, scheduled].
@@ -103,7 +106,7 @@ class PriorityOnlyGymSchedulingEnv(gym.Env):
                 # action through the underlying env.
                 _, reward, done = self._full.idle_step()
             else:
-                machine = first_fit(self.env, job, feasible, self.env.time)
+                machine = self._place(self.env, job, feasible, self.env.time)
                 was_pending = job in self.env.remaining_jobs
                 _, reward, done = self.env.step((job, machine))
                 if was_pending and job not in self.env.remaining_jobs:

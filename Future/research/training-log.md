@@ -32,6 +32,38 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Final-week loop starts: learning-curve check; online gap traced to placement (A6 queued)
+
+**Config:** plan = `2026-10-20-final-week-plan.md` (user-approved: Tier 1 = full tuned protocol, Tier 2 = default
+hyperparameters, exploratory). Decision announced (A6, not in the plan's list): Options 2/3 now accept a single
+`--rule-placements` rule (previously hard-wired FirstFit). Tag modifier `c` = Consolidate placement (as for Option 1).
+Justification: online, Consolidate placement cuts every priority rule's J by 30-40% (below), while the Option 2/3 action
+only selects the job, so no Option 2/3 policy could reach EDF+Consolidate by construction. Free idling is untouched.
+Code: `priority_only_gym_wrapper.py`, `windowed_priority_gym_wrapper.py` (`placement`), `check_rule_kwargs` /
+`priority_placement` in `rule_selection_gym_wrapper.py`; test in `tests/test_action_space_wrappers.py`. Queued (Tier 2,
+defaults, v4 setup, on_rho095): GPU 1M steps seeds 0-4 (`v2_on_rho095_o2cmlubrzex_s*`), CPU 300k seeds 0-2.
+
+**Stats (on_rho095 test J, 50 instances):**
+```
+heuristic               FirstFit   BestFit   Consolidate
+EDF                         -       35,250     21,986
+WLST                    35,078      34,508     24,874
+MDC                     30,421      32,592     22,646
+Option 2 PPO (FirstFit placement, tuned): 300k 39,947 | 1M 26,515 (3 seeds) | 2M 24,921 (2 seeds)
+J + linear tardiness (k), 1M, seeds 0-4: 22,000 / 30,096 / 30,896 / 30,294 / 38,196 = 30,296
+```
+
+**Observation:** (A0) budget gains flatten: mean 39.9k -> 26.5k -> 24.9k at 0.3M -> 1M -> 2M, with seed spread
+22.9k-31.7k; a three-point curve cannot support a power-law fit, so I make no extrapolation. The FirstFit-placement
+RL beats every FirstFit heuristic by ~25-30% online; the remaining gap to EDF+Consolidate (+13% at 2M) is of the size of
+the placement effect. (A1) the linear-tardiness objective is rejected online: the seed-0 tie was one lucky seed
+(mean 30.3k vs 26.5k J-only).
+
+**Conclusion / next step:** compare A6 with the Option 2 FirstFit runs at equal budget (300k and 1M). Then A3
+(behaviour-cloning warm start) if A6 does not close the gap; the held 189-run queue stays held.
+
+---
+
 ## 2026-10-09 (S2W12) -- Four new experiments queued (user-approved): MO at final protocol, energy gap, unit weights, generalisation
 
 **Config:**

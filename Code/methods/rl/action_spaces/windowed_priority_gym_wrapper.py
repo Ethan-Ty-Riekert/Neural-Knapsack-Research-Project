@@ -58,15 +58,16 @@ import gymnasium as gym
 import numpy as np
 
 from Code.methods.heuristics.priority_rules import atc_priority
-from Code.methods.heuristics.placement_rules import first_fit
+from Code.methods.heuristics.placement_rules import PLACEMENT_RULES
 
 
 class WindowedPriorityGymSchedulingEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, full_gym_env, window_size: int = 15, use_atc: bool = False,
-                 window_order: str = "edf"):
+                 window_order: str = "edf", placement: str = "FirstFit"):
         super().__init__()
+        self._place = PLACEMENT_RULES[placement]  # the rule that places the chosen job (not learned)
         if window_order not in ("edf", "fifo"):
             raise ValueError(f"window_order must be 'edf' or 'fifo', got {window_order!r}")
         self._full = full_gym_env
@@ -163,7 +164,7 @@ class WindowedPriorityGymSchedulingEnv(gym.Env):
             if not feasible:
                 _, reward, done = self._full.idle_step()
             else:
-                machine = first_fit(self.env, job, feasible, t)
+                machine = self._place(self.env, job, feasible, t)
                 was_pending = job in self.env.remaining_jobs
                 _, reward, done = self.env.step((job, machine))
                 if was_pending and job not in self.env.remaining_jobs:

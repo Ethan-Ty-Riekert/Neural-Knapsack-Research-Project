@@ -13,7 +13,9 @@ import torch
 
 from Code.core.scheduling_env import SchedulingEnv
 from Code.core.gym_scheduling_wrapper import GymSchedulingEnv
-from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import RuleSelectionGymSchedulingEnv, RULE_NAMES
+from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
+    RuleSelectionGymSchedulingEnv, RULE_NAMES, check_rule_kwargs,
+)
 from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.methods.rl.policies.priority_pointer_policy import PriorityPointerActorCritic
 
@@ -129,6 +131,24 @@ obs, reward, term, trunc, info = env2.step(0)  # pick job 0
 assert 0 not in env2.env.remaining_jobs, "job 0 should have been scheduled"
 assert env2.env.start_times[0] != -1 and env2.env.start_times[0] == 0
 print(f"  job 0 scheduled on machine={np.argmax(env2.env.capacity[:, 0, 0] < 10.0)}, start_time={env2.env.start_times[0]}")
+
+print("=== Option 2 with Consolidate placement: a second job joins the already-active machine ===")
+fullc = make_base_gym_env(num_jobs=4, num_machines=2, horizon=10)
+envc = PriorityOnlyGymSchedulingEnv(fullc, use_atc=False, placement="Consolidate")
+envc.reset()
+envc.step(0)
+envc.step(1)
+busy_machines = {m for m in range(2) if envc.env.capacity[m, 0, 0] < 10.0}
+assert busy_machines == {int(np.argmax(envc.env.capacity[:, 0, 0] < 10.0))}, (
+    f"Consolidate should keep both jobs on one machine, busy={busy_machines}")
+check_rule_kwargs("2", dict(placements=("Consolidate",)))
+for bad_option, bad_kwargs in (("2", dict(placements=("FirstFit", "Consolidate"))), ("0", dict(placements=("Consolidate",)))):
+    try:
+        check_rule_kwargs(bad_option, bad_kwargs)
+        raise AssertionError("check_rule_kwargs should reject " + str((bad_option, bad_kwargs)))
+    except ValueError:
+        pass
+print("  Consolidate placement and rule-kwargs validation OK")
 
 print("=== Option 3 (ATC-primed): obs dim grows by exactly max_jobs, ATC feature is finite/in-range ===")
 full3 = make_base_gym_env(num_jobs=4, num_machines=2, horizon=10)

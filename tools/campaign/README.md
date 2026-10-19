@@ -32,7 +32,7 @@ last, or `<tag> -m <module> <args>` for other job scripts. The v2 Optuna tuner u
 prints its worker jobs, and the last worker of each study prepends that study's final `_tuned` runs to
 the queue. The tag reaches every job as `--checkpoint-tag`, which is how the runner and the watchdog
 find jobs. Tuning workers (`tune_...`) are not evaluated on test. Tags follow `v2_<preset>_o<option><mods>[_a2c][_hp<k>|_tuned]_s<seed>`. Modifiers: `c` Consolidate
-menu, `a` ATC feature, `p` pointer network (Option 0), `w` windowed, `t` per-tick, `n` work-conserving,
+placement (Option 1: FirstFit+Consolidate menu; Options 2/3: the chosen job is placed by Consolidate), `a` ATC feature, `p` pointer network (Option 0), `w` windowed, `t` per-tick, `n` work-conserving,
 `f` placement repair, `m` full-MDP (Markov) observation, `l` capacity look-ahead, `u` fixed feature
 scaling, `b` arrival-aware critic (input-dependent baseline), `r` lateness reward shaping, `z` reward scaling, `e` event-driven idling, `q` + late-count objective, `g` + energy objective, `x` extended (1M-step) training budget, `y` 2M-step budget, `k` + linear-tardiness objective. No `n` = free idling. The paper's tables (`Results/v2_objectives/
 ALL_RESULTS/`) include only `m` runs.

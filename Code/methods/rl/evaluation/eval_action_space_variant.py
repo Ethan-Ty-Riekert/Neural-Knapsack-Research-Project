@@ -25,7 +25,7 @@ from Code.methods.rl.training.train_action_space_variant import (
     make_base_gym_env, make_online_base_gym_env, mask_fn, checkpoint_path,
 )
 from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
-    RuleSelectionGymSchedulingEnv, rule_kwargs_from_args, is_default_rule_kwargs,
+    RuleSelectionGymSchedulingEnv, rule_kwargs_from_args, check_rule_kwargs, priority_placement,
 )
 from Code.methods.rl.action_spaces.priority_only_gym_wrapper import PriorityOnlyGymSchedulingEnv
 from Code.methods.rl.action_spaces.windowed_priority_gym_wrapper import WindowedPriorityGymSchedulingEnv
@@ -63,8 +63,7 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
     placements (2026-10-05): mirrors build_env_and_policy's same-named param --
     must match the checkpoint's training --rule-placements, or the action space
     won't match. Only meaningful for option == '1'."""
-    if not is_default_rule_kwargs(rule_kwargs) and option != "1":
-        raise ValueError("--rule-placements / --decision-epoch only apply to --option 1.")
+    check_rule_kwargs(option, rule_kwargs)
     if option == "0":  # full (job x machine) action space; the base env already provides the mask
         env = full_gym_env
     elif option == "1":
@@ -78,9 +77,11 @@ def build_eval_env(option: str, full_gym_env, window_size=None, window_order="ed
         use_atc = option == "3"
         if window_size is not None:
             env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc,
-                                                     window_order=window_order)
+                                                     window_order=window_order,
+                                                     placement=priority_placement(rule_kwargs))
         else:
-            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
+            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc,
+                                                   placement=priority_placement(rule_kwargs))
     elif option == "4":
         if window_size is not None:
             raise ValueError("--window-size only applies to --option 2/3.")

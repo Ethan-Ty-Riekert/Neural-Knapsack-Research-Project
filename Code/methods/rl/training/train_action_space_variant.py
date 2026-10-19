@@ -64,7 +64,7 @@ from Code.methods.rl.training.train_optimized import (
     resolve_ppo_rollout_params,
 )
 from Code.methods.rl.action_spaces.rule_selection_gym_wrapper import (
-    RULE_NAMES, rule_kwargs_from_args, is_default_rule_kwargs,
+    RULE_NAMES, rule_kwargs_from_args, check_rule_kwargs, priority_placement,
 )
 from Code.utils.paths import MODELS_DIR, ensure_rl_training_dirs
 from Code.core.difficulty import DIFFICULTIES, generate as generate_difficulty, max_job_duration
@@ -247,8 +247,7 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
     (job x machine) action space of GymSchedulingEnv, unreduced. "flat" = MLP (v1's 256x256 tanh),
     "pointer" = PointerMaskableActorCriticPolicy (Code/methods/rl/policies/pointer_ppo_policy.py),
     the two architectures every v1 Option-0 PPO/A2C result used."""
-    if not is_default_rule_kwargs(rule_kwargs) and option != "1":
-        raise ValueError("--rule-placements / --decision-epoch only apply to --option 1.")
+    check_rule_kwargs(option, rule_kwargs)
     if full_gym_env is None:
         full_gym_env = make_base_gym_env()
 
@@ -277,7 +276,8 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
         use_atc = option == "3"
         if window_size is not None:
             env = WindowedPriorityGymSchedulingEnv(full_gym_env, window_size=window_size, use_atc=use_atc,
-                                                     window_order=window_order)
+                                                     window_order=window_order,
+                                                     placement=priority_placement(rule_kwargs))
             policy = WindowedPriorityPointerMaskableActorCriticPolicy
             policy_kwargs = dict(
                 window_size=window_size,
@@ -286,7 +286,8 @@ def build_env_and_policy(option: str, full_gym_env=None, window_size=None, windo
                 use_atc=use_atc,
             )
         else:
-            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc)
+            env = PriorityOnlyGymSchedulingEnv(full_gym_env, use_atc=use_atc,
+                                                   placement=priority_placement(rule_kwargs))
             policy = PriorityPointerMaskableActorCriticPolicy
             policy_kwargs = dict(
                 max_jobs=env.max_jobs,
