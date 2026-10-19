@@ -113,14 +113,18 @@ def warm_start(model, env, rule="EDF", episodes=30, iterations=2, epochs=8, seed
     return stats, trained
 
 
-def critic_warmup(model, actor_param_ids, steps):
+def critic_warmup(model, actor_param_ids, steps, lr):
     """Stage 2: train only the parameters the cloning step did not touch (the value side) for `steps` env steps
-    of PPO rollouts, then unfreeze everything."""
+    of PPO rollouts at learning rate `lr` (the critic needs the normal rate even when the later fine-tuning rate is
+    lowered to protect the clone), then unfreeze everything and restore the model's own schedule."""
     frozen = [p for p in model.policy.parameters() if id(p) in actor_param_ids]
     for p in frozen:
         p.requires_grad_(False)
+    own_schedule = model.lr_schedule
+    model.lr_schedule = lambda _progress: lr
     try:
         model.learn(total_timesteps=steps, reset_num_timesteps=True)
     finally:
+        model.lr_schedule = own_schedule
         for p in frozen:
             p.requires_grad_(True)

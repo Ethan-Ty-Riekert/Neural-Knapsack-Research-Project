@@ -32,6 +32,36 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A3 pilot: PPO at the default learning rate degrades the clone; fine-tuning-rate pilots announced
+
+**Config:** A3 pilot (seed 90: weaker BC configuration 30 x 2 x 8, default hyperparameters, 1M steps, GPU), checkpoints
+every 100k steps scored on 10 VALIDATION instances (seeds 600000-09) by the new `tools/campaign/checkpoint_curve.py`
+(never the test set).
+
+**Stats (validation J, 10 instances; the weak clone's own J was ~24k on test instances, unfrozen at 100k steps):**
+```
+steps      200k     300k     400k     500k
+J        35,204   35,929   23,691   30,401
+```
+
+**Observation:** after the actor is unfrozen, PPO at the default rate (3e-4) does not keep the clone: validation J is
+24k-36k, in the range of PPO from scratch (23k-32k across seeds), with large step-to-step swings. One seed and 10
+instances, so a pilot observation only; it matches the risk named in critic pass 1 (item 5).
+
+**Decision announced (before running; Tier 2):** the A3 seeds 0-4 queued earlier are withdrawn (none had started). Two
+pilots with the strong BC configuration (60 x 3 x 20) and a lowered fine-tuning learning rate: seed 91 lr 3e-5, seed 92
+lr 1e-5; the critic warm-up keeps lr 3e-4 (new flag `--critic-warmup-lr`) so the critic is not slowed. Justification: PPO
+updates move the policy by an amount set by lr x advantage noise; a policy that starts at the heuristic's optimum-adjacent
+point should be moved slowly (a standard remedy when fine-tuning from imitation, cf. DAPG, arXiv:1709.10087; the values
+are ordinary choices, not derived). Decision rule fixed in advance: pick the learning rate with the lower mean validation J
+over its last three checkpoints; if neither stays below ~22k validation J (clone level), report that fine-tuning does
+not improve on the clone; then A3 = the clone's performance is the result (matches EDF+Consolidate), not a win.
+Selection uses validation instances only. The 5-seed run follows with the chosen lr.
+
+**Conclusion / next step:** pilots s91/s92 on the GPU queue ahead of the Option 2 FirstFit seed 4.
+
+---
+
 ## 2026-10-20 (S2W14) -- A3 sanity result: strong behaviour-cloning clone reproduces EDF+Consolidate; A3 seeds 0-4 queued
 
 **Config:** A3 with the stronger cloning configuration (60 episodes x 3 DAgger iterations x 20 epochs, 46k labelled states,
