@@ -51,3 +51,4 @@ tqdm==4.67.3
 typing_extensions==4.15.0
 tzdata==2026.2
 Werkzeug==3.1.8
+streamlit==1.66.0
