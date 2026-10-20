@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A3 lr pilots (validation) and provisional choice lr 3e-5; seeds 0-4 queued
+
+**Stats (validation J, 10 instances, seeds 600000-09; EDF+Consolidate 32,112 on the same instances):**
+```
+steps       200k    300k    400k    500k    600k    700k    800k
+s91 3e-5   28,804  28,115  31,159  27,300  26,620  31,560  27,548
+s92 1e-5   24,024  30,059  33,451  44,923  44,667  27,960     (running)
+s90 3e-4   35,204  35,929  23,691  30,401  59,270  38,779  31,725   (weak clone, previous entry)
+```
+**Observation:** lr 3e-5 stays at or below the heuristic's validation J at all 7 checkpoints so far (mean 28.9k, 10%
+below 32,112; spread 26.6k-31.6k); lr 1e-5 is erratic (24k-45k), lr 3e-4 diverges. Pilots are one seed each, 10 instances
+-- evidence for choosing an lr, not for the method.
+
+**Decision (provisional, announced before the seeds run):** A3 seeds 0-4, Tier 2, strong BC configuration, fine-tuning lr
+3e-5, critic warm-up lr 3e-4, 1M steps (warm-up counted), seeds 0-4, GPU queue. The pre-registered rule (lower mean over the
+last three checkpoints) will be applied when both pilots finish; the queue block is edited before the seeds start if it
+picks lr 1e-5. A3 is then reported on the 50 TEST instances with the paired analysis described earlier.
+
+---
+
 ## 2026-10-20 (S2W14) -- A3 pilot s90 final; correction of the validation threshold; lr pilots started
 
 **Stats (validation J on 10 instances, seeds 600000-09; pilot s90 = weak clone, default lr 3e-4, 1M steps):**
