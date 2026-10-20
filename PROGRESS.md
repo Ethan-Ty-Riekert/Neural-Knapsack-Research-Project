@@ -449,3 +449,12 @@ environment or training-loop bug (capacity leak, `dict.get()` crash, numpy-bool 
 bug, mask/step mismatch). The working habit that has come out of this: before drawing a
 conclusion from a training result, especially a negative one, write a regression test that
 isolates the specific mechanism first (see `tests/test_bugfixes.py` for the pattern).
+
+## Phase — Final week: can RL beat the best online heuristic? (2026-10-20 to 10-21, S2W14)
+
+Plain RL from scratch stayed 20-30% behind the best heuristic under heavy online load. Behaviour cloning of the best
+heuristic (EDF+Consolidate, later a cloneable variant) gave policies not significantly different from it, with low seed
+variance; PPO fine-tuning added nothing measurable, and the windowed (20-job) policy, ~40x faster to train after a profile showed
+the network over mostly-empty job slots was the bottleneck, showed the same picture. Tie-breaking inside the EDF family moves J by
+~15%, a clairvoyant rollout bound (~70%) shows foresight matters, and nothing beat the heuristic. See
+`Future/research/2026-10-21-final-week-findings.md` and the 2026-10-20/21 entries of `Future/research/training-log.md`.

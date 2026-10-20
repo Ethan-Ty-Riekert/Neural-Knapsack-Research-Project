@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- FINAL windowed protocol v2 (on_rho095, 5 seeds per arm): fine-tuning does not help; from scratch is far behind
+
+**Config:** windowed Option 2 (window 20), Consolidate placement, expert EDFL (EDF, ties by longest duration), cloning 60 episodes x
+3 DAgger iterations x 60 epochs with cosine decay, critic warm-up 100k. Arms: clone only (seeds 50-54), A3w = clone + PPO fine-tuning
+at lr 1e-5 (chosen on validation), 1M steps (seeds 60-64), scratch = windowed PPO defaults, 1M steps (seeds 60-64). Test J, 50
+instances; `tools/analysis/paired_report.py` (paired interval over instances of the seed-averaged difference). Exploratory.
+
+**Stats (per-seed J):**
+```
+reference: EDF+Consolidate 21,986   EDFL+Consolidate 24,061
+arm            per-seed J                                      mean    vs EDF+Consolidate (CI)        vs EDFL+Consolidate (CI)
+clone only     22,567 / 25,371 / 24,293 / 22,912 / 23,910      23,811  +1,824 (-713 to +4,614)        -250 (-3,059 to +2,276)
+A3w            27,162 / 24,342 / 23,185 / 25,009 / 24,270      24,794  +2,807 (+254 to +5,593)        +733 (-2,336 to +3,685)
+scratch        26,245 / 42,187 / 47,085 / 46,243 / 33,171      38,986  +17,000 (+12,950 to +21,443)   +14,925 (+10,993 to +19,045)
+A3w minus clone only (seed-averaged, per instance): +983 (-569 to +2,583); A3w lower on 22/50 instances
+```
+**Observation (wording rules of critic pass 2):** (1) The clone-only policy is not significantly different from either
+heuristic (paired intervals contain zero; it is not shown equivalent at +/-5%). (2) PPO fine-tuning did not improve on the clone:
+the difference is +983 (no significant difference), and A3w is significantly above EDF+Consolidate (+2,807, interval above zero),
+so fine-tuning, if anything, slightly hurts. (3) Windowed PPO from scratch is far behind (+15-17k, 4 of 50 instances better, two
+seeds beyond 46k); the all-slot network from scratch was at 26-33k, so the window loses information that learning from scratch needs.
+(4) Nothing beats either heuristic. Same picture as the unwindowed network (clone-only explains A3).
+
+**Conclusion / next step:** write the overall findings (`2026-10-21-final-week-findings.md`); the other scenarios (on_rho075,
+on_rho110, off_tf05; clone-only seeds 50-52 and A3w seeds 60-62, lr 1e-5 reused) are queued.
+
+---
+
 ## 2026-10-21 (S2W14) -- Windowed protocol v2: lr selection (validation) and arms so far; A3w queued
 
 **Validation (final models, 20 validation instances; EDF+Consolidate 30,857, EDFL+Consolidate 28,295 on the same instances):**
