@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--n-instances", type=int, default=10)
     ap.add_argument("--spec-tag", help="tag whose sidecar env spec to use while the run has not finished (the spec is "
                                        "written when training ends); must share the run's env options")
+    ap.add_argument("--final-only", action="store_true", help="score only the finished model, not the checkpoints")
     a = ap.parse_args()
     psutil.Process().nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     import numpy
@@ -53,6 +54,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     done = {r[1] for r in csv.reader(open(out, encoding="utf-8")) if r[0] == a.tag} if out.exists() else set()
     ckpts = sorted(ckpt_dir.glob("ckpt_*_steps.zip"), key=lambda p: int(p.stem.split("_")[1]))
+    if a.final_only:
+        ckpts = []
     if final.exists():
         ckpts.append(final)  # the finished model, labelled by its recorded training steps
     for ck in ckpts:

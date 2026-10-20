@@ -32,6 +32,36 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Windowed protocol v2: lr selection (validation) and arms so far; A3w queued
+
+**Validation (final models, 20 validation instances; EDF+Consolidate 30,857, EDFL+Consolidate 28,295 on the same instances):**
+```
+lr      seeds (validation J)                 mean
+1e-4    37,475 / 52,430 / 39,937             43,281
+3e-5    29,870 / 27,942 / 54,190             37,334
+1e-5    33,395 / 29,294 / 37,920             33,536   <- lowest: chosen by the pre-registered rule
+3e-6    45,210 / 35,901 / 35,082             38,731
+```
+**Observation:** every fine-tuned model is above the heuristics' validation J (28.3k-30.9k), and even lr 3e-6 (35-45k) is not
+better than 1e-5, so the ordering by lr is mostly noise on top of a general shortfall; the validation set (20 instances) is also
+noisier than the test set for these models (e.g. s232: validation 35,082, test 23,516, EDFL+Consolidate on test 24,061).
+Rule applied as written: lr 1e-5.
+
+**Test J of the finished arms (auto-eval, 50 instances; EDF+Consolidate 21,986, EDFL+Consolidate 24,061), per seed:**
+```
+windowed clone only (EDFL expert, seeds 50-54)   22,567 / 25,371 / 24,293 / 22,912 / 23,910     mean 23,811
+windowed scratch PPO (seeds 60-64)               26,245 / 42,187 / 47,085 / 46,243 / 33,171     mean 38,986
+```
+**Observation:** the clone is within ~1% of its heuristic's test J (23.8k vs 24.1k); learning from scratch in the windowed
+setting is much worse (26k-47k) than from scratch with all slots (26-33k, earlier entries), i.e. the window loses information the
+unwindowed policy used, and some seeds diverge.
+
+**Queued (as announced):** A3w arm, seeds 60-64, lr 1e-5, expert EDFL, cloning 60 x 3 x 60 epochs, critic warm-up 100k,
+1M steps. A tooling note: `checkpoint_curve.py` got a `--final-only` flag (the first scoring pass also scored every
+checkpoint and took too long; the background loop was stopped, one tag, s222, was scored twice with identical results).
+
+---
+
 ## 2026-10-21 (S2W14) -- Windowed protocol v2 started: dev clones track their experts; queue had run dry for ~40 min
 
 **Dev clones (windowed, cosine-decay cloning, clone only, not reported seeds; test J, 50 instances):**
