@@ -17,5 +17,18 @@ streamlit run app/app.py
   `build_folder.METRIC_INFO` (the single definition).
 - Test: `python -m tests.test_demo_scoring`.
 
+## On the presentation laptop
+
+The explorer reads only `Results/v2_objectives/ALL_RESULTS/data/all_results.csv` (committed and synced by
+`tools/campaign/auto_push.py`), so no trained models or training environment are needed:
+
+```
+git pull                                  # latest results from the desktop
+pip install streamlit==1.66.0 pandas matplotlib numpy
+streamlit run app/app.py                  # opens in the browser; works offline
+```
+
+Put slide images (PNG, filename order = slide order) in `app/slides/` for the Slides tab.
+
 Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Trade-off scatter (any two metrics) added. Planned:
 frozen data bundle for the laptop.
