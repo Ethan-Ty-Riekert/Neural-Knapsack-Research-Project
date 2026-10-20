@@ -32,6 +32,31 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A6 at rho075 / rho110 (300k), correction (rho110 seed 2 was not stopped), first A3 test score, A3 at other loads announced
+
+**Correction:** the entry of 13:49 said A6 on_rho110 seed 2 was stopped. The kill missed the training process (only the wrapper
+was ended); it ran to completion at 17:10 (rc=0) and is INCLUDED below. The CPU load it caused is the likely reason A3 ran slower
+than the pilots between 13:49 and 17:10 (together with a game using the GPU); the CPU runner had also exited at 17:10 (queue
+empty) and was restarted.
+
+**Stats (Option 2 + Consolidate placement, 300k steps, defaults, 3 seeds, test J, 50 instances):**
+```
+on_rho075   6,775 / 8,841 / 10,631    mean 8,749     best heuristic WLST+Consolidate 5,990   (+46%)
+on_rho110   228,132 / 161,052 / 177,183  mean 188,789  best heuristic MDC+Consolidate 106,463 (+77%); tuned Option 3: 190,523
+```
+First reported A3 score (test): seed 11 = 24,001 (EDF+Consolidate 21,986; FirstFit 5-seed mean 28,863). Seeds 10 and 12 at
+900k steps, 15 started, 16 queued; the five-seed analysis follows when they are all evaluated.
+
+**Decision announced (before running; Tier 2):** A3 at the other two online loads, CPU queue: behaviour-cloning warm start
+from the preset's best heuristic priority rule with Consolidate placement (on_rho075: WLST, on_rho110: MDC), cloning
+configuration as on_rho095 (60 episodes x 3 DAgger iterations x 20 epochs), fine-tuning lr 1e-5 (chosen on on_rho095
+validation, not re-tuned here), critic warm-up 50k steps at lr 3e-4, 300k steps in total (the budget of the A6 runs above,
+which are the comparison arm), seeds 0-2 each: tags `v2_on_rho075_o2cimlubrze_s0-2`, `v2_on_rho110_o2cimlubrze_s0-2`. Justification:
+tests whether the on_rho095 behaviour (clone-level or better) transfers; three seeds only, so a preliminary result. Free idling
+and the action space are unchanged.
+
+---
+
 ## 2026-10-20 (S2W14) -- Scheduling decision: CPU runs stopped to speed up A3; A6 at rho110 reduced to 2 seeds
 
 **Observation:** A3 seed 10 advanced 100k PPO steps between 12:57 and 13:49 (earlier pilots: ~450k steps/h), because the
