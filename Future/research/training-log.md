@@ -32,6 +32,18 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Incident: A3 seeds 13 and 14 crashed (GPU memory); replaced by seeds 15 and 16
+
+**Observation:** raising the GPU runner to 5 concurrent jobs at 11:12 (CPU load was only 65%) made seeds 13 and 14 fail after
+12-14 min in the behaviour-cloning step with `RuntimeError: Could not allocate tensor with 1294991360 bytes. There is not
+enough GPU video memory available` (DirectML). The CPU load target did not protect against this: video memory is the
+binding limit, about 3 concurrent jobs of this size. Seeds 10-12 are unaffected and still running.
+
+**Action:** GPU `max_jobs` back to 3. Failed runs produced no model and no score (nothing was lost or discarded for being
+unfavourable). Reported A3 seeds are now 10, 11, 12, 15, 16 (the runner treats started tags as done).
+
+---
+
 ## 2026-10-20 (S2W14) -- Baselines at 5 seeds, pilots' test scores (disclosure), A6 at 300k, paired-analysis tool
 
 **Config / disclosure:** `auto_eval` scores every finished model on the 50 test instances, so the A3 pilots have test J
