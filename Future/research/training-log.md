@@ -32,6 +32,25 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Windowed protocol v2 started: dev clones track their experts; queue had run dry for ~40 min
+
+**Dev clones (windowed, cosine-decay cloning, clone only, not reported seeds; test J, 50 instances):**
+```
+expert EDF (ties by job index), 60 epochs, agreement 97.2%     22,432    (EDF+Consolidate 21,986, +2.0%)
+expert EDFL (ties by longest duration), 20 epochs, agreement 99.5%  24,530    (EDFL+Consolidate 24,061, +2.0%)
+```
+**Observation:** each windowed clone lands within ~2% of its expert's J; the earlier windowed clone-only seeds (22.1k-27.7k, old
+cloning) therefore mostly measured under-fitting plus tie-break luck. The dev runs were started outside the queue runner, so
+auto_eval did not score them; they were evaluated by hand with `run.py --no-save`.
+
+**Started (as announced in the previous entry, Tier 2):** windowed protocol v2 with expert EDFL: lr pilots {1e-4, 3e-5,
+1e-5, 3e-6} x 3 seeds (seeds 200-202, 210-212, 220-222, 230-232; 1M steps; cloning 60 x 3 x 60 epochs with cosine decay;
+critic warm-up 100k); clone-only seeds 50-54; scratch seeds 60-64 (PPO defaults); the A3w arm (seeds 60-64) follows the
+validation lr choice. Incident: the CPU queue runner had exited when its queue ran empty (about 02:41) and the CPU sat at
+15-35% until it was restarted at 03:20; the runner exits on an empty queue, so each time I queue after a gap I restart it.
+
+---
+
 ## 2026-10-21 (S2W14) -- Windowed pilots, windowed clone gap traced to EDF tie-breaking, clairvoyant rollout headroom
 
 **1. Windowed lr pilots (old cloning: constant lr 1e-3, 20 epochs; test J from auto_eval, NOT used for selection):**
