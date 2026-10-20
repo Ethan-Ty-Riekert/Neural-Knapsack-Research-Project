@@ -12,7 +12,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scoring import (DISPLAY_METRICS, best_by_family, load_results, metric_label, presets, score,  # noqa: E402
-                     short_label, HEURISTIC)
+                     short_label, QUICK_OBJECTIVES, HEURISTIC)
 
 SLIDES = sorted((Path(__file__).resolve().parent / "slides").glob("*.png"))
 PRESET_NOTES = {"off": "offline: whole job set known up front", "on": "online: jobs arrive over time"}
@@ -41,9 +41,19 @@ with tab_explore:
                                   default=sorted(df["family"].unique()))
         top_n = st.slider("Models shown", 3, 25, 10)
         st.markdown("**What matters? (weights)**")
+
+        def apply_quick():
+            """Set every weight slider from the chosen one-click objective (sliders stay editable afterwards)."""
+            quick = QUICK_OBJECTIVES[st.session_state["quick"]]
+            if quick is not None:
+                for m in DISPLAY_METRICS:
+                    st.session_state[f"w_{m}"] = quick.get(m, 0.0)
+
+        st.selectbox("Quick objective", list(QUICK_OBJECTIVES), key="quick", on_change=apply_quick)
         weights = {}
         for metric in DISPLAY_METRICS:
-            weights[metric] = st.slider(metric_label(metric), 0.0, 5.0, 1.0 if metric == "objective_J" else 0.0, 0.25)
+            weights[metric] = st.slider(metric_label(metric), 0.0, 5.0, 1.0 if metric == "objective_J" else 0.0, 0.25,
+                                        key=f"w_{metric}")
     with right:
         sub = df[(df["preset"] == preset) & (df["family"].isin(families))]
         if not any(weights.values()):

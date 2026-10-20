@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-from scoring import best_by_family, score, short_label  # noqa: E402
+from scoring import best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO  # noqa: E402
 
 df = pd.DataFrame([
     dict(method="H1", family="Heuristic", objective_J=100.0, on_time_rate=0.9, makespan=50.0),
@@ -28,4 +28,6 @@ assert best_by_family(s)["Heuristic"]["method"] == "H1"
 assert short_label("EDF+Consolidate") == "EDF+Consolidate"
 assert short_label("PPO Opt2 priority score look-ahead fixed scaling 1M-step budget [tuned]") == "PPO Opt2 | 1M steps, tuned"
 assert short_label("PPO Opt2 priority score +Consolidate +EDF imitation warm start") == "PPO Opt2 | imitation, Consolidate"
+for name, weights in QUICK_OBJECTIVES.items():
+    assert weights is None or set(weights) <= set(METRIC_INFO), f"unknown metric in quick objective {name!r}"
 print("test_demo_scoring: all checks passed")

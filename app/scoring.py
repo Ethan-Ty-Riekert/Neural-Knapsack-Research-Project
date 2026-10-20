@@ -30,6 +30,17 @@ _SHORT_TAGS = (("+EDF imitation warm start", "imitation"), ("+Consolidate", "Con
                ("[tuned]", "tuned"))
 
 
+# One-click objectives for the demo: name -> {metric: weight}. Keys must be metrics in METRIC_INFO (tested).
+QUICK_OBJECTIVES = {
+    "Custom (use the sliders)": None,
+    "Squared tardiness (the training objective J)": {"objective_J": 1.0},
+    "Fewest late jobs": {"weighted_late_jobs": 1.0},
+    "Energy saving (fewest active machine-ticks)": {"active_machine_ticks": 1.0},
+    "Balanced: J + late jobs + energy": {"objective_J": 1.0, "weighted_late_jobs": 1.0, "active_machine_ticks": 1.0},
+    "Responsiveness (wait and flow time)": {"mean_wait": 1.0, "mean_flow_time": 1.0},
+}
+
+
 def short_label(method):
     """'PPO Opt2 priority score ... 1M-step budget [tuned]' -> 'PPO Opt2 | 1M steps, tuned'. Heuristic and other
     labels are already short and pass through unchanged."""
