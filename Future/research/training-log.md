@@ -32,6 +32,49 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Announced: clone-only control arm (what does PPO fine-tuning add?)
+
+**Config (Tier 2, CPU queue, announced before running):** same behaviour cloning as A3 (EDF+Consolidate expert, 60 episodes x 3
+DAgger iterations x 20 epochs) and the same 100k-step critic warm-up with the actor frozen, but NO PPO fine-tuning
+(`--timesteps 100000` equals the warm-up, so the saved model is the clone; checked on a 2k-step smoke run that the training
+script then saves without any further learning). Seeds 10, 11, 12, the same seed numbers as A3 seeds 10-12 (tags
+`v2_on_rho095_o2cimlubrze_s10-12`, no `x`); each costs ~1.5 h of CPU for the cloning.
+
+**Why:** the interim A3 result (J 23,290, within noise of EDF+Consolidate) could be nothing more than a good clone; the
+fine-tuning's contribution is only measured by comparing A3 with its own clone on the same 50 test instances (paired
+per-instance differences, `tools/analysis/paired_report.py`). Decision rule fixed in advance: if the clone's mean J is within
+~1,000 of A3's, the report says the warm start (imitation) explains the result and PPO adds nothing measurable; if A3 is
+lower by more than the clone's seed interval, PPO fine-tuning helps.
+
+---
+
+## 2026-10-20 (S2W14) -- INTERIM A3 result (3 of 5 seeds): behaviour-cloning warm start matches EDF+Consolidate with low variance
+
+**Config:** A3 = EDF+Consolidate behaviour-cloning warm start (60 episodes x 3 DAgger iterations x 20 epochs) + 100k critic
+warm-up + PPO fine-tuning at lr 1e-5, 1M steps total, Tier 2, on_rho095. Seeds 10, 11, 12 finished (15 and 16 running, so the
+five-seed analysis is still to come; this entry is interim). Test J on the 50 held-out instances.
+
+**Stats (`tools/analysis/paired_report.py`, reference EDF+Consolidate J 21,986):**
+```
+arm                          per-seed J                   mean    95% CI over seeds   paired diff vs ref (CI over instances)  better
+A3 interim (seeds 10-12)     23,613 / 24,001 / 22,258     23,290  22,258 - 24,001     +1,304 (-1,152 to +3,838)               24/50
+FirstFit Opt2 1M (5 seeds)   22,927 / 31,652 / 24,965 / 32,507 / 32,264   28,863  25,202 - 32,239   +6,877 (+4,148 to +9,759)    9/50
+A6 Consolidate 1M (5 seeds)  28,947 / 30,323 / 23,164 / 26,884 / 22,054   26,274  23,464 - 29,085   +4,288 (+1,683 to +7,299)   14/50
+```
+**Observation:** every A3 seed lands within 1.2-9% of the heuristic and the paired difference to EDF+Consolidate includes
+zero (the policy beats it on 24 of 50 instances); the seed spread is 1.7k against ~9k for training from scratch. Versus the
+from-scratch arms, A3's interval lies below the FirstFit interval and overlaps the A6 interval only at its edge. So with a
+warm start, RL reliably MATCHES the best online heuristic (paired interval contains zero), which training from scratch did on
+one lucky seed in five; it does not yet BEAT it (point estimate +5.9%). Three seeds, one preset: preliminary. The pilot seed
+with the same lr (s92) also scored 21,827 on test, consistent with this (not used for any selection).
+
+**Conclusion / next step:** wait for seeds 15 and 16, then the five-seed table. Question to test next: does fine-tuning
+improve at all on the clone (BC-only vs A3 on the same instances)? Needs the clone's own test J: the first 10 test instances
+gave 19,847 vs 19,556 for EDF+Consolidate (+1.5%), so the clone may already carry most of the result and PPO's contribution
+needs separate measurement before the claim "RL fine-tuning helps" is made.
+
+---
+
 ## 2026-10-20 (S2W14) -- A6 at rho075 / rho110 (300k), correction (rho110 seed 2 was not stopped), first A3 test score, A3 at other loads announced
 
 **Correction:** the entry of 13:49 said A6 on_rho110 seed 2 was stopped. The kill missed the training process (only the wrapper
