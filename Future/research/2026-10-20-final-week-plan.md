@@ -83,3 +83,11 @@ New designs cannot be tuned with the full Optuna protocol (20 trials x 100k) in 
 tier: **Tier 1** = full tuned protocol (existing results); **Tier 2** = default hyperparameters, same budget and seeds
 for every compared option, announced as exploratory. A new design that wins at Tier 2 is a lead, not a ranking against
 tuned Tier 1 models.
+
+## Update 2026-10-21
+
+User decision: the windowed policy (Option 2/3 with `--window-size 20`, and later variants) is the main model type; the
+all-slot model is retired (no new runs of it). Profile: the PPO update over 1,235 slots is 88% of training time; exact
+active-slot compaction (`--compact-slots`) gives ~6.6x, windowing ~25x. Windowed A3 protocol (lr selection on validation, then
+scratch / clone-only / A3 at 5 seeds each) is in the training log entry "Profile: the PPO update ...". See also
+`training-log.md`, 2026-10-21 entries.

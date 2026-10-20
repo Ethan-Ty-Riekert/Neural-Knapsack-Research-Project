@@ -39,6 +39,7 @@ class PriorityPointerMaskableActorCriticPolicy(MaskableActorCriticPolicy):
         use_atc: bool = False,
         embed_dim: int = 128,
         hidden: int = 64,
+        compact: bool = False,
         **kwargs: Any,
     ):
         self._pointer_kwargs = dict(
@@ -51,6 +52,7 @@ class PriorityPointerMaskableActorCriticPolicy(MaskableActorCriticPolicy):
             use_atc=use_atc,
             embed_dim=embed_dim,
             hidden=hidden,
+            compact=compact,
         )
         super().__init__(observation_space, action_space, lr_schedule, **kwargs)
 

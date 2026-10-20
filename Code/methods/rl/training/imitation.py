@@ -26,11 +26,18 @@ from Code.methods.rl.action_spaces.wrapper_chain import selection_wrapper
 
 
 def expert_action(wrapper, mask, rule):
-    """The priority rule's choice among the currently valid job slots (idle only when no job is valid)."""
+    """The priority rule's choice among the currently valid actions (idle only when none is valid). Unwindowed
+    wrappers: the action is the job slot. Windowed wrappers: the action is the window index of the job the rule
+    ranks first within the window (the window holds the candidates the policy can choose from)."""
+    key = ALL_PRIORITY_RULES[rule]
+    if hasattr(wrapper, "window_size"):
+        slots = [i for i, job in enumerate(wrapper._window_jobs) if job is not None]
+        if not slots:
+            return wrapper.window_size
+        return min(slots, key=lambda i: (key(wrapper.env, wrapper._window_jobs[i]), wrapper._window_jobs[i]))
     valid = np.flatnonzero(mask[:wrapper.max_jobs])
     if valid.size == 0:
         return wrapper.max_jobs
-    key = ALL_PRIORITY_RULES[rule]
     return int(min(valid, key=lambda j: (key(wrapper.env, j), j)))
 
 

@@ -53,8 +53,10 @@ class PriorityPointerActorCritic(nn.Module):
         use_atc: bool = False,
         embed_dim: int = 128,
         hidden: int = 64,
+        compact: bool = False,
     ):
         super().__init__()
+        self.compact = compact  # encode only the active (arrived, unscheduled) slots; outputs identical, see forward
         self.max_jobs = max_jobs
         self.num_machines = num_machines
         self.num_resources = num_resources
@@ -88,10 +90,7 @@ class PriorityPointerActorCritic(nn.Module):
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         time_feat, machine_feats, job_feats = self._split_obs(obs)
 
-        job_emb = self.job_encoder(job_feats)              # (B, J, E)
         machine_emb = self.machine_encoder(machine_feats)  # (B, M, E)
-
-        job_logits = self.job_score_head(job_emb)  # (B, J), unmasked
 
         # "scheduled" is always feature index R+3 regardless of whether the
         # ATC feature is appended after it (use_atc puts ATC at the very
@@ -99,9 +98,28 @@ class PriorityPointerActorCritic(nn.Module):
         # index, not job_feats[..., -1], unlike pointer_policy.py's
         # PointerActorCritic (where "scheduled" IS always the last feature).
         scheduled_idx = 3 + self.num_resources
-        active_mask = (job_feats[..., scheduled_idx] < 0.5).float().unsqueeze(-1)  # (B, J, 1)
+        active = job_feats[..., scheduled_idx] < 0.5  # (B, J): arrived and not yet scheduled
+        active_mask = active.float().unsqueeze(-1)  # (B, J, 1)
         denom = active_mask.sum(dim=1).clamp(min=1.0)
-        job_context = (job_emb * active_mask).sum(dim=1) / denom  # (B, E)
+
+        if self.compact:
+            # Exact speed-up (2026-10-21): a profile showed 88% of training time in the update, spent running the
+            # encoder over all max_jobs slots although only ~10 are schedulable and ~30 pending at a time. Only active
+            # slots can be chosen (the others are masked out of the action distribution) and only active slots enter
+            # the job context, so encode just the K = max active count in the batch, gather them first, and scatter
+            # the scores back (inactive slots get a constant 0 logit, never chosen). Identical outputs for every
+            # selectable action; the parameters are unchanged, so existing checkpoints load.
+            k = max(1, int(active.sum(dim=1).max().item()))
+            order = torch.argsort(active.to(torch.int8), dim=1, descending=True, stable=True)[:, :k]  # (B, K)
+            picked = job_feats.gather(1, order.unsqueeze(-1).expand(-1, -1, job_feats.shape[-1]))
+            picked_emb = self.job_encoder(picked)  # (B, K, E)
+            job_logits = torch.zeros_like(job_feats[..., 0]).scatter(1, order, self.job_score_head(picked_emb))
+            picked_active = active.gather(1, order).float().unsqueeze(-1)
+            job_context = (picked_emb * picked_active).sum(dim=1) / denom  # (B, E)
+        else:
+            job_emb = self.job_encoder(job_feats)  # (B, J, E)
+            job_logits = self.job_score_head(job_emb)  # (B, J), unmasked
+            job_context = (job_emb * active_mask).sum(dim=1) / denom  # (B, E)
         machine_context = machine_emb.mean(dim=1)                 # (B, E)
 
         context = torch.cat([job_context, machine_context, time_feat], dim=-1)  # (B, 2E+1)

@@ -32,6 +32,74 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- The three 2M-step all-slot runs suspended (not killed) so the windowed pilots can run
+
+**Action (00:30):** the load from the three 2M-step all-slot A3 runs (12 environment processes, ~5 h still to go) kept the CPU
+runner from starting the windowed pilots (only seed 100 had started). Their process trees were SUSPENDED with psutil (progress
+and checkpoints kept; PIDs in `rl_training/campaign/manually_paused.json`), not killed. Resume them when the windowed pilots
+and arms are finished or if the user asks (`psutil.Process(pid).resume()` for each listed PID); the watchdog does not
+resume processes it did not pause itself. CPU load fell from 84% to 60%.
+
+---
+
+## 2026-10-21 (S2W14) -- Decision: windowed policy is the main model type; compact all-slot encoding built (exact, ~6.6x faster)
+
+**Decisions (user, 2026-10-21):** (1) the all-slot model is retired as the main model: no further runs of its slow
+implementation, the windowed policy (and later variants: window size, ATC feature, ordering) is the main model type;
+the windowed policy stays an opt-in model type (`--window-size`, tag letter `w`), nothing else was changed. (2) The user
+asked for the optimisations to be carried out. In-flight all-slot jobs are left to finish (3 x 2M-step A3 runs, clone-only
+seed 12, A3 rho075 seed 2): their kill command did not take effect and no result will be discarded.
+
+**Built:** exact active-slot compaction for the all-slot network (`compact=True` in `PriorityPointerActorCritic`, flag
+`--compact-slots`): only arrived, unscheduled slots are encoded (K = the largest active count in the batch); scores are
+scattered back. Measured on `on_rho095` under EDF+Consolidate: schedulable slots mean 10.6 / p95 33 / max 62, pending 29 /
+57 / 66, of 1,235 slots, so ~98% of the encoder work was spent on slots that cannot be chosen. The existing observation
+already flags arrived-and-pending slots with scheduled < 0.5 (checked on three states: exactly the revealed, remaining
+jobs), so compaction changes no output: `tests/test_compact_policy.py` checks identical logits, idle logit, value and
+parameter gradients on all selectable actions (random batches including a row with no active slot). Parameters are
+unchanged, so saved models load.
+
+**Stats (benchmark, same 4,096-step single-env CPU run as the profile, machine under load both times):**
+```
+all slots           3.3 min  (train 184 s of 210 s)
+--compact-slots     0.5 min          ~6.6x
+windowed (K=20)     20,480 steps in 0.4 min (see the profile entry)
+```
+**Not done / open:** the compact path uses argsort / gather / scatter with a host read of K per forward: fine on the CPU,
+untested on the DirectML GPU (possible fallback to the CPU), so compact runs are for the CPU queue. No compact all-slot
+runs are queued, in line with decision (1); the windowed pilots (lr selection, announced above) continue.
+
+---
+
+## 2026-10-21 (S2W14) -- Profile: the PPO update over 1,235 job slots is the bottleneck, not the environment; windowed A3 announced
+
+**Profile (cProfile, single env, CPU, 4,096 steps of the on_rho095 Option 2 recipe, machine under load):** 210 s total:
+`train()` (PPO update) 184 s = 88% (backward 115 s, forward 68 s); `collect_rollouts` 14 s = 7%, of which the environment steps
+~4 s (~1 ms per step). The environment is NOT the bottleneck; the cost is the network applied to all 1,235 job slots (most of
+them padding or not yet arrived) in 320 minibatch backward passes per update. Reducing machines or resource dimensions would
+barely help; reducing the number of slots the network processes does. The earlier GPU-contention explanation for the
+slowdown (a game running) is not supported by data: with the game still running, the 2M-step runs advance ~255k steps/h versus
+~130k/h in the afternoon (extra CPU jobs running) and ~550k/h in the morning pilots; competition for CPU cores (each GPU
+job also needs 4 environment processes) is the better explanation, but this too is untested.
+
+**Decision announced (Tier 2, before running):** windowed Option 2 (`--window-size 20`: the policy chooses among the 20
+earliest-deadline schedulable jobs; an existing design, used as Option 3w) with the A3 recipe: the cloning code now supports
+the window (expert = the EDF-first job within the window; Consolidate placement; critic warm-up; fine-tuning). Measured
+speed of a 20k-step smoke run: 550-1,300 steps/s on the CPU (about 25x the unwindowed network on the GPU under load), so a
+1M-step run takes ~20-30 min.
+Protocol (fixed now): (1) fine-tuning lr selection on VALIDATION only: lr in {3e-4, 1e-4, 3e-5, 1e-5} x 3 seeds each
+(seeds 100-102, 110-112, 120-122, 130-132 respectively; tags `v2_on_rho095_o2cwimlubrzex_s<seed>`), final models scored on 20
+validation instances; pick the lr with the lowest mean validation J. (2) Then three arms, five seeds each (10-14), 1M steps,
+test set: windowed from scratch (`o2cwmlubrzex`), clone only (`o2cwimlubrze`, no PPO), windowed A3 at the chosen lr
+(`o2cwimlubrzex`), analysed with `paired_report.py` against EDF+Consolidate. Compute: CPU queue (the unwindowed A3 jobs for
+on_rho110 were removed from the queue; the GPU keeps the 2M-step unwindowed runs).
+
+**Observation / caveat:** with a window sorted by deadline, EDF is "always take the first entry", so cloning is trivial
+and "matches the heuristic" is by construction; the research question for this design is whether PPO fine-tuning improves
+on it, which the clone-only control isolates.
+
+---
+
 ## 2026-10-20 (S2W14) -- FINAL A3 result (5 seeds, on_rho095): RL with a behaviour-cloning warm start matches EDF+Consolidate; A3 2M-step runs announced
 
 **Config:** A3 = EDF+Consolidate behaviour-cloning warm start (60 episodes x 3 DAgger iterations x 20 epochs) + 100k critic

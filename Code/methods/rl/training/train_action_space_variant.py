@@ -649,6 +649,9 @@ def build_parser():
     parser.add_argument("--bc-epochs", type=int, default=8, help="Supervised epochs per DAgger iteration.")
     parser.add_argument("--critic-warmup-lr", type=float, default=3e-4,
                         help="Learning rate of the critic warm-up (the main --learning-rate applies afterwards).")
+    parser.add_argument("--compact-slots", action="store_true",
+                        help="Options 2/3 (unwindowed): encode only the active job slots (exact, faster; see "
+                             "priority_pointer_policy.py).")
     parser.add_argument("--bc-expert", default="EDF", help="Priority rule imitated (placement = --rule-placements).")
     parser.add_argument("--critic-warmup-steps", type=int, default=0,
                         help="With --bc-episodes: env steps of PPO with the cloned actor frozen, training only the "
@@ -793,6 +796,10 @@ def main(argv=None, extra_callbacks=None, save=True):
 
     algo_kwargs, algo_spec = resolve_algo_kwargs(args, args.n_envs)
     policy_kwargs = dict(policy_kwargs or {}, **algo_kwargs.pop("policy_kwargs_update", {}))
+    if args.compact_slots:
+        if args.option not in ("2", "3") or args.window_size is not None:
+            raise SystemExit("--compact-slots applies to the unwindowed Options 2/3 only.")
+        policy_kwargs["compact"] = True
     print(f"Algorithm {args.algo}: " + ", ".join(f"{k}={v}" for k, v in algo_spec.items()))
     model = MaskablePPO(
         policy, env,
@@ -881,8 +888,8 @@ def main(argv=None, extra_callbacks=None, save=True):
     from stable_baselines3.common.callbacks import CallbackList
     bc_stats = None
     if args.bc_episodes and not args.resume:
-        if args.option not in ("2", "3") or args.window_size is not None:
-            raise SystemExit("--bc-episodes applies to the unwindowed Options 2/3 only.")
+        if args.option not in ("2", "3"):
+            raise SystemExit("--bc-episodes applies to Options 2/3 only.")
         from Code.methods.rl.training import imitation
         bc_stats, actor_params = imitation.warm_start(model, template_env, args.bc_expert, args.bc_episodes,
                                                       args.bc_iterations, epochs=args.bc_epochs, seed=args.seed)
