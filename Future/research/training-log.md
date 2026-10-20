@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- CONTROL RESULT (all-slot network, on_rho095): the clone alone explains A3's result; PPO fine-tuning adds nothing measurable
+
+**Config:** clone-only control as announced (EDF+Consolidate behaviour cloning, 60 x 3 x 20, 100k-step critic warm-up with the
+actor frozen, no PPO fine-tuning; seeds 10-12, same seed numbers as A3 1M seeds 10-12). Test J, 50 instances;
+`tools/analysis/paired_report.py` plus a seed-averaged paired difference between the two arms.
+
+**Stats (reference EDF+Consolidate 21,986):**
+```
+arm                  per-seed J                 mean    paired diff vs reference (CI over instances)   better
+clone only (s10-12)  22,620 / 23,667 / 24,709   23,666  +1,679 (-797 to +4,347)                        24/50
+A3 1M (s10-12)       23,613 / 24,001 / 22,258   23,290  +1,304 (-1,134 to +3,843)                       24/50
+A3 minus clone, per instance, seed-averaged: -375 (95% CI over instances -2,684 to +1,873); A3 lower on 27/50
+```
+**Observation:** by the rule written before the run (clone within ~1,000 of A3 -> imitation explains the result) the
+mean difference is 375, so the result is explained by the imitation: PPO fine-tuning at lr 1e-5 for ~0.9M steps neither
+helped nor hurt measurably (per-seed differences -993, -334, +2,451: no consistent sign). The clone itself is ~7.6% above
+the heuristic (imperfect imitation), and plain PPO from scratch was 20-30% above it. The learned all-slot policy therefore
+"matches the best heuristic" because it copies it; reinforcement learning did not improve on the heuristic here.
+Three seeds per arm; the pilot with lr 3e-5 gave the same picture (validation).
+
+**Conclusion / next step:** the claim for the presentation is: a policy learned by imitation (+ RL fine-tuning that does not
+degrade it) matches the best online heuristic reliably, unlike RL from scratch; the open question is whether any RL signal
+can beat the heuristic. The windowed experiments (cheap) test this with 5 seeds and a scratch arm; the 2M-step all-slot runs
+(suspended) would only extend this null result.
+
+---
+
 ## 2026-10-21 (S2W14) -- The three 2M-step all-slot runs suspended (not killed) so the windowed pilots can run
 
 **Action (00:30):** the load from the three 2M-step all-slot A3 runs (12 environment processes, ~5 h still to go) kept the CPU
