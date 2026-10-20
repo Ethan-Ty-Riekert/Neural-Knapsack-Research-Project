@@ -32,6 +32,51 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Windowed pilots, windowed clone gap traced to EDF tie-breaking, clairvoyant rollout headroom
+
+**1. Windowed lr pilots (old cloning: constant lr 1e-3, 20 epochs; test J from auto_eval, NOT used for selection):**
+```
+lr 3e-4   30,566 / 30,652 / 33,530     lr 1e-4   25,015 / 37,340 / 36,399
+lr 3e-5   29,522 / 30,323 / 30,248     lr 1e-5   23,810 / 22,591 / 25,435      (EDF+Consolidate 21,986)
+windowed CLONE ONLY (seeds 10-14):  24,997 / 26,287 / 27,702 / 22,273 / 22,087
+```
+The windowed clone is not the heuristic although EDF is "take window entry 0" (checked: the expert's index is 0 at every decision
+that has a job; 11% of decisions are forced idles with an empty window): BC agreement stays at 96.5-97.2% even with 60 epochs and
+cosine lr decay (dev run, not a reported seed), so the shortfall is not under-training. Explanation found: deadlines are integers
+and several pending jobs share the earliest one; EDF breaks those ties by job index, which a per-slot network cannot observe
+(slot features hold duration, deadline, weight, resources, flag). Tie-breaking matters a lot: EDF with different tie-breaks on
+20 VALIDATION instances (windowed wrapper, Consolidate): job index 30,857; shortest duration 30,941; weight/duration 32,850;
+reverse job index 31,782; heaviest weight first 36,523; longest duration (LPT) 28,295 (best). So tie-break luck alone moves J by
+about +/-15%, comparable to every gap between RL arms and the heuristic reported so far.
+
+**2. New heuristic `EDFL` (EDF, ties by longest duration; `edfl_key` in priority_rules.py), cloneable exactly.** Selected on
+validation, scored on test: EDFL+Consolidate 24,061 versus EDF+Consolidate 21,986 on the 50 test instances (it is WORSE there):
+the validation ordering of tie-breaks does not carry over to the test instances, so single-set differences of 8-10% between
+EDF variants are instance-set noise. Consequence for the claims: "EDF+Consolidate" was the best of ~40 heuristics on the test
+set (winner's curse, critic pass 2), and an EDF-like learned policy scoring 23-25k is not evidence of a gap to the heuristic.
+
+**3. Clairvoyant rollout headroom (`tools/analysis/rollout_headroom.py`: one-step rollout, top-3 EDF candidates, EDF+Consolidate
+base, simulated on a copy of the environment that KNOWS the future arrivals; validation instances 0-2):**
+```
+instance   EDF+Consolidate J   rollout J    change
+0                 7,121          6,274      -11.9%
+1                31,735          8,584      -73.0%
+2                35,191          7,159      -79.7%
+mean             24,682          7,339      -70.3%
+```
+Upper bound only (not an online policy): perfect knowledge of arrivals lets a short look-ahead remove most of the squared
+tardiness on the heavy instances. It says the objective is dominated by a few instances where foresight about arrivals matters;
+how much of that an online policy can recover is unknown (needs a sampled-arrival rollout; each decision costs ~1 s per candidate
+per sample, too slow for the evaluation set).
+
+**Decision announced (Tier 2, before running):** windowed clone with the exactly-cloneable expert `EDFL` (dev run
+`v2_on_rho095_o2cwimlubrze_s21`, not a reported seed, checks agreement ~100% and J ~24,061). If it passes, the windowed
+protocol is rerun with expert EDFL and new seed numbers: lr pilots {1e-4, 3e-5, 1e-5, 3e-6} x 3 seeds selected on validation, then
+clone-only / scratch / A3w with 5 seeds each; all compared with BOTH EDF+Consolidate and EDFL+Consolidate and reported
+exploratory, per the wording rules of critic pass 2. The first batch of windowed pilots above is superseded (kept here).
+
+---
+
 ## 2026-10-21 (S2W14) -- Critic pass 2: scores, wording corrections, rules fixed in advance, headroom lever
 
 **Scores (reviewer agent, read-only):** claims supported 3/5, statistics 2.5/5, leakage / pre-registration 3.5/5,

@@ -248,6 +248,16 @@ def mdc_key(base_env, job):
     return (-delay_cost / max(p, 1e-8), base_env.job_deadlines[job] - p - base_env.time)
 
 
+def edfl_key(base_env, job):
+    """EDF with ties broken by the Longest Processing Time (added 2026-10-21). Deadlines are integers and several pending
+    jobs often share the earliest one, so EDF's tie-break (job index in EDF above) decides many decisions: on 20
+    validation instances of on_rho095 the tie-break alone moves J from 28.3k (LPT) to 36.5k (heaviest weight first). A
+    tie-break that is a function of the job's own features (here duration) can be read by a per-slot network, unlike the
+    job index, so this rule is exactly learnable by cloning. Selected on validation instances, a new heuristic like
+    any other in this file."""
+    return (base_env.job_deadlines[job], -base_env.job_durations[job])
+
+
 # Option 1's rule menu (rule_selection_gym_wrapper.py) and the random rule-selection baselines draw from
 # PRIORITY_RULES only, so their action spaces and existing checkpoints stay unchanged. The heuristic
 # registry composes every rule (both dicts) with every placement rule.
@@ -257,6 +267,7 @@ WEIGHTED_PRIORITY_RULES = {
     "WLST": wlst_key,
     "WEDF": wedf_key,
     "MDC": mdc_key,
+    "EDFL": edfl_key,
 }
 
 

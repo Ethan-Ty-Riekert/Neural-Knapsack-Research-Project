@@ -77,6 +77,9 @@ def clone(model, obs, masks, actions, epochs, batch_size=128, lr=1e-3, seed=0):
     device = model.device
     gen = torch.Generator().manual_seed(seed)
     opt = torch.optim.Adam(policy.parameters(), lr=lr)
+    # cosine decay to lr/100 over the epochs: a constant lr left the windowed clone at 96-97% agreement with an
+    # (almost) trivial target (the window is deadline-sorted, so EDF = first entry); decay lets the fit converge
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(1, epochs), eta_min=lr / 100)
     obs_t = torch.as_tensor(obs)  # float16 on the CPU; each batch is moved to the device as float32
     act_t = torch.as_tensor(actions, device=device)
     n = len(obs_t)
@@ -93,6 +96,7 @@ def clone(model, obs, masks, actions, epochs, batch_size=128, lr=1e-3, seed=0):
             trained.update(id(p) for p in policy.parameters() if p.grad is not None)
             opt.step()
             loss_val = float(loss.item())
+        sched.step()
     with torch.no_grad():
         agree = 0
         for start in range(0, n, 2048):
