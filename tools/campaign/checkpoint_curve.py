@@ -51,7 +51,7 @@ def main():
     final = MODELS_DIR / f"action_space_option{option}_ppo_{a.tag}.zip"
     out = REPO / a.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = {r[1] for r in csv.reader(open(out, encoding="utf-8"))} if out.exists() else set()
+    done = {r[1] for r in csv.reader(open(out, encoding="utf-8")) if r[0] == a.tag} if out.exists() else set()
     ckpts = sorted(ckpt_dir.glob("ckpt_*_steps.zip"), key=lambda p: int(p.stem.split("_")[1]))
     if final.exists():
         ckpts.append(final)  # the finished model, labelled by its recorded training steps
