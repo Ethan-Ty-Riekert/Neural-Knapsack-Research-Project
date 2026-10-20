@@ -16,6 +16,7 @@ from scoring import (DISPLAY_METRICS, best_by_family, load_results, metric_label
 
 SLIDES = sorted((Path(__file__).resolve().parent / "slides").glob("*.png"))
 PRESET_NOTES = {"off": "offline: whole job set known up front", "on": "online: jobs arrive over time"}
+DEFAULT_PRESET = "on_rho095"  # the scenario where RL is closest to the best heuristic
 PRESETS_OF_INTEREST_HELP = "Presets differ in load / deadline tightness; scores are only comparable within one."
 
 st.set_page_config(page_title="Neural Knapsack results explorer", layout="wide")
@@ -33,7 +34,9 @@ with tab_slides:
 with tab_explore:
     left, right = st.columns([1, 2])
     with left:
-        preset = st.selectbox("Scenario (preset)", presets(df), help=PRESETS_OF_INTEREST_HELP)
+        all_presets = presets(df)
+        preset = st.selectbox("Scenario (preset)", all_presets, help=PRESETS_OF_INTEREST_HELP,
+                              index=all_presets.index(DEFAULT_PRESET) if DEFAULT_PRESET in all_presets else 0)
         st.caption(PRESET_NOTES["off" if preset.startswith("off") else "on"])
         normalise = st.checkbox("Normalise metrics by the best heuristic", value=True,
                                 help="Weight 1 on two metrics = equal importance relative to a good heuristic.")
@@ -75,3 +78,14 @@ with tab_explore:
             st.dataframe(view, use_container_width=True, hide_index=True)
             chart = scored.head(top_n).set_index("model")["score"]
             st.bar_chart(chart.sort_values(ascending=False), horizontal=True)
+
+            st.subheader("Trade-off view")
+            c1, c2 = st.columns(2)
+            x_metric = c1.selectbox("Horizontal axis", DISPLAY_METRICS, index=0, format_func=metric_label)
+            y_metric = c2.selectbox("Vertical axis", DISPLAY_METRICS, index=DISPLAY_METRICS.index("active_machine_ticks"),
+                                    format_func=metric_label)
+            points = scored[["model", "family", x_metric, y_metric]].dropna().rename(
+                columns={x_metric: metric_label(x_metric), y_metric: metric_label(y_metric)})
+            st.scatter_chart(points, x=metric_label(x_metric), y=metric_label(y_metric), color="family")
+            st.caption("Every point is one method on this scenario; lower-left is better when both axes are "
+                       "lower-is-better metrics.")

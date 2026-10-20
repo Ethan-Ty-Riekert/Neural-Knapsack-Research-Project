@@ -17,5 +17,5 @@ streamlit run app/app.py
   `build_folder.METRIC_INFO` (the single definition).
 - Test: `python -m tests.test_demo_scoring`.
 
-Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Planned: Pareto plot,
+Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Trade-off scatter (any two metrics) added. Planned:
 frozen data bundle for the laptop.
