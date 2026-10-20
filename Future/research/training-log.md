@@ -32,6 +32,29 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A3 pilots finished: the pre-registered rule picks lr 1e-5; provisional seeds at 3e-5 stopped and replaced
+
+**Stats (validation J, 10 instances; EDF+Consolidate 32,112 on the same instances):**
+```
+steps       200k    300k    400k    500k    600k    700k    800k    900k     1M    final
+s91 3e-5   28,804  28,115  31,159  27,300  26,620  31,560  27,548  29,272  24,178  27,972
+s92 1e-5   24,024  30,059  33,451  44,923  44,667  27,960  30,098  22,737  24,919  24,086
+mean of the last three checkpoints (800k, 900k, 1M):  s91 27,000   s92 25,918
+```
+**Observation:** both learning rates end below the heuristic's validation J; 1e-5 had a mid-run excursion (45k at
+500k-600k) and recovered; 3e-5 was steadier but slightly higher at the end. The difference (1.1k) is far inside the noise
+of one seed and 10 instances, so the choice does not mean 1e-5 is better, only that the pre-registered rule selects it.
+
+**Decision:** follow the rule as written (lower mean over the last three checkpoints): lr 1e-5. The provisional A3 seeds 0-2
+at 3e-5 had started (BC phase, 14-35 min in; none had produced any score) and were stopped and discarded; the seeds 3-4
+lines were removed. No result from them was ever looked at. New reported seeds: 10-14 (the runner treats started tags as
+done, so the tags cannot be reused), same strong BC configuration, lr 1e-5, critic warm-up lr 3e-4, 1M steps, Tier 2,
+GPU queue. The comparison arms keep their seeds 0-4 (FirstFit, A6): arms are compared by seed means, not seed pairs.
+
+**Conclusion / next step:** A3 test analysis after seeds 10-14 finish (BC ~1.5 h + ~2.2 h each, three in parallel).
+
+---
+
 ## 2026-10-20 (S2W14) -- A3 lr pilots (validation) and provisional choice lr 3e-5; seeds 0-4 queued
 
 **Stats (validation J, 10 instances, seeds 600000-09; EDF+Consolidate 32,112 on the same instances):**

@@ -204,8 +204,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho075.md`](../tab
 | 6 | FCFS+Consolidate | Heuristic | 0.908 +/- 0.021 | 7011 +/- 4969 |
 | 7 | EDF+Consolidate | Heuristic | 0.907 +/- 0.018 | 6181 +/- 4022 |
 | 8 | WEDF+Consolidate | Heuristic | 0.906 +/- 0.020 | 6222 +/- 4062 |
-| 9 | WMDD+Consolidate | Heuristic | 0.905 +/- 0.019 | 7688 +/- 7376 |
-| 10 | LPT+FirstFit | Heuristic | 0.905 +/- 0.019 | 26058 +/- 28478 |
+| 9 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.906 +/- 0.005 | 8749 +/- 1930 |
+| 10 | WMDD+Consolidate | Heuristic | 0.905 +/- 0.019 | 7688 +/- 7376 |
 
 | top 5 | top 10 |
 |---|---|
