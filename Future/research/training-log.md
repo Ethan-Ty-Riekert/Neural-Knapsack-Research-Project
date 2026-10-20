@@ -32,6 +32,32 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Baselines at 5 seeds, pilots' test scores (disclosure), A6 at 300k, paired-analysis tool
+
+**Config / disclosure:** `auto_eval` scores every finished model on the 50 test instances, so the A3 pilots have test J
+as well. They are NOT used for any decision (the learning rate was chosen on validation, rule applied as written); listed
+for completeness: s90 (lr 3e-4, weak clone) 34,513; s91 (3e-5) 25,253; s92 (1e-5) 21,827. Pilots are not reported seeds.
+
+**Stats (on_rho095 test J, 50 instances; reference EDF+Consolidate 21,986), `tools/analysis/paired_report.py`:**
+```
+arm                  per-seed J                                   mean    95% CI over seeds   paired diff vs ref (CI over instances)  better
+FirstFit Opt2 1M     22,927/31,652/24,965/32,507/32,264           28,863  25,202 - 32,239     +6,877 (+4,124 to +9,788)               9/50
+A6 Consolidate 1M    28,947/30,323/23,164/26,884/22,054           26,274  23,464 - 29,085     +4,288 (+1,696 to +7,285)               14/50
+A6 300k  (3 seeds)   23,265/38,865/22,372                         28,167   (FirstFit 300k 3 seeds 39,947)
+A6 on_rho075 300k    6,775/8,841/10,631                           8,749    (WLST+Consolidate 5,990; no Option 2 FirstFit run exists there)
+```
+**Observation:** the 5-seed FirstFit baseline is 28.9k, not the 26.5k of its first three seeds (seeds 3-4: 32.5k, 32.3k):
+three-seed means were optimistic. Both 1M arms are 20-30% above EDF+Consolidate with a paired interval that excludes zero;
+the arms' seed intervals overlap, so placement is still not shown to matter at 1M. The 300k A6 advantage (28.2k vs 39.9k,
+3 seeds) is suggestive only. A6 rho110 runs are in progress.
+
+**Conclusion / next step:** success criterion for A3, restated with the 5-seed baseline: the 5-seed mean J of A3 has a
+95% interval over seeds that lies below the FirstFit and A6 intervals (~23.5k lower edge) -- the stronger target is
+overlap with or below 21,986 on the paired comparison. The GPU runner's job limit was raised from 3 to 5 (load stays under
+the 80% target) so A3 seeds 10-14 run together.
+
+---
+
 ## 2026-10-20 (S2W14) -- A3 pilots finished: the pre-registered rule picks lr 1e-5; provisional seeds at 3e-5 stopped and replaced
 
 **Stats (validation J, 10 instances; EDF+Consolidate 32,112 on the same instances):**
