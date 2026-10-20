@@ -15,7 +15,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 7 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 26274 +/- 3584 |
 | 8 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 26515 +/- 4564 |
 | 9 | LST+Consolidate | Heuristic | 27839 +/- 29934 |
-| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective 1M-step budget [tuned] | RL | 30296 +/- 5736 |
+| 10 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 28168 +/- 9275 |
 
 | top 5 | top 10 |
 |---|---|
@@ -108,9 +108,9 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 5 | MDC+Consolidate | Heuristic | 34.4 +/- 13.0 | 22646 +/- 22184 |
 | 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 2M-step budget [tuned] | RL | 34.8 +/- 4.0 | 24921 +/- 2555 |
 | 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 35.1 +/- 5.1 | 26515 +/- 4564 |
-| 8 | LST+BestFit | Heuristic | 36.3 +/- 11.5 | 39115 +/- 28826 |
-| 9 | EDF+BestFit | Heuristic | 36.5 +/- 11.7 | 35250 +/- 28408 |
-| 10 | WEDF+Consolidate | Heuristic | 36.6 +/- 12.6 | 25689 +/- 22866 |
+| 8 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 36.0 +/- 12.7 | 34513 +/- 29464 |
+| 9 | LST+BestFit | Heuristic | 36.3 +/- 11.5 | 39115 +/- 28826 |
+| 10 | EDF+BestFit | Heuristic | 36.5 +/- 11.7 | 35250 +/- 28408 |
 
 | top 5 | top 10 |
 |---|---|

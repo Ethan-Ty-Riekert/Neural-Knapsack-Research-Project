@@ -32,6 +32,29 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- A3 pilot s90 final; correction of the validation threshold; lr pilots started
+
+**Stats (validation J on 10 instances, seeds 600000-09; pilot s90 = weak clone, default lr 3e-4, 1M steps):**
+```
+steps    200k    300k    400k    500k    600k    700k    800k    900k    1M      final
+J      35,204  35,929  23,691  30,401  59,270  38,779  31,725  32,155  42,079  42,801
+EDF+Consolidate on the same 10 validation instances: 32,112   (EDF+FirstFit 53,676)
+```
+**Observation:** the pilot never settles: validation J swings between 24k and 59k and the final model (42.8k) is 33%
+worse than EDF+Consolidate; individual checkpoints sit below it (23.7k, 30.4k) only by luck of the checkpoint. PPO at the
+default rate does not preserve the clone (one seed, 10 instances, pilot only).
+
+**Correction:** the decision rule of the previous entry used "~22k validation J" as the clone level; that figure is the
+heuristic's TEST J. The validation instances are harder: the right yardstick is EDF+Consolidate on the same validation
+instances, 32,112. Rule, restated before the lr pilots produce data: choose the learning rate with the lower mean validation
+J over its last three checkpoints; A3 counts as improving on the heuristic only if that mean is below 32,112 AND later
+confirmed on the test set with 5 seeds; otherwise report A3 as clone-level at best.
+
+**Conclusion / next step:** pilots s91 (lr 3e-5) and s92 (lr 1e-5) are running (GPU). CPU runner target restored to 55.
+Also observed (not yet logged): A6 at 300k, 3 seeds, 28,167 vs FirstFit 39,947 -- reported with the rho075 / rho110 runs.
+
+---
+
 ## 2026-10-20 (S2W14) -- A3 pilot: PPO at the default learning rate degrades the clone; fine-tuning-rate pilots announced
 
 **Config:** A3 pilot (seed 90: weaker BC configuration 30 x 2 x 8, default hyperparameters, 1M steps, GPU), checkpoints
