@@ -32,6 +32,19 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- Scheduling decision: CPU runs stopped to speed up A3; A6 at rho110 reduced to 2 seeds
+
+**Observation:** A3 seed 10 advanced 100k PPO steps between 12:57 and 13:49 (earlier pilots: ~450k steps/h), because the
+CPU-side A6 runs share the cores that step the environments of the GPU jobs; at that rate the five A3 seeds would end
+tomorrow morning. A6 on_rho110 (Option 2 + Consolidate, 300k): seed 0 test J 228,132 (MDC+Consolidate 106,463; the tuned
+Option 3 reached 190,523 earlier), seed 1 still running.
+
+**Action:** CPU runner target lowered to 20 (no new CPU jobs) and the just-started A6 rho110 seed 2 stopped (13:49, no result
+looked at). The A6 rho110 comparison therefore has 2 seeds (s0, s1) and is reported as such; it is a side result, not part of
+the claim. The CPU runner is restored once the A3 seeds finish.
+
+---
+
 ## 2026-10-20 (S2W14) -- Incident: A3 seeds 13 and 14 crashed (GPU memory); replaced by seeds 15 and 16
 
 **Observation:** raising the GPU runner to 5 concurrent jobs at 11:12 (CPU load was only 65%) made seeds 13 and 14 fail after
