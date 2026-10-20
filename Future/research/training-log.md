@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-20 (S2W14) -- FINAL A3 result (5 seeds, on_rho095): RL with a behaviour-cloning warm start matches EDF+Consolidate; A3 2M-step runs announced
+
+**Config:** A3 = EDF+Consolidate behaviour-cloning warm start (60 episodes x 3 DAgger iterations x 20 epochs) + 100k critic
+warm-up + PPO at lr 1e-5, 1M steps, Tier 2, seeds 10, 11, 12, 15, 16 (13 and 14 crashed on GPU memory, see the incident entry;
+lr chosen by the pre-registered validation rule). Test J on the 50 held-out instances; `tools/analysis/paired_report.py`.
+
+**Stats (reference EDF+Consolidate J 21,986):**
+```
+arm                           per-seed J                                  mean    95% CI over seeds   paired diff vs ref (CI over instances)  better
+A3 (5 seeds)                  23,613/24,001/22,258/23,766/24,633          23,654  22,877 - 24,256     +1,668 (-600 to +3,958)                 24/50
+FirstFit Opt2 1M (5 seeds)    22,927/31,652/24,965/32,507/32,264          28,863  25,202 - 32,239     +6,877 (+4,147 to +9,759)                9/50
+A6 Consolidate 1M (5 seeds)   28,947/30,323/23,164/26,884/22,054          26,274  23,464 - 29,085     +4,288 (+1,675 to +7,287)               14/50
+```
+**Observation:** against the success criteria written before the run: (1) A3's seed interval lies entirely below the FirstFit
+interval (24,256 < 25,202) and overlaps the A6 interval only at its lower edge (24,256 vs 23,464) -- met against FirstFit,
+borderline against A6; (2) the stronger criterion, a paired difference to EDF+Consolidate whose interval contains zero, is met
+(+1,668, -600 to +3,958). A3 does NOT beat the heuristic: its point estimate is 7.6% above (all five seeds 1.2-12% above). Its
+seed spread is 1.4k (std ~0.9k) against ~4-5k for training from scratch, i.e. the warm start removes the seed lottery.
+Not yet known: how much of this is the clone itself (control arm queued, decision rule logged).
+
+**Decision announced (before running; Tier 2; GPU queue):** A3 with a 2M-step budget (everything else as A3: same cloning
+configuration, lr 1e-5, critic warm-up 100k counted in the budget), seeds 10-12, tags `v2_on_rho095_o2cimlubrzey_s10-12`.
+Justification: tests the user's question whether more training time lets RL improve on the heuristic once it starts at it; the
+earlier from-scratch budget study showed only flattening gains (39.9k -> 26.5k -> 24.9k at 0.3M / 1M / 2M), which is a
+different regime (no warm start). Compare with the 1M A3 seeds 10-12 (same BC seeds): paired by seed number.
+
+---
+
 ## 2026-10-20 (S2W14) -- Announced: clone-only control arm (what does PPO fine-tuning add?)
 
 **Config (Tier 2, CPU queue, announced before running):** same behaviour cloning as A3 (EDF+Consolidate expert, 60 episodes x 3

@@ -10,7 +10,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 2 | MDC+Consolidate | Heuristic | 22646 +/- 22184 |
 | 3 | WLST+Consolidate | Heuristic | 24874 +/- 21375 |
 | 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 2M-step budget [tuned] | RL | 24921 +/- 2555 |
-| 5 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 25244 +/- 4706 |
+| 5 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 24983 +/- 4013 |
 | 6 | WEDF+Consolidate | Heuristic | 25689 +/- 22866 |
 | 7 | COVERT+Consolidate | Heuristic | 26019 +/- 23766 |
 | 8 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 26274 +/- 3584 |
@@ -34,7 +34,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 7 | WMDD+BestFit | Heuristic | 0.954 +/- 0.013 | 47163 +/- 34402 |
 | 8 | ATC+FirstFit | Heuristic | 0.954 +/- 0.011 | 59081 +/- 40133 |
 | 9 | WMDD+FirstFit | Heuristic | 0.953 +/- 0.012 | 45044 +/- 27550 |
-| 10 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0.953 +/- 0.003 | 25244 +/- 4706 |
+| 10 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0.953 +/- 0.003 | 24983 +/- 4013 |
 
 | top 5 | top 10 |
 |---|---|
@@ -53,7 +53,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 7 | EDF+Consolidate | Heuristic | 41.7 +/- 16.1 | 21986 +/- 16435 |
 | 8 | ATC+FirstFit | Heuristic | 41.8 +/- 10.7 | 59081 +/- 40133 |
 | 9 | WMDD+FirstFit | Heuristic | 42.6 +/- 11.1 | 45044 +/- 27550 |
-| 10 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 43.1 +/- 3.0 | 25244 +/- 4706 |
+| 10 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 43.1 +/- 2.5 | 24983 +/- 4013 |
 
 | top 5 | top 10 |
 |---|---|
@@ -88,7 +88,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | 4 | MDC+Consolidate | Heuristic | 1287 +/- 793 | 22646 +/- 22184 |
 | 5 | ATC+Consolidate | Heuristic | 1304 +/- 626 | 40676 +/- 28529 |
 | 6 | WEDF+Consolidate | Heuristic | 1346 +/- 830 | 25689 +/- 22866 |
-| 7 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 1362 +/- 169 | 25244 +/- 4706 |
+| 7 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 1355 +/- 144 | 24983 +/- 4013 |
 | 8 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget [tuned] | RL | 1385 +/- 35 | 30611 +/- 1909 |
 | 9 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 1391 +/- 118 | 26274 +/- 3584 |
 | 10 | WLST+Consolidate | Heuristic | 1406 +/- 826 | 24874 +/- 21375 |
@@ -102,7 +102,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho095.md`](../tab
 | rank | method | family | max tardiness | J |
 |---|---|---|---|---|
 | 1 | LST+Consolidate | Heuristic | 30.3 +/- 8.6 | 27839 +/- 29934 |
-| 2 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 33.0 +/- 1.7 | 25244 +/- 4706 |
+| 2 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 33.1 +/- 1.5 | 24983 +/- 4013 |
 | 3 | EDF+Consolidate | Heuristic | 33.4 +/- 9.7 | 21986 +/- 16435 |
 | 4 | LST+FirstFit | Heuristic | 33.7 +/- 9.4 | 38831 +/- 31768 |
 | 5 | WLST+Consolidate | Heuristic | 33.9 +/- 11.4 | 24874 +/- 21375 |
