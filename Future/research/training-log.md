@@ -32,6 +32,47 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Critic pass 2: scores, wording corrections, rules fixed in advance, headroom lever
+
+**Scores (reviewer agent, read-only):** claims supported 3/5, statistics 2.5/5, leakage / pre-registration 3.5/5,
+implementation 3.5/5, compact-test coverage 3/5. Findings and what is done about each:
+
+1. **Wording (corrections to earlier entries; the numbers stand, the verbs change).** "A3 matches EDF+Consolidate" is not an
+   equivalence claim: the paired interval (-600 to +3,958, instances only, seed-averaged) says "no significant difference", its
+   upper end is +18%, all five seeds are above the reference (+1.2 to +12%), point estimate +7.6%. Correct statement: A3 is
+   within ~8% of the heuristic, not shown better, not shown equivalent. "The clone alone explains A3" is a conditional null:
+   A3 minus clone is -375 (CI -2,684 to +1,873, per-seed -993/-334/+2,451), the "within 1,000" threshold is below the noise
+   (seed std 1-2k), A3 has 5 seeds and the clone 3, and lr 1e-5 was chosen because it preserves the clone. Correct statement:
+   no detectable effect of PPO fine-tuning at lr 1e-5, ~0.9M steps, 3 seeds. The seed bootstrap with n = 3-5 under-covers:
+   per-seed values and ranges are the honest summary. Profile / speed-ups: one cProfile run, machine loaded, rounded to one
+   digit, so "88% / 6.6x" are indicative (windowed: 20,480 steps in 0.4 min is ~40x the 4,096 steps in 3.3 min, the
+   "25x" figure in the earlier entry was imprecise). GPU/CPU contention: observed only, no cause stated.
+2. **Rules fixed in advance for the windowed arms (before their data exist):** "beats the heuristic" = the paired per-instance
+   interval of the seed-averaged difference lies entirely below 0 with 5 seeds in every arm; "equivalent" = that interval
+   inside +/-5% of the reference (+/-1,100 on_rho095); anything else = "no significant difference". All arms are
+   exploratory (about 8 arms, no multiplicity correction); the 50 test instances have now been looked at in many go / no-go
+   decisions, so they act as a soft validation set: the final numbers for the presentation are labelled exploratory.
+3. **Protocol mismatches to disclose, not hide:** A3 uses lr 1e-5 (selected on validation) and the scratch arms use the PPO
+   default (3e-4); the A3 cloning uses ~180k+ expert / DAgger environment steps not counted in the 1M budget; arms use different
+   seed sets (0-4 vs 10-16), so comparisons are by arm means, not by seed pairs.
+4. **Code:** the windowed expert now asserts that its choice is unmasked (done). float16 storage checked: max |obs| 2.06,
+   max round-trip error 8e-4 on 1,038 states (fine). Open: Adam state of the actor starts fresh when it is unfrozen (first step
+   ~lr x sign(grad)), which may explain part of "high lr destroys the clone"; an Adam warm-up (one rollout at lr 0 with
+   the actor unfrozen) would separate that artefact from PPO itself. The compact-encoding test covers one synthetic
+   configuration only; not covered: critic_dim > 0, ATC, markov/lookahead layouts, K differing between rollout and update, save /
+   load, DirectML. A runtime assert mask <= active is a TODO. BC agreement is measured on training states (no held-out split).
+5. **Most promising untested lever (reviewer):** policy improvement by rollout (Bertsekas): at a decision, simulate the base
+   heuristic from each of the top candidates to a horizon with common random numbers and pick the best; it is provably no worse than
+   its base heuristic in the deterministic setting. First measure rollout-EDF directly, without any learning: if it improves
+   on EDF+Consolidate by <3%, the heuristic is near what any policy can do online and no RL will win; that also gives the missing
+   online bound.
+
+**Decision announced (before running, Tier 2, no training):** build `tools/analysis/rollout_headroom.py` and measure
+one-step lookahead rollout with the EDF+Consolidate base policy on a small number of validation instances (the cost is a copy
+of the environment per candidate and a heuristic simulation to a horizon; candidates = the 20-job window).
+
+---
+
 ## 2026-10-21 (S2W14) -- CONTROL RESULT (all-slot network, on_rho095): the clone alone explains A3's result; PPO fine-tuning adds nothing measurable
 
 **Config:** clone-only control as announced (EDF+Consolidate behaviour cloning, 60 x 3 x 20, 100k-step critic warm-up with the

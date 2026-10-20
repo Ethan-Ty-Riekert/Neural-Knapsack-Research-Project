@@ -34,7 +34,9 @@ def expert_action(wrapper, mask, rule):
         slots = [i for i, job in enumerate(wrapper._window_jobs) if job is not None]
         if not slots:
             return wrapper.window_size
-        return min(slots, key=lambda i: (key(wrapper.env, wrapper._window_jobs[i]), wrapper._window_jobs[i]))
+        choice = min(slots, key=lambda i: (key(wrapper.env, wrapper._window_jobs[i]), wrapper._window_jobs[i]))
+        assert mask[choice], "the expert's window choice is masked out: its label would have zero probability"
+        return choice
     valid = np.flatnonzero(mask[:wrapper.max_jobs])
     if valid.size == 0:
         return wrapper.max_jobs
