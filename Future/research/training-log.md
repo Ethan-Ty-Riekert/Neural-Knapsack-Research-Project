@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Late-jobs specialist (Option 3 windowed, ATC expert): a learned model for the late-jobs metric; more scenarios queued
+
+**Config (Tier 2, as announced):** Option 3 windowed (ATC priority as a slot feature), expert ATC + Consolidate, cloning 60 x 3 x 60
+epochs, critic warm-up 100k, lr 1e-5; clone-only seeds 80-82, A3w seeds 90-92 (1M steps); on_rho095, test set (50 instances).
+ATC+Consolidate is the best heuristic on on-time rate. Judged on late-job metrics, not on J.
+
+**Stats (means over the 50 test instances; per-seed values in brackets):**
+```
+                      J        on-time rate   weighted late jobs      active machine-ticks
+ATC+Consolidate     40,676       0.960              97.2                  1,266
+EDF+Consolidate     21,986       0.954             124.6                  1,251
+clone-only ATC      39,341       0.960 (0.961/0.960/0.960)   97.3 (96.5/97.9/97.7)      1,266
+A3w ATC             37,466       0.960 (0.959/0.961/0.960)   98.5 (101.2/95.9/98.3)     1,267
+weighted late jobs minus ATC+Consolidate (per instance, seed-averaged): clone-only +0.1 (CI -3.4 to +3.7); A3w +1.3 (CI -2.3 to +4.9)
+```
+**Observation:** the ATC clone reproduces the heuristic's late-job behaviour (no significant difference in weighted late jobs or
+on-time rate), which is 22% fewer weighted late jobs than EDF+Consolidate at the price of a much higher J (the two objectives
+trade off); fine-tuning with the J-only reward does not change it. This is a learned model for the "fewest late jobs" metric, obtained
+by imitation, not an RL improvement over ATC.
+
+**Queued (Tier 2, announced):** (b) windowed clone-only with the matched best heuristic as expert, seeds 80-82, for on_rho050 and
+on_rho075_tight (WLST + Consolidate), off_tf08 and off_tf08_w1 (WLST + FirstFit), off_tf05_w1 (LST + FirstFit), so the explorer has
+learned models in more scenarios; (a) 5-seed matched-expert arms (clone-only seeds 100-104, A3w seeds 110-114) at on_rho075 (WLST)
+and on_rho110 (MDC) so that the beats / equivalent rules of critic pass 2 can be applied.
+
+---
+
 ## 2026-10-21 (S2W14) -- Scenario-matched experts (3 seeds each, exploratory): clones within 1-8% of the best heuristic; PPO does not help
 
 **Config (Tier 2, as announced 09:25):** windowed Option 2 with the scenario's best heuristic as expert (on_rho075 WLST + Consolidate, on_rho110

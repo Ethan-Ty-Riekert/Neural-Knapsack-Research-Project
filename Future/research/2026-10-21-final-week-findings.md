@@ -51,6 +51,18 @@ The expert was EDFL everywhere (not matched to the scenario). Offline, PPO fine-
 
 The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert decides the result; fine-tuning does not help.
 
+### Late-jobs specialist (Option 3 windowed, ATC + Consolidate as the expert, `on_rho095`)
+
+| | J | on-time rate | weighted late jobs |
+|---|---|---|---|
+| ATC+Consolidate | 40,676 | 0.960 | 97.2 |
+| EDF+Consolidate | 21,986 | 0.954 | 124.6 |
+| clone only (3 seeds) | 39,341 | 0.960 | 97.3 |
+| clone + PPO on J (3 seeds) | 37,466 | 0.960 | 98.5 |
+
+A learned model for the "fewest late jobs" metric (22% fewer weighted late jobs than EDF+Consolidate, at a much higher J), obtained by
+imitation; no significant difference from ATC+Consolidate.
+
 ## Why the gap and the "ties" matter
 
 * **Tie-breaking in EDF moves J by about +/-15%.** Deadlines are integers; several pending jobs share the earliest one. On 20
