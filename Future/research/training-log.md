@@ -32,6 +32,24 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Window-size question answered: a bigger window makes windowed PPO from scratch WORSE
+
+**Stats (windowed PPO from scratch, PPO defaults, 1M steps, Consolidate, on_rho095; per-seed mean J):**
+```
+FRESH set (50 new instances)
+  window 20 (seeds 60-64)   34,475 / 54,213 / 59,493 / 52,540 / 35,933            mean 47,331
+  window 40 (seeds 70-75)   44,157 / 60,851 / 73,900 / 73,491 / 65,067 / 56,528   mean 62,332
+  window 60 (seeds 70-74)   64,100 / 89,517 / 37,057 / 71,699 / 111,918            mean 74,859   (seed 75 not yet scored)
+  all-slot plain RL (Consolidate / FirstFit, 1M)                                    30,199 / 33,764
+OLD test set: window 40 34,281 / 45,293 / 63,043 / 65,838 / 55,100 / 50,253; window 60 53,597 / 76,074 / 33,159 / 63,412 / 98,663 / (s75 pending)
+```
+**Observation:** the gap between windowed and all-slot learning from scratch is not a window-size effect: larger windows are monotonically worse
+(47k -> 62k -> 75k on the fresh set). The two policies share their encoders; the windowed one adds a backlog scalar and sees only schedulable jobs
+(sorted by deadline). Unexplained; no cause is claimed and none has been tested. The
+findings doc's open-question bullet has the numbers.
+
+---
+
 ## 2026-10-21 (S2W14) -- Fresh checks at on_rho075_tight, on_rho050, off_tf05; more seeds queued for the headline arms
 
 **Stats (FRESH instances, mean J; `fresh_summary.py`; clones with the matched expert, lr 1e-5 for A3w):**

@@ -194,8 +194,10 @@ explorer the learned models for different metrics are imitation clones of differ
 * Multiplicity and selection: no correction over ~11 arms x 7 heuristics on the fresh set (the doc shows a subset of the comparisons);
   the OLD test set informed many go/no-go decisions and its reference heuristic was picked on it; the fresh set is now also used to name
   the best heuristic. Training-seed variance is not part of any interval.
-* Open: windowed PPO from scratch is much worse than the all-slot network although the architectures look equivalent; window 40 and 60
-  do not help (test J 34k-76k; runs still finishing), so the cause is unexplained.
+* Open: windowed PPO from scratch is much worse than the all-slot network although the architectures look equivalent, and a BIGGER
+  window makes it worse, not better (FRESH set, mean J over seeds: window 20 47,331 (5 seeds), window 40 62,332 (6 seeds), window 60
+  74,859 (5 seeds); all-slot plain RL 30,199-33,764; OLD test set: window 40 34k-66k, window 60 33k-99k per seed), so the cause is
+  unexplained (it is not the window size) and no candidate cause has been tested.
 * Tier 2 (default or lightly chosen hyperparameters) throughout; the full tuned protocol was only run earlier (Tier 1) for the
   all-slot network.
 
