@@ -32,6 +32,25 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- 5-seed matched arms at on_rho075: pre-registered rules applied
+
+**Config:** windowed Option 2, expert WLST + Consolidate, cloning 60 x 3 x 60 epochs, critic warm-up 100k, lr 1e-5; clone-only seeds
+100-104, A3w (clone + PPO, 1M steps) seeds 110-114; test J, 50 instances; reference WLST+Consolidate 5,990 (equivalence margin +/-5% =
++/-300). Exploratory.
+
+**Stats:**
+```
+arm                 per-seed J                                 mean    paired diff vs reference (95% CI over instances)   instances better
+clone only (5)      6,246 / 6,103 / 6,083 / 6,103 / 6,207      6,148   +159 (+52 to +288)                                 11/50
+A3w (5)             6,195 / 5,995 / 6,080 / 6,194 / 6,353      6,163   +174 (+50 to +331)                                 13/50
+```
+**Observation (rules of critic pass 2):** neither arm beats the heuristic (intervals above zero). Clone only: the interval lies inside
++/-300, so by the pre-registered rule it is "equivalent within 5%" while being significantly (2.7%) above the reference; A3w: the upper
+end (+331) exceeds the margin, so equivalence is not shown (and it is also significantly above zero). PPO fine-tuning adds nothing: arm means
+6,148 vs 6,163. The rho110 5-seed arms are still running.
+
+---
+
 ## 2026-10-21 (S2W14) -- Matched-expert clones at five more scenarios; other experts queued with expert tag letters
 
 **Stats (windowed clone only, 3 seeds 80-82, matched expert = the scenario's best heuristic; test J, 50 instances):**
