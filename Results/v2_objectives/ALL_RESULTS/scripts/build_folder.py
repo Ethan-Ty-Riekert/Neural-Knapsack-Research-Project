@@ -60,7 +60,7 @@ MOD_NAMES = {"c": "+Consolidate", "a": "+ATC feature", "p": "pointer", "w": "win
              "k": "+linear-tardiness objective",
              "i": "+EDF imitation warm start",
              # expert of an imitation run when it is not EDF (2026-10-21; tag letters free of other meaning)
-             "d": "MDC expert", "s": "WLST expert", "v": "WMDD expert", "h": "COVERT expert"}
+             "o": "window 40", "j": "window 60", "d": "MDC expert", "s": "WLST expert", "v": "WMDD expert", "h": "COVERT expert"}
 # Every metric in one place: column -> (display label, decimals, higher is better). Tables, leaderboards
 # and HIGHLIGHTS.md all read from here. active_machine_ticks is the energy proxy (fewer = better).
 # metric -> (label, decimals, higher is better). Every metric is recorded per instance by run.py

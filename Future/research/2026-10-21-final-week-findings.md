@@ -92,6 +92,13 @@ The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert
 | clone only | 121,708 / 110,476 / 119,515 / 125,106 / 112,443 | +11,386 (-562, +22,976) | no significant difference; equivalence not shown |
 | clone + PPO | 131,077 / 124,023 / 133,774 / 182,172 / 133,408 | +34,427 (+23,347, +44,628) | significantly worse (+32%): fine-tuning degrades it at overload |
 
+### Five-seed arms at `on_rho075_tight` (WLST expert, reference WLST+Consolidate 29,502, margin +/-5% = +/-1,475; old test set)
+
+| Arm | per-seed J | paired diff (CI) | verdict |
+|---|---|---|---|
+| clone only | 29,644 / 30,043 / 30,042 / 30,370 / 30,219 | +562 (+158, +1,022) | equivalent within 5%; significantly +1.9% above |
+| clone + PPO | 29,717 / 30,707 / 29,978 / 30,392 / 29,565 | +570 (+166, +1,034) | equivalent within 5%; no gain from PPO |
+
 ### Late-jobs specialist (Option 3 windowed, ATC + Consolidate as the expert, `on_rho095`)
 
 | | J | on-time rate | weighted late jobs |

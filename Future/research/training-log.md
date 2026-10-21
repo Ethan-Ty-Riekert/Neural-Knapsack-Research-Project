@@ -32,6 +32,29 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- 5-seed arms at on_rho075_tight; expert clones at on_rho095 (test set); window-size question and fresh checks started
+
+**on_rho075_tight (WLST + Consolidate expert, reference WLST+Consolidate 29,502, margin +/-5% = +/-1,475; test set; exploratory):**
+```
+clone only (seeds 100-104)  29,644 / 30,043 / 30,042 / 30,370 / 30,219   mean 30,064   +562 (+158, +1,022)   17/50
+A3w (seeds 110-114)         29,717 / 30,707 / 29,978 / 30,392 / 29,565   mean 30,072   +570 (+166, +1,034)   15/50
+```
+Both arms are inside +/-5% of the reference ("equivalent" by the pre-registered rule) while significantly (1.9%) above it; PPO adds
+nothing (means 30,064 vs 30,072); nothing beats the heuristic.
+
+**Explorer expert clones at on_rho095 (clone only, seeds 80-82; test J, old test set):** MDC expert 25,307 / 26,857 / 24,356 (MDC+C 22,646);
+WLST expert 26,979 / 29,551 / 26,623 (WLST+C 24,874); WMDD expert 36,248 / 33,978 / 35,576; COVERT expert 25,571 / 25,880 / 24,880
+(COVERT+C 26,019): within +9% to +19% of their rule on the old test set for MDC and WLST, close for COVERT, WMDD far (its rule is not
+readable from the slot features). The fresh-set scoring is running.
+
+**Started (Tier 2, announced):** (1) fresh-instance checks (50 instances, seeds 700000-700049) for on_rho075 and on_rho110 and for the
+expert clones at on_rho095 (background `fresh_eval.py` processes; outputs in `Results/v2_objectives/fresh/`). (2) window-size question: windowed
+PPO from scratch (defaults, 1M steps, Consolidate) with window 40 (tag letter `o`) and 60 (letter `j`), seeds 70-72 each, on_rho095, to see
+whether the 20-job window is what makes windowed scratch (47k on fresh instances) far worse than the all-slot network (30k); labels for the
+letters are in `build_folder.py` / `app/scoring.py`.
+
+---
+
 ## 2026-10-21 (S2W14) -- FRESH-INSTANCE CHECK (on_rho095, 50 instances never used by any decision): the reference was flattered; no learned policy beats the best heuristic, and plain RL is not clearly behind the EDF family
 
 **Config:** `tools/analysis/fresh_eval.py` scored 5 heuristics and the main model arms on 50 new instances (seeds 700000-700049);
