@@ -9,13 +9,13 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 1 | MDC+Consolidate | Heuristic | 106463 +/- 87144 |
 | 2 | WEDF+Consolidate | Heuristic | 107519 +/- 73473 |
 | 3 | EDF+Consolidate | Heuristic | 114142 +/- 68444 |
-| 4 | MDC+FirstFit | Heuristic | 135268 +/- 81598 |
-| 5 | MDC+BestFit | Heuristic | 138364 +/- 93785 |
-| 6 | WLST+Consolidate | Heuristic | 139904 +/- 104537 |
-| 7 | WMDD+Consolidate | Heuristic | 141071 +/- 71452 |
-| 8 | LST+Consolidate | Heuristic | 144386 +/- 97469 |
-| 9 | WEDF+BestFit | Heuristic | 148158 +/- 82230 |
-| 10 | WEDF+FirstFit | Heuristic | 149937 +/- 93909 |
+| 4 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 116522 +/- 7803 |
+| 5 | MDC+FirstFit | Heuristic | 135268 +/- 81598 |
+| 6 | MDC+BestFit | Heuristic | 138364 +/- 93785 |
+| 7 | WLST+Consolidate | Heuristic | 139904 +/- 104537 |
+| 8 | WMDD+Consolidate | Heuristic | 141071 +/- 71452 |
+| 9 | LST+Consolidate | Heuristic | 144386 +/- 97469 |
+| 10 | WEDF+BestFit | Heuristic | 148158 +/- 82230 |
 
 | top 5 | top 10 |
 |---|---|
@@ -91,7 +91,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 7 | WEDF+Consolidate | Heuristic | 4031 +/- 1856 | 107519 +/- 73473 |
 | 8 | ATC+BestFit | Heuristic | 4081 +/- 1699 | 191577 +/- 108044 |
 | 9 | EDF+Consolidate | Heuristic | 4229 +/- 1758 | 114142 +/- 68444 |
-| 10 | MDC+BestFit | Heuristic | 4310 +/- 1904 | 138364 +/- 93785 |
+| 10 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 4265 +/- 158 | 116522 +/- 7803 |
 
 | top 5 | top 10 |
 |---|---|
@@ -103,14 +103,14 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 |---|---|---|---|---|
 | 1 | LST+Consolidate | Heuristic | 48.5 +/- 13.7 | 144386 +/- 97469 |
 | 2 | EDF+Consolidate | Heuristic | 52.5 +/- 14.3 | 114142 +/- 68444 |
-| 3 | LST+BestFit | Heuristic | 54.6 +/- 15.3 | 178161 +/- 110493 |
-| 4 | LST+FirstFit | Heuristic | 55.1 +/- 14.0 | 187603 +/- 117291 |
-| 5 | FCFS+Consolidate | Heuristic | 59.9 +/- 12.9 | 154636 +/- 98058 |
-| 6 | WEDF+Consolidate | Heuristic | 60.7 +/- 15.0 | 107519 +/- 73473 |
-| 7 | EDF+BestFit | Heuristic | 60.8 +/- 16.4 | 155351 +/- 109761 |
-| 8 | EDF+FirstFit | Heuristic | 61.4 +/- 16.8 | 170841 +/- 112561 |
-| 9 | FCFS+WorstFit | Heuristic | 64.7 +/- 12.3 | 195430 +/- 111028 |
-| 10 | LST+WorstFit | Heuristic | 64.9 +/- 15.4 | 283931 +/- 143265 |
+| 3 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 53.2 +/- 1.8 | 116522 +/- 7803 |
+| 4 | LST+BestFit | Heuristic | 54.6 +/- 15.3 | 178161 +/- 110493 |
+| 5 | LST+FirstFit | Heuristic | 55.1 +/- 14.0 | 187603 +/- 117291 |
+| 6 | FCFS+Consolidate | Heuristic | 59.9 +/- 12.9 | 154636 +/- 98058 |
+| 7 | WEDF+Consolidate | Heuristic | 60.7 +/- 15.0 | 107519 +/- 73473 |
+| 8 | EDF+BestFit | Heuristic | 60.8 +/- 16.4 | 155351 +/- 109761 |
+| 9 | EDF+FirstFit | Heuristic | 61.4 +/- 16.8 | 170841 +/- 112561 |
+| 10 | FCFS+WorstFit | Heuristic | 64.7 +/- 12.3 | 195430 +/- 111028 |
 
 | top 5 | top 10 |
 |---|---|

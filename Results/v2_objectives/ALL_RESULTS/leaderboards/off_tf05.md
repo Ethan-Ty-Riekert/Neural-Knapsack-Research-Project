@@ -109,8 +109,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 6 | LST+WorstFit | Heuristic | 23.9 +/- 1.5 | 39536 +/- 9861 |
 | 7 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 24.8 +/- 1.5 | 40042 +/- 858 |
 | 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 25.0 +/- 1.9 | 40124 +/- 1020 |
-| 9 | EDF+FirstFit | Heuristic | 27.1 +/- 1.3 | 41302 +/- 10569 |
-| 10 | EDF+BestFit | Heuristic | 27.1 +/- 1.3 | 41302 +/- 10569 |
+| 9 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 26.5 +/- 0.0 | 40807 +/- 36 |
+| 10 | EDF+FirstFit | Heuristic | 27.1 +/- 1.3 | 41302 +/- 10569 |
 
 | top 5 | top 10 |
 |---|---|
@@ -128,8 +128,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 6 | LST+WorstFit | Heuristic | 22.3 +/- 1.5 | 39536 +/- 9861 |
 | 7 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 22.5 +/- 0.4 | 40042 +/- 858 |
 | 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 22.6 +/- 0.5 | 40124 +/- 1020 |
-| 9 | EDF+FirstFit | Heuristic | 23.2 +/- 1.7 | 41302 +/- 10569 |
-| 10 | EDF+BestFit | Heuristic | 23.2 +/- 1.7 | 41302 +/- 10569 |
+| 9 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 23.0 +/- 0.0 | 40807 +/- 36 |
+| 10 | EDF+FirstFit | Heuristic | 23.2 +/- 1.7 | 41302 +/- 10569 |
 
 | top 5 | top 10 |
 |---|---|
@@ -204,8 +204,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 6 | MDC+Consolidate | Heuristic | 0.648 +/- 0.020 | 33312 +/- 9055 |
 | 7 | SPT+Consolidate | Heuristic | 0.647 +/- 0.024 | 240824 +/- 32589 |
 | 8 | LPT+FirstFit | Heuristic | 0.647 +/- 0.022 | 193356 +/- 31197 |
-| 9 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 0.646 +/- 0.006 | 40124 +/- 1020 |
-| 10 | WMDD+Consolidate | Heuristic | 0.645 +/- 0.014 | 61305 +/- 14033 |
+| 9 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.647 +/- 0.001 | 40807 +/- 36 |
+| 10 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 0.646 +/- 0.006 | 40124 +/- 1020 |
 
 | top 5 | top 10 |
 |---|---|
@@ -223,8 +223,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 6 | LPT+FirstFit | Heuristic | 166 +/- 10 | 193356 +/- 31197 |
 | 7 | MDC+Consolidate | Heuristic | 166 +/- 9 | 33312 +/- 9055 |
 | 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 167 +/- 2 | 40124 +/- 1020 |
-| 9 | SPT+Consolidate | Heuristic | 167 +/- 7 | 240824 +/- 32589 |
-| 10 | FCFS+Consolidate | Heuristic | 167 +/- 11 | 209940 +/- 32735 |
+| 9 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 167 +/- 0 | 40807 +/- 36 |
+| 10 | SPT+Consolidate | Heuristic | 167 +/- 7 | 240824 +/- 32589 |
 
 | top 5 | top 10 |
 |---|---|
@@ -242,8 +242,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05.md`](../tabl
 | 6 | LPT+FirstFit | Heuristic | 142 +/- 9 | 193356 +/- 31197 |
 | 7 | MDC+Consolidate | Heuristic | 142 +/- 8 | 33312 +/- 9055 |
 | 8 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 142 +/- 1 | 40124 +/- 1020 |
-| 9 | FCFS+Consolidate | Heuristic | 143 +/- 9 | 209940 +/- 32735 |
-| 10 | SPT+Consolidate | Heuristic | 143 +/- 7 | 240824 +/- 32589 |
+| 9 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 143 +/- 0 | 40807 +/- 36 |
+| 10 | FCFS+Consolidate | Heuristic | 143 +/- 9 | 209940 +/- 32735 |
 
 | top 5 | top 10 |
 |---|---|
