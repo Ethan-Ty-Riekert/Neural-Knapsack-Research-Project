@@ -32,6 +32,27 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Ten seeds per windowed headline arm (on_rho095, OLD test set): rules applied
+
+**Stats (test J, 50 instances; arms with seeds 50-59 / 60-69 / 60-69; paired interval over instances of the seed-averaged difference; margins +/-5% =
++/-1,100 (EDF+C 21,986) and +/-1,200 (EDFL+C 24,061)):**
+```
+arm                  mean    vs EDF+Consolidate (CI)       vs EDFL+Consolidate (CI)       better (EDF+C)
+clone only (10)      23,997  +2,010 (-541, +4,966)         -64 (-2,906, +2,518)           21/50
+A3w clone+PPO (10)   24,646  +2,660 (+226, +5,285)         +585 (-2,389, +3,436)          21/50
+scratch (10)         37,332  +15,346 (+11,694, +19,394)    +13,271 (+9,693, +17,014)       2/50
+A3w minus clone-only: +649 (-899, +2,151), A3w lower on 21/50 instances
+per-seed J: clone 22,567 / 25,371 / 24,293 / 22,912 / 23,910 / 23,080 / 23,104 / 23,286 / 25,646 / 25,797
+            A3w   27,162 / 24,342 / 23,185 / 25,009 / 24,270 / 24,756 / 24,202 / 23,022 / 24,668 / 25,842
+            scratch 26,245 / 42,187 / 47,085 / 46,243 / 33,171 / 35,772 / 41,630 / 32,649 / 35,032 / 33,310
+```
+**Observation:** with ten seeds nothing is below either reference (no "beats"); the clone is not significantly different from either, but
+equivalence within 5% is not shown (intervals wider than the margins); fine-tuned is slightly above EDF+C (significantly) and not
+different from the clone; scratch is far above both. Same conclusions as with five seeds. The findings doc's headline rows are updated; the
+fresh-set scoring of the new seeds is running.
+
+---
+
 ## 2026-10-21 (S2W14) -- Window-size question answered: a bigger window makes windowed PPO from scratch WORSE
 
 **Stats (windowed PPO from scratch, PPO defaults, 1M steps, Consolidate, on_rho095; per-seed mean J):**

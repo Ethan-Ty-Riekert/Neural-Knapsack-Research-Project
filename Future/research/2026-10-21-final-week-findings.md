@@ -71,18 +71,20 @@ is not better, nothing is below the best heuristic of its scenario. Being signif
 | Plain RL from scratch, all slots, Consolidate placement, 1M steps | 26,274 | 28,947 / 30,323 / 23,164 / 26,884 / 22,054 |
 | All-slot clone of EDF+Consolidate, then PPO (A3) | 23,654 | 23,613 / 24,001 / 22,258 / 23,766 / 24,633 |
 | All-slot clone only (no PPO), 3 seeds | 23,666 | 22,620 / 23,667 / 24,709 |
-| Windowed (20 earliest-deadline jobs) clone of EDFL only | 23,811 | 22,567 / 25,371 / 24,293 / 22,912 / 23,910 |
-| Windowed clone + PPO fine-tuning (A3w) | 24,794 | 27,162 / 24,342 / 23,185 / 25,009 / 24,270 |
-| Windowed PPO from scratch, 1M steps | 38,986 | 26,245 / 42,187 / 47,085 / 46,243 / 33,171 |
+| Windowed (20 earliest-deadline jobs) clone of EDFL only (10 seeds) | 23,997 | 22,567 / 25,371 / 24,293 / 22,912 / 23,910 / 23,080 / 23,104 / 23,286 / 25,646 / 25,797 |
+| Windowed clone + PPO fine-tuning (A3w, 10 seeds) | 24,646 | 27,162 / 24,342 / 23,185 / 25,009 / 24,270 / 24,756 / 24,202 / 23,022 / 24,668 / 25,842 |
+| Windowed PPO from scratch, 1M steps (10 seeds) | 37,332 | 26,245 / 42,187 / 47,085 / 46,243 / 33,171 / 35,772 / 41,630 / 32,649 / 35,032 / 33,310 |
 
 What the data support:
 
 1. **No learned policy beat the best online heuristic.** The paired per-instance interval (seed-averaged) never lies below zero.
-2. **A policy cloned from a heuristic is not significantly different from it** (windowed clone vs EDFL+Consolidate: -250, interval
-   -3,059 to +2,276). It is not shown *equivalent* at +/-5% either (the interval is wider).
-3. **PPO fine-tuning added nothing measurable** to the clone (all-slot: -375, interval -2,684 to +1,873; windowed: +983,
-   interval -569 to +2,583), at a learning rate chosen on validation instances; higher rates destroy the clone (validation J of
-   37k-52k at 1e-4). The statement is conditional: lr 1e-5, ~0.9M steps, 3-5 seeds.
+2. **A policy cloned from a heuristic is not significantly different from it** (windowed clone, 10 seeds, vs EDFL+Consolidate: -64,
+   interval -2,906 to +2,518; vs EDF+Consolidate: +2,010, interval -541 to +4,966). It is not shown *equivalent* at +/-5% either (the
+   intervals are wider than +/-1,100 / +/-1,200).
+3. **PPO fine-tuning added nothing measurable** to the clone (all-slot: -375, interval -2,684 to +1,873, 3-5 seeds; windowed, 10 seeds each:
+   +649, interval -899 to +2,151; fine-tuned windowed arm vs EDF+Consolidate +2,660, interval +226 to +5,285, i.e. slightly worse), at a
+   learning rate chosen on validation instances; higher rates destroy the clone (validation J of 37k-52k at 1e-4). The statement is
+   conditional: lr 1e-5, ~0.9M steps.
 4. **Training from scratch is unreliable**: on the old test set it is 20-30% above the (lucky) EDF+Consolidate reference with all slots,
    and much worse in the windowed setting, with diverging seeds; on fresh instances all-slot RL with Consolidate placement is not
    significantly different from the EDF family (see the fresh-instance section), while windowed scratch stays far behind.
