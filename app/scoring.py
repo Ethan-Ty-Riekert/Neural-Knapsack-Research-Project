@@ -49,7 +49,27 @@ def short_label(method):
         return method
     head = " ".join(method.split()[:2])
     tags = [short for key, short in _SHORT_TAGS if key in method]
+    if ("window 40" in method or "window 60" in method) and "window 20" in tags:
+        tags.remove("window 20")  # the 'w' (windowed) letter is always present next to the size letter
+    if "imitation" in tags:  # clone only = no training budget letter; with one, PPO fine-tuned the clone
+        fine_tuned = any(t in tags for t in ("1M steps", "2M steps"))
+        tags[tags.index("imitation")] = "clone + PPO" if fine_tuned else "clone only"
     return head + (" | " + ", ".join(tags) if tags else "")
+
+
+def disambiguate(labels):
+    """Labels that occur more than once get a ' #k' suffix (k = 1, 2, ... in input order) so every row of a table is distinct."""
+    counts = {}
+    for lab in labels:
+        counts[lab] = counts.get(lab, 0) + 1
+    seen, out = {}, []
+    for lab in labels:
+        if counts[lab] > 1:
+            seen[lab] = seen.get(lab, 0) + 1
+            out.append(f"{lab} #{seen[lab]}")
+        else:
+            out.append(lab)
+    return out
 
 
 def load_results(path=DATA_CSV):

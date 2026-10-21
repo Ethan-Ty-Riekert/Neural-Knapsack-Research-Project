@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-from scoring import best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO  # noqa: E402
+from scoring import best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO, disambiguate  # noqa: E402
 
 df = pd.DataFrame([
     dict(method="H1", family="Heuristic", objective_J=100.0, on_time_rate=0.9, makespan=50.0),
@@ -27,8 +27,11 @@ assert s.iloc[0]["method"] == "R1"
 assert best_by_family(s)["Heuristic"]["method"] == "H1"
 assert short_label("EDF+Consolidate") == "EDF+Consolidate"
 assert short_label("PPO Opt2 priority score look-ahead fixed scaling 1M-step budget [tuned]") == "PPO Opt2 | 1M steps, tuned"
-assert short_label("PPO Opt2 priority score +Consolidate +EDF imitation warm start") == "PPO Opt2 | imitation, Consolidate"
+assert short_label("PPO Opt2 priority score +Consolidate +EDF imitation warm start") == "PPO Opt2 | clone only, Consolidate"
 for name, weights in QUICK_OBJECTIVES.items():
     assert weights is None or set(weights) <= set(METRIC_INFO), f"unknown metric in quick objective {name!r}"
-assert short_label("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start 1M-step budget") ==     "PPO Opt2 | window 20, imitation, Consolidate, 1M steps"
+assert short_label("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start 1M-step budget") ==     "PPO Opt2 | window 20, clone + PPO, Consolidate, 1M steps"
+assert short_label("PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start") ==     "PPO Opt2 | window 20, clone only, Consolidate"
+assert short_label("PPO Opt2 priority score +Consolidate windowed window 40 1M-step budget") == "PPO Opt2 | window 40, Consolidate, 1M steps"
+assert disambiguate(["a", "b", "a"]) == ["a #1", "b", "a #2"]
 print("test_demo_scoring: all checks passed")

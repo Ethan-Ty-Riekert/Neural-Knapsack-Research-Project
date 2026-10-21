@@ -32,6 +32,20 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- FRESH set with ten seeds per windowed headline arm
+
+**Stats (FRESH, 50 instances; mean J, per-member values in the findings doc; interval over instances of the seed-averaged difference):**
+```
+                       members  mean    vs EDF+C (CI)        vs EDFL+C (CI)       vs MDC+C (CI)
+windowed clone only    10       30,678  -412 (-3,850, +3,324)  +1,095 (-1,819, +3,955)  +3,869 (-771, +8,851)
+windowed clone + PPO   10       30,372  -718 (-3,795, +2,139)  +789 (-3,364, +4,715)    +3,563 (+304, +7,135)
+windowed scratch       10       45,331  +14,241 (+10,537, +18,259)  +15,748 (+10,535, +21,175)  +18,522 (+13,420, +23,864)
+```
+**Observation:** with ten seeds the picture is unchanged: neither windowed clone arm is significantly different from EDF+C or EDFL+C; both are
+above MDC+C (the best heuristic on this set; significantly for the fine-tuned arm); scratch is far above all of them. Findings doc table updated.
+
+---
+
 ## 2026-10-21 (S2W14) -- Ten seeds per windowed headline arm (on_rho095, OLD test set): rules applied
 
 **Stats (test J, 50 instances; arms with seeds 50-59 / 60-69 / 60-69; paired interval over instances of the seed-averaged difference; margins +/-5% =

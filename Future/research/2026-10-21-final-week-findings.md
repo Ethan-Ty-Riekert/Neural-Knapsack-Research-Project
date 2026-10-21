@@ -19,15 +19,16 @@ On 50 new instances (seeds 700000-700049), mean J:
 
 | Arm (members) | per-member mean J | mean J | vs EDF+C (95% CI over instances) | vs MDC+C |
 |---|---|---|---|---|
-| windowed clone only (5) | 29,839 / 31,317 / 33,658 / 30,030 / 30,011 | 30,971 | -119 (-3,814, +3,858) | +4,162 (-312, +8,906) |
-| windowed clone + PPO (5) | 28,572 / 29,751 / 32,960 / 28,381 / 29,287 | 29,790 | -1,300 (-4,147, +1,384) | +2,981 (-540, +6,704) |
-| windowed from scratch (5) | 34,475 / 54,213 / 59,493 / 52,540 / 35,933 | 47,331 | +16,241 (+12,013, +20,986) | +20,522 (+14,900, +26,525) |
+| windowed clone only (10) | 29,839 / 31,317 / 33,658 / 30,030 / 30,011 / 30,961 / 32,966 / 33,418 / 28,808 / 25,776 | 30,678 | -412 (-3,850, +3,324) | +3,869 (-771, +8,851) |
+| windowed clone + PPO (10) | 28,572 / 29,751 / 32,960 / 28,381 / 29,287 / 31,961 / 33,018 / 26,899 / 30,812 / 32,080 | 30,372 | -718 (-3,795, +2,139) | +3,563 (+304, +7,135) |
+| windowed from scratch (10) | 34,475 / 54,213 / 59,493 / 52,540 / 35,933 / 45,758 / 47,899 / 39,369 / 41,112 / 42,520 | 45,331 | +14,241 (+10,537, +18,259) | +18,522 (+13,420, +23,864) |
 | all-slot clone only (3) | 28,574 / 27,152 / 28,856 | 28,194 | -2,896 (-6,720, +858) | +1,385 (-2,149, +4,676) |
 | all-slot clone + PPO (5) | 32,303 / 27,885 / 26,403 / 31,783 / 31,643 | 30,003 | -1,087 (-4,297, +1,979) | +3,194 (-336, +6,903) |
 | plain RL, all slots, FirstFit, 1M (5) | 26,205 / 35,632 / 28,656 / 40,497 / 37,829 | 33,764 | +2,674 (-166, +5,675) | +6,955 (+2,586, +11,438) |
 | plain RL, all slots, Consolidate, 1M (5) | 34,684 / 34,341 / 27,059 / 29,361 / 25,550 | 30,199 | -891 (-4,064, +2,407) | +3,390 (-595, +7,236) |
 
-What this shows (FRESH set, exploratory): (1) no learned arm is significantly below MDC+Consolidate, the best of the 7 heuristics scored on
+What this shows (FRESH set, exploratory): (1) (with 10 seeds for the windowed arms) no learned arm is significantly below MDC+Consolidate (the windowed clone + PPO arm is
+significantly ABOVE it, +3,563), the best of the 7 heuristics scored on
 this set (MDC+C is itself selected on this set), and none is significantly below EDF+Consolidate; some arms are significantly below
 other, weaker heuristics (COVERT+C, WMDD+C, ATC+C; see the CSV summary), which says nothing about the best rule. (2) clones (with or without
 PPO) and all-slot plain RL with Consolidate placement are not significantly different from the EDF family (differences -3k to +1k,

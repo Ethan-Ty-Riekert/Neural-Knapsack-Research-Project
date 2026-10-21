@@ -12,7 +12,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scoring import (DISPLAY_METRICS, best_by_family, load_results, metric_label, presets, score,  # noqa: E402
-                     short_label, QUICK_OBJECTIVES, HEURISTIC)
+                     short_label, QUICK_OBJECTIVES, HEURISTIC, disambiguate)
 
 SLIDES = sorted((Path(__file__).resolve().parent / "slides").glob("*.png"))
 PRESET_NOTES = {"off": "offline: whole job set known up front", "on": "online: jobs arrive over time"}
@@ -71,7 +71,7 @@ with tab_explore:
             st.warning("Give at least one metric a weight above zero.")
         else:
             scored = score(sub, weights, normalise)
-            scored["model"] = scored["method"].map(short_label)
+            scored["model"] = disambiguate([short_label(m) for m in scored["method"]])
             best = best_by_family(scored)
             cols = st.columns(max(len(best), 1))
             for col, (fam, row) in zip(cols, sorted(best.items())):
