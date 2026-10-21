@@ -41,6 +41,16 @@ What the data support:
 The expert was EDFL everywhere (not matched to the scenario). Offline, PPO fine-tuning consistently improved a weak clone by
 ~8.9k but stayed significantly behind the best heuristic; around a good online heuristic it added nothing.
 
+### Scenario-matched experts (the best heuristic of each scenario as the expert; 3 seeds each)
+
+| Scenario | Best heuristic | Clone only, per seed | Clone + PPO, per seed |
+|---|---|---|---|
+| `on_rho075` | WLST+Consolidate 5,990 | 6,025 / 6,330 / 6,168 (+3%, sig.) | 6,084 / 6,015 / 6,116 (+1.4%, sig., tiny) |
+| `on_rho110` | MDC+Consolidate 106,463 | 116,293 / 115,045 / 111,610 (+7%, n.s.) | 119,062 / 116,578 / 109,300 (+8%, n.s.) |
+| `off_tf05` | WLST+FirstFit 26,670 | 27,420 / 27,418 / 27,432 (+2.8%, sig.) | 28,480 / 28,551 / 27,959 (+6.2%, sig.) |
+
+The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert decides the result; fine-tuning does not help.
+
 ## Why the gap and the "ties" matter
 
 * **Tie-breaking in EDF moves J by about +/-15%.** Deadlines are integers; several pending jobs share the earliest one. On 20

@@ -32,6 +32,28 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Scenario-matched experts (3 seeds each, exploratory): clones within 1-8% of the best heuristic; PPO does not help
+
+**Config (Tier 2, as announced 09:25):** windowed Option 2 with the scenario's best heuristic as expert (on_rho075 WLST + Consolidate, on_rho110
+MDC + Consolidate, off_tf05 WLST + FirstFit), cloning 60 x 3 x 60 epochs (200 episodes offline), critic warm-up 100k, lr 1e-5;
+clone-only seeds 80-82, A3w (clone + PPO, 1M steps) seeds 90-92. Test J, 50 instances; paired interval over instances.
+
+**Stats (per-seed J):**
+```
+scenario    reference           clone only (matched)                     vs ref (CI)             A3w                                   vs ref (CI)
+on_rho075   WLST+C   5,990      6,025 / 6,330 / 6,168     mean 6,174     +185 (+59, +328)        6,084 / 6,015 / 6,116   mean 6,072    +82 (+11, +160)
+on_rho110   MDC+C  106,463      116,293 / 115,045 / 111,610 mean 114,316 +7,852 (-5,571, +20,930) 119,062 / 116,578 / 109,300 mean 114,980 +8,516 (-5,489, +20,864)
+off_tf05    WLST+FF 26,670      27,420 / 27,418 / 27,432   mean 27,423   +753 (+416, +1,175)     28,480 / 28,551 / 27,959 mean 28,330  +1,659 (+1,183, +2,200)
+```
+**Observation:** with the expert matched to the scenario the clone is within 3% of the best heuristic at rho 0.75 and offline
+(significantly above it, small), and 7% above at overload (not significant). PPO fine-tuning again does not improve on the clone
+(rho075: -100, no significant difference between the arms' per-seed values; rho110: +660; offline: +900, slightly worse). Compared with
+the EDFL expert in the same scenarios (earlier entry) the matched expert is far better offline (40.8k -> 27.4k), so the expert choice
+decides the result, not the fine-tuning. Nothing beats a heuristic; offline clone seeds agree within 15 J (the cloned policy is
+almost deterministic there).
+
+---
+
 ## 2026-10-21 (S2W14) -- Scenario-matched experts: dev clones within 1.5-3% of their heuristics; queued: matched arms, ATC specialist, multi-objective anchors
 
 **Dev clones (clone only, one seed each, not reported seeds; test J; agreement of the clone with the expert on its training states):**
