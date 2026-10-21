@@ -32,6 +32,28 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- 5-seed matched arms at on_rho110 (overload); fresh-instance check started; 5-seed arms at on_rho075_tight queued
+
+**Config:** as at on_rho075 with the expert MDC + Consolidate; clone-only seeds 100-104, A3w seeds 110-114; reference MDC+Consolidate
+106,463 (margin +/-5% = +/-5,300). Exploratory.
+
+**Stats:**
+```
+arm              per-seed J                                              mean     paired diff vs reference (CI)     better
+clone only (5)   121,708 / 110,476 / 119,515 / 125,106 / 112,443         117,850  +11,386 (-562 to +22,976)          15/50
+A3w (5)          131,077 / 124,023 / 133,774 / 182,172 / 133,408         140,891  +34,427 (+23,347 to +44,628)       8/50
+```
+**Observation:** at overload the clone is not significantly different from MDC+Consolidate (+11%, interval includes zero) but equivalence
+within 5% is not shown (the interval is wider than +/-5,300); PPO fine-tuning is significantly WORSE (+32%, one seed at 182k): with a
+weaker clone and a much noisier objective, fine-tuning at lr 1e-5 degrades rather than improves. Nothing beats the heuristic.
+
+**Started (Tier 2, announced):** (1) `tools/analysis/fresh_eval.py`: scores heuristics and every main arm of on_rho095 on 50 FRESH instances
+(seeds 700000-700049) that no decision has used, because the 50 test instances informed many go / no-go decisions (critic pass 2);
+reports only, nothing is selected on it; output `Results/v2_objectives/fresh/on_rho095.csv`. (2) 5-seed matched-expert arms at on_rho075_tight
+(WLST + Consolidate; clone-only seeds 100-104, A3w seeds 110-114).
+
+---
+
 ## 2026-10-21 (S2W14) -- 5-seed matched arms at on_rho075: pre-registered rules applied
 
 **Config:** windowed Option 2, expert WLST + Consolidate, cloning 60 x 3 x 60 epochs, critic warm-up 100k, lr 1e-5; clone-only seeds

@@ -58,6 +58,13 @@ The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert
 | clone only | 6,246 / 6,103 / 6,083 / 6,103 / 6,207 | +159 (+52, +288) | equivalent within 5% (but significantly +2.7% above) |
 | clone + PPO | 6,195 / 5,995 / 6,080 / 6,194 / 6,353 | +174 (+50, +331) | equivalence not shown; no gain from PPO |
 
+### Five-seed arms at `on_rho110` (MDC expert, reference MDC+Consolidate 106,463, margin +/-5% = +/-5,300)
+
+| Arm | per-seed J | paired diff (CI) | verdict |
+|---|---|---|---|
+| clone only | 121,708 / 110,476 / 119,515 / 125,106 / 112,443 | +11,386 (-562, +22,976) | no significant difference; equivalence not shown |
+| clone + PPO | 131,077 / 124,023 / 133,774 / 182,172 / 133,408 | +34,427 (+23,347, +44,628) | significantly worse (+32%): fine-tuning degrades it at overload |
+
 ### Late-jobs specialist (Option 3 windowed, ATC + Consolidate as the expert, `on_rho095`)
 
 | | J | on-time rate | weighted late jobs |
