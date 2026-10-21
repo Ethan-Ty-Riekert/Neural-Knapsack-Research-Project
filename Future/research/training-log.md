@@ -32,6 +32,38 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- FRESH-INSTANCE CHECK (on_rho095, 50 instances never used by any decision): the reference was flattered; no learned policy beats the best heuristic, and plain RL is not clearly behind the EDF family
+
+**Config:** `tools/analysis/fresh_eval.py` scored 5 heuristics and the main model arms on 50 new instances (seeds 700000-700049);
+`tools/analysis/fresh_summary.py` gives per-member values and paired differences (mean over instances of the seed-averaged arm minus
+each heuristic; bootstrap interval over instances). Reports only; nothing was selected on it.
+
+**Stats (mean J; heuristics first):**
+```
+heuristics  MDC+C 26,809   EDFL+C 29,583   EDF+C 31,090   WLST+C 31,854   ATC+C 45,972
+arm                       members  per-member mean J                                   mean     vs EDF+C (CI)          vs MDC+C (CI)
+windowed clone only (5)           29,839 / 31,317 / 33,658 / 30,030 / 30,011           30,971   -119 (-3,814, +3,858)  +4,162 (-312, +8,906)
+windowed clone + PPO (5)          28,572 / 29,751 / 32,960 / 28,381 / 29,287           29,790   -1,300 (-4,147, +1,384) +2,981 (-540, +6,704)
+windowed scratch (5)              34,475 / 54,213 / 59,493 / 52,540 / 35,933           47,331   +16,241 (+12,013, +20,986) +20,522 (+14,900, +26,525)
+all-slot clone only (3)           28,574 / 27,152 / 28,856                             28,194   -2,896 (-6,720, +858)  +1,385 (-2,149, +4,676)
+all-slot clone + PPO (5)          32,303 / 27,885 / 26,403 / 31,783 / 31,643           30,003   -1,087 (-4,297, +1,979) +3,194 (-336, +6,903)
+plain RL FirstFit 1M (5)          26,205 / 35,632 / 28,656 / 40,497 / 37,829           33,764   +2,674 (-166, +5,675)  +6,955 (+2,586, +11,438)
+plain RL Consolidate 1M (5)       34,684 / 34,341 / 27,059 / 29,361 / 25,550           30,199   -891 (-4,064, +2,407)   +3,390 (-595, +7,236)
+```
+**Observation:** (1) On fresh instances EDF+Consolidate (21,986 on the old test set, the winner of ~40 heuristics there) is only third among
+the five heuristics shown; MDC+Consolidate is best (26,809): the old reference was flattered by the selection (winner's curse). (2) No
+learned arm beats any heuristic except ATC+Consolidate (which is poor on J by design); no arm is significantly below EDF+Consolidate or
+MDC+Consolidate. (3) Clones and clone + PPO are not significantly different from the EDF family or from MDC+Consolidate (+3-4k, intervals
+include zero); PPO fine-tuning again adds nothing. (4) The earlier statement "plain RL from scratch is 20-30% behind the best
+heuristic" does NOT hold on fresh instances for all-slot RL with Consolidate placement (30,199: -891 vs EDF+C, interval -4,064 to +2,407);
+plain RL with FirstFit is significantly behind MDC+Consolidate (+6,955); windowed from scratch is far behind everything (+16k to +20k).
+(5) Seed spreads are large (plain RL FirstFit 26k-40k).
+
+**Conclusion:** the headline claims in the findings doc are re-based on the fresh set (see the revised section); the old test numbers
+stay as exploratory, with the selection caveat. No learned policy beats the best heuristic on either set.
+
+---
+
 ## 2026-10-21 (S2W14) -- 5-seed matched arms at on_rho110 (overload); fresh-instance check started; 5-seed arms at on_rho075_tight queued
 
 **Config:** as at on_rho075 with the expert MDC + Consolidate; clone-only seeds 100-104, A3w seeds 110-114; reference MDC+Consolidate

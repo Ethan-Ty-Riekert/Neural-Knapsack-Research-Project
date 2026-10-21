@@ -5,6 +5,32 @@
 given because 3-5 seeds do not support tight intervals. Detailed, dated evidence: `training-log.md`, 2026-10-20 and 2026-10-21
 entries. Citations named here are from memory and still have to be verified before they go into a report.
 
+## Confirmation on 50 fresh instances (never used by any decision) -- read this first
+
+The 50 test instances informed many go / no-go decisions, and EDF+Consolidate was the winner of ~40 heuristics on them (a lucky pick).
+On 50 new instances (seeds 700000-700049), mean J:
+
+| Heuristic | MDC+C | EDFL+C | EDF+C | WLST+C | ATC+C |
+|---|---|---|---|---|---|
+| fresh J | 26,809 | 29,583 | 31,090 | 31,854 | 45,972 |
+
+| Arm (members) | per-member mean J | mean J | vs EDF+C (95% CI over instances) | vs MDC+C |
+|---|---|---|---|---|
+| windowed clone only (5) | 29,839 / 31,317 / 33,658 / 30,030 / 30,011 | 30,971 | -119 (-3,814, +3,858) | +4,162 (-312, +8,906) |
+| windowed clone + PPO (5) | 28,572 / 29,751 / 32,960 / 28,381 / 29,287 | 29,790 | -1,300 (-4,147, +1,384) | +2,981 (-540, +6,704) |
+| windowed from scratch (5) | 34,475 / 54,213 / 59,493 / 52,540 / 35,933 | 47,331 | +16,241 (+12,013, +20,986) | +20,522 (+14,900, +26,525) |
+| all-slot clone only (3) | 28,574 / 27,152 / 28,856 | 28,194 | -2,896 (-6,720, +858) | +1,385 (-2,149, +4,676) |
+| all-slot clone + PPO (5) | 32,303 / 27,885 / 26,403 / 31,783 / 31,643 | 30,003 | -1,087 (-4,297, +1,979) | +3,194 (-336, +6,903) |
+| plain RL, all slots, FirstFit, 1M (5) | 26,205 / 35,632 / 28,656 / 40,497 / 37,829 | 33,764 | +2,674 (-166, +5,675) | +6,955 (+2,586, +11,438) |
+| plain RL, all slots, Consolidate, 1M (5) | 34,684 / 34,341 / 27,059 / 29,361 / 25,550 | 30,199 | -891 (-4,064, +2,407) | +3,390 (-595, +7,236) |
+
+What this changes: (1) no learned arm beats MDC+Consolidate, the best heuristic on the fresh set, and no arm is significantly below
+EDF+Consolidate; (2) clones (with or without PPO) and all-slot plain RL with Consolidate placement are not significantly different from the
+EDF family (differences of -3k to +1k with intervals spanning zero); (3) the statement below that plain RL from scratch is "20-30% behind"
+was relative to a reference selected on the old test set and does not hold for all-slot RL with Consolidate placement on fresh instances;
+plain RL with FirstFit placement is significantly behind MDC+Consolidate, and windowed from scratch is far behind everything; (4) PPO
+fine-tuning adds nothing on the fresh set either. All results are exploratory; per-seed spreads are large (e.g. 26k-40k for plain RL).
+
 ## Headline (preset `on_rho095`: 10 machines, heavy load rho = 0.95, lognormal job sizes, Poisson arrivals)
 
 | Method | Mean J | per-seed J |
@@ -27,8 +53,9 @@ What the data support:
 3. **PPO fine-tuning added nothing measurable** to the clone (all-slot: -375, interval -2,684 to +1,873; windowed: +983,
    interval -569 to +2,583), at a learning rate chosen on validation instances; higher rates destroy the clone (validation J of
    37k-52k at 1e-4). The statement is conditional: lr 1e-5, ~0.9M steps, 3-5 seeds.
-4. **Training from scratch is far behind and unreliable**: 20-30% above the best heuristic with all slots, much worse still in the
-   windowed setting, with diverging seeds.
+4. **Training from scratch is unreliable**: on the old test set it is 20-30% above the (lucky) EDF+Consolidate reference with all slots,
+   and much worse in the windowed setting, with diverging seeds; on fresh instances all-slot RL with Consolidate placement is not
+   significantly different from the EDF family (see the fresh-instance section), while windowed scratch stays far behind.
 
 ## Other scenarios (windowed recipe, EDFL expert, 3 seeds each, exploratory)
 
@@ -130,7 +157,7 @@ explorer the learned models for different metrics are imitation clones of differ
 
 ## For the presentation
 
-Say: learning from scratch does not beat strong scheduling heuristics under heavy online load in this setup; a policy that
+Say: no learned policy beat the best scheduling heuristic on either the original or the fresh instances; learning from scratch is unreliable (large seed spread) and, in the windowed setting, far behind; a policy that
 starts from the best heuristic reproduces it reliably but further learning did not improve it; most of the apparent differences
 inside the EDF family are tie-breaking noise; with perfect foresight there is large headroom (upper bound), which points to
 arrival forecasting as the place to look. Do not say: "RL beats / matches the heuristics".
