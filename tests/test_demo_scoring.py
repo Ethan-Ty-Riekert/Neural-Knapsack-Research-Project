@@ -30,4 +30,5 @@ assert short_label("PPO Opt2 priority score look-ahead fixed scaling 1M-step bud
 assert short_label("PPO Opt2 priority score +Consolidate +EDF imitation warm start") == "PPO Opt2 | imitation, Consolidate"
 for name, weights in QUICK_OBJECTIVES.items():
     assert weights is None or set(weights) <= set(METRIC_INFO), f"unknown metric in quick objective {name!r}"
+assert short_label("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start 1M-step budget") ==     "PPO Opt2 | window 20, imitation, Consolidate, 1M steps"
 print("test_demo_scoring: all checks passed")
