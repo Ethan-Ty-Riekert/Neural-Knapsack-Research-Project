@@ -14,7 +14,7 @@ J_comp = J + 17.6 m_T * weighted tardiness + 176 m_U * weighted late jobs + 17.6
 | J + late jobs (x0.5) | EDF+Consolidate | 32,955 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 34,535 | +4.8% |
 | J + late jobs (x1) | EDF+Consolidate | 43,923 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 45,404 | +3.4% |
 | J + late jobs (x2) | EDF+Consolidate | 65,860 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 67,142 | +1.9% |
-| J + late jobs (x4) | WMDD+Consolidate | 104,633 | PPO Opt3 ATC-prior score +Consolidate windowed +EDF imitation warm sta (1 seeds) | 106,986 | +2.2% |
+| J + late jobs (x4) | WMDD+Consolidate | 104,633 | PPO Opt3 ATC-prior score +Consolidate windowed +EDF imitation warm sta (3 seeds) | 107,873 | +3.1% |
 | J + energy (x0.25) | EDF+Consolidate | 27,492 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 29,164 | +6.1% |
 | J + energy (x0.5) | EDF+Consolidate | 32,997 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 34,661 | +5.0% |
 | J + energy (x1) | EDF+Consolidate | 44,008 | PPO Opt2 priority score +Consolidate +EDF imitation warm start look-ah (3 seeds) | 45,657 | +3.7% |
