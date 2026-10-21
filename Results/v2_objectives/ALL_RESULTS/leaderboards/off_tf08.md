@@ -14,8 +14,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | WEDF+BestFit | Heuristic | 264519 +/- 34606 |
 | 7 | WEDF+WorstFit | Heuristic | 264519 +/- 34606 |
 | 8 | WEDF+Consolidate | Heuristic | 264519 +/- 34606 |
-| 9 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 309725 +/- 21486 |
-| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 312681 +/- 25455 |
+| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 266327 +/- 41 |
+| 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 309725 +/- 21486 |
 
 | top 5 | top 10 |
 |---|---|
@@ -90,8 +90,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | WEDF+BestFit | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
 | 7 | WEDF+WorstFit | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
 | 8 | WEDF+Consolidate | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
-| 9 | COVERT+BestFit | Heuristic | 7533 +/- 805 | 405440 +/- 49109 |
-| 10 | COVERT+Consolidate | Heuristic | 7533 +/- 805 | 405440 +/- 49109 |
+| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 7390 +/- 1 | 266327 +/- 41 |
+| 10 | COVERT+BestFit | Heuristic | 7533 +/- 805 | 405440 +/- 49109 |
 
 | top 5 | top 10 |
 |---|---|
@@ -143,16 +143,16 @@ Every method has the same value here, so there is no ranking.
 
 | rank | method | family | mean flow time | J |
 |---|---|---|---|---|
-| 1 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 309725 +/- 21486 |
-| 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 54.54 +/- 0.00 | 312681 +/- 25455 |
-| 3 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 54.54 +/- 0.00 | 314741 +/- 6746 |
-| 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 336513 +/- 48347 |
-| 5 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 343950 +/- 43078 |
-| 6 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 352456 +/- 25354 |
-| 7 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 364339 +/- 27920 |
-| 8 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 367492 +/- 17181 |
-| 9 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 378472 +/- 9787 |
-| 10 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 385013 +/- 436 |
+| 1 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 266327 +/- 41 |
+| 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 309725 +/- 21486 |
+| 3 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 54.54 +/- 0.00 | 312681 +/- 25455 |
+| 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 54.54 +/- 0.00 | 314741 +/- 6746 |
+| 5 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 336513 +/- 48347 |
+| 6 | PPO Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 343950 +/- 43078 |
+| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 352456 +/- 25354 |
+| 8 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 364339 +/- 27920 |
+| 9 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 367492 +/- 17181 |
+| 10 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 378472 +/- 9787 |
 
 | top 5 | top 10 |
 |---|---|

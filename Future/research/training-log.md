@@ -32,6 +32,33 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Multi-objective anchors (windowed, EDFL clone + PPO on a composite reward): no measurable change from the J-only policy
+
+**Config (Tier 2, as announced):** windowed Option 2, EDFL clone, then PPO at lr 1e-5, 1M steps, on a composite reward with the reference
+weights of on_rho095 (lambda_T 17.6, lambda_U 176, lambda_E 17.6): q = J + late jobs, g = J + energy, k = J + linear tardiness, seeds 60-62.
+Test set, 50 instances, per-metric means (composites at multiplier x1 from the per-instance metrics).
+
+**Stats:**
+```
+                          J      w.tardiness  w.late jobs  mach-ticks | J+late   J+energy  J+tard
+EDF+Consolidate        21,986      1,252        124.6        1,251    | 43,923   44,008    44,030
+EDFL+Consolidate       24,061      1,328        128.5        1,250    | 46,670   46,068    47,442
+clone only (J, 5 seeds) 23,811     1,307        126.1        1,249    | 46,013   45,797    46,812
+A3w (J, 5 seeds)       24,794      1,354        129.3        1,253    | 47,553   46,845    48,630
+A3w + late jobs (q)    24,720      1,341        127.3        1,251    | 47,125   46,737    48,319
+A3w + energy (g)       23,754      1,302        124.5        1,251    | 45,664   45,767    46,678
+A3w + lin. tardiness   24,284      1,352        129.7        1,250    | 47,103   46,275    48,080
+per-seed J: q 25,256 / 22,908 / 25,996; g 25,013 / 23,407 / 22,843; k 22,308 / 24,702 / 25,841
+```
+**Observation:** training on a composite reward did not move the policy where the extra term is measured: late jobs under q 127.3 vs
+129.3 (J-only A3w) and 126.1 (clone), machine-ticks under g 1,251 vs 1,253 and 1,249, all inside the seed-to-seed range. As with
+J-only fine-tuning, a policy cloned from a heuristic stays at the heuristic's trade-off at lr 1e-5; no composite objective is improved
+over EDF+Consolidate (the archive's composite report shows the best RL 2-7% above the best heuristic on every composite). For the explorer,
+the learned models for different metrics are therefore the imitation clones of different heuristics (EDF, ATC, WLST, MDC), not
+objective-trained RL models.
+
+---
+
 ## 2026-10-21 (S2W14) -- Late-jobs specialist (Option 3 windowed, ATC expert): a learned model for the late-jobs metric; more scenarios queued
 
 **Config (Tier 2, as announced):** Option 3 windowed (ATC priority as a slot feature), expert ATC + Consolidate, cloning 60 x 3 x 60

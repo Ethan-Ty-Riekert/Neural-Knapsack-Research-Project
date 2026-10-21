@@ -63,6 +63,12 @@ The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert
 A learned model for the "fewest late jobs" metric (22% fewer weighted late jobs than EDF+Consolidate, at a much higher J), obtained by
 imitation; no significant difference from ATC+Consolidate.
 
+### Multi-objective anchors (windowed EDFL clone + PPO on a composite reward, `on_rho095`, 3 seeds)
+
+Training on J + late jobs, J + energy or J + linear tardiness left the policy at the heuristic's trade-off (weighted late jobs 127.3 vs
+129.3 for the J-only fine-tuned policy and 126.1 for the clone; machine-ticks 1,251 vs 1,253): no measurable change at lr 1e-5. For the
+explorer the learned models for different metrics are imitation clones of different heuristics (EDF, ATC, WLST, MDC).
+
 ## Why the gap and the "ties" matter
 
 * **Tie-breaking in EDF moves J by about +/-15%.** Deadlines are integers; several pending jobs share the earliest one. On 20

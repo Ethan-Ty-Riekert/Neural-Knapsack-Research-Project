@@ -103,14 +103,14 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 |---|---|---|---|---|
 | 1 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 23.9 +/- 0.0 | 13098 +/- 0 |
 | 2 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 23.9 +/- 0.0 | 13098 +/- 0 |
-| 3 | LST+FirstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 4 | LST+BestFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 5 | LST+Consolidate | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 6 | LST+WorstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 7 | WLST+FirstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 8 | WLST+BestFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 9 | WLST+WorstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
-| 10 | WLST+Consolidate | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 3 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 23.9 +/- 0.0 | 13098 +/- 0 |
+| 4 | LST+FirstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 5 | LST+BestFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 6 | LST+Consolidate | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 7 | LST+WorstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 8 | WLST+FirstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 9 | WLST+BestFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
+| 10 | WLST+WorstFit | Heuristic | 23.9 +/- 1.5 | 13098 +/- 3221 |
 
 | top 5 | top 10 |
 |---|---|
@@ -122,14 +122,14 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 |---|---|---|---|---|
 | 1 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 22.3 +/- 0.0 | 13098 +/- 0 |
 | 2 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 22.3 +/- 0.0 | 13098 +/- 0 |
-| 3 | LST+FirstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 4 | LST+BestFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 5 | LST+Consolidate | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 6 | LST+WorstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 7 | WLST+FirstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 8 | WLST+BestFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 9 | WLST+WorstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
-| 10 | WLST+Consolidate | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 3 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 22.3 +/- 0.0 | 13098 +/- 0 |
+| 4 | LST+FirstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 5 | LST+BestFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 6 | LST+Consolidate | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 7 | LST+WorstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 8 | WLST+FirstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 9 | WLST+BestFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
+| 10 | WLST+WorstFit | Heuristic | 22.3 +/- 1.5 | 13098 +/- 3221 |
 
 | top 5 | top 10 |
 |---|---|
@@ -160,14 +160,14 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 |---|---|---|---|---|
 | 1 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13098 +/- 0 |
 | 2 | A2C Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13098 +/- 0 |
-| 3 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13207 +/- 28 |
-| 4 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13255 +/- 72 |
-| 5 | A2C Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13318 +/- 380 |
-| 6 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13411 +/- 181 |
-| 7 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13438 +/- 133 |
-| 8 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13440 +/- 323 |
-| 9 | A2C Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13449 +/- 280 |
-| 10 | PPO Opt0 full action space pointer look-ahead fixed scaling arrival-aware critic lateness shaping [tuned] | RL | 54.54 +/- 0.00 | 13502 +/- 118 |
+| 3 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 13098 +/- 0 |
+| 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13207 +/- 28 |
+| 5 | PPO Opt1 rule selection +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13255 +/- 72 |
+| 6 | A2C Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13318 +/- 380 |
+| 7 | PPO Opt4 job x machine branching placement repair look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13411 +/- 181 |
+| 8 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13438 +/- 133 |
+| 9 | PPO Opt1 rule selection +Consolidate non-delay [tuned] | RL | 54.54 +/- 0.00 | 13440 +/- 323 |
+| 10 | A2C Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 54.54 +/- 0.00 | 13449 +/- 280 |
 
 | top 5 | top 10 |
 |---|---|
@@ -183,10 +183,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf05_w1.md`](../t
 | 4 | LPT+WorstFit | Heuristic | 100.0 +/- 0.0 | 64469 +/- 8262 |
 | 5 | A2C Opt3 ATC-prior score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 101.0 +/- 1.0 | 14879 +/- 1678 |
 | 6 | A2C Opt3 ATC-prior score windowed non-delay [tuned] | RL | 101.7 +/- 1.4 | 24908 +/- 8586 |
-| 7 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 102.2 +/- 0.2 | 13207 +/- 28 |
-| 8 | LST+FirstFit | Heuristic | 102.3 +/- 1.4 | 13098 +/- 3221 |
-| 9 | LST+BestFit | Heuristic | 102.3 +/- 1.4 | 13098 +/- 3221 |
-| 10 | LST+Consolidate | Heuristic | 102.3 +/- 1.4 | 13098 +/- 3221 |
+| 7 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 102.2 +/- 0.1 | 13098 +/- 0 |
+| 8 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle [tuned] | RL | 102.2 +/- 0.2 | 13207 +/- 28 |
+| 9 | LST+FirstFit | Heuristic | 102.3 +/- 1.4 | 13098 +/- 3221 |
+| 10 | LST+BestFit | Heuristic | 102.3 +/- 1.4 | 13098 +/- 3221 |
 
 | top 5 | top 10 |
 |---|---|
