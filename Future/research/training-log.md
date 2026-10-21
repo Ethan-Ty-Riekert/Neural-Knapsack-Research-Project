@@ -32,6 +32,30 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Fresh checks at on_rho075_tight, on_rho050, off_tf05; more seeds queued for the headline arms
+
+**Stats (FRESH instances, mean J; `fresh_summary.py`; clones with the matched expert, lr 1e-5 for A3w):**
+```
+on_rho075_tight  heuristics MDC+C 31,299  WLST+C 32,784  EDF+C 34,136  EDFL+C 34,423
+  clone only (5): 33,476 / 32,784 / 33,158 / 32,310 / 32,327  mean 32,811   vs WLST+C +27 (-805, +866)  vs MDC+C +1,512 (+600, +2,560)  vs EDF+C -1,325 (-2,342, -96)
+  clone+PPO  (5): 32,634 / 35,030 / 33,022 / 33,603 / 33,906  mean 33,639   vs WLST+C +855 (+173, +1,611) vs MDC+C +2,340 (+1,224, +3,684)
+on_rho050        heuristics WLST+C 4,061  MDC+C 4,062  EDF+C 4,075  EDFL+C 4,080
+  clone only (3): 4,061 / 4,062 / 4,065  mean 4,063   (differences of a few J: none meaningful)
+off_tf05         heuristics WLST+FF 25,310  MDC+FF 31,681  LST+FF 37,285  EDF+FF 39,620  WMDD+FF 60,022
+  clone only (3): 25,821 / 25,822 / 25,816  mean 25,819   vs WLST+FF +509 (+311, +720)
+  clone+PPO  (3): 26,738 / 26,685 / 26,218  mean 26,547   vs WLST+FF +1,237 (+926, +1,588)
+```
+**Observation:** clones land within 0-5% of their expert heuristic; nothing is below the best heuristic of its scenario; fine-tuning is again not
+better; being significantly below a weaker same-family rule (tight clone vs EDF+C) says nothing about the best rule. Added to the findings doc
+(FRESH, exploratory, 3-seed rows indicative).
+
+**Queued (Tier 2, announced):** more seeds for the three windowed on_rho095 headline arms, identical configurations so they merge into the same archive
+rows: clone-only seeds 55-59, A3w seeds 65-69 (lr 1e-5, 1M steps), scratch seeds 65-69 (PPO defaults), i.e. 10 seeds per arm. The window-size
+runs (window 40 and 60, seeds 70-75) are scored on the fresh set by a background process. Not done: a scratch arm at lr 1e-5 (to remove the lr
+mismatch) because all 26 single-letter tag modifiers are already in use, so it could not be told apart from the default-lr scratch arm in the archive.
+
+---
+
 ## 2026-10-21 (S2W14) -- Critic pass 3: corrections to the fresh-set narrative and the demo
 
 **Findings of the reviewer (read-only; ~20 numbers re-verified, no transcription errors):** (1) the entry "FRESH-INSTANCE CHECK" states "no

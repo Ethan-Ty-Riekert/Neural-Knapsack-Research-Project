@@ -28,7 +28,8 @@ pip install streamlit==1.66.0 pandas matplotlib numpy
 streamlit run app/app.py                  # opens in the browser; works offline
 ```
 
-Put slide images (PNG, filename order = slide order) in `app/slides/` for the Slides tab.
+The Slides tab shows `app/slides/*.png` in filename order; `python tools/analysis/make_slides.py` rebuilds four slides (headline, fresh-instance
+bar chart, scenario overview, caveats) from `Results/v2_objectives/fresh/*.csv`; replace or add PNGs as needed.
 
 Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Trade-off scatter (any two metrics) added. Planned:
 frozen data bundle for the laptop.

@@ -49,6 +49,18 @@ WLST+C 31,854 (+4,168, significantly above); WMDD expert 39,831 vs WMDD+C 40,170
 The picture matches the old test set: imitation reproduces its heuristic within noise, fine-tuning adds nothing (and hurts at overload),
 nothing beats the best heuristic, which differs between scenarios.
 
+### FRESH instances at three more scenarios (50 fresh instances each; clones use the scenario's best OLD-set heuristic as expert; exploratory)
+
+| Scenario | Heuristics on the fresh set (J) | Clone only | Clone + PPO |
+|---|---|---|---|
+| `on_rho075_tight` | MDC+C 31,299, WLST+C 32,784, EDF+C 34,136, EDFL+C 34,423 | 32,811 (5 seeds; vs WLST+C +27, n.s.; vs MDC+C +1,512, significantly above; vs EDF+C -1,325, significantly below) | 33,639 (vs WLST+C +855, significantly above; vs MDC+C +2,340, significantly above) |
+| `on_rho050` | WLST+C 4,061, MDC+C 4,062, EDF+C 4,075, EDFL+C 4,080 | 4,063 (3 seeds; no meaningful difference) | not run |
+| `off_tf05` (offline) | WLST+FF 25,310, MDC+FF 31,681, LST+FF 37,285, EDF+FF 39,620, WMDD+FF 60,022 | 25,819 (3 seeds; vs WLST+FF +509, +2.0%, significantly above) | 26,547 (3 seeds; vs WLST+FF +1,237, +4.9%, significantly above) |
+
+Same picture: a clone of a heuristic lands within a few percent of it (sometimes significantly above, sometimes not different), fine-tuning
+is not better, nothing is below the best heuristic of its scenario. Being significantly below a weaker heuristic of the same family
+(e.g. the tight-deadline clone vs EDF+C) says nothing about the best rule. 3-seed rows are indicative.
+
 ## Headline (OLD test set; preset `on_rho095`: 10 machines, heavy load rho = 0.95, lognormal job sizes, Poisson arrivals; reference heuristics picked on this set)
 
 | Method | Mean J | per-seed J |
