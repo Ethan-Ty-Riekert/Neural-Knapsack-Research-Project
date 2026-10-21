@@ -84,6 +84,21 @@ generated artefacts then go to `NK_ARTIFACTS_DIR/<machine>/` instead of `rl_trai
 writes only its own subfolder (sync tools corrupt `optuna.db` and fork appended CSVs otherwise).
 Unset = the default `rl_training/` (gitignored).
 
+## Analysis and demo tools (2026-10-21)
+
+- `tools/analysis/paired_report.py` -- arms (sets of seeds) against a reference heuristic on one preset's 50 test instances: per-seed J, and
+  the paired per-instance difference of the seed-averaged arm with a bootstrap interval over instances (training-seed variance is not in it).
+- `tools/analysis/fresh_eval.py` + `fresh_summary.py` -- score heuristics and models on fresh instances (seeds 700000+) that no decision used;
+  output `Results/v2_objectives/fresh/<preset>.csv` and paired summaries against every heuristic.
+- `tools/analysis/rollout_headroom.py` -- clairvoyant one-step rollout over EDF+Consolidate (an upper bound, not an online policy).
+- `tools/analysis/make_slides.py` -- builds `app/slides/*.png` from the fresh CSVs.
+- `tools/campaign/checkpoint_curve.py` -- validation-J learning curve of a run from its checkpoints (never the test set).
+- `app/` -- the Streamlit explorer (`streamlit run app/app.py`; see `app/README.md`).
+- Model options: the windowed policy (`--window-size 20`) is the main model type; `Code/methods/rl/training/imitation.py` provides the
+  behaviour-cloning warm start (`--bc-episodes`, `--bc-expert`); `--compact-slots` is an exact faster encoding of the all-slot network.
+  Tag letters for these options are listed in `tools/campaign/README.md`.
+- Findings and wording rules: `Future/research/2026-10-21-final-week-findings.md` (old test set vs fresh set; exploratory results).
+
 ## Research records
 
 - `Future/research/training-log.md` -- chronological experiment log (newest first, append-only).

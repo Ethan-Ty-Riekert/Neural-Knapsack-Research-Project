@@ -169,6 +169,8 @@ Code/methods/              heuristics, exact (CP-SAT), metaheuristic (PSO), rl (
 Results/                   results per problem variant; v2_objectives/ALL_RESULTS = the paper's results
 tests/                     regression and correctness checks (python -m tests.<name>)
 tools/campaign/            job queue, automatic evaluation and CPU watchdog for long campaigns
+tools/analysis/            paired comparisons, fresh-instance evaluation, rollout headroom bound, slide builder
+app/                       Streamlit results explorer (pick metric weights, see the best models) and slides
 Future/research/           experiment log, dated design documents, bibliography
 docs/                      development guide (docs/DEVELOPMENT.md) and earlier project documents
 ```
