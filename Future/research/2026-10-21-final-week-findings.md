@@ -1,11 +1,14 @@
 # Final-week findings (2026-10-21): can RL beat the best online heuristic?
 
-**Date:** 2026-10-21 (S2W14). **Status:** exploratory results for the end-of-year presentation. Every number is a test J
-(weighted squared tardiness, lower is better) on the 50 held-out instances of one preset unless stated; per-seed values are
-given because 3-5 seeds do not support tight intervals. Detailed, dated evidence: `training-log.md`, 2026-10-20 and 2026-10-21
-entries. Citations named here are from memory and still have to be verified before they go into a report.
+**Date:** 2026-10-21 (S2W14). **Status:** exploratory results for the end-of-year presentation. J = weighted squared tardiness (lower is
+better). Two evaluation sets are used and every table says which: **OLD** = the 50 test instances (seeds >= 500000) that informed many
+decisions, with reference heuristics picked on them (flattered; winner's curse); **FRESH** = 50 new instances (seeds 700000+), scored for
+about 11 arms and up to 7 heuristics with no multiplicity correction (also exploratory). Intervals are bootstrap intervals over
+instances of the seed-averaged difference, conditional on the trained seeds: training-seed variance is NOT in any interval, and verdicts
+from 3-seed arms are indicative only. Per-seed values are given instead. Detailed, dated evidence: `training-log.md`, 2026-10-20 and
+2026-10-21 entries. Citations named here are from memory and still have to be verified before they go into a report.
 
-## Confirmation on 50 fresh instances (never used by any decision) -- read this first
+## Confirmation on 50 FRESH instances (not used by any decision, but scored for ~11 arms and 7 heuristics) -- read this first
 
 The 50 test instances informed many go / no-go decisions, and EDF+Consolidate was the winner of ~40 heuristics on them (a lucky pick).
 On 50 new instances (seeds 700000-700049), mean J:
@@ -24,14 +27,17 @@ On 50 new instances (seeds 700000-700049), mean J:
 | plain RL, all slots, FirstFit, 1M (5) | 26,205 / 35,632 / 28,656 / 40,497 / 37,829 | 33,764 | +2,674 (-166, +5,675) | +6,955 (+2,586, +11,438) |
 | plain RL, all slots, Consolidate, 1M (5) | 34,684 / 34,341 / 27,059 / 29,361 / 25,550 | 30,199 | -891 (-4,064, +2,407) | +3,390 (-595, +7,236) |
 
-What this changes: (1) no learned arm beats MDC+Consolidate, the best heuristic on the fresh set, and no arm is significantly below
-EDF+Consolidate; (2) clones (with or without PPO) and all-slot plain RL with Consolidate placement are not significantly different from the
-EDF family (differences of -3k to +1k with intervals spanning zero); (3) the statement below that plain RL from scratch is "20-30% behind"
-was relative to a reference selected on the old test set and does not hold for all-slot RL with Consolidate placement on fresh instances;
-plain RL with FirstFit placement is significantly behind MDC+Consolidate, and windowed from scratch is far behind everything; (4) PPO
-fine-tuning adds nothing on the fresh set either. All results are exploratory; per-seed spreads are large (e.g. 26k-40k for plain RL).
+What this shows (FRESH set, exploratory): (1) no learned arm is significantly below MDC+Consolidate, the best of the 7 heuristics scored on
+this set (MDC+C is itself selected on this set), and none is significantly below EDF+Consolidate; some arms are significantly below
+other, weaker heuristics (COVERT+C, WMDD+C, ATC+C; see the CSV summary), which says nothing about the best rule. (2) clones (with or without
+PPO) and all-slot plain RL with Consolidate placement are not significantly different from the EDF family (differences -3k to +1k,
+intervals spanning zero); (3) the old-set statement that plain RL from scratch is "20-30% behind" used a flattered reference: on fresh
+instances all-slot RL with Consolidate placement is not shown to be behind EDF+Consolidate (-891, interval -4,064 to +2,407), but its
+distance to MDC+C (+3,390, interval -595 to +7,236, i.e. up to about +27%) is not excluded; plain RL with FirstFit placement is
+significantly behind MDC+C and windowed from scratch is far behind everything; (4) PPO fine-tuning shows no improvement on the fresh set
+either. Per-seed spreads are large (e.g. 26k-40k for plain RL).
 
-### Fresh instances at the other loads and for the explorer's expert clones (50 fresh instances each, 5 seeds unless noted)
+### FRESH instances at the other loads and for the explorer's expert clones (50 fresh instances each, 5 seeds unless noted; 3-seed rows indicative)
 
 | Scenario | Best heuristic on the fresh set (J) | Clone only | Clone + PPO |
 |---|---|---|---|
@@ -43,7 +49,7 @@ WLST+C 31,854 (+4,168, significantly above); WMDD expert 39,831 vs WMDD+C 40,170
 The picture matches the old test set: imitation reproduces its heuristic within noise, fine-tuning adds nothing (and hurts at overload),
 nothing beats the best heuristic, which differs between scenarios.
 
-## Headline (preset `on_rho095`: 10 machines, heavy load rho = 0.95, lognormal job sizes, Poisson arrivals)
+## Headline (OLD test set; preset `on_rho095`: 10 machines, heavy load rho = 0.95, lognormal job sizes, Poisson arrivals; reference heuristics picked on this set)
 
 | Method | Mean J | per-seed J |
 |---|---|---|
@@ -69,7 +75,7 @@ What the data support:
    and much worse in the windowed setting, with diverging seeds; on fresh instances all-slot RL with Consolidate placement is not
    significantly different from the EDF family (see the fresh-instance section), while windowed scratch stays far behind.
 
-## Other scenarios (windowed recipe, EDFL expert, 3 seeds each, exploratory)
+## Other scenarios (OLD test set, reference picked on it; windowed recipe, EDFL expert, 3 seeds each, indicative)
 
 | Scenario | Best heuristic (test J) | Clone only, per seed | Clone + PPO (A3w), per seed |
 |---|---|---|---|
@@ -80,7 +86,7 @@ What the data support:
 The expert was EDFL everywhere (not matched to the scenario). Offline, PPO fine-tuning consistently improved a weak clone by
 ~8.9k but stayed significantly behind the best heuristic; around a good online heuristic it added nothing.
 
-### Scenario-matched experts (the best heuristic of each scenario as the expert; 3 seeds each)
+### Scenario-matched experts (OLD test set; the best heuristic of each scenario as the expert; 3 seeds each, indicative)
 
 | Scenario | Best heuristic | Clone only, per seed | Clone + PPO, per seed |
 |---|---|---|---|
@@ -90,14 +96,14 @@ The expert was EDFL everywhere (not matched to the scenario). Offline, PPO fine-
 
 The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert decides the result; fine-tuning does not help.
 
-### Five-seed arms at `on_rho075` (WLST expert, reference WLST+Consolidate 5,990, margin +/-5% = +/-300)
+### Five-seed arms at `on_rho075` (OLD test set; WLST expert, reference WLST+Consolidate 5,990 picked on it, margin +/-5% = +/-300; on the FRESH set MDC+C is best, 6,263)
 
 | Arm | per-seed J | paired diff (CI) | verdict under the pre-registered rules |
 |---|---|---|---|
 | clone only | 6,246 / 6,103 / 6,083 / 6,103 / 6,207 | +159 (+52, +288) | equivalent within 5% (but significantly +2.7% above) |
 | clone + PPO | 6,195 / 5,995 / 6,080 / 6,194 / 6,353 | +174 (+50, +331) | equivalence not shown; no gain from PPO |
 
-### Five-seed arms at `on_rho110` (MDC expert, reference MDC+Consolidate 106,463, margin +/-5% = +/-5,300)
+### Five-seed arms at `on_rho110` (OLD test set; MDC expert, reference MDC+Consolidate 106,463 picked on it, margin +/-5% = +/-5,300; on the FRESH set EDF+C is best)
 
 | Arm | per-seed J | paired diff (CI) | verdict |
 |---|---|---|---|
@@ -111,7 +117,7 @@ The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert
 | clone only | 29,644 / 30,043 / 30,042 / 30,370 / 30,219 | +562 (+158, +1,022) | equivalent within 5%; significantly +1.9% above |
 | clone + PPO | 29,717 / 30,707 / 29,978 / 30,392 / 29,565 | +570 (+166, +1,034) | equivalent within 5%; no gain from PPO |
 
-### Late-jobs specialist (Option 3 windowed, ATC + Consolidate as the expert, `on_rho095`)
+### Late-jobs specialist (OLD test set; Option 3 windowed, ATC + Consolidate as the expert, `on_rho095`; 3 seeds, indicative)
 
 | | J | on-time rate | weighted late jobs |
 |---|---|---|---|
@@ -123,13 +129,13 @@ The matched expert is much better than EDFL offline (27.4k vs 40.8k): the expert
 A learned model for the "fewest late jobs" metric (22% fewer weighted late jobs than EDF+Consolidate, at a much higher J), obtained by
 imitation; no significant difference from ATC+Consolidate.
 
-### Multi-objective anchors (windowed EDFL clone + PPO on a composite reward, `on_rho095`, 3 seeds)
+### Multi-objective anchors (OLD test set; windowed EDFL clone + PPO on a composite reward, `on_rho095`, 3 seeds, indicative)
 
 Training on J + late jobs, J + energy or J + linear tardiness left the policy at the heuristic's trade-off (weighted late jobs 127.3 vs
 129.3 for the J-only fine-tuned policy and 126.1 for the clone; machine-ticks 1,251 vs 1,253): no measurable change at lr 1e-5. For the
 explorer the learned models for different metrics are imitation clones of different heuristics (EDF, ATC, WLST, MDC).
 
-### Matched clones at more scenarios (clone only, 3 seeds)
+### Matched clones at more scenarios (OLD test set, reference picked on it; clone only, 3 seeds, indicative)
 
 | Scenario | Best heuristic (test J) | Clone, per seed | vs heuristic |
 |---|---|---|---|
@@ -168,15 +174,25 @@ explorer the learned models for different metrics are imitation clones of differ
 
 ## Caveats
 
-* One preset carries the headline; other scenarios are queued (windowed clone and A3w at `on_rho075`, `on_rho110`, `off_tf05`).
-* Seeds: 3-5 per arm; arms use different seed numbers; seed bootstrap intervals are not reported for n <= 5.
-* The 50 test instances informed many go/no-go decisions; treat the numbers as exploratory, not as confirmatory.
+* One preset carries the headline; the other scenarios have 3-5 seeds per arm. Arms use different seed numbers, so comparisons are by arm
+  means, not by seed pairs; 3-seed verdicts are indicative (the pre-registered "beats" rule needs 5 seeds per arm).
+* Protocol mismatches: fine-tuned arms use lr 1e-5 (chosen on validation to preserve the clone) while the scratch arms use the PPO default
+  3e-4, untuned, so "scratch is unreliable" is confounded with "untuned"; the ~180k+ expert / DAgger environment steps used for cloning are
+  not counted in the 1M budget.
+* Multiplicity and selection: no correction over ~11 arms x 7 heuristics on the fresh set (the doc shows a subset of the comparisons);
+  the OLD test set informed many go/no-go decisions and its reference heuristic was picked on it; the fresh set is now also used to name
+  the best heuristic. Training-seed variance is not part of any interval.
+* Open: windowed PPO from scratch is much worse than the all-slot network although the architectures look equivalent; window 40 and 60
+  do not help (test J 34k-76k; runs still finishing), so the cause is unexplained.
 * Tier 2 (default or lightly chosen hyperparameters) throughout; the full tuned protocol was only run earlier (Tier 1) for the
   all-slot network.
 
-## For the presentation
+## For the presentation (wording suggested by critic pass 3, adopted)
 
-Say: no learned policy beat the best scheduling heuristic on either the original or the fresh instances; learning from scratch is unreliable (large seed spread) and, in the windowed setting, far behind; a policy that
-starts from the best heuristic reproduces it reliably but further learning did not improve it; most of the apparent differences
-inside the EDF family are tie-breaking noise; with perfect foresight there is large headroom (upper bound), which points to
-arrival forecasting as the place to look. Do not say: "RL beats / matches the heuristics".
+Say: "On 50 fresh instances no learned policy was significantly better than the best of the five-to-seven heuristics we scored (MDC+Consolidate
+at 0.95 load). A policy cloned from a heuristic was, in most cases, not significantly different from it, but a few clones were
+significantly worse. Further PPO fine-tuning did not help (lr 1e-5, 3-5 seeds). PPO from scratch with default hyperparameters varied
+widely across seeds. A three-instance experiment shows large headroom for an algorithm that knows future arrivals; whether a forecast could
+capture any of it is untested. All results are exploratory."
+Do not say: "RL beats / matches the heuristics", "RL from scratch is 20-30% behind", "reproduces it reliably", "tie-breaking explains the
+differences inside the EDF family" (only suggested by 20 validation instances and one order flip), or "points to arrival forecasting".

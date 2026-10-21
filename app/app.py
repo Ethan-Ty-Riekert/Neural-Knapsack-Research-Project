@@ -22,6 +22,10 @@ PRESETS_OF_INTEREST_HELP = "Presets differ in load / deadline tightness; scores 
 st.set_page_config(page_title="Neural Knapsack results explorer", layout="wide")
 df = load_results()
 
+DATA_CAPTION = ("Data: the 50-instance OLD test set of each scenario (the same instances informed many project decisions and "
+                "the best heuristic of each scenario was picked on them, so heuristics look better here than they would on "
+                "new instances). Fresh-instance results are in the findings document. Exploratory.")
+
 tab_slides, tab_explore = st.tabs(["Slides", "Explore models"])
 
 with tab_slides:
@@ -39,7 +43,10 @@ with tab_explore:
                               index=all_presets.index(DEFAULT_PRESET) if DEFAULT_PRESET in all_presets else 0)
         st.caption(PRESET_NOTES["off" if preset.startswith("off") else "on"])
         normalise = st.checkbox("Normalise metrics by the best heuristic", value=True,
-                                help="Weight 1 on two metrics = equal importance relative to a good heuristic.")
+                                help="Each metric is divided by the best heuristic's value on THAT metric (a different heuristic "
+                                     "per metric, picked on the same instances), so a weight of 1 on two metrics means equal "
+                                     "importance relative to those per-metric best values, which no single method reaches. "
+                                     "Metrics where higher is better enter with a negative sign.")
         families = st.multiselect("Show method families", sorted(df["family"].unique()),
                                   default=sorted(df["family"].unique()))
         top_n = st.slider("Models shown", 3, 25, 10)
@@ -58,6 +65,7 @@ with tab_explore:
             weights[metric] = st.slider(metric_label(metric), 0.0, 5.0, 1.0 if metric == "objective_J" else 0.0, 0.25,
                                         key=f"w_{metric}")
     with right:
+        st.caption(DATA_CAPTION)
         sub = df[(df["preset"] == preset) & (df["family"].isin(families))]
         if not any(weights.values()):
             st.warning("Give at least one metric a weight above zero.")
@@ -69,9 +77,18 @@ with tab_explore:
             for col, (fam, row) in zip(cols, sorted(best.items())):
                 col.metric(f"Best {fam}", f"{row['score']:.3f}", help=row["method"])
                 col.caption(short_label(row["method"]))
-            if "RL" in best and HEURISTIC in best:
-                gap = (best["RL"]["score"] - best[HEURISTIC]["score"]) / abs(best[HEURISTIC]["score"]) * 100
-                st.subheader(f"Best RL vs best heuristic: {gap:+.1f}% ({'RL ahead' if gap < 0 else 'heuristic ahead'})")
+            rl_rows = scored[scored["family"] == "RL"]
+            if len(rl_rows) and HEURISTIC in best:
+                ref = best[HEURISTIC]["score"]
+                med = rl_rows["score"].median()
+                if abs(ref) > 1e-9:
+                    st.subheader(f"Median RL model vs best heuristic: {(med - ref) / abs(ref) * 100:+.1f}%")
+                else:
+                    st.subheader("Median RL model vs best heuristic: not defined (reference score is zero)")
+                st.caption(f"{len(rl_rows)} RL model groups on this scenario (median over groups; the best group alone is "
+                           f"{(rl_rows['score'].min() - ref) / abs(ref) * 100 if abs(ref) > 1e-9 else float('nan'):+.1f}%, a "
+                           "best-of-many pick). Differences are NOT significance-tested; model groups with few seeds are "
+                           "indicative only.")
             view = scored.head(top_n)[["model", "family", "n_seeds", "score"] + [m for m in DISPLAY_METRICS
                                                                                     if weights[m]]]
             view = view.rename(columns={m: metric_label(m) for m in DISPLAY_METRICS})

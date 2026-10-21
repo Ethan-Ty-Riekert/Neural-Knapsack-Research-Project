@@ -28,7 +28,6 @@ def main(path):
         members[arm] = [x.mean() for x in mats]
     heur = {a: v for a, v in arms.items() if len(per[a]) == 1 and a in per[a]}  # heuristics: arm == member
     models = {a: v for a, v in arms.items() if a not in heur}
-    rng = np.random.default_rng(0)
     print(f"# fresh instances: {len(next(iter(arms.values())))} per arm\n")
     print("| heuristic | mean J |\n|---|---|")
     for h, v in sorted(heur.items(), key=lambda x: x[1].mean()):
@@ -39,6 +38,7 @@ def main(path):
         cells = []
         for h, hv in heur.items():
             d = v - hv
+            rng = np.random.default_rng(0)  # same resampling for every comparison: output does not depend on the CSV size
             boot = [d[rng.integers(0, len(d), len(d))].mean() for _ in range(N_BOOT)]
             lo, hi = np.percentile(boot, [2.5, 97.5])
             cells.append(f"{d.mean():+,.0f} ({lo:+,.0f}, {hi:+,.0f})")

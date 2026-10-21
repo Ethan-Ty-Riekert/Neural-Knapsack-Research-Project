@@ -32,6 +32,26 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Critic pass 3: corrections to the fresh-set narrative and the demo
+
+**Findings of the reviewer (read-only; ~20 numbers re-verified, no transcription errors):** (1) the entry "FRESH-INSTANCE CHECK" states "no
+learned arm beats any heuristic except ATC+C": FALSE as written -- on the fresh set some arms are significantly below COVERT+C and WMDD+C
+(e.g. all-slot clone + PPO vs COVERT -5,118, interval -9,579..-1,368; vs WMDD -10,167); MDC+C, the best of the 7 heuristics scored, is itself selected on
+that set and the set is a subset of the ~40 original rules. (2) "does not hold" for the 20-30% claim overstated: the evidence is "not shown to be behind";
+vs MDC+C the plain-RL Consolidate arm is +3,390 (interval -595..+7,236, up to ~+27%). (3) old and fresh sets were mixed without labels in the findings doc.
+(4) seed variance is in no interval; 3-seed verdicts are indicative. (5) ~77 uncorrected intervals on the fresh set. (6) protocol mismatches
+(lr 1e-5 vs default 3e-4, uncounted cloning steps, seed sets) belong in the Caveats. (7) the presentation advice overreached ("reproduces it reliably",
+tie-breaking and forecasting claims). (8) the explorer shows the OLD set only, without saying so, and its "Best RL vs best heuristic" banner compares
+the best of many RL models with the best heuristic, with no interval or seed count.
+
+**Actions:** the findings doc was edited accordingly (labels OLD / FRESH on every table and heading, the re-basing text softened, caveats added,
+the presentation paragraph replaced by the reviewer's wording); this entry supersedes the sentence above (past entries are not edited). The
+summary script now uses one resampling seed per comparison (output no longer depends on the number of rows). Explorer changes (caption naming
+the old test set, banner replaced by the median RL score with the seed count and "not significance-tested", zero-reference guard and
+normalisation help text) are made in `app/`.
+
+---
+
 ## 2026-10-21 (S2W14) -- Fresh-instance checks at on_rho075, on_rho110 and for the on_rho095 expert clones; window-size runs (first seeds)
 
 **Fresh instances (50 per scenario, seeds 700000+; `fresh_eval.py` + `fresh_summary.py`; reference = heuristic named in the column):**
