@@ -69,6 +69,16 @@ Training on J + late jobs, J + energy or J + linear tardiness left the policy at
 129.3 for the J-only fine-tuned policy and 126.1 for the clone; machine-ticks 1,251 vs 1,253): no measurable change at lr 1e-5. For the
 explorer the learned models for different metrics are imitation clones of different heuristics (EDF, ATC, WLST, MDC).
 
+### Matched clones at more scenarios (clone only, 3 seeds)
+
+| Scenario | Best heuristic (test J) | Clone, per seed | vs heuristic |
+|---|---|---|---|
+| `on_rho050` | WLST+Consolidate 4,085 | 4,090 / 4,087 / 4,093 | +0.1% |
+| `on_rho075_tight` | WLST+Consolidate 29,502 | 29,734 / 29,777 / 30,622 | +1.8% |
+| `off_tf08` | WLST+FirstFit 257,155 | 266,353 / 266,280 / 266,349 | +3.6% |
+| `off_tf08_w1` (unit weights) | WLST+FirstFit 129,805 | 129,805 x3 | identical |
+| `off_tf05_w1` (unit weights) | LST+FirstFit 13,098 | 13,098 x3 | identical |
+
 ## Why the gap and the "ties" matter
 
 * **Tie-breaking in EDF moves J by about +/-15%.** Deadlines are integers; several pending jobs share the earliest one. On 20

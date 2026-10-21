@@ -32,6 +32,27 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Matched-expert clones at five more scenarios; other experts queued with expert tag letters
+
+**Stats (windowed clone only, 3 seeds 80-82, matched expert = the scenario's best heuristic; test J, 50 instances):**
+```
+scenario           reference (J)             clone, per seed                     paired diff vs reference (CI over instances)
+on_rho050          WLST+Consolidate 4,085    4,090 / 4,087 / 4,093               +5 (+0, +12)        (+0.1%)
+on_rho075_tight    WLST+Consolidate 29,502   29,734 / 29,777 / 30,622            +542 (+129, +1,007) (+1.8%)
+off_tf08           WLST+FirstFit 257,155     266,353 / 266,280 / 266,349         +9,173 (+8,175, +10,193) (+3.6%)
+off_tf08_w1        WLST+FirstFit 129,805     129,805 / 129,805 / 129,805         +0 (identical)
+off_tf05_w1        LST+FirstFit 13,098       13,098 / 13,098 / 13,098            +0 (identical)
+```
+**Observation:** the imitation clones reproduce the best heuristic to within 0-4% in every scenario; with unit job weights (the *_w1
+presets) the clone is exactly the heuristic (the rule is a function of the slot features alone), at rho 0.50 it is within 0.1%. Same
+conclusion as before: imitation reproduces the heuristic, nothing beats it.
+
+**Announced and queued (Tier 2, clone-only, seeds 80-82, on_rho095, Consolidate):** clones of MDC, WLST, WMDD and COVERT as separate
+learned models for the explorer. The expert is encoded by a new tag letter (d MDC, s WLST, v WMDD, h COVERT; labels in `build_folder.py`,
+`app/scoring.py`, documented in `tools/campaign/README.md`) so models trained on different experts are distinguishable in the archive.
+
+---
+
 ## 2026-10-21 (S2W14) -- Multi-objective anchors (windowed, EDFL clone + PPO on a composite reward): no measurable change from the J-only policy
 
 **Config (Tier 2, as announced):** windowed Option 2, EDFL clone, then PPO at lr 1e-5, 1M steps, on a composite reward with the reference
