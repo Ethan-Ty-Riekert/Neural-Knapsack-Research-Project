@@ -32,6 +32,30 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Scenario-matched experts: dev clones within 1.5-3% of their heuristics; queued: matched arms, ATC specialist, multi-objective anchors
+
+**Dev clones (clone only, one seed each, not reported seeds; test J; agreement of the clone with the expert on its training states):**
+```
+scenario    expert (placement)       agreement   clone J    best heuristic   difference
+off_tf05    WLST (FirstFit)           64.7%       27,539     26,670           +3.3%      (only 4.5k labelled states: offline episodes are short)
+on_rho075   WLST (Consolidate)        87.3%        6,149      5,990           +2.7%
+on_rho110   MDC (Consolidate)         92.0%      108,113    106,463           +1.5%
+```
+**Observation:** the weight- and slack-based rules are not exactly readable by the per-slot network (agreement 65-92%), yet the
+clones land within 1.5-3% of their heuristic's J, much closer than the EDFL clone did offline (40.8k, +53%): the choice of expert
+matters more than agreement. One seed each, so only an indication.
+
+**Announced (Tier 2, all on the CPU queue, lr 1e-5 reused, cloning 60 x 3 x 60 epochs, critic warm-up 100k):**
+(1) matched experts, clone-only seeds 80-82 (100k steps) and A3w seeds 90-92 (1M steps) at off_tf05 (WLST + FirstFit, 200 cloning
+episodes), on_rho075 (WLST + Consolidate), on_rho110 (MDC + Consolidate). (2) a late-jobs specialist on on_rho095: Option 3 windowed
+(ATC priority as a slot feature), expert ATC + Consolidate (best on-time-rate heuristic), clone-only seeds 80-82 and A3w seeds
+90-92. (3) multi-objective anchors on on_rho095 (expert EDFL clone, then PPO on the composite reward, lambdas 17.6 / 176 / 17.6 =
+REFERENCE_LAMBDAS): q = J + late jobs, g = J + energy, k = J + linear tardiness, seeds 60-62 (tags `o2cwimlubrze{q,g,k}x`). Purpose:
+learned models for different metric combinations for the explorer; the expected effect of fine-tuning is small (lr 1e-5), so these
+are reported as exploratory, with the composite objectives evaluated by `multi_objective_report.py`.
+
+---
+
 ## 2026-10-21 (S2W14) -- Windowed recipe at the other scenarios (3 seeds, exploratory): online close to the heuristic, offline clearly behind but PPO helps a weak clone
 
 **Config (Tier 2, as queued 07:10):** windowed Option 2, expert EDFL with Consolidate placement, cloning 60 x 3 x 60 epochs, critic
