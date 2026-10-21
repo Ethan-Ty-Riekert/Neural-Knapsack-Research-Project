@@ -31,6 +31,18 @@ was relative to a reference selected on the old test set and does not hold for a
 plain RL with FirstFit placement is significantly behind MDC+Consolidate, and windowed from scratch is far behind everything; (4) PPO
 fine-tuning adds nothing on the fresh set either. All results are exploratory; per-seed spreads are large (e.g. 26k-40k for plain RL).
 
+### Fresh instances at the other loads and for the explorer's expert clones (50 fresh instances each, 5 seeds unless noted)
+
+| Scenario | Best heuristic on the fresh set (J) | Clone only | Clone + PPO |
+|---|---|---|---|
+| `on_rho075` | MDC+C 6,263 (WLST+C 6,407, EDF+C 6,494) | 6,504 (vs WLST+C +97, interval -323..+466; vs MDC+C +241, n.s.) | 6,650 (vs MDC+C +387, +52..+813: slightly worse) |
+| `on_rho110` | EDF+C 91,502 (MDC+C 93,590) | 98,618 (vs MDC+C +5,028, n.s.) | 113,223 (vs MDC+C +19,633, significantly worse; one seed 155k) |
+
+Expert clones at `on_rho095` (clone only, 3 seeds, fresh set): MDC expert 30,902 vs MDC+C 26,809 (+4,093, n.s.); WLST expert 36,021 vs
+WLST+C 31,854 (+4,168, significantly above); WMDD expert 39,831 vs WMDD+C 40,170 (n.s.); COVERT expert 32,232 vs COVERT+C 35,121 (n.s.).
+The picture matches the old test set: imitation reproduces its heuristic within noise, fine-tuning adds nothing (and hurts at overload),
+nothing beats the best heuristic, which differs between scenarios.
+
 ## Headline (preset `on_rho095`: 10 machines, heavy load rho = 0.95, lognormal job sizes, Poisson arrivals)
 
 | Method | Mean J | per-seed J |

@@ -32,6 +32,34 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Fresh-instance checks at on_rho075, on_rho110 and for the on_rho095 expert clones; window-size runs (first seeds)
+
+**Fresh instances (50 per scenario, seeds 700000+; `fresh_eval.py` + `fresh_summary.py`; reference = heuristic named in the column):**
+```
+on_rho075   heuristics: MDC+C 6,263  WLST+C 6,407  EDF+C 6,494  EDFL+C 6,611  COVERT+C 6,945
+  clone only (WLST expert, 5)   6,440 / 6,457 / 6,530 / 6,562 / 6,530  mean 6,504   vs WLST+C +97 (-323, +466)   vs MDC+C +241 (-42, +556)
+  clone + PPO (A3w, 5)          6,628 / 6,590 / 6,626 / 6,785 / 6,620  mean 6,650   vs WLST+C +243 (-184, +708)  vs MDC+C +387 (+52, +813)
+on_rho110   heuristics: EDF+C 91,502  MDC+C 93,590  WLST+C 102,005  EDFL+C 104,132  COVERT+C 118,918
+  clone only (MDC expert, 5)    92,559 / 97,760 / 108,782 / 100,365 / 93,622  mean 98,618  vs MDC+C +5,028 (-6,063, +15,693)  vs EDF+C +7,115 (-4,541, +19,153)
+  clone + PPO (A3w, 5)          108,224 / 99,251 / 102,649 / 155,002 / 100,989 mean 113,223 vs MDC+C +19,633 (+9,575, +29,020) vs EDF+C +21,721 (+9,432, +33,719)
+on_rho095   expert clones (clone only, 3 seeds; heuristics on the fresh set: MDC+C 26,809, WLST+C 31,854, COVERT+C 35,121, WMDD+C 40,170)
+  MDC expert    27,807 / 30,845 / 34,054   mean 30,902   vs MDC+C +4,093 (-473, +8,582)
+  WLST expert   36,321 / 35,237 / 36,506   mean 36,021   vs WLST+C +4,168 (+227, +8,397)
+  WMDD expert   40,079 / 40,243 / 39,171   mean 39,831   vs WMDD+C -340 (-4,051, +2,964)
+  COVERT expert 33,143 / 32,772 / 30,780   mean 32,232   vs COVERT+C -2,890 (-6,220, +363)
+```
+**Observation:** on the fresh instances the matched clones are not significantly different from their own heuristic at rho 0.75 and
+0.95/1.10 (WLST expert at rho 0.95: +13% significantly above; the others within the intervals); the best heuristic differs by scenario
+(MDC+C at 0.75, EDF+C at 1.10) and no learned arm is significantly below any of them. PPO fine-tuning is again no better and at
+overload significantly worse (+19.6k vs MDC+C, one seed at 155k). The old-test-set conclusions stand and are confirmed in direction: imitation
+reproduces its heuristic within noise, nothing beats the best heuristic, fine-tuning does not help.
+
+**Window-size runs (test J, windowed scratch, 1M steps; window 20 seeds 60-64: 26,245 / 42,187 / 47,085 / 46,243 / 33,171):** window 40
+seeds 70-72: 34,281 / 45,293 / 63,043; window 60 pending. A bigger window does not obviously help (first three seeds). Seeds 73-75
+for both sizes queued (Tier 2) so each size has six seeds.
+
+---
+
 ## 2026-10-21 (S2W14) -- 5-seed arms at on_rho075_tight; expert clones at on_rho095 (test set); window-size question and fresh checks started
 
 **on_rho075_tight (WLST + Consolidate expert, reference WLST+Consolidate 29,502, margin +/-5% = +/-1,475; test set; exploratory):**
