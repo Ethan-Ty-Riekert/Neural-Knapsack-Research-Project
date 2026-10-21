@@ -30,6 +30,17 @@ What the data support:
 4. **Training from scratch is far behind and unreliable**: 20-30% above the best heuristic with all slots, much worse still in the
    windowed setting, with diverging seeds.
 
+## Other scenarios (windowed recipe, EDFL expert, 3 seeds each, exploratory)
+
+| Scenario | Best heuristic (test J) | Clone only, per seed | Clone + PPO (A3w), per seed |
+|---|---|---|---|
+| `on_rho075` | WLST+Consolidate 5,990 | 6,197 / 6,192 / 6,101 (+3%, small but significant) | 6,139 / 7,225 / 6,298 (+9%) |
+| `on_rho110` | MDC+Consolidate 106,463 | 108,806 / 116,352 / 124,408 (+9%, n.s.) | 127,894 / 107,692 / 120,271 (+11%, n.s.) |
+| `off_tf05` | WLST+FirstFit 26,670 | 40,845 / 40,806 / 40,772 (+53%) | 31,917 / 32,261 / 31,507 (+20%) |
+
+The expert was EDFL everywhere (not matched to the scenario). Offline, PPO fine-tuning consistently improved a weak clone by
+~8.9k but stayed significantly behind the best heuristic; around a good online heuristic it added nothing.
+
 ## Why the gap and the "ties" matter
 
 * **Tie-breaking in EDF moves J by about +/-15%.** Deadlines are integers; several pending jobs share the earliest one. On 20

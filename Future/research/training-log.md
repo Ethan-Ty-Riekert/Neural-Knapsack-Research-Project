@@ -32,6 +32,32 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-21 (S2W14) -- Windowed recipe at the other scenarios (3 seeds, exploratory): online close to the heuristic, offline clearly behind but PPO helps a weak clone
+
+**Config (Tier 2, as queued 07:10):** windowed Option 2, expert EDFL with Consolidate placement, cloning 60 x 3 x 60 epochs, critic
+warm-up 100k, lr 1e-5; clone-only seeds 50-52 and A3w (clone + PPO, 1M steps) seeds 60-62 per scenario; the reference is each
+scenario's best heuristic on the test set. The expert was NOT matched to the scenario (EDFL everywhere).
+
+**Stats (test J, 50 instances, per seed; paired interval over instances of the seed-averaged difference):**
+```
+scenario    reference                 clone only (seeds 50-52)             vs ref (CI)            A3w (seeds 60-62)                    vs ref (CI)
+on_rho075   WLST+Consolidate  5,990   6,197 / 6,192 / 6,101   mean 6,163   +174 (+61, +293)       6,139 / 7,225 / 6,298  mean 6,554    +564 (+361, +786)
+on_rho110   MDC+Consolidate 106,463   108,806/116,352/124,408 mean 116,522 +10,058 (-4,415, +23,654) 127,894/107,692/120,271 mean 118,619 +12,156 (-548, +24,770)
+off_tf05    WLST+FirstFit    26,670   40,845 / 40,806 / 40,772 mean 40,807 +14,137 (+13,128, +15,169) 31,917 / 32,261 / 31,507 mean 31,895 +5,224 (+4,526, +5,972)
+```
+**Observation:** (1) Online at moderate load (rho 0.75) the EDFL clone is ~3% above the best heuristic (significantly above, small in
+size) and fine-tuning does not help (+9%). (2) At overload (rho 1.10) both arms are 9-11% above MDC+Consolidate with intervals
+that include zero (no significant difference, not equivalent). (3) Offline the mismatched expert makes the clone 53% worse than
+WLST+FirstFit (also placement differs), but PPO fine-tuning improved it consistently (-8.9k, all three seeds within 750 of each
+other) to 20% above the heuristic: with a poor starting policy there is real room for PPO to learn, which it did not have around
+the best online heuristic. Still significantly behind the best heuristic. Nothing beats a heuristic.
+
+**Next (announced, running, Tier 2):** expert-matched clone dev runs (one seed each, not reported seeds): off_tf05 expert WLST with
+FirstFit placement, on_rho075 WLST, on_rho110 MDC, to see whether the scenario's best heuristic can be cloned by the per-slot
+network (agreement in the job log, test J by auto_eval); if yes, 3-seed clone-only and A3w follow.
+
+---
+
 ## 2026-10-21 (S2W14) -- FINAL windowed protocol v2 (on_rho095, 5 seeds per arm): fine-tuning does not help; from scratch is far behind
 
 **Config:** windowed Option 2 (window 20), Consolidate placement, expert EDFL (EDF, ties by longest duration), cloning 60 episodes x
