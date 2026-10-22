@@ -32,6 +32,23 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-22 (S2W14) -- Coverage grid for the explorer announced (clone-only models of several heuristics at every online load and four offline presets); archive labels now name the imitated expert
+
+**Why:** the archive's learned models are concentrated at on_rho095 and off_tf05 (62 and 65 groups); the other online loads have 1-5 groups (clones only). The explorer is
+the demo, so every scenario should offer models that cover different metric trade-offs. Not a hypothesis test: no statistics will be run on these.
+
+**Queued (Tier 2, ~110 jobs, clone-only, 100k steps = cloning + critic warm-up, 3 seeds each, lr 1e-5 irrelevant without fine-tuning):** experts MDC (tag letter `d`),
+WLST (`s`), COVERT (`h`), ATC (Option 3 with the ATC slot feature, tag `o3...`) at on_rho050, on_rho075, on_rho075_tight, on_rho110 (Consolidate, 60 cloning episodes) and at
+off_tf05, off_tf08, off_tf05_w1, off_tf08_w1 (FirstFit, 200 episodes), plus EDFL (no letter, seeds 50-52) where it is missing. Seeds 80-82 for every expert.
+
+**Archive fix (found while planning):** imitation runs without an expert letter (the earlier EDFL, WLST and MDC matched-expert runs) were merged into ONE archive row per
+scenario (e.g. at on_rho075 the EDFL clones s50-52 and the WLST clones s80-82 / s100-104 shared the label "window 20, clone only, Consolidate"), which mixed experts in the
+explorer. `build_folder.py` now reads the cloned rule from the model's sidecar (`imitation.rule`) and appends "<RULE> expert" to the label, so the rows separate (this works
+where `rl_training/models/` exists, i.e. on the desktop that builds the archive; the laptop only reads the CSV). The numbers in the findings doc are unaffected (they were
+computed from explicit tag lists).
+
+---
+
 ## 2026-10-21 (S2W14) -- FRESH set with ten seeds per windowed headline arm
 
 **Stats (FRESH, 50 instances; mean J, per-member values in the findings doc; interval over instances of the seed-averaged difference):**

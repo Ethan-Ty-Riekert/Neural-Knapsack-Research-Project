@@ -95,12 +95,28 @@ def is_current_objective(env_kwargs):
             and not any(obj.get(k) for k in ("tardiness", "drops", "late_count", "energy")))
 
 
+EXPERT_LETTERS = set("dsvh")  # tag letters that already name the imitated rule (MOD_NAMES)
+
+
+def imitated_rule(tag, opt):
+    """The priority rule an imitation run cloned, read from the model's sidecar spec (rl_training/ is not in git, so this
+    only works where the models exist, i.e. on the desktop; None otherwise)."""
+    path = REPO / "rl_training" / "models" / f"action_space_option{opt}_ppo_{tag}.json"
+    try:
+        return (json.loads(path.read_text(encoding="utf-8")).get("imitation") or {}).get("rule")
+    except (OSError, ValueError):
+        return None
+
+
 def rl_label(m, opt):
     """'PPO Opt1 rule selection +Consolidate [tuned]' from a parsed tag (seed excluded, so seeds merge)."""
     if not m:
         return f"PPO Opt{opt} {OPTION_NAMES.get(opt, '')}"
     algo = "A2C" if m.group("algo") else "PPO"
     mods = " ".join(MOD_NAMES.get(c, c) for c in m.group("mods") if c != "m")  # every paper row is Markov
+    if "i" in m.group("mods") and not (EXPERT_LETTERS & set(m.group("mods"))):
+        rule = imitated_rule(m.group(0), opt)  # runs without an expert letter in the tag: name the expert from the sidecar
+        mods += f" {rule} expert" if rule else ""
     hp = f" [{m.group('hp').lstrip('_')}]" if m.group("hp") else ""
     lam = f" [lambda x{m.group('lam')}]" if m.group("lam") else ""
     return f"{algo} Opt{opt} {OPTION_NAMES.get(opt, '')}" + (f" {mods}" if mods else "") + hp + lam

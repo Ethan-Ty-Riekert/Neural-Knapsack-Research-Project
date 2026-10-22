@@ -25,7 +25,8 @@ HEURISTIC = "Heuristic"
 # Full archive labels list every design modifier ("PPO Opt2 priority score look-ahead ... [tuned]"); the demo shows
 # the parts an audience cares about. Order = order shown.
 _SHORT_TAGS = (("window 40", "window 40"), ("window 60", "window 60"), ("windowed", "window 20"), ("ATC-prior", "ATC prior"), ("+EDF imitation warm start", "imitation"), ("MDC expert", "MDC expert"), ("WLST expert", "WLST expert"),
-               ("WMDD expert", "WMDD expert"), ("COVERT expert", "COVERT expert"), ("+Consolidate", "Consolidate"),
+               ("WMDD expert", "WMDD expert"), ("COVERT expert", "COVERT expert"),
+               ("EDF expert", "EDF expert"), ("EDFL expert", "EDFL expert"), ("ATC expert", "ATC expert"), ("+Consolidate", "Consolidate"),
                ("+linear-tardiness objective", "+tardiness obj"), ("+late-count objective", "+late-job obj"),
                ("+energy objective", "+energy obj"), ("2M-step budget", "2M steps"), ("1M-step budget", "1M steps"),
                ("[tuned]", "tuned"))

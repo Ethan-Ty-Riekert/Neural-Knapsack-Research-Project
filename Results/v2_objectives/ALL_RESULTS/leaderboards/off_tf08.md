@@ -14,7 +14,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | WEDF+BestFit | Heuristic | 264519 +/- 34606 |
 | 7 | WEDF+WorstFit | Heuristic | 264519 +/- 34606 |
 | 8 | WEDF+Consolidate | Heuristic | 264519 +/- 34606 |
-| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 266327 +/- 41 |
+| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 266327 +/- 41 |
 | 10 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 309725 +/- 21486 |
 
 | top 5 | top 10 |
@@ -90,7 +90,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08.md`](../tabl
 | 6 | WEDF+BestFit | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
 | 7 | WEDF+WorstFit | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
 | 8 | WEDF+Consolidate | Heuristic | 7352 +/- 721 | 264519 +/- 34606 |
-| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 7390 +/- 1 | 266327 +/- 41 |
+| 9 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 7390 +/- 1 | 266327 +/- 41 |
 | 10 | COVERT+BestFit | Heuristic | 7533 +/- 805 | 405440 +/- 49109 |
 
 | top 5 | top 10 |
@@ -143,7 +143,7 @@ Every method has the same value here, so there is no ranking.
 
 | rank | method | family | mean flow time | J |
 |---|---|---|---|---|
-| 1 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 266327 +/- 41 |
+| 1 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 54.54 +/- 0.00 | 266327 +/- 41 |
 | 2 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective +energy objective | RL | 54.54 +/- 0.00 | 309725 +/- 21486 |
 | 3 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective | RL | 54.54 +/- 0.00 | 312681 +/- 25455 |
 | 4 | PPO Opt2 priority score look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +linear-tardiness objective | RL | 54.54 +/- 0.00 | 314741 +/- 6746 |
