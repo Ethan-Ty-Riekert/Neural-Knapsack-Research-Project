@@ -104,3 +104,9 @@ Say out loud: "Data here is the old test set; the fresh-set numbers are on slide
 2. Do you want a "where RL wins and where it doesn't" slide (RL vs textbook rules / mismatched heuristics, e.g. offline composite wins)? It answers the most likely audience question.
 3. Slide design: keep the plain matplotlib look or restyle for the projector (larger fonts, less text)?
 4. Will you present alone or with a partner at the stall (changes the script split)?
+
+## 8. Decisions (2026-10-24)
+User chose skeletons **A + B** (explorer is the landing tab, the four slides are the second tab, in A's order) and scripts **3b** (two-minute
+pitch) and **3d** (demo walkthrough). Implemented in `app/app.py`: tab order Explore then Slides, a headline "Pick what matters to you - see
+which scheduler wins", and three one-click "Try this" buttons matching 3d (lateness at load 0.95, energy at 0.95, lateness under overload
+1.10). Checked with Streamlit's AppTest (buttons switch scenario and weights without error). Still open: items 2-4 of section 7.

@@ -33,3 +33,5 @@ bar chart, scenario overview, caveats) from `Results/v2_objectives/fresh/*.csv`;
 
 Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Trade-off scatter (any two metrics) added. Planned:
 frozen data bundle for the laptop.
+
+The app opens on the **Explore models** tab (landing view) with three "Try this" buttons that jump to a scenario and objective; the **Slides** tab is second. The buttons are defined in `TRY_THIS` in `app.py`.

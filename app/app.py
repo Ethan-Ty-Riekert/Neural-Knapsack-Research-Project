@@ -2,7 +2,7 @@
 
     streamlit run app/app.py
 
-Tab 1 shows the slides (images in app/slides/), tab 2 is the metric-weighting explorer.
+Tab 1 is the metric-weighting explorer (the landing view), tab 2 shows the slides (images in app/slides/).
 """
 import sys
 from pathlib import Path
@@ -26,7 +26,29 @@ DATA_CAPTION = ("Data: the 50-instance OLD test set of each scenario (the same i
                 "the best heuristic of each scenario was picked on them, so heuristics look better here than they would on "
                 "new instances). Fresh-instance results are in the findings document. Exploratory.")
 
-tab_slides, tab_explore = st.tabs(["Slides", "Explore models"])
+TRY_THIS = [  # (button label, scenario, quick objective): the scripted demo prompts (presentation plan, section 3d)
+    ("1. Minimise lateness (load 0.95)", "on_rho095", "Squared tardiness (the training objective J)"),
+    ("2. Save energy instead", "on_rho095", "Energy saving (fewest active machine-ticks)"),
+    ("3. Same goal under overload", "on_rho110", "Squared tardiness (the training objective J)"),
+]
+
+
+def apply_try(scenario, objective):
+    """Jump to a scenario and a one-click objective (sliders follow)."""
+    st.session_state["preset"] = scenario
+    st.session_state["quick"] = objective
+    apply_quick()
+
+
+def apply_quick():
+    """Set every weight slider from the chosen one-click objective (sliders stay editable afterwards)."""
+    quick = QUICK_OBJECTIVES[st.session_state["quick"]]
+    if quick is not None:
+        for m in DISPLAY_METRICS:
+            st.session_state[f"w_{m}"] = quick.get(m, 0.0)
+
+
+tab_explore, tab_slides = st.tabs(["Explore models", "Slides"])
 
 with tab_slides:
     if SLIDES:
@@ -36,11 +58,17 @@ with tab_slides:
         st.info("Put slide images (PNG) in app/slides/ - shown here in filename order.")
 
 with tab_explore:
+    st.markdown("### Pick what matters to you - see which scheduler wins")
+    st.caption("Try this:")
+    for col, (label, scenario, objective) in zip(st.columns(len(TRY_THIS)), TRY_THIS):
+        if scenario in presets(df):
+            col.button(label, on_click=apply_try, args=(scenario, objective), use_container_width=True)
     left, right = st.columns([1, 2])
     with left:
         all_presets = presets(df)
-        preset = st.selectbox("Scenario (preset)", all_presets, help=PRESETS_OF_INTEREST_HELP,
-                              index=all_presets.index(DEFAULT_PRESET) if DEFAULT_PRESET in all_presets else 0)
+        if "preset" not in st.session_state and DEFAULT_PRESET in all_presets:
+            st.session_state["preset"] = DEFAULT_PRESET
+        preset = st.selectbox("Scenario (preset)", all_presets, help=PRESETS_OF_INTEREST_HELP, key="preset")
         st.caption(PRESET_NOTES["off" if preset.startswith("off") else "on"])
         normalise = st.checkbox("Normalise metrics by the best heuristic", value=True,
                                 help="Each metric is divided by the best heuristic's value on THAT metric (a different heuristic "
@@ -51,13 +79,6 @@ with tab_explore:
                                   default=sorted(df["family"].unique()))
         top_n = st.slider("Models shown", 3, 25, 10)
         st.markdown("**What matters? (weights)**")
-
-        def apply_quick():
-            """Set every weight slider from the chosen one-click objective (sliders stay editable afterwards)."""
-            quick = QUICK_OBJECTIVES[st.session_state["quick"]]
-            if quick is not None:
-                for m in DISPLAY_METRICS:
-                    st.session_state[f"w_{m}"] = quick.get(m, 0.0)
 
         st.selectbox("Quick objective", list(QUICK_OBJECTIVES), key="quick", on_change=apply_quick)
         weights = {}
