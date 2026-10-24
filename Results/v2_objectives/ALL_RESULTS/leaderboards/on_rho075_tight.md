@@ -70,6 +70,8 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho075_tight.md`](
 | 5 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 251.8 +/- 1.7 | 30056 +/- 338 |
 | 6 | PPO Opt2 priority score +Consolidate windowed MDC expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 252.5 +/- 0.4 | 30147 +/- 256 |
 | 7 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget WLST expert | RL | 254.2 +/- 3.7 | 30072 +/- 474 |
+| 8 | PPO Opt3 ATC-prior score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 269.4 +/- 58.5 | 38864 +/- 16923 |
+| 9 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 275.2 +/- 2.2 | 38395 +/- 1981 |
 
 | top 5 |
 |---|
@@ -202,7 +204,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho075_tight.md`](
 | 7 | PPO Opt2 priority score +Consolidate windowed COVERT expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.913 +/- 0.001 | 30759 +/- 368 |
 | 8 | WLST+Consolidate | Heuristic | 0.912 +/- 0.019 | 29502 +/- 10035 |
 | 9 | MDC+Consolidate | Heuristic | 0.912 +/- 0.020 | 29749 +/- 10416 |
-| 10 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle EDFL expert | RL | 0.908 +/- 0.001 | 31260 +/- 235 |
+| 10 | PPO Opt3 ATC-prior score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0.910 +/- 0.018 | 38864 +/- 16923 |
 
 | top 5 | top 10 |
 |---|---|

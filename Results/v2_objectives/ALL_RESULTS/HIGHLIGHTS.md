@@ -72,7 +72,7 @@ Click a preset for its top-5 / top-10 leaderboards. Value in brackets = mean ove
 | off_c_50 | [table](tables/off_c_50.md) | [figure](figures/J_by_method_off_c_50.png) | [top 5 / 10](leaderboards/off_c_50.md) | [figure](figures/training_curves_off_c_50.png) |
 | off_tf02_w1 | [table](tables/off_tf02_w1.md) | [figure](figures/J_by_method_off_tf02_w1.png) | [top 5 / 10](leaderboards/off_tf02_w1.md) | - |
 | off_tf05_w1 | [table](tables/off_tf05_w1.md) | [figure](figures/J_by_method_off_tf05_w1.png) | [top 5 / 10](leaderboards/off_tf05_w1.md) | [figure](figures/training_curves_off_tf05_w1.png) |
-| off_tf08_w1 | [table](tables/off_tf08_w1.md) | [figure](figures/J_by_method_off_tf08_w1.png) | [top 5 / 10](leaderboards/off_tf08_w1.md) | - |
+| off_tf08_w1 | [table](tables/off_tf08_w1.md) | [figure](figures/J_by_method_off_tf08_w1.png) | [top 5 / 10](leaderboards/off_tf08_w1.md) | [figure](figures/training_curves_off_tf08_w1.png) |
 | off_tf02 | [table](tables/off_tf02.md) | [figure](figures/J_by_method_off_tf02.png) | [top 5 / 10](leaderboards/off_tf02.md) | - |
 | off_tf05 | [table](tables/off_tf05.md) | [figure](figures/J_by_method_off_tf05.png) | [top 5 / 10](leaderboards/off_tf05.md) | [figure](figures/training_curves_off_tf05.png) |
 | off_tf08 | [table](tables/off_tf08.md) | [figure](figures/J_by_method_off_tf08.png) | [top 5 / 10](leaderboards/off_tf08.md) | [figure](figures/training_curves_off_tf08.png) |
