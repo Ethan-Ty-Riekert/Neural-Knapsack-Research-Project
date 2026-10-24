@@ -2,7 +2,7 @@
 
     streamlit run app/app.py
 
-Tab 1: three steps (situation, what matters, start). The top 2 classic rules and top 2 learned schedulers race on a bar scale where
+Tab 1: three steps (situation, what matters, start). The top 2 classic rules and 3 AI schedulers race (1 that copied a rule, 2 that learned by trial and error) on a bar scale where
 100% is the best score of the scenario. Tab 2: the slides (app/slides/). Everything shown comes from the archive of tested scenarios
 (app/scoring.py explains the mapping from questions to the recorded metrics).
 """
@@ -60,7 +60,7 @@ tab_race, tab_slides = st.tabs(["Which scheduler wins?", "Slides"])
 with tab_race:
     st.title("Which scheduler wins for you?")
     st.write("A *scheduler* decides which job runs next and on which machine. Describe your situation and what matters to you, "
-             "then watch the best classic rules race the best AI schedulers we trained.")
+             "then watch the best classic rules race three AI schedulers: one that copied a rule and two different ones that learned by trial and error, without copying.")
 
     st.header("1. Your situation")
     c1, c2, c3 = st.columns(3)
@@ -107,8 +107,11 @@ with tab_race:
         sub = df[(df["preset"] == preset) & (df["family"].isin([HEURISTIC, "RL"]))]
         scored = score(sub, weights, normalise=True)
         entries = race_entries(scored)
+        if entries.empty:
+            st.warning("Nothing to compare for this combination - try a different importance setting.")
+            st.stop()
         if not (entries["family"] == "RL").any():  # no AI scheduler was trained for this setting: race four rules instead
-            entries = race_entries(scored, per_family=4)
+            entries = race_entries(scored, per_family=4, ai_mix=())
         parts = [friendly_name(m, f) for m, f in zip(entries["method"], entries["family"])]
         entries["title"], entries["detail"] = [p[0] for p in parts], [p[1] for p in parts]
         st.session_state["race"] = (entries, scored)
@@ -124,7 +127,7 @@ with tab_race:
             st.markdown(race_html(entries, 1.0), unsafe_allow_html=True)
         winner = entries.sort_values("percent", ascending=False).iloc[0]
         kind = "AI scheduler" if winner["family"] == "RL" else "classic rule"
-        st.subheader(f"Winner: {winner['title']} ({kind})")
+        st.subheader(f"Winner: {winner['title']} - {kind}")
         st.caption("Grey bars are classic rules, blue bars are AI schedulers. 100% = the best result we found for this situation and "
                    "what you chose; the bars are stretched so small differences show (about 5% worse shows as ~82%).")
         rl_scores = scored[scored["family"] == "RL"]["score"]
@@ -139,6 +142,9 @@ with tab_race:
                         "run-to-run noise of this project (gaps under about 5% were not significant).")
         else:
             st.info("We did not train an AI scheduler for this exact setting, so four classic rules race instead.")
+        n_scratch = int((entries["family"] == "RL").sum() - (entries["detail"].str.startswith(("learned by watching",))).sum())
+        if len(rl_scores) and n_scratch < 2:
+            st.caption(f"Only {n_scratch} AI scheduler(s) that learned without copying were trained for this setting, so fewer than three AI schedulers race.")
         with st.expander("What does this show, and what did we test?"):
             st.markdown(
                 "- Scores come from 50 test cases per setting (generated job sets). The best classic rule was picked on those same "

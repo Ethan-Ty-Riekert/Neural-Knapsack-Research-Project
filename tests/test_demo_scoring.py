@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-from scoring import race_entries, best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO, disambiguate  # noqa: E402
+from scoring import EXAMPLES, FACTORS, factor_weights, friendly_name, race_entries, best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO, disambiguate  # noqa: E402
 
 df = pd.DataFrame([
     dict(method="H1", family="Heuristic", objective_J=100.0, on_time_rate=0.9, makespan=50.0),
@@ -46,3 +46,21 @@ r = race_entries(score(race_df, {"objective_J": 1.0}, normalise=False))
 assert list(r["family"]).count("RL") == 1 and list(r["family"]).count("Heuristic") == 2
 assert abs(r["percent"].max() - 100.0) < 1e-9 and abs(r.set_index("method").loc["H0", "percent"] - 100 * 2.718281828 ** (-4 * 0.05 / 0.95)) < 1e-3
 print("race checks passed")
+
+# plain-language layer
+assert friendly_name("MDC+Consolidate", "Heuristic") == ("Modified due date (MDC)", "classic rule; packs jobs onto few machines")
+assert friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[0] == "AI scheduler (copied)"
+assert "weighted least slack" in friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[1]
+assert all(set(m) <= set(METRIC_INFO) for _, m in FACTORS.values()) and all(set(e) <= set(FACTORS) for e in EXAMPLES.values())
+assert factor_weights({"late": 2, "delay": 0}) == {"late_jobs": 2.0, "objective_J": 0.0}
+print("plain-language checks passed")
+
+# race mix: 1 copied + 2 distinct non-copying learned models, never 'copied + trained'
+mix = pd.DataFrame([dict(method=m, family="RL", objective_J=j) for m, j in (
+    ("PPO Opt2 windowed +EDF imitation warm start WLST expert", 100.0), ("PPO Opt2 windowed +EDF imitation warm start MDC expert", 101.0),
+    ("PPO Opt2 windowed +EDF imitation warm start 1M-step budget", 99.0), ("PPO Opt2 priority score 1M-step budget", 120.0),
+    ("PPO Opt3 priority score ATC-prior 1M-step budget", 130.0), ("PPO Opt1 rule selection 1M-step budget", 140.0))]
+    + [dict(method="EDF+Consolidate", family="Heuristic", objective_J=110.0), dict(method="LST+Consolidate", family="Heuristic", objective_J=115.0)])
+kinds = list(race_entries(score(mix, {"objective_J": 1.0}, normalise=False))["kind"])
+assert kinds.count("copied") == 1 and kinds.count("trial and error") == 2 and "copied + trained" not in kinds and kinds.count("rule") == 2, kinds
+print("race mix checks passed")

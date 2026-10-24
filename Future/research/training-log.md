@@ -32,6 +32,19 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-25 (S2W14) -- Non-copying models for the explorer race (coverage, announced before running)
+
+**Why:** the explorer race now shows 1 AI scheduler that copied a rule and 2 different non-copying (trial-and-error) models. The archive has no
+non-copying model at on_rho050, on_rho075_tight and off_tf08_w1 (and nothing learned at all at off_tf02 / off_tf02_w1), so the race could not show them.
+
+**Queued (Tier 2, 36 jobs, not a hypothesis test, no statistics will be run):** windowed PPO from scratch, 1M steps, Option 2 (priority score) and
+Option 3 (+ATC feature), seeds 60-62, at on_rho050, on_rho075_tight (Consolidate) and off_tf08_w1, off_tf02, off_tf02_w1 (FirstFit); plus WLST clones
+(seeds 80-82, 200 cloning episodes) at off_tf02 and off_tf02_w1. Recipe = the windowed from-scratch arm already used at on_rho095 (untuned PPO defaults).
+Expected ~28 min per run (on_rho095 timing). From-scratch runs varied widely between seeds at on_rho095 (fresh-set J 34k-59k vs 27k for the best rule),
+so these models are expected to be weaker than the rules; the demo labels them as AI schedulers that learned by trial and error.
+
+---
+
 ## 2026-10-22 (S2W14) -- Coverage grid for the explorer announced (clone-only models of several heuristics at every online load and four offline presets); archive labels now name the imitated expert
 
 **Why:** the archive's learned models are concentrated at on_rho095 and off_tf05 (62 and 65 groups); the other online loads have 1-5 groups (clones only). The explorer is

@@ -95,7 +95,9 @@ def reference_values(df_preset):
         if len(col):
             higher_better = METRIC_INFO[metric][2]
             ref = col.max() if higher_better else col.min()
-            refs[metric] = ref if ref else None  # a zero reference cannot normalise
+            # a zero reference (e.g. no rule has a late job at light load) cannot normalise: use the mean over rules instead,
+            # and 1.0 if every rule scores zero (the metric then adds the same 0 to every method)
+            refs[metric] = ref if ref else (float(col.abs().mean()) or 1.0)
     return refs
 
 
@@ -122,23 +124,39 @@ def best_by_family(scored):
 
 
 RACE_STEEPNESS = 4.0  # percent = 100 * exp(-RACE_STEEPNESS * relative gap to the best): 5% worse -> 82%, 25% -> 37%, 2x -> 2%
+AI_KINDS = ("copied", "copied + trained", "trial and error")  # how a learned scheduler got its skill
 
 
-def race_entries(scored, per_family=2):
-    """-> frame of the race field: the best `per_family` Heuristic and RL rows of the scored frame (already sorted, lower
-    score = better), each with 'percent' on a non-linear scale where 100 = the best score among ALL heuristic and RL rows
-    of the scenario (not only the racers). percent = 100 * exp(-RACE_STEEPNESS * gap), gap = (score - best) / |best|
-    (or (score - best) / (worst - best) when the best score is not positive). The exponential spreads out near-ties
-    so a race is visible; it is a display scale, not a statistical statement. RL rows with the same short label are not
-    raced twice (different models only)."""
+def ai_kind(method):
+    """Which kind of learned scheduler an archive label is: it copied a rule, copied then trained more, or learned by trial and error."""
+    label = short_label(method)
+    if "clone only" in label:
+        return AI_KINDS[0]
+    return AI_KINDS[1] if "clone + PPO" in label else AI_KINDS[2]
+
+
+AI_MIX = (("copied", 1), ("trial and error", 2))  # the race field: this many learned schedulers of each kind (best first)
+
+
+def race_entries(scored, per_family=2, ai_mix=AI_MIX):
+    """-> frame of the race field: the best `per_family` Heuristic rows plus, per (kind, count) in `ai_mix`, the best learned rows
+    of that kind with distinct labels (default: 1 that copied a rule + 2 different ones that did NOT copy; 'copied + trained'
+    models are never raced because they started as a copy). A kind with too few models yields fewer racers. Each row gets
+    'percent' on a non-linear scale where 100 = the best score among ALL heuristic and RL rows of the scenario (not only the
+    racers): percent = 100 * exp(-RACE_STEEPNESS * gap), gap = (score - best) / |best| (or (score - best) / (worst - best)
+    when the best score is not positive). The exponential spreads out near-ties so a race is visible; it is a display scale,
+    not a statistical statement."""
     pool = scored[scored["family"].isin([HEURISTIC, "RL"])].copy()
     if pool.empty:
-        return pool.assign(percent=[], model=[])
+        return pool.assign(percent=[], model=[], kind=[])
     pool["model"] = [short_label(m) for m in pool["method"]]
+    pool["kind"] = [ai_kind(m) if f == "RL" else "rule" for m, f in zip(pool["method"], pool["family"])]
     best, worst = pool["score"].min(), pool["score"].max()
     scale = abs(best) if best > 0 else ((worst - best) or 1.0)
     pool["percent"] = 100.0 * np.exp(-RACE_STEEPNESS * (pool["score"] - best) / scale)
-    picks = [grp.drop_duplicates("model").head(per_family) for _, grp in pool.groupby("family")]
+    picks = [pool[pool["family"] == HEURISTIC].drop_duplicates("model").head(per_family)]
+    for kind, count in ai_mix:
+        picks.append(pool[(pool["family"] == "RL") & (pool["kind"] == kind)].drop_duplicates("model").head(count))
     return pd.concat(picks).sort_values("score").reset_index(drop=True)
 
 
@@ -153,7 +171,7 @@ PLACEMENT_NAMES = {"FirstFitConsolidate": "packs jobs onto few machines", "Conso
 
 # What a visitor can care about -> the recorded metrics that measure it (weights are relative; see score()).
 FACTORS = {  # key: (question shown, {metric: weight})
-    "late": ("Avoid late jobs (how many miss their deadline)", {"weighted_late_jobs": 1.0}),
+    "late": ("Avoid late jobs (how many miss their deadline)", {"late_jobs": 1.0}),
     "delay": ("Avoid long delays (a very late job hurts extra)", {"objective_J": 1.0}),
     "wait": ("Short waiting before a job starts", {"mean_wait": 1.0}),
     "flow": ("Finish each job quickly after it arrives", {"mean_flow_time": 1.0}),
@@ -191,4 +209,5 @@ def friendly_name(method, family):
         return "AI scheduler (copied, then trained more)", f"started from: {RULE_NAMES[expert].lower()}"
     if "clone only" in label:
         return "AI scheduler (copied)", "learned by watching a classic rule"
-    return "AI scheduler (learned by trial and error)", "reinforcement learning"
+    detail = "reinforcement learning" + (", with an urgency hint (ATC)" if "ATC prior" in label else "")
+    return "AI scheduler (learned by trial and error)", detail + (", looks at the 20 most urgent jobs" if "window 20" in label else "")

@@ -147,3 +147,11 @@ taught by copying a rule. On 50 fresh test cases no learned scheduler was signif
 performed close to it, extra training did not help, and learning from scratch varied widely between runs. The results are exploratory (few
 training runs per setting). We built an interactive tool where a visitor picks the load, deadlines and what matters to them, and sees the best
 rules race the best learned models. Skills developed: reinforcement learning, careful experiment design, and honest reporting of negative results.
+
+**Revision 2026-10-25 (plain-language app):** the user found the race UI too sparse and technical. The app now asks: how do jobs reach you,
+how busy are the machines, tight deadlines (normal busyness only), offline deadline tightness, equal vs unequal job importance (offline), and
+five importance sliders (late jobs, long delays, waiting, finishing quickly, energy) with four examples. Racers get plain names ("Modified due
+date (MDC)", "AI scheduler (copied)"); an expander states what was and was not tested (machines count, job sizes and hard waiting/lateness
+limits were NOT tested; late jobs are scored, never refused). Settings without a trained AI scheduler (offline relaxed) race four rules.
+
+**Revision 2026-10-25 (AI kinds, corrected):** the race shows 2 classic rules + 1 AI scheduler that copied a rule + 2 different AI schedulers that did NOT copy (trial and error); "copied then trained" is not raced. Missing non-copying models at on_rho050, on_rho075_tight, off_tf08_w1, off_tf02(_w1) are being trained (log 2026-10-25). `race_entries(ai_mix=AI_MIX)` in `app/scoring.py`.

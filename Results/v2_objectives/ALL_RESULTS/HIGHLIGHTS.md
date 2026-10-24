@@ -76,7 +76,7 @@ Click a preset for its top-5 / top-10 leaderboards. Value in brackets = mean ove
 | off_tf02 | [table](tables/off_tf02.md) | [figure](figures/J_by_method_off_tf02.png) | [top 5 / 10](leaderboards/off_tf02.md) | - |
 | off_tf05 | [table](tables/off_tf05.md) | [figure](figures/J_by_method_off_tf05.png) | [top 5 / 10](leaderboards/off_tf05.md) | [figure](figures/training_curves_off_tf05.png) |
 | off_tf08 | [table](tables/off_tf08.md) | [figure](figures/J_by_method_off_tf08.png) | [top 5 / 10](leaderboards/off_tf08.md) | [figure](figures/training_curves_off_tf08.png) |
-| on_rho050 | [table](tables/on_rho050.md) | [figure](figures/J_by_method_on_rho050.png) | [top 5 / 10](leaderboards/on_rho050.md) | - |
+| on_rho050 | [table](tables/on_rho050.md) | [figure](figures/J_by_method_on_rho050.png) | [top 5 / 10](leaderboards/on_rho050.md) | [figure](figures/training_curves_on_rho050.png) |
 | on_rho075 | [table](tables/on_rho075.md) | [figure](figures/J_by_method_on_rho075.png) | [top 5 / 10](leaderboards/on_rho075.md) | [figure](figures/training_curves_on_rho075.png) |
 | on_rho075_tight | [table](tables/on_rho075_tight.md) | [figure](figures/J_by_method_on_rho075_tight.png) | [top 5 / 10](leaderboards/on_rho075_tight.md) | [figure](figures/training_curves_on_rho075_tight.png) |
 | on_rho095 | [table](tables/on_rho095.md) | [figure](figures/J_by_method_on_rho095.png) | [top 5 / 10](leaderboards/on_rho095.md) | [figure](figures/training_curves_on_rho095.png) |
