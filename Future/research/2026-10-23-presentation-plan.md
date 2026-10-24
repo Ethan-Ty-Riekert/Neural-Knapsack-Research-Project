@@ -110,3 +110,40 @@ User chose skeletons **A + B** (explorer is the landing tab, the four slides are
 pitch) and **3d** (demo walkthrough). Implemented in `app/app.py`: tab order Explore then Slides, a headline "Pick what matters to you - see
 which scheduler wins", and three one-click "Try this" buttons matching 3d (lateness at load 0.95, energy at 0.95, lateness under overload
 1.10). Checked with Streamlit's AppTest (buttons switch scenario and weights without error). Still open: items 2-4 of section 7.
+
+**Revision 2026-10-25 (user sketch):** the "Try this" buttons were replaced by a simpler race UI: (1) choose the environment (online
+load light/moderate/heavy/overload, tight deadlines at moderate load, or offline deadline factor), (2) choose what matters (default examples
+Energy / Tardiness / Tardiness + late jobs + energy, or own weights in an expander), (3) press **Start the race**: the top 2 rules and top 2
+learned models (different models) fill horizontal bars to their percentage on an absolute scale (100% = best score of the scenario among all
+rules and learned models; percent = best/score, min-max when scores are not all positive). Winner line, a noise note when the best
+learned model is within 5% of the best rule, full ranking in an expander. Logic: `race_entries` in `app/scoring.py` (tested). Demo script 3d
+now reads: pick Tardiness at Heavy -> Start; press Energy -> Start; switch to Overload -> Start.
+
+**Scale (2026-10-25):** bars are non-linear: percent = 100*exp(-4*relative gap to the best), so 5% worse = ~82%, 25% worse = ~37%, 2x worse = ~2%; a display scale chosen so near-ties are visible, not a statistical statement (`RACE_STEEPNESS` in `scoring.py`).
+
+## 9. Assessment fit (Industry Showcase, 5 criteria x 20%; added 2026-10-25)
+
+The unit brief: a digital poster (a few PowerPoint slides, interactive welcome), a brief synopsis, attendance at the showcase (marks are given
+only there), audience = academic staff, industry representatives and peers from other science disciplines; reference to professional and
+technical skill development across the year; relevance to other fields. Deck revised accordingly (6 slides, plain language, jargon only in footers).
+
+| Criterion (20% each) | How the deck / stall covers it | Still yours to do |
+|---|---|---|
+| Layout and visual appeal | Consistent navy/blue theme, cards, one chart per slide, big stat callouts, little text; interactive race tab | Check fonts on the laptop; keep slide text short |
+| Synopsis and results | Slide 3 (what we did), slide 4 (result with plain-language chart), synopsis below, limits stated | Rehearse reading the chart in 15 s |
+| Oral overview | Script 3b (two minutes) with the plain-language opener; pace, eye contact, ask the visitor a question ("what would you weight?") | Practice aloud; respond to comments rather than reciting |
+| Personal and professional value | Slide 6 "Skills developed" | **Add your own career aspiration** (placeholder on slide 6 and in the line below) and one personal example (e.g. a mistake you corrected) |
+| Diverse audience | Slide 2 (other fields, by analogy; only the cloud case was tested), jargon-free slides, two talk tracks below | Prepare one-sentence answers for non-technical and expert questions |
+
+**Two talk tracks.** Non-technical (manager/investor): "Work arrives with deadlines; something must decide what runs first. Simple rules do
+this well. We asked whether a self-taught AI scheduler could do better, and found it learned to match good rules but did not beat the best one;
+here is a tool to see which wins for your priorities." Technical: add PPO vs behaviour cloning, fresh vs old test sets, paired intervals over
+instances, 10 seeds, the unexplained from-scratch gap.
+
+**Synopsis (assessment part b; ~150 words, edit freely).** Many real systems must decide which job runs next and on which machine, from cloud
+data centres to hospitals and logistics. We studied this scheduling problem for cloud computing, where lateness and energy use trade off. We
+compared classic rules (e.g. earliest-deadline-first) with neural-network schedulers trained by reinforcement learning, including ones first
+taught by copying a rule. On 50 fresh test cases no learned scheduler was significantly better than the best classic rule; copies of a rule
+performed close to it, extra training did not help, and learning from scratch varied widely between runs. The results are exploratory (few
+training runs per setting). We built an interactive tool where a visitor picks the load, deadlines and what matters to them, and sees the best
+rules race the best learned models. Skills developed: reinforcement learning, careful experiment design, and honest reporting of negative results.

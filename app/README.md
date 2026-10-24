@@ -34,4 +34,6 @@ bar chart, scenario overview, caveats) from `Results/v2_objectives/fresh/*.csv`;
 Status (2026-10-20): working skeleton with short method labels (`scoring.short_label`) and one-click objectives (`scoring.QUICK_OBJECTIVES`). Trade-off scatter (any two metrics) added. Planned:
 frozen data bundle for the laptop.
 
-The app opens on the **Explore models** tab (landing view) with three "Try this" buttons that jump to a scenario and objective; the **Slides** tab is second. The buttons are defined in `TRY_THIS` in `app.py`.
+The app opens on **Race the models**: choose the environment and the metric weights (or a default example), press Start, and the top 2 rules and top 2 learned models race on a 0-100% bar (100% = best score of the scenario). The **Slides** tab is second. Race logic: `race_entries` in `scoring.py`.
+
+Editable slide deck: `python tools/analysis/make_pptx.py` writes `app/slides/deck.pptx` (needs python-pptx; PDF export: open in PowerPoint). Chart PNGs come from `tools/analysis/make_slides.py`.

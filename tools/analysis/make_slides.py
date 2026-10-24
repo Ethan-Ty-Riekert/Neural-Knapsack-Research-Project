@@ -116,8 +116,36 @@ def slide_scenarios(path):
     plt.close(fig)
 
 
+def slide_simple(path):
+    """Plain-language result chart for the deck (no rule names): best rule vs learned copies vs learned from scratch."""
+    heur, models = load("on_rho095")
+    best_name = min(heur, key=heur.get)
+    groups = [("Best classic rule", [heur[best_name]], HEUR),
+              ("Learned: copies a rule", models["windowed clone only (EDFL)"], LEARN),
+              ("Learned: copy + extra training", models["windowed clone+PPO (A3w)"], LEARN),
+              ("Learned: from scratch", models["windowed scratch"], SCRATCH)]
+    fig, ax = plt.subplots(figsize=(8.0, 4.7), dpi=200)
+    for i, (label, vals, colour) in enumerate(groups):
+        ax.barh(i, float(np.mean(vals)), color=colour, alpha=0.75 if len(vals) > 1 else 0.95, height=0.6)
+        if len(vals) > 1:
+            ax.scatter(vals, [i] * len(vals), s=26, color=INK, zorder=3)
+        ax.text(float(np.mean(vals)) + 600 if len(vals) == 1 else max(vals) + 800, i, f"{np.mean(vals):,.0f}", va="center", fontsize=12, color=INK)
+    ax.set_yticks(range(len(groups)))
+    ax.set_yticklabels([g[0] for g in groups], fontsize=13)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 66000)
+    ax.set_xlabel("Lateness cost on 50 fresh test cases (lower is better); dots = training runs", fontsize=11)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "deck_assets").mkdir(exist_ok=True)
+    slide_simple(OUT / "deck_assets" / "result_simple.png")
     text_slide(OUT / "01_headline.png", "Can reinforcement learning beat the best online scheduling heuristic?",
                ["On 50 fresh instances, no learned policy was significantly better than the best heuristic we scored "
                 "(MDC+Consolidate at load 0.95).",

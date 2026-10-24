@@ -12,6 +12,7 @@ importance relative to what a good heuristic achieves.
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ARCHIVE = Path(__file__).resolve().parents[1] / "Results" / "v2_objectives" / "ALL_RESULTS"
@@ -118,3 +119,76 @@ def score(df_preset, weights, normalise=True):
 def best_by_family(scored):
     """-> {family: best row} for the scored frame (already sorted)."""
     return {fam: grp.iloc[0] for fam, grp in scored.groupby("family")}
+
+
+RACE_STEEPNESS = 4.0  # percent = 100 * exp(-RACE_STEEPNESS * relative gap to the best): 5% worse -> 82%, 25% -> 37%, 2x -> 2%
+
+
+def race_entries(scored, per_family=2):
+    """-> frame of the race field: the best `per_family` Heuristic and RL rows of the scored frame (already sorted, lower
+    score = better), each with 'percent' on a non-linear scale where 100 = the best score among ALL heuristic and RL rows
+    of the scenario (not only the racers). percent = 100 * exp(-RACE_STEEPNESS * gap), gap = (score - best) / |best|
+    (or (score - best) / (worst - best) when the best score is not positive). The exponential spreads out near-ties
+    so a race is visible; it is a display scale, not a statistical statement. RL rows with the same short label are not
+    raced twice (different models only)."""
+    pool = scored[scored["family"].isin([HEURISTIC, "RL"])].copy()
+    if pool.empty:
+        return pool.assign(percent=[], model=[])
+    pool["model"] = [short_label(m) for m in pool["method"]]
+    best, worst = pool["score"].min(), pool["score"].max()
+    scale = abs(best) if best > 0 else ((worst - best) or 1.0)
+    pool["percent"] = 100.0 * np.exp(-RACE_STEEPNESS * (pool["score"] - best) / scale)
+    picks = [grp.drop_duplicates("model").head(per_family) for _, grp in pool.groupby("family")]
+    return pd.concat(picks).sort_values("score").reset_index(drop=True)
+
+
+# ---- plain-language layer for the race demo (visitors do not know the rule names or metrics) -------------------------
+RULE_NAMES = {"EDFL": "Earliest deadline first (longest first on ties)", "EDF": "Earliest deadline first",
+              "WLST": "Weighted least slack", "LST": "Least slack first", "WSPT": "Weighted shortest job first",
+              "SPT": "Shortest job first", "LPT": "Longest job first", "WMDD": "Weighted modified due date",
+              "MDC": "Modified due date (MDC)", "COVERT": "COVERT (urgency versus cost)",
+              "ATC": "Apparent tardiness cost (ATC)", "RandomRule": "Random order"}
+PLACEMENT_NAMES = {"FirstFitConsolidate": "packs jobs onto few machines", "Consolidate": "packs jobs onto few machines",
+                   "BestFit": "tightest-fitting machine", "FirstFit": "first machine that fits"}
+
+# What a visitor can care about -> the recorded metrics that measure it (weights are relative; see score()).
+FACTORS = {  # key: (question shown, {metric: weight})
+    "late": ("Avoid late jobs (how many miss their deadline)", {"weighted_late_jobs": 1.0}),
+    "delay": ("Avoid long delays (a very late job hurts extra)", {"objective_J": 1.0}),
+    "wait": ("Short waiting before a job starts", {"mean_wait": 1.0}),
+    "flow": ("Finish each job quickly after it arrives", {"mean_flow_time": 1.0}),
+    "energy": ("Save energy (fewer machines switched on)", {"active_machine_ticks": 1.0}),
+}
+EXAMPLES = {  # one-click examples: label -> {factor key: importance 0-5}
+    "Never be late": {"late": 5},
+    "Customers hate waiting": {"wait": 5, "flow": 3},
+    "Keep the energy bill low": {"energy": 5},
+    "A bit of everything": {"late": 2, "delay": 2, "wait": 2, "energy": 2},
+}
+
+
+def factor_weights(importance):
+    """{factor key: importance} -> {metric: weight} for score()."""
+    out = {}
+    for key, level in importance.items():
+        for metric, w in FACTORS[key][1].items():
+            out[metric] = out.get(metric, 0.0) + level * w
+    return out
+
+
+def friendly_name(method, family):
+    """-> (title, detail) in plain language for a method label from the archive."""
+    if family == HEURISTIC:
+        rule, _, placement = method.partition("+")
+        rule = RULE_NAMES.get(rule, rule)
+        detail = PLACEMENT_NAMES.get(placement)
+        return rule, (f"classic rule; {detail}" if detail else "classic rule")
+    label = short_label(method)
+    expert = next((r for r in RULE_NAMES if f"{r} expert" in label), None)  # dict order: WLST before LST, EDFL before EDF
+    if "clone only" in label and expert:
+        return "AI scheduler (copied)", f"learned by watching: {RULE_NAMES[expert].lower()}"
+    if "clone + PPO" in label and expert:
+        return "AI scheduler (copied, then trained more)", f"started from: {RULE_NAMES[expert].lower()}"
+    if "clone only" in label:
+        return "AI scheduler (copied)", "learned by watching a classic rule"
+    return "AI scheduler (learned by trial and error)", "reinforcement learning"

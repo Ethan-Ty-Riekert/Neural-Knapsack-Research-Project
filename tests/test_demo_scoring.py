@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-from scoring import best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO, disambiguate  # noqa: E402
+from scoring import race_entries, best_by_family, score, short_label, QUICK_OBJECTIVES, METRIC_INFO, disambiguate  # noqa: E402
 
 df = pd.DataFrame([
     dict(method="H1", family="Heuristic", objective_J=100.0, on_time_rate=0.9, makespan=50.0),
@@ -35,3 +35,14 @@ assert short_label("PPO Opt2 priority score +Consolidate windowed +EDF imitation
 assert short_label("PPO Opt2 priority score +Consolidate windowed window 40 1M-step budget") == "PPO Opt2 | window 40, Consolidate, 1M steps"
 assert disambiguate(["a", "b", "a"]) == ["a #1", "b", "a #2"]
 print("test_demo_scoring: all checks passed")
+
+# race field: top-2 per family, percent on an absolute scale (best of all = 100)
+race_df = pd.DataFrame([dict(method=f"H{i}", family="Heuristic", objective_J=100.0 + 10 * i) for i in range(4)]
+                       + [dict(method=f"PPO Opt2 windowed +EDF imitation warm start {x}", family="RL", objective_J=j)
+                          for x, j in (("a", 95.0), ("b", 120.0))])
+race_df.loc[4, "method"] = "PPO Opt2 windowed +EDF imitation warm start"
+race_df.loc[5, "method"] = "PPO Opt2 windowed +EDF imitation warm start"  # same short label -> raced once
+r = race_entries(score(race_df, {"objective_J": 1.0}, normalise=False))
+assert list(r["family"]).count("RL") == 1 and list(r["family"]).count("Heuristic") == 2
+assert abs(r["percent"].max() - 100.0) < 1e-9 and abs(r.set_index("method").loc["H0", "percent"] - 100 * 2.718281828 ** (-4 * 0.05 / 0.95)) < 1e-3
+print("race checks passed")
