@@ -14,5 +14,6 @@
 | 10 | MDC+BestFit | Heuristic | 0 +/- 0 | 1.000 +/- 0.000 | 0.0 +/- 0.0 | - | 0 +/- 0 | 0.0 +/- 0.0 | 0.0 +/- 0.0 | 49.50 +/- 0.00 | 54.54 +/- 0.27 | 102.3 +/- 1.4 | 0.629 +/- 0.021 | 172 +/- 10 | 146 +/- 9 | 1 | 50 |
 | 11 | MDC+WorstFit | Heuristic | 0 +/- 0 | 1.000 +/- 0.000 | 0.0 +/- 0.0 | - | 0 +/- 0 | 0.0 +/- 0.0 | 0.0 +/- 0.0 | 49.50 +/- 0.00 | 54.54 +/- 0.27 | 102.3 +/- 1.4 | 0.255 +/- 0.005 | 504 +/- 27 | 372 +/- 20 | 1 | 50 |
 | 12 | MDC+Consolidate | Heuristic | 0 +/- 0 | 1.000 +/- 0.000 | 0.0 +/- 0.0 | - | 0 +/- 0 | 0.0 +/- 0.0 | 0.0 +/- 0.0 | 49.50 +/- 0.00 | 54.54 +/- 0.27 | 102.3 +/- 1.4 | 0.650 +/- 0.021 | 166 +/- 9 | 142 +/- 8 | 1 | 50 |
+| 13 | PPO Opt2 priority score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0 +/- 0 | 1.000 +/- 0.000 | 0.0 +/- 0.0 | 0.0 +/- 0.0 | 0 +/- 0 | 0.0 +/- 0.0 | 0.0 +/- 0.0 | 49.50 +/- 0.01 | 54.54 +/- 0.01 | 103.0 +/- 0.6 | 0.629 +/- 0.006 | 173 +/- 2 | 147 +/- 1 | 3 | 50 |
 
 Spread (+/-): std across seeds for multi-seed RL rows, otherwise std across instances (instance heterogeneity; the figures use the standard error instead).
