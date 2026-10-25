@@ -32,6 +32,30 @@ previous entry, or "unchanged" if nothing did)
 
 ---
 
+## 2026-10-25 (S2W14) -- Multi-objective training at the settings with no composite model: announced before running (user-approved)
+
+**Why:** composite-objective models exist only at off_tf05 (31 groups), off_tf05_w1 (2), off_tf08 (4) and on_rho095 (10). The explorer and the
+multi-objective question have nothing at on_rho050, on_rho075, on_rho075_tight, on_rho110 and off_tf08_w1. Plan:
+`Future/research/2026-10-25-multiobjective-gap-plan.md` (user chose the full grid).
+
+**Deviation from the plan, found while preparing:** off_tf02 and off_tf02_w1 are EXCLUDED. The best heuristic already reaches J = 0 there (EDF+FirstFit,
+WLST+FirstFit), so the reference weights (lambda = J / term on the best heuristic's schedule) are 0 and no learned model can improve on J = 0
+(the same reason the 2026-10-09 generalisation study excluded off_tf02). Five settings remain, so the grid is 5 x 18 = **90 runs**, not 126.
+
+**Protocol (uniform across the five settings):** windowed Option 2 (window 20), PPO from scratch, 1,000,000 steps, Consolidate online / FirstFit offline,
+the recipe of the existing windowed from-scratch arm, with the composite reward `--objectives tardiness_sq,<terms>` and `--lambda-tardiness / --lambda-late /
+--lambda-energy` = reference weights x multiplier. Objectives: J + late jobs (tag letter q), J + energy (g), J + all three terms (kqg). Multipliers 1 and 4
+(`_lam1`, `_lam4`). Seeds 0-2. Reference weights per setting from the best-J heuristic's mean metrics on the 50 test instances; the weighted late-job count
+was not recorded for the heuristics at on_rho050, on_rho075_tight and off_tf08_w1, so `heurMO_<preset>` re-scores them with all metrics first (run.py
+--method heuristics, as on 2026-10-09). Exact weights are logged below once computed and added to `REFERENCE_LAMBDAS`.
+**Controls (no new compute):** J-only windowed models (seeds 60-62 from the entry below, plus the J-only clones) scored on each composite from their stored
+metrics; all heuristics scored on the same composite. **Evaluation:** OLD 50 instances for every arm, FRESH 50 for the leaders; paired per-instance bootstrap vs
+the best heuristic and vs the J-only control on the composite; "beats" = interval entirely below zero with 5 seeds per arm, 3-seed verdicts indicative; all arms
+reported, exploratory. Cut-off: runs unfinished at 2026-10-26 15:00 are listed as not run.
+**Expectation, stated in advance:** from-scratch windowed models were weaker and more variable than the best rules at on_rho095, so most arms may lose.
+
+---
+
 ## 2026-10-25 (S2W14) -- Non-copying models for the explorer race (coverage, announced before running)
 
 **Why:** the explorer race now shows 1 AI scheduler that copied a rule and 2 different non-copying (trial-and-error) models. The archive has no

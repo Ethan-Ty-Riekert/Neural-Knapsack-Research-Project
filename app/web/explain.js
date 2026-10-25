@@ -139,7 +139,7 @@
       what = w;
       math = (scorer ? (meta.opt === 3 || meta.atc ? F.policy_atc : F.policy) : meta.opt === 1 ? F.opt1 : meta.opt === 0 ? F.opt0 : md(TP["racer.ai.math.other"])) + (copies ? F.copy : F.ppo);
       deeper = md(copies ? TP["racer.ai.deeper.copy"] : TP["racer.ai.deeper.scratch"]) + F.reward +
-        md(fill(TP["racer.ai.deeper.tail"], { algonote: TP["racer.ai.algonote." + (meta.algo === "A2C" ? "A2C" : "PPO")] }));
+        md(fill(TP["racer.ai.deeper.tail"], { algonote: TP["racer.ai.algonote." + (meta.algo === "A2C" ? "A2C" : "PPO")] }) + (scorer ? "\n\n" + TP["racer.ai.deeper.scorer"] : ""));
       kicker = TP["racer.kicker.ai"]; title = fill(TP["racer.title.ai"], { title: r.title, detail: r.detail });
     }
     const table = md(fill(TP["racer.results"], { inst: meta.i || 50, runs })) + `<table class="mini"><tr>${head}</tr>${rows}</table>`;

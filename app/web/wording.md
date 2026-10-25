@@ -236,8 +236,9 @@ racer.ai.obj.multi: Training objective: the squared-lateness cost J plus {terms}
 racer.ai.obj.copy: Its objective only trains its value estimate and any fine-tuning; the choices themselves are copied from the rule.
 racer.ai.math.other: See Code/methods/rl/action_spaces in the project for this option's action space.
 racer.ai.deeper.copy: Copying: expert labels come from the copied rule on the states the network itself visits (DAgger; Ross, Gordon & Bagnell 2011), then the value head is warmed up with the policy frozen.
-racer.ai.deeper.scratch: Training objective: the shaped reward below, which keeps the optimal policy of minimising J (Ng, Harada & Russell 1999).
-racer.ai.deeper.tail: Here *c* is the number of jobs in the instance, γ the discount, and Φ the lateness potential. {algonote} Each AI result is the mean over its training runs; one training run per seed is evaluated once on every test instance. The policy scores each job from its own features only (shared weights), so it cannot compare two jobs directly; the context only affects the idle option and the critic.
+racer.ai.deeper.scratch: Training objective: the shaped reward below, which keeps the optimal policy of the objective the model was trained on (Ng, Harada & Russell 1999).
+racer.ai.deeper.tail: Here *c* is the number of jobs in the instance, γ the discount, and Φ the lateness potential. {algonote} Each AI result is the mean over its training runs; one training run per seed is evaluated once on every test instance.
+racer.ai.deeper.scorer: Options 2 and 3 score each job from its own features only (shared weights), so the network cannot compare two jobs directly; the surrounding context only affects the idle option and the critic.
 racer.ai.algonote.A2C: A2C (Mnih et al. 2016) replaces PPO's clipped objective with a plain advantage actor-critic update.
 racer.ai.algonote.PPO: PPO: Schulman et al. 2017.
 factor.insore: This row sets λ for the metric `{metric}`: Ignore 0, Some 2, A lot 5. Its contribution to a method's score is λ × (method's value ÷ best rule's value).
@@ -388,7 +389,7 @@ Counts how late jobs are, with big delays hurting much more than small ones (squ
 
 {{J}}
 
-This is the cost every learned model was trained to minimise.
+This is the cost that most of the learned models were trained to minimise. Models labelled '+tardiness obj', '+late-job obj' or '+energy obj' were trained on this cost plus the extra terms.
 
 ### f_late
 kicker: What matters to you
@@ -400,7 +401,7 @@ How many jobs finish after their deadline, however late.
 --- Formulation (open)
 {{late}}
 
-A job counts as late if T_{j} > 0. Late jobs are never refused: they are counted.
+A job counts as late if T_{j} > 0. Late jobs are never refused: they are counted. This row counts every late job once; the late-job term used when training some models is weighted, each late job counting w_{j} times.
 
 ### f_wait
 kicker: What matters to you
@@ -481,7 +482,7 @@ kicker: Racers
 title: AI scheduler with its own model (orange)
 related: kind_copied, kind_rule
 --- In plain words (open)
-A neural network trained by reinforcement learning alone, from random weights, with no rule to copy. It improves its choices from the cost it receives. Results varied widely between training runs.
+A neural network trained by reinforcement learning alone, from random weights, with no rule to copy. It improves its choices from the reward it receives, which is built from its training objective. Results varied widely between training runs.
 --- Formulation (open)
 {{ppo}}
 
