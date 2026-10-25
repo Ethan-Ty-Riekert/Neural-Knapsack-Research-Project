@@ -12,7 +12,7 @@
 .left { display: flex; flex-direction: column; gap: .8rem; min-height: 0; }
 .left .panel:last-child { flex: 1; }
 .chips { display: flex; gap: .4rem; flex-wrap: wrap; }
-.panel .row { grid-template-columns: 9.6rem 1fr; }
+.panel .row { grid-template-columns: 11.6rem 1fr; }
 .right { justify-content: space-between; }
 .race-head { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
 #lanes { position: relative; flex: 1; min-height: 13rem; --n: 5; }
@@ -47,15 +47,15 @@
 @media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .cols { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; gap: .25rem; } }
 </style>
 <div class="app">
-  <div class="top"><h1>Scheduler Race</h1>
-    <div class="legend"><span class="explainable" data-explain="kind_rule"><i style="background:var(--rulebar)"></i>Classic rule</span><span class="explainable" data-explain="kind_copied"><i style="background:var(--copied)"></i>AI scheduler that copies a rule</span><span class="explainable" data-explain="kind_own"><i style="background:var(--scratch)"></i>AI scheduler with its own model</span><span class="tip">Click any label, bar or legend item for the maths</span></div></div>
+  <div class="top"><h1 data-ui="heading"></h1>
+    <div class="legend"><span class="explainable" data-explain="kind_rule"><i style="background:var(--rulebar)"></i><span data-ui="legend.rule"></span></span><span class="explainable" data-explain="kind_copied"><i style="background:var(--copied)"></i><span data-ui="legend.copied"></span></span><span class="explainable" data-explain="kind_own"><i style="background:var(--scratch)"></i><span data-ui="legend.own"></span></span></div></div>
   <div class="cols">
     <div class="left">
-      <section class="panel"><div class="eyebrow explainable" data-explain="setup">The situation <span class="info">ⓘ</span></div><div id="situation" style="display:flex;flex-direction:column;gap:.5rem"></div></section>
-      <section class="panel"><div class="eyebrow explainable" data-explain="objective">2 · What matters to you <span class="info">ⓘ</span></div><div id="examples" class="chips"></div><div id="factors" style="display:flex;flex-direction:column;gap:.45rem"></div></section>
+      <section class="panel"><div class="eyebrow explainable" data-explain="setup" data-ui="step1"></div><div id="situation" style="display:flex;flex-direction:column;gap:.5rem"></div></section>
+      <section class="panel"><div class="eyebrow explainable" data-explain="objective" data-ui="step2"></div><div id="examples" class="chips"></div><div id="factors" style="display:flex;flex-direction:column;gap:.45rem"></div></section>
     </div>
     <section class="panel right">
-      <div class="race-head"><div class="eyebrow explainable" data-explain="bar">3 · The race (100% = best result found) <span class="info">ⓘ</span></div><button id="go" class="go" type="button">Start the race</button></div>
+      <div class="race-head"><div class="eyebrow explainable" data-explain="bar" data-ui="step3"></div><button id="go" class="go" type="button" data-ui="start"></button></div>
       <div id="lanes"></div>
       <div id="verdict" class="verdict" aria-live="polite"></div>
     </section>

@@ -46,11 +46,12 @@
     racers.sort((a, b) => a.score - b.score);
     let note = null;
     const aiBest = scored.find(r => r.family === "R"), ruleBest = scored.find(r => r.family === "H");
-    if (!hasAI) note = "We did not train an AI scheduler for this exact setting, so four classic rules race instead.";
+    const N = D.text.notes;  // wording: app/web/wording.md, section NOTES
+    if (!hasAI) note = N.noai;
     else if (aiBest) {
       const gap = (aiBest.score - ruleBest.score) / Math.abs(ruleBest.score || 1);
-      if (gap >= 0) note = "No AI scheduler beat the best classic rule here. That is the usual result in this project: the AI schedulers mostly learned to copy a good rule and finish close to it.";
-      else if (gap > -NOISE) note = "The best AI scheduler is only " + (-gap * 100).toFixed(1) + "% ahead of the best classic rule, which is within the run-to-run noise of this project (gaps under about 5% were not significant).";
+      if (gap >= 0) note = N.noimprove;
+      else if (gap > -NOISE) note = N.noise.replace("{pct}", (-gap * 100).toFixed(1));
     }
     const ctx = { preset, weights: w, refs, best, worst, scale, steepness: STEEPNESS, noise: NOISE, metrics: D.metrics, importance };  // what the explanation cards need to redo the sums
     return { racers, note, ctx, winner: racers.slice().sort((a, b) => b.percent - a.percent)[0] };

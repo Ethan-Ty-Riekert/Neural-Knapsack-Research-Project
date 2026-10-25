@@ -1,54 +1,61 @@
-/* race_ui.js - shared interaction for the browser demo variants: controls, state, race rendering and animation.
-   A variant supplies the containers and CSS; RaceUI.init(cfg) wires everything. Uses RaceCore (race_core.js). */
+/* race_ui.js - interaction for the browser demo: controls, state, race rendering and animation.
+   A page template supplies the containers and CSS; RaceUI.init(cfg) wires everything. Uses RaceCore (race_core.js) and Explain
+   (explain.js). Every visible sentence comes from app/web/wording.md (RACE_DATA.text). */
 (function () {
-  const C = window.RaceCore, D = C.data;
+  const C = window.RaceCore, D = C.data, TX = D.text, UI = TX.ui, LB = TX.labels;
+  const exampleNames = Object.keys(D.examples);
   const state = { arrival: "online", busy: "Busy", tight: false, deadlines: "Medium", equal: false,
-                  imp: Object.assign({ late: 0, delay: 0, wait: 0, flow: 0, energy: 0 }, D.examples["Never be late"]) };
+                  imp: Object.assign({ late: 0, delay: 0, wait: 0, flow: 0, energy: 0 }, D.examples[exampleNames[0]]) };
   let cfg, running = 0;
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  const levelName = v => (v === 0 ? "Ignore" : v <= 2 ? "Some" : "A lot");
+  const fill = (tpl, v) => tpl.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+  const levelKey = v => (v === 0 ? 0 : v <= 2 ? 2 : 5);
   // second line of a racer: "[what it does] | [model]" (first and last part of the exported detail; capitalised)
   const shortDetail = d => { const p = d.split(" | "); const s = p.length > 2 ? p[0] + " | " + p[p.length - 1] : d; return s.charAt(0).toUpperCase() + s.slice(1); };
 
+  // options: [[code key, label shown], ...]; value: the selected code key
   function seg(options, value, onPick, disabled) {
     const box = el("div", "seg"); box.setAttribute("role", "radiogroup");
-    options.forEach(o => {
-      const b = el("button", null, o); b.type = "button"; b.setAttribute("role", "radio");
-      b.setAttribute("aria-checked", String(o === value)); if (disabled && disabled.includes(o)) b.disabled = true;
-      b.onclick = () => onPick(o); box.appendChild(b);
+    options.forEach(([k, label]) => {
+      const b = el("button", null, label); b.type = "button"; b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(k === value)); if (disabled && disabled.includes(k)) b.disabled = true;
+      b.onclick = () => onPick(k); box.appendChild(b);
     });
     return box;
   }
+  const opts = (prefix, keys) => keys.map(k => [k, LB[prefix + k]]);
   function row(label, hint, control, topic) {  // topic: id of the explanation card opened by clicking the label
     const r = el("div", "row"), q = el("div", "q", label);
+    if (topic) { q.dataset.explain = topic; q.classList.add("explainable"); q.title = UI.row_tooltip; }
     if (hint) q.appendChild(el("span", "hint", hint));
-    if (topic) { q.dataset.explain = topic; q.classList.add("explainable"); q.title = "Click for the maths"; q.appendChild(el("span", "info", " ⓘ")); }
     r.append(q, control); return r;
   }
 
   function renderControls() {
     const sit = cfg.situation; sit.textContent = "";
-    sit.appendChild(row("Jobs arrive", null, seg(["Over time", "Known in advance"], state.arrival === "online" ? "Over time" : "Known in advance",
-      o => { state.arrival = o === "Over time" ? "online" : "offline"; changed(); }), "arrival"));
+    sit.appendChild(row(UI["row.arrival"], null, seg(opts("arrival.", ["online", "offline"]), state.arrival,
+      k => { state.arrival = k; changed(); }), "arrival"));
     if (state.arrival === "online") {
-      const hints = { Quiet: "about half used", Normal: "about 3/4 used", Busy: "nearly full", Overloaded: "more work than capacity" };
-      sit.appendChild(row("Machines", hints[state.busy], seg(Object.keys(C.BUSY), state.busy, o => { state.busy = o; if (o !== "Normal") state.tight = false; changed(); }), "machines"));
-      sit.appendChild(row("Deadlines", state.busy === "Normal" ? null : "tight only tested at Normal",
-        seg(["Normal", "Tight"], state.tight ? "Tight" : "Normal", o => { state.tight = o === "Tight"; changed(); }, state.busy === "Normal" ? [] : ["Tight"]), "deadlines"));
+      sit.appendChild(row(UI["row.machines"], LB["busyhint." + state.busy], seg(opts("busy.", Object.keys(C.BUSY)), state.busy,
+        k => { state.busy = k; if (k !== "Normal") state.tight = false; changed(); }), "machines"));
+      sit.appendChild(row(UI["row.deadlines"], state.busy === "Normal" ? null : UI["hint.tight_only_normal"],
+        seg(opts("deadline.", ["Normal", "Tight"]), state.tight ? "Tight" : "Normal", k => { state.tight = k === "Tight"; changed(); },
+          state.busy === "Normal" ? [] : ["Tight"]), "deadlines"));
     } else {
-      sit.appendChild(row("Deadlines", null, seg(Object.keys(C.DEADLINES), state.deadlines, o => { state.deadlines = o; changed(); }), "deadlines"));
-      sit.appendChild(row("Jobs", null, seg(["All equal", "Some matter more"], state.equal ? "All equal" : "Some matter more", o => { state.equal = o === "All equal"; changed(); }), "importance_jobs"));
+      sit.appendChild(row(UI["row.deadlines"], null, seg(opts("deadlines.", Object.keys(C.DEADLINES)), state.deadlines, k => { state.deadlines = k; changed(); }), "deadlines"));
+      sit.appendChild(row(UI["row.jobs"], null, seg(opts("jobs.", ["equal", "unequal"]), state.equal ? "equal" : "unequal", k => { state.equal = k === "equal"; changed(); }), "importance_jobs"));
     }
     cfg.examples.textContent = "";
-    Object.keys(D.examples).forEach(name => {
+    exampleNames.forEach(name => {
       const b = el("button", "chip", name); b.type = "button";
       b.onclick = () => { Object.keys(state.imp).forEach(k => { state.imp[k] = D.examples[name][k] || 0; }); changed(); };
       cfg.examples.appendChild(b);
     });
     cfg.factors.textContent = "";
     D.factors.forEach(f => {
-      cfg.factors.appendChild(row(f.question.split(" (")[0], (f.question.match(/\((.*)\)/) || [])[1] || null,
-        seg(["Ignore", "Some", "A lot"], levelName(state.imp[f.key]), o => { state.imp[f.key] = C.LEVELS[o]; changed(); }), "f_" + f.key));
+      const t = TX.factors[f.key];
+      cfg.factors.appendChild(row(t.label, t.hint, seg([0, 2, 5].map(v => [v, LB["level." + v]]), levelKey(state.imp[f.key]),
+        v => { state.imp[f.key] = v; changed(); }), "f_" + f.key));
     });
   }
 
@@ -61,7 +68,7 @@
     const order = result.racers.map((r, i) => ({ r, i, shuffle: Math.random() })).sort((a, b) => a.shuffle - b.shuffle);
     field = order.map((o, slot) => {
       const lane = el("div", "lane k-" + (o.r.family === "H" ? "rule" : o.r.kind));
-      lane.innerHTML = cfg.laneHTML; lane.dataset.explain = "racer"; lane.dataset.idx = o.i; lane.title = "Click for the exact score and the maths";
+      lane.innerHTML = cfg.laneHTML; lane.dataset.explain = "racer"; lane.dataset.idx = o.i; lane.title = UI.bar_tooltip;
       lane.querySelector(".t").textContent = o.r.title; lane.querySelector(".d").textContent = shortDetail(o.r.detail);
       lane.style.transform = "translateY(" + slot * 100 + "%)";
       cfg.lanes.appendChild(lane);
@@ -81,16 +88,15 @@
 
   function verdict(result) {
     cfg.verdict.textContent = "";
-    if (!result.winner) { cfg.verdict.textContent = "Nothing to compare for this combination - choose something that matters."; return; }
-    const w = result.winner, kind = w.family === "H" ? "classic rule" : "AI scheduler";
-    cfg.verdict.append(el("b", null, "Winner: " + w.title), el("span", null, " - " + kind));
+    if (!result.winner) { cfg.verdict.textContent = UI.nothing; return; }
+    const w = result.winner, kind = w.family === "H" ? UI["kind.rule"] : UI["kind.ai"];
+    cfg.verdict.append(el("b", null, fill(UI.winner, { title: w.title })), el("span", null, " - " + kind));
     if (result.note) cfg.verdict.appendChild(el("div", "note", result.note));
   }
 
   function current() { return C.run(C.presetFor(state), state.imp); }
-  const IDLE = "Choose your situation and what matters, then press Start the race.";
   let finished = false;  // a finished race stays on screen until step 1 or 2 changes
-  function changed() { running++; finished = false; lastRes = null; window.Explain.close(); renderControls(); clearRace(IDLE); }  // any change to steps 1 or 2 resets the race
+  function changed() { running++; finished = false; lastRes = null; window.Explain.close(); renderControls(); clearRace(UI.idle); }  // any change to steps 1 or 2 resets the race
 
   function finish(res) {
     const w = field.find(f => f.r === res.winner);
@@ -100,7 +106,7 @@
   function start() {
     finished = false;
     const res = current(), id = ++running;
-    if (!res.racers.length) { clearRace("Nothing to compare for this combination - choose something that matters."); return; }
+    if (!res.racers.length) { clearRace(UI.nothing); return; }
     build(res); cfg.verdict.textContent = "";
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { update(1); finish(res); return; }
     const t0 = performance.now(), dur = 4200;
@@ -117,7 +123,7 @@
     if (data && data.state) { Object.assign(state, data.state); }
     renderControls(); cfg.start.onclick = start;
     const res = current();
-    if (data && data.finished && res.racers.length) { build(res); update(1); finish(res); } else clearRace(IDLE);
+    if (data && data.finished && res.racers.length) { build(res); update(1); finish(res); } else clearRace(UI.idle);
   }
   // Clicking anything marked data-explain opens its card; a racer card gets that racer's numbers, the others the current race context.
   function context(target) {
@@ -127,8 +133,9 @@
   }
   window.RaceUI = { init(c) {
     cfg = c;
+    document.querySelectorAll("[data-ui]").forEach(e => { e.textContent = UI[e.dataset.ui]; });  // static texts of the page template
     window.Explain.init(c.explain, () => context({ dataset: {} }));
-    c.verdict.dataset.explain = "winner"; c.verdict.title = "Click to see how to read this";
+    c.verdict.dataset.explain = "winner"; c.verdict.title = UI.winner_tooltip;
     document.addEventListener("click", e => {
       const t = e.target.closest("[data-explain]");
       if (t && !t.closest(".seg") && !t.closest("#explain")) window.Explain.open(t.dataset.explain, context(t));

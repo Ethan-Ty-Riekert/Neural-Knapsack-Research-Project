@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "app" / "web"
 sys.path.insert(0, str(ROOT / "app"))
-from scoring import EXAMPLES, FACTORS, HEURISTIC, ai_kind, friendly_name, load_results, model_meta, short_label, RULE_NAMES  # noqa: E402
+from scoring import EXAMPLES, FACTORS, HEURISTIC, ai_kind, friendly_name, load_results, model_meta, short_label, WORDING  # noqa: E402
 
 KIND = {"copied": "copied", "copied + trained": "trained", "trial and error": "scratch"}
 
@@ -36,8 +36,8 @@ def export():
                 rows.append(["R", title, detail, KIND[ai_kind(r.method)], short_label(r.method), vals, meta])
         presets[preset] = rows
     return {"metrics": metrics, "presets": presets,
-            "factors": [{"key": k, "question": q, "metrics": ms} for k, (q, ms) in FACTORS.items()],
-            "examples": EXAMPLES, "rule_names": RULE_NAMES}
+            "factors": [{"key": k, "metrics": ms} for k, (q, ms) in FACTORS.items()],
+            "examples": EXAMPLES, "text": WORDING}
 
 
 def main():

@@ -65,3 +65,29 @@ mix = pd.DataFrame([dict(method=m, family="RL", objective_J=j) for m, j in (
 kinds = list(race_entries(score(mix, {"objective_J": 1.0}, normalise=False))["kind"])
 assert kinds.count("copied") == 1 and kinds.count("trial and error") == 2 and "copied + trained" not in kinds and kinds.count("rule") == 2, kinds
 print("race mix checks passed")
+
+# model metadata for the explanation cards
+from scoring import model_meta  # noqa: E402
+assert model_meta("MDC+Consolidate", "Heuristic") == {"rule": "MDC", "plc": "Consolidate"}
+mm = model_meta("PPO Opt3 priority score +Consolidate windowed +EDF imitation warm start ATC expert", "RL")
+assert mm["opt"] == 3 and mm["win"] == 20 and mm["exp"] == "ATC" and mm["kind"] == "copied" and mm["plc"] == "Consolidate", mm
+assert model_meta("A2C Opt1 rule selection +Consolidate", "RL")["algo"] == "A2C"
+print("model meta checks passed")
+
+# wording file: every card id, link and formula placeholder the page uses must exist
+import re as _re  # noqa: E402
+from scoring import WORDING  # noqa: E402
+_SLOTS = {"tard", "J", "late", "wait", "flow", "energy", "rho", "dueOff", "dueOn", "score", "pct", "copy", "ppo", "reward", "policy",
+          "policy_atc", "opt1", "opt0", "racer_table", "racer_sum", "racer_what", "racer_math", "racer_deeper", "weights_table"}
+_topics = WORDING["topics"]
+for _id, _t in _topics.items():
+    for _r in _t["related"]:
+        assert _r in _topics, f"{_id}: related card {_r!r} does not exist"
+    for _s in _t["sections"]:
+        for _slot in _re.findall(r"\{\{(\w+)\}\}", _s["text"]):
+            assert _slot in _SLOTS, f"{_id}: unknown formula slot {{{{{_slot}}}}}"
+_html = (Path(__file__).resolve().parents[1] / "app" / "web" / "variant_a.html").read_text(encoding="utf-8")
+for _id in _re.findall(r'data-explain="(\w+)"', _html) + ["f_" + k for k in FACTORS] + ["arrival", "machines", "deadlines", "importance_jobs", "racer"]:
+    assert _id in _topics, f"page links to card {_id!r} that is not in wording.md"
+assert all(f"chip.{i}" in WORDING["labels"] for i in _topics if i != "racer"), "every card needs a chip.<id> label in ## LABELS"
+print("wording checks passed")

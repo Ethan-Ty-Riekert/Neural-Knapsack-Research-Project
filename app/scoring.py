@@ -161,30 +161,23 @@ def race_entries(scored, per_family=2, ai_mix=AI_MIX):
 
 
 # ---- plain-language layer for the race demo (visitors do not know the rule names or metrics) -------------------------
-RULE_NAMES = {"EDFL": "Earliest deadline first (longest first on ties)", "EDF": "Earliest deadline first",
-              "WLST": "Weighted least slack", "LST": "Least slack first", "WSPT": "Weighted shortest job first",
-              "SPT": "Shortest job first", "LPT": "Longest job first", "WMDD": "Weighted modified due date",
-              "MDC": "Marginal delay cost (MDC)", "COVERT": "COVERT (urgency versus cost)",
-              "ATC": "Apparent tardiness cost (ATC)", "RandomRule": "Random order"}
-OPTION_TEXT = {"Opt0": "picks job and machine directly", "Opt1": "picks which rule to apply", "Opt2": "scores each waiting job",
-               "Opt3": "scores each waiting job", "Opt4": "picks a job-machine pair"}
-PLACEMENT_NAMES = {"FirstFitConsolidate": "packs jobs onto few machines", "Consolidate": "packs jobs onto few machines",
-                   "BestFit": "tightest-fitting machine", "FirstFit": "first machine that fits"}
+# Every sentence lives in app/web/wording.md (parsed by app/wording.py); this module only holds the logic.
+from wording import load as _load_wording  # noqa: E402
+
+WORDING = _load_wording()
+RULE_NAMES = {k: v["name"] for k, v in WORDING["rules"].items()}
+OPTION_TEXT = {f"Opt{k}": v["short"] for k, v in WORDING["options"].items()}
+PLACEMENT_NAMES = {k: v["short"] for k, v in WORDING["placements"].items()}
+PLACEMENT_NAMES["FirstFitConsolidate"] = PLACEMENT_NAMES["Consolidate"]
+_T = WORDING["templates"]
 
 # What a visitor can care about -> the recorded metrics that measure it (weights are relative; see score()).
-FACTORS = {  # key: (question shown, {metric: weight})
-    "late": ("Avoid late jobs (how many miss their deadline)", {"late_jobs": 1.0}),
-    "delay": ("Avoid long delays (a very late job hurts extra)", {"objective_J": 1.0}),
-    "wait": ("Short waiting before a job starts", {"mean_wait": 1.0}),
-    "flow": ("Finish each job quickly after it arrives", {"mean_flow_time": 1.0}),
-    "energy": ("Save energy (fewer machines switched on)", {"active_machine_ticks": 1.0}),
-}
-EXAMPLES = {  # one-click examples: label -> {factor key: importance 0-5}
-    "Never be late": {"late": 5},
-    "Customers hate waiting": {"wait": 5, "flow": 3},
-    "Energy Usage": {"energy": 5},
-    "A bit of everything": {"late": 2, "delay": 2, "wait": 2, "energy": 2},
-}
+FACTOR_METRICS = {"late": {"late_jobs": 1.0}, "delay": {"objective_J": 1.0}, "wait": {"mean_wait": 1.0},
+                  "flow": {"mean_flow_time": 1.0}, "energy": {"active_machine_ticks": 1.0}}
+FACTORS = {key: (f"{WORDING['factors'][key]['label']} ({WORDING['factors'][key]['hint']})", metrics)  # key: (question shown, {metric: weight})
+           for key, metrics in FACTOR_METRICS.items()}
+_EXAMPLE_IMPORTANCE = [{"late": 5}, {"wait": 5, "flow": 3}, {"energy": 5}, {"late": 2, "delay": 2, "wait": 2, "energy": 2}]
+EXAMPLES = {WORDING["labels"][f"example.{i + 1}"]: imp for i, imp in enumerate(_EXAMPLE_IMPORTANCE)}  # one-click examples: label -> {factor: 0-5}
 
 
 def factor_weights(importance):
@@ -196,22 +189,29 @@ def factor_weights(importance):
     return out
 
 
+def copied_rule(label):
+    """The rule key a learned model copied, read from its label ('' if none). The longest matching key wins (WLST over LST)."""
+    hits = [r for r in RULE_NAMES if f"{r} expert" in label]
+    return max(hits, key=len) if hits else ""
+
+
 def friendly_name(method, family):
-    """-> (title, detail) in plain language for a method label from the archive."""
+    """-> (title, detail) in plain language for a method label from the archive (wording from app/web/wording.md)."""
     if family == HEURISTIC:
         rule, _, placement = method.partition("+")
-        rule = RULE_NAMES.get(rule, rule)
         detail = PLACEMENT_NAMES.get(placement)
-        return rule, (f"classic rule; {detail}" if detail else "classic rule")
+        return RULE_NAMES.get(rule, rule), (_T["detail.rule"].format(placement=detail) if detail else _T["detail.rule.noplacement"])
     label = short_label(method)
-    expert = next((r for r in RULE_NAMES if f"{r} expert" in label), None)  # dict order: WLST before LST, EDFL before EDF
+    expert = copied_rule(label)
     algo, opt = label.split(" | ")[0].split()[:2]
     if "clone only" in label or "clone + PPO" in label:
-        what = f"copies {RULE_NAMES[expert].lower()}" if expert else "copies a classic rule"
+        what = _T["detail.copies"].format(rule=RULE_NAMES[expert].lower()) if expert else _T["detail.copies.generic"]
     else:
-        what = OPTION_TEXT.get(opt, "learned model") + (" using an urgency hint" if "ATC prior" in label else "")
-    budget = " (2M steps)" if "2M steps" in label else " (1M steps)" if "1M steps" in label else ""
-    return "AI scheduler", f"{what[0].upper()}{what[1:]} | {algo}{budget}"  # "[what it does] | [model]"
+        what = OPTION_TEXT.get(opt, "learned model")
+        if "ATC prior" in label:
+            what = _T["detail.atc_hint"].format(what=what)
+    budget = _T["budget.2M"] if "2M steps" in label else _T["budget.1M"] if "1M steps" in label else ""
+    return _T["ai.title"], _T["detail.ai"].format(what=f"{what[0].upper()}{what[1:]}", algo=algo, budget=(" " + budget) if budget else "")
 
 
 def model_meta(method, family):
@@ -224,7 +224,6 @@ def model_meta(method, family):
     label = short_label(method)
     algo, opt = label.split(" | ")[0].split()[:2]
     win = 40 if "window 40" in label else 60 if "window 60" in label else 20 if "window" in label else 0
-    expert = next((r for r in RULE_NAMES if f"{r} expert" in label), "")
-    return {"opt": int(opt[3:]), "algo": algo, "win": win, "exp": expert, "plc": "Consolidate" if "Consolidate" in label else "FirstFit",
+    return {"opt": int(opt[3:]), "algo": algo, "win": win, "exp": copied_rule(label), "plc": "Consolidate" if "Consolidate" in label else "FirstFit",
             "steps": "2M" if "2M steps" in label else "1M" if "1M steps" in label else "", "tuned": "tuned" in label,
             "kind": ai_kind(method), "atc": "ATC prior" in label}
