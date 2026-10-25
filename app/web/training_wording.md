@@ -123,10 +123,14 @@ wire.state: State
 wire.action: Action
 wire.reward: Reward
 loop.step: Decision {k} of {n}
-loop.v.state: t={t}, {n} jobs
+loop.v.state: Time {t} · {n} jobs waiting
 loop.v.action: Job {job}
 loop.v.next: t={t}
 loop.done: Episode over, cost {cost}
+loop.sub.state: What the learner sees
+loop.sub.action: The network picks a job
+loop.sub.reward: What that choice earned
+loop.sub.next: The situation moves on
 view.label: Choice shown as
 view.bars: Bars
 view.wheel: Wheel

@@ -1,5 +1,5 @@
 /* stage_ui.js - "Watch the loop", stage layout (stage.html). The layout is the loop: the environment (job queue, two machine lanes) on the
-   left, the learner (actor network with its probability distribution as bars or a wheel, and the critic or baseline) on the right, and
+   left, the learner (actor network with its probability distribution as a vertical bar chart) on the right, and
    a small State, Action, Reward, Next state loop between them that lights up as the data travels. Under them a learning row: the reward
    ledger of the episode, and the learning curve with the weights.
    Play keeps stepping through episode after episode at the chosen speed (x30 is a fast "spam the Step button") until Stop.
@@ -25,9 +25,9 @@
   function newState() {
     cancel();
     const seed = 500 + resets++ * 13;
-    S = { mode: S.mode || "offline", active: S.active || "reinforce", speed: S.speed || 1, view: S.view || "bars", runId: 0, playing: false, busy: false, ep: null, k: 0, shown: new Set(), blocks: [], rewards: [], deltas: [],
+    S = { mode: S.mode || "offline", active: S.active || "reinforce", speed: S.speed || 1, runId: 0, playing: false, busy: false, ep: null, k: 0, shown: new Set(), blocks: [], rewards: [], deltas: [],
           L: { offline: { reinforce: C.createLearner("reinforce", seed), ac: C.createLearner("actor-critic", seed + 1) }, online: { reinforce: C.createLearner("reinforce", seed + 2), ac: C.createLearner("actor-critic", seed + 3) } },
-          hist: { offline: { reinforce: [], ac: [] }, online: { reinforce: [], ac: [] } }, rng: { offline: C.makeRng(seed + 999), online: C.makeRng(seed + 1999) }, wheelRng: C.makeRng(seed + 7) };
+          hist: { offline: { reinforce: [], ac: [] }, online: { reinforce: [], ac: [] } }, rng: { offline: C.makeRng(seed + 999), online: C.makeRng(seed + 1999) } };
   }
   function cancel() { if (S) S.runId++; if (cfg && cfg.fx) cfg.fx.textContent = ""; }
   const guard = id => { if (S.runId !== id) throw ABORT; };
@@ -37,7 +37,7 @@
   // at x1 the film is calm: one orb at a time travels slowly and the part it reaches is highlighted and held; from x3 up it moves faster
   const calm = () => S.speed === 1;
   const hold = (calmMs, fastMs, id) => sleep(calm() ? calmMs : fastMs, id);
-  function spot(...els) { document.querySelectorAll(".spot").forEach(e => e.classList.remove("spot")); els.forEach(e => e && e.classList.add("spot")); }
+  function spot(...els) { document.querySelectorAll(".spot").forEach(e => e.classList.remove("spot")); els.forEach(e => { const b = e && e.closest(".lbox, .panel"); if (b) b.classList.add("spot"); }); }
 
   // ---- flying tokens, pop-ups, pulses -----------------------------------------------------------------------------------------------
   const point = x => { if (x.getBoundingClientRect) { const r = x.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; } return x; };
@@ -66,29 +66,21 @@
     await done(anim, ms / S.speed);
     c.remove(); guard(id);
   }
-  // ---- the loop: State -> Action -> Reward -> Next state, one node lit at a time ----------------------------------------------------------
-  const NODES = { state: [4, 8, "state"], action: [120, 8, "action"], reward: [120, 122, "reward"], next: [4, 122, "state"] };
-  const ARROWS = { action: ["M90,28 H112", "112,22 120,28 112,34"], reward: ["M163,48 V114", "157,114 163,122 169,114"], next: ["M120,142 H98", "98,136 90,142 98,148"], state: ["M47,122 V56", "41,56 47,48 53,56"] };
-  function buildLoop() {
-    const g = cfg.loop; g.textContent = "";
-    Object.entries(ARROWS).forEach(([k, [d, head]]) => g.append(svg("path", { d, class: "larrow", id: "la-" + k }), svg("polygon", { points: head, class: "ahead", id: "lh-" + k })));
-    Object.entries(NODES).forEach(([k, [x, y, topic]]) => {
-      const n = svg("g", { class: "lnode", id: "ln-" + k, "data-explain": topic });
-      n.append(svg("rect", { x, y, width: 86, height: 40, rx: 8 }), svg("text", { x: x + 43, y: y + 16, "text-anchor": "middle" }, UI["loop." + k]), svg("text", { x: x + 43, y: y + 31, "text-anchor": "middle", class: "lv", id: "lv-" + k }, ""));
-      g.append(n);
-    });
-    g.append(svg("text", { x: 105, y: 82, "text-anchor": "middle", class: "lcentre", id: "lcentre" }, ""), svg("text", { x: 105, y: 94, "text-anchor": "middle", class: "lcentre", id: "lcentre2" }, ""));
-  }
-  // light one node of the loop (and the arrow into it); "none" clears everything
+  // ---- the loop: four connected boxes (State, Action, Reward, Next state); one is lit at a time, together with the arrow into it ---------------
+  const BOXES = ["state", "action", "reward", "next"], byId = id => document.getElementById(id);
+  function buildLoop() {}
   function wire(name, on, bad) {
-    Object.keys(NODES).forEach(k => {
-      const lit = on && k === name;
-      q(cfg.loop, "#ln-" + k).classList.toggle("on", lit); q(cfg.loop, "#ln-" + k).classList.toggle("bad", lit && !!bad);
-      q(cfg.loop, "#la-" + k).classList.toggle("on", lit); q(cfg.loop, "#lh-" + k).classList.toggle("on", lit);
+    BOXES.forEach(k => {
+      const lit = on && k === name, b = byId("b-" + k); b.classList.toggle("on", lit); b.classList.toggle("bad", lit && !!bad); byId("a-" + k).classList.toggle("on", lit);
     });
   }
-  const loopVal = (k, text) => { q(cfg.loop, "#lv-" + k).textContent = text; };
-  const loopCentre = (a, b) => { q(cfg.loop, "#lcentre").textContent = a || ""; q(cfg.loop, "#lcentre2").textContent = b || ""; };
+  const loopVal = (k, text) => { const e = byId("v-" + k); if (e) e.textContent = text; };
+  // box 1 shows the state itself: the time and, for every waiting job, how much time it has left
+  function loopState(t, st) {
+    const box = byId("v-state"); box.textContent = ""; box.append(el("div", "lbig", fill(UI["loop.v.state"], { t, n: st.state.waiting.length })));
+    st.state.waiting.forEach(j => { const r = el("div", "sjob"); r.style.borderLeftColor = jobColour(j); r.append(el("b", null, "J" + (j + 1)), el("span", null, UI["net.timeleft"] + " " + Math.max(0, st.state.jobs[j].d - t))); box.append(r); });
+  }
+  const loopCentre = a => { byId("lstep").textContent = a || ""; };
 
   // ---- environment: queue shelf, machine lanes -------------------------------------------------------------------------------------------
   const jobColour = j => COLOURS[j % COLOURS.length];
@@ -148,26 +140,11 @@
     await sleep(500, id); await pulse(cfg.actor, Z.x + 15, Z.y, PI.x - 14, PI.y, id, 350);
   }
 
-  // ---- learner: the probability distribution (bars or wheel) ----------------------------------------------------------------------------
+  // ---- learner: the probability distribution (vertical bars) ----------------------------------------------------------------------------
   function drawDist(st, p, chosenK) {
     cfg.dist.textContent = "";
     if (!st) { cfg.dist.append(el("div", "baempty", UI["dist.title"])); return; }
     const n = p.length;
-    if (S.view === "wheel") {
-      cfg.dist.append(el("div", "dtitle", UI["dist.title.wheel"]));
-      const w = svg("svg", { id: "wheel", viewBox: "0 0 120 128" }), grp = svg("g", { id: "wg", style: "transform-origin: 60px 66px; transform-box: view-box" });
-      let a0 = 0;
-      p.forEach((pr, k) => {
-        const a1 = a0 + pr * 2 * Math.PI, r = 54, cx = 60, cy = 66, big = pr > 0.5 ? 1 : 0;
-        const x0 = cx + r * Math.sin(a0), y0 = cy - r * Math.cos(a0), x1 = cx + r * Math.sin(a1), y1 = cy - r * Math.cos(a1);
-        grp.append(svg("path", { d: n === 1 ? `M${cx - r},${cy} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0` : `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${big} 1 ${x1},${y1} Z`, fill: COLOURS[st.state.waiting[k] % COLOURS.length], class: "slice" }));
-        if (pr > 0.07) { const am = (a0 + a1) / 2; grp.append(svg("text", { x: cx + r * 0.62 * Math.sin(am), y: cy - r * 0.62 * Math.cos(am) + 3, class: "lbl", "text-anchor": "middle" }, "J" + (st.state.waiting[k] + 1) + " " + Math.round(pr * 100) + "%")); }
-        a0 = a1;
-      });
-      w.append(grp, svg("path", { d: "M54,2 L66,2 L60,14 Z", class: "ptr" })); cfg.dist.append(w);
-      S.mids = p.map((_, k) => { let s = 0; for (let i = 0; i < k; i++) s += p[i]; return { mid: (s + p[k] / 2) * 360, width: p[k] * 360 }; });
-      return;
-    }
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
     const W = 170, H = 165, x0 = 4, x1 = W - 4, yb = 140, yt = 20, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(26, slot * 0.7);
     const yOf = v => yb - (v / top) * (yb - yt), cx = k => x0 + slot * (k + 0.5), g = svg("svg", { id: "vbars", viewBox: `0 0 ${W} ${H}` });
@@ -185,58 +162,17 @@
     }, 20);
     setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); line.setAttribute("opacity", 1); dots.forEach(d => d.setAttribute("opacity", 1)); }, 520 / S.speed);
   }
-  async function spinWheel(chosenK, id) {
-    const g = cfg.dist.querySelector("#wg"); if (!g || !S.mids) return;
-    const m = S.mids[chosenK], jitter = (S.wheelRng() - 0.5) * m.width * 0.7, target = 360 * 3 - (m.mid + jitter);
-    const anim = g.animate([{ transform: "rotate(0deg)" }, { transform: `rotate(${target}deg)` }], { duration: 1300 / S.speed, easing: "cubic-bezier(.15,.8,.2,1)", fill: "forwards" });
-    await done(anim, 1300 / S.speed);
-    guard(id);
-  }
-
   // ---- learner: the critic (actor-critic) or the baseline (REINFORCE) ----------------------------------------------------------------------
-  function buildCritic() {
-    const box = cfg.critic; box.textContent = "";
-    if (isAC()) {
-      box.append(el("div", "dtitle", UI["net.critic"] + " · " + UI["net.summary"]));
-      const grid = el("div", "cgrid"); for (let i = 0; i < 7; i++) { const c = el("div", "cchip"); c.dataset.i = i; c.append(el("span", null, UI["crit.f" + i]), el("b", null, "·"), el("em", null, "")); grid.append(c); }
-      const out = el("div", "cout"), v = el("div", "cv"), dl = el("div", "cdelta");
-      v.id = "cval"; v.append(el("span", null, "V(s)"), el("b", null, "")); out.append(v, el("div", null, UI["net.value"]), dl); dl.id = "cdelta"; box.append(grid, out);
-    } else {
-      box.append(el("div", "dtitle", UI["net.baseline"]));
-      const bars = el("div", "bbars"); for (let t = 0; t < 8; t++) { const b = el("div", "bb"); b.dataset.t = t; b.append(el("b", null, ""), el("i"), el("span", null, fill(UI["base.step"], { k: t + 1 }))); bars.append(b); }
-      box.append(bars);
-    }
-    paintCriticWeights();
-  }
-  function paintCriticWeights(before) {
-    const L = learner();
-    if (isAC()) {
-      L.critic.forEach((w, i) => { const c = q(cfg.critic, `.cchip[data-i="${i}"]`); c.classList.toggle("pos", w >= 0.005); c.classList.toggle("neg", w <= -0.005); q(c, "em").textContent = before ? `×${plain(before[i], 2)}→${plain(w, 2)}` : `×${plain(w, 2)}`; });
-    } else {
-      const top = Math.max(2, ...Array.from({ length: 8 }, (_, t) => Math.abs(L.baseline(t))));
-      for (let t = 0; t < 8; t++) { const b = q(cfg.critic, `.bb[data-t="${t}"]`), v = L.baseline(t); q(b, "i").style.height = (Math.abs(v) / top * 2.2) + "rem"; q(b, "b").textContent = plain(v, 1); }
-    }
-  }
-  function paintCritic(st, k) {
-    const L = learner();
-    if (isAC()) {
-      const f = st ? C.stateFeatures(st.state) : null;
-      for (let i = 0; i < 7; i++) q(cfg.critic, `.cchip[data-i="${i}"] b`).textContent = f ? f[i].toFixed(2) : "·";
-      q(cfg.critic, "#cval b").textContent = st ? plain(L.value(st.state), 1) : ""; q(cfg.critic, "#cdelta").textContent = "";
-    } else for (let t = 0; t < 8; t++) q(cfg.critic, `.bb[data-t="${t}"]`).classList.toggle("cur", !!st && t === k);
-  }
-  async function criticPulses(id) {
-    if (!isAC()) { await sleep(300, id); return; }
-    const chips = [...cfg.critic.querySelectorAll(".cchip")]; chips.forEach(c => { c.style.transition = "background .25s"; c.style.background = "color-mix(in srgb, var(--accent) 14%, transparent)"; });
-    await sleep(500, id); chips.forEach(c => { c.style.background = ""; });
-  }
-  async function criticCompare(st, k, ep, id) {
+  function buildCritic() { cfg.critic.textContent = ""; }
+  const paintCriticWeights = () => {};
+  const paintCritic = () => { if (cfg.critic) cfg.critic.textContent = ""; };
+  async function criticPulses(id) { await sleep(300, id); }
+  async function criticCompare(st, k, ep, id) {  // actor-critic only: the critic's guess against what happened
     if (!isAC()) return;
     const L = learner(), v = L.value(st.state), next = k + 1 < ep.steps.length ? L.value(ep.steps[k + 1].state) : 0, delta = st.reward + next - v;
-    const d = q(cfg.critic, "#cdelta"); d.textContent = fill(UI["crit.got"], { r: plain(st.reward, 1), n: plain(next, 1), v: plain(v, 1) }) + " — " + fill(delta >= 0 ? UI["crit.better"] : UI["crit.worse"], { d: Math.abs(delta).toFixed(1) });
-    d.style.color = delta >= 0 ? css("--win") : css("--scratch");
-    const cv = q(cfg.critic, "#cval"); cv.style.borderColor = delta >= 0 ? css("--win") : css("--scratch"); cv.style.borderWidth = ".35rem";
-    await sleep(800, id); cv.style.borderColor = ""; cv.style.borderWidth = "";
+    cfg.critic.textContent = fill(UI["crit.got"], { r: plain(st.reward, 1), n: plain(next, 1), v: plain(v, 1) }) + " — " + fill(delta >= 0 ? UI["crit.better"] : UI["crit.worse"], { d: Math.abs(delta).toFixed(1) });
+    cfg.critic.style.color = delta >= 0 ? css("--win") : css("--scratch");
+    await sleep(900, id);
   }
 
   // ---- ledger ---------------------------------------------------------------------------------------------------------------
@@ -272,30 +208,28 @@
     S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = [];
     ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
   }
-  const panelOf = e => e.closest(".panel") || e;
-  async function playDecision(id) {
-    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100), envBox = document.getElementById("env");
+    async function playDecision(id) {
+    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100), envBox = byId("env");
     // 1. State: the situation leaves the environment
-    setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }), "");
-    ["state", "action", "reward", "next"].forEach(n => loopVal(n, ""));
+    setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }));
+    ["state", "reward", "next"].forEach(n => loopVal(n, ""));
     const future = jobs.map((j, i) => i).filter(i => !st.state.waiting.includes(i) && !ep.steps.slice(0, k).some(s => s.job === i) && jobs[i].a > t).map(i => jobs[i].a);
     const nextArr = online() && future.length ? Math.min(...future) : null;
     drawQueue(jobs, st.state.waiting, null, nextArr); drawMachines(S.blocks, t, null);
-    wire("state", true); loopVal("state", fill(UI["loop.v.state"], { t, n: st.state.waiting.length })); spot(envBox);
+    wire("state", true); loopState(t, st); spot(envBox);
     await hold(800, 250, id);
     await fly(cfg.queue, q(cfg.actor, "#ae1"), id, "tk state", "s", 650);
     // 2. the actor scores the waiting jobs and turns the scores into probabilities; the critic estimates the situation
-    setNarr(UI["narr.net"]); spot(cfg.actor.parentElement);
+    setNarr(UI["narr.net"]); spot(cfg.actor);
     drawDist(null); paintCritic(st, k);
     await actorPulses(id);
     drawDist(st, p, st.k);
-    if (S.view === "wheel") await spinWheel(st.k, id); else await sleep(600, id);
+    await sleep(600, id);
     await hold(700, 0, id);
-    if (isAC()) { spot(cfg.critic); await criticPulses(id); await hold(600, 0, id); }
     // 3. Action: the job leaves the queue and starts on a machine
     wire("action", true); loopVal("action", fill(UI["loop.v.action"], { job: chosen + 1 })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
-    drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(cfg.queue.parentElement);
-    const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = S.view === "wheel" ? q(cfg.dist, "#wheel") : (q(cfg.dist, ".vbar.pick") || cfg.dist);
+    drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(cfg.queue);
+    const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = q(cfg.dist, ".vbar.pick") || cfg.dist;
     await fly(from, qEl || cfg.queue, id, "tk action", "J" + (chosen + 1), 650);
     await hold(700, 0, id);
     setNarr(fill(UI["narr.place"], { job: chosen + 1, m: st.state.machine + 1 }));
@@ -309,11 +243,11 @@
     wire("reward", true, late); loopVal("reward", rtxt); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome: late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"] }));
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
     await popup(blkEl, rtxt, late ? "bad" : "good", id, 800);
-    const chip = ledgerAdd(k, st.reward); spot(panelOf(cfg.ledger));
+    const chip = ledgerAdd(k, st.reward); spot(cfg.ledger);
     await fly(blkEl, chip, id, late ? "reward" : "good", rtxt, 700);
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500);
     await hold(800, 0, id);
-    if (isAC()) { setNarr(UI["narr.compare"]); spot(cfg.critic); await fly(chip, q(cfg.critic, "#cval"), id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
+    if (isAC()) { setNarr(UI["narr.compare"]); spot(cfg.critic); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
     // 5. Next state
     const nxt = ep.steps[k + 1]; wire("next", true); loopVal("next", nxt ? fill(UI["loop.v.next"], { t: nxt.state.t }) : "end"); setNarr(UI["narr.next"]); spot();
     await hold(500, 200, id);
@@ -321,17 +255,17 @@
     if (S.k >= ep.steps.length) await finishEpisode(id);
   }
   async function finishEpisode(id) {
-    const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), criticBefore = isAC() ? L.critic.slice() : null, adv = advantages(ep);
-    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true); loopCentre(fill(UI["loop.done"], { cost: ep.cost }), "");
-    ledgerCredit(adv); spot(panelOf(cfg.ledger)); await hold(1600, 900, id);
+    const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), adv = advantages(ep);
+    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true); loopCentre(fill(UI["loop.done"], { cost: ep.cost }));
+    ledgerCredit(adv); spot(cfg.ledger); await hold(1600, 900, id);
     const chips = [...cfg.ledger.querySelectorAll(".lchip.got")];
     chips.forEach(c => fly(c, cfg.actor, id, "reward", q(c, "em").textContent, 800).catch(() => {}));
     await sleep(900, id);
     L.update(ep); hist()[S.active].push(ep.cost); S.ep = null;
-    setNarr(UI["narr.learn"]); spot(cfg.actor.parentElement, panelOf(cfg.wbars));
-    paintWeights(thetaBefore); paintCriticWeights(criticBefore); drawCurve();
+    setNarr(UI["narr.learn"]); spot(cfg.actor, cfg.wbars);
+    paintWeights(thetaBefore); drawCurve();
     await hold(4200, 2600, id);
-    spot(); paintWeights(); paintCriticWeights(); paintCritic(null); wire("none", false); loopCentre("", "");
+    spot(); paintWeights(); paintCritic(null); wire("none", false); loopCentre("");
   }
 
   // ---- controls ------------------------------------------------------------------------------------------------------------------------------
@@ -342,7 +276,6 @@
     cfg.modeBox.querySelectorAll("button").forEach(b => { b.setAttribute("aria-checked", String(b.dataset.mode === S.mode)); b.disabled = S.playing || S.busy; });
     cfg.learnerBox.querySelectorAll("button").forEach(b => { b.setAttribute("aria-checked", String(b.dataset.kind === S.active)); b.disabled = S.playing || S.busy; });
     cfg.speedBox.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(+b.dataset.speed === S.speed)));
-    cfg.viewSeg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.view === S.view)));
     cfg.agentTitle.textContent = isAC() ? UI["panel.network.ac"] : UI["panel.network.reinforce"];
     cfg.episodes.textContent = fill(UI.episodes, { n: learner().episodes });
   }
@@ -367,7 +300,7 @@
       owed += Math.min(now - last, 100) / 1000 * 30; last = now;
       let ep = null; while (owed >= 1 && budgetLeft()) { owed -= 1; ep = L.train(C.makeInstance(S.rng[S.mode], online())); hist()[S.active].push(ep.cost); }
       if (ep) { drawQueue(ep.steps[0].state.jobs, [], null, null); drawMachines(ep.blocks, null, null); }
-      paintWeights(); paintCriticWeights(); drawCurve(); setButtons(); setNarr("");
+      paintWeights(); drawCurve(); setButtons(); setNarr("");
       if (!budgetLeft()) { S.busy = false; setButtons(); setMsg(fill(TP["msg.trained"], { n: L.episodes })); return; }
       requestAnimationFrame(tick);
     };
@@ -378,7 +311,7 @@
     setTimeout(() => { const v = C.meanCost(R.sets, learner().greedy); setMsg(fill(UI["test.line"], { n: R.sets.length, random: R.random.toFixed(0), rule: R.rule.name, rulecost: R.rule.cost.toFixed(0), learner: v.toFixed(0) })); }, 30);
   }
   function redraw() {
-    ledgerReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre("", ""); setButtons();
+    ledgerReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre(""); setButtons();
   }
   function resetAll() { newState(); redraw(); setMsg(""); setNarr(UI["narr.idle"]); }
 
@@ -393,15 +326,14 @@
     cfg.speedBox = seg("small", [1, 3, 10, 30].map(s => [s, UI["speed." + s]]), "speed", s => { S.speed = +s; setButtons(); });
     cfg.learnerBox = seg("small", [["reinforce", UI["learner.reinforce"]], ["ac", UI["learner.ac"]]], "kind", kind => { S.active = kind; S.ep = null; redraw(); setNarr(UI["narr.idle"]); setMsg(""); });
     cfg.modeBox = seg("small", [["offline", UI["mode.offline"]], ["online", UI["mode.online"]]], "mode", m => { S.mode = m; S.ep = null; redraw(); setNarr(UI["narr.idle"]); setMsg(""); });
-    cfg.viewSeg = seg("small", [["bars", UI["view.bars"]], ["wheel", UI["view.wheel"]]], "view", v => { S.view = v; drawDist(null); setButtons(); });
     c.controls.append(cfg.b.play, cfg.b.step, cfg.b.train, cfg.b.test, mk(UI["btn.reset"], resetAll, "ghost"), cfg.speedBox, cfg.learnerBox, cfg.episodes);
-    c.modeSlot.append(cfg.modeBox); c.viewBox.append(cfg.viewSeg);
+    c.modeSlot.append(cfg.modeBox);
     document.addEventListener("click", e => {
       const t = e.target.closest("[data-explain]");
       if (t && !t.closest("#explain")) K.open(t.dataset.explain === "learner" ? (S.active === "reinforce" ? "reinforce" : "actor_critic") : t.dataset.explain, {});
     });
     window.addEventListener("resize", drawCurve);
-    S = { mode: "offline", active: "reinforce", speed: 1, view: "bars" };
+    S = { mode: "offline", active: "reinforce", speed: 1 };
     resetAll();
   }
   window.StageUI = { init };
