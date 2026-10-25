@@ -131,7 +131,7 @@ log.state: {n} jobs waiting, {b} of 2 machines active
 log.action: Place J{job} on machine {m} ({pct}%)
 log.late: Penalise J{job}: {r} (ends t={end}, due {due}, {late} late)
 log.ontime: J{job} on time: 0 (ends t={end}, due {due})
-log.next: t={a} → t={b}
+log.next: t={a} → t={b}: machine {m} is free next
 log.end: episode over
 log.job: J{id} (len {p}, due {d}, imp {w})
 loop.sub.state: What the learner sees

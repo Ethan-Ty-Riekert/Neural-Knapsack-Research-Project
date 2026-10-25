@@ -289,7 +289,7 @@
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500); await hold(700, 0, id);
     if (isAC()) { setNarr(UI["narr.compare"]); spot(BOX.net()); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
     // 8. Reward -> next state (time moves on) -> back to state
-    const nxt = ep.steps[k + 1]; wire("next", true); logRow("next", k + 1, nxt ? fill(UI["log.next"], { a: t, b: nxt.state.t }) : UI["log.end"]); setNarr(UI["narr.tick"]); spot(BOX.next());
+    const nxt = ep.steps[k + 1]; wire("next", true); logRow("next", k + 1, nxt ? fill(UI["log.next"], { a: t, b: nxt.state.t, m: nxt.state.machine + 1 }) : UI["log.end"]); setNarr(UI["narr.tick"]); spot(BOX.next());
     await fly(BOX.reward(), BOX.next(), id, "tk state", "+1", 600); await hold(700, 200, id);
     S.k++;
     if (S.k >= ep.steps.length) { await finishEpisode(id); return; }
