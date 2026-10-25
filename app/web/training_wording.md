@@ -114,7 +114,7 @@ narr.compare: The critic had guessed what the reward would be. Now it compares i
 narr.learn: The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.
 // --- the "stage" layout (stage.html): the layout is the loop ---
 stage.heading: Watch the loop
-stage.tagline: Environment on the left, learner on the right. Press Play and follow a decision from the queue, through the network, onto a machine and back as a reward.
+stage.tagline: The scheduler learns by trial and error: every decision goes round the loop, and each episode's rewards nudge the network.
 panel.env: Environment
 panel.agent: Learner
 panel.strip: Decisions in this episode
@@ -124,6 +124,11 @@ panel.curveweights: Progress
 wire.state: State
 wire.action: Action
 wire.reward: Reward
+loop.step: Decision {k} of {n}
+loop.v.state: t={t}, {n} jobs
+loop.v.action: Job {job}
+loop.v.next: t={t}
+loop.done: Episode over, cost {cost}
 view.label: Choice shown as
 view.bars: Bars
 view.wheel: Wheel

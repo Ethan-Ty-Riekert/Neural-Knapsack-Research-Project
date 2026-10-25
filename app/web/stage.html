@@ -17,30 +17,34 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .seg.small button { padding: .24rem .45rem; font-size: .74rem; }
 .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; }
 .explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
-.rowa { display: grid; grid-template-columns: minmax(0, 1fr) 4.6rem minmax(0, 1.4fr); gap: .3rem; min-height: 0; }
+.rowa { display: grid; grid-template-columns: minmax(0, 24rem) 14.5rem minmax(0, 1fr); gap: .5rem; min-height: 0; }
 /* environment */
-#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: 3.6rem; }
+#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: calc(2 * clamp(3.1rem, 6.5vh, 5rem) + .3rem); }
 .qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .68rem; line-height: 1.1; height: clamp(3.1rem, 6.5vh, 5rem); }
 .qjob b { font-size: .8rem; } .qjob span { color: var(--muted); } .qjob.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } .qjob.fresh { animation: drop .5s ease; }
 @keyframes drop { from { transform: translateY(-1rem) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 .qempty, .qnext { font-size: .7rem; color: var(--muted); padding: .3rem .2rem; } .qnext { border: 2px dashed var(--rule); border-radius: .45rem; }
 #env { display: flex; flex-direction: column; }
 #lanes { flex: 1; display: flex; flex-direction: column; gap: .35rem; min-height: 0; }
-.lanewrap { position: relative; flex: 1 1 0; min-height: 2.3rem; max-height: 8rem; } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .72rem; font-weight: 700; color: var(--muted); }
+.lanewrap { position: relative; flex: 1 1 0; min-height: 2.3rem; max-height: 5.2rem; } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .72rem; font-weight: 700; color: var(--muted); }
 .mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.2rem; }
 .mblk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
 .mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
 .mnow { position: absolute; top: -.25rem; bottom: -.25rem; width: 3px; background: var(--ink); opacity: .5; }
 .maxis { flex: none; margin-left: 4.2rem; display: flex; justify-content: space-between; font-size: .66rem; color: var(--muted); }
 .envfoot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: .5rem; font-size: .72rem; color: var(--muted); }
-/* wires between the environment and the learner */
-#wire { display: flex; flex-direction: column; justify-content: center; gap: .9rem; }
-.wl { position: relative; text-align: center; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-bottom: .9rem; transition: color .25s; }
-.wl::after { content: ""; position: absolute; left: .2rem; right: .2rem; bottom: .25rem; height: 3px; background: var(--rule); border-radius: 2px; transition: background .25s; }
-.wl::before { content: ""; position: absolute; bottom: .08rem; border: 6px solid transparent; transition: border-color .25s; }
-.wl.right::before { right: .1rem; border-left: 9px solid var(--rule); border-right: 0; } .wl.left::before { left: .1rem; border-right: 9px solid var(--rule); border-left: 0; }
-.wl.on { color: var(--accent); } .wl.on::after { background: var(--accent); } .wl.on.right::before { border-left-color: var(--accent); } .wl.on.left::before { border-right-color: var(--accent); }
-.wl.bad.on { color: var(--scratch); } .wl.bad.on::after { background: var(--scratch); } .wl.bad.on.left::before { border-right-color: var(--scratch); }
+/* the small loop in the middle: State, Action, Reward, Next state; one node lights at a time, the caption sits under it */
+#mid { display: flex; flex-direction: column; justify-content: center; gap: .5rem; min-height: 0; }
+#loopsvg { width: 100%; height: auto; overflow: visible; }
+#loopsvg .lnode rect { fill: var(--surface); stroke: var(--rule); stroke-width: 2.5; transition: fill .3s, stroke .3s; }
+#loopsvg .lnode text { font-size: 12.5px; font-weight: 700; fill: var(--muted); transition: fill .3s; } #loopsvg .lnode .lv { font-size: 10.5px; font-weight: 600; }
+#loopsvg .lnode { cursor: pointer; } #loopsvg .lnode:hover rect { stroke: var(--accent); }
+#loopsvg .lnode.on rect { stroke: var(--accent); fill: color-mix(in srgb, var(--accent) 14%, var(--surface)); stroke-width: 3.5; } #loopsvg .lnode.on text { fill: var(--ink); }
+#loopsvg .lnode.bad.on rect { stroke: var(--scratch); fill: color-mix(in srgb, var(--scratch) 12%, var(--surface)); }
+#loopsvg .larrow { stroke: var(--rule); stroke-width: 3; fill: none; transition: stroke .3s; } #loopsvg .ahead { fill: var(--rule); transition: fill .3s; }
+#loopsvg .larrow.on { stroke: var(--accent); } #loopsvg .ahead.on { fill: var(--accent); }
+#loopsvg .lcentre { font-size: 11px; fill: var(--muted); font-weight: 600; }
+.spot { outline: 3px solid var(--accent); outline-offset: 1px; transition: outline-color .3s; }
 /* learner */
 #agent { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .35rem; }
 .agenttop { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
@@ -73,7 +77,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .slot small { display: block; font-size: .58rem; } .slot b { display: block; font-size: .8rem; color: var(--ink); } .slot.cur { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .slot .r { font-weight: 700; } .slot.good .r { color: var(--win); } .slot.bad .r { color: var(--scratch); } .slot.pop { animation: drop .4s ease; }
 .slot.end { background: var(--ink); color: var(--bg); border-color: var(--ink); } .slot.end b { color: var(--bg); }
-#narr { font-size: .85rem; font-weight: 600; text-align: center; min-height: 1.3rem; color: var(--ink); }
+#narr { font-size: .9rem; font-weight: 600; text-align: center; min-height: 4.6rem; color: var(--ink); line-height: 1.25; }
 #msg { font-size: .72rem; color: var(--muted); text-align: center; min-height: 1rem; }
 /* learning row */
 .rowc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.2fr); gap: .5rem; }
@@ -109,7 +113,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
 .dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
 .related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
-@media (max-width: 900px) { html, body { height: auto; } .app { height: auto; } .rowa, .rowc, .agentmid { grid-template-columns: 1fr; } #wire { flex-direction: row; justify-content: space-around; } #strip { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 900px) { html, body { height: auto; } .app { height: auto; } .rowa, .rowc, .agentmid { grid-template-columns: 1fr; } #mid { flex-direction: row; } #strip { grid-template-columns: repeat(4, 1fr); } }
 </style>
 <div class="app">
   <div class="top">
@@ -118,7 +122,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
   </div>
   <div class="rowa">
     <section class="panel" id="env">
-      <div class="eyebrow explainable" data-explain="online" data-ui="panel.env"></div>
+      <div class="eyebrow explainable" data-explain="world" data-ui="panel.env"></div>
       <div class="eyebrow" data-ui="panel.jobqueue" style="margin-top:.1rem"></div>
       <div id="queue"></div>
       <div id="lanes">
@@ -128,10 +132,9 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
       </div>
       <div class="envfoot"><span class="eyebrow" data-ui="mode.label"></span><span id="modeslot"></span></div>
     </section>
-    <div id="wire">
-      <div class="wl right explainable" id="w-state" data-explain="state" data-ui="wire.state"></div>
-      <div class="wl left explainable" id="w-action" data-explain="action" data-ui="wire.action"></div>
-      <div class="wl left explainable" id="w-reward" data-explain="reward" data-ui="wire.reward"></div>
+    <div id="mid">
+      <svg id="loopsvg" viewBox="0 0 210 170" aria-label="The decision loop"></svg>
+      <div id="narr"></div>
     </div>
     <section class="panel" id="agent">
       <div class="agenttop"><span class="eyebrow explainable" id="agenttitle" data-explain="network"></span><span id="viewbox"></span></div>
@@ -145,7 +148,6 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
   <section class="panel" id="stripbox" style="padding:.4rem .6rem">
     <div class="eyebrow explainable" data-explain="chain" data-ui="panel.strip"></div>
     <div id="strip"></div>
-    <div id="narr"></div>
   </section>
   <div class="rowc">
     <section class="panel"><div class="eyebrow explainable" data-explain="reward" data-ui="panel.ledger"></div><div id="ledger"></div></section>
@@ -166,6 +168,6 @@ StageUI.init({
   agentTitle: document.getElementById("agenttitle"), viewBox: document.getElementById("viewbox"), actor: document.getElementById("actorsvg"), dist: document.getElementById("dist"),
   critic: document.getElementById("critic"), strip: document.getElementById("strip"), ledger: document.getElementById("ledger"), ba: document.getElementById("ba"),
   curve: document.getElementById("curve"), wbars: document.getElementById("wbars"),
-  wires: { state: document.getElementById("w-state"), action: document.getElementById("w-action"), reward: document.getElementById("w-reward") }
+  loop: document.getElementById("loopsvg")
 });
 </script>

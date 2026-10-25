@@ -34,6 +34,10 @@
   // wait for an animation, but never hang if the browser pauses animations (for example in a hidden tab): give up shortly after its duration
   const done = (anim, ms) => Promise.race([anim.finished.catch(() => {}), new Promise(r => setTimeout(r, ms + 150))]);
   const sleep = async (ms, id) => { await new Promise(r => setTimeout(r, ms / S.speed)); guard(id); };
+  // at x1 the film is calm: one orb at a time travels slowly and the part it reaches is highlighted and held; from x3 up it moves faster
+  const calm = () => S.speed === 1;
+  const hold = (calmMs, fastMs, id) => sleep(calm() ? calmMs : fastMs, id);
+  function spot(...els) { document.querySelectorAll(".spot").forEach(e => e.classList.remove("spot")); els.forEach(e => e && e.classList.add("spot")); }
 
   // ---- flying tokens, pop-ups, pulses -----------------------------------------------------------------------------------------------
   const point = x => { if (x.getBoundingClientRect) { const r = x.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; } return x; };
@@ -42,8 +46,8 @@
     cfg.fx.append(t);
     const at = p => `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
     const anim = t.animate([{ transform: at(a) + " scale(.5)", opacity: 0 }, { transform: at(a) + " scale(1)", opacity: 1, offset: 0.15 }, { transform: at(b) + " scale(1)", opacity: 1 }],
-      { duration: ms / S.speed, easing: "ease-in-out", fill: "forwards" });
-    await done(anim, ms / S.speed);
+      { duration: ms * (calm() ? 1.4 : 1) / S.speed, easing: "ease-in-out", fill: "forwards" });
+    await done(anim, ms * (calm() ? 1.4 : 1) / S.speed);
     t.remove(); guard(id);
   }
   async function popup(anchor, text, cls, id, ms) {
@@ -62,15 +66,38 @@
     await done(anim, ms / S.speed);
     c.remove(); guard(id);
   }
-  function wire(name, on, bad) { Object.entries(cfg.wires).forEach(([k, e]) => { e.classList.toggle("on", on && k === name); e.classList.toggle("bad", !!bad); }); }
+  // ---- the loop: State -> Action -> Reward -> Next state, one node lit at a time ----------------------------------------------------------
+  const NODES = { state: [4, 8, "state"], action: [120, 8, "action"], reward: [120, 122, "reward"], next: [4, 122, "state"] };
+  const ARROWS = { action: ["M90,28 H112", "112,22 120,28 112,34"], reward: ["M163,48 V114", "157,114 163,122 169,114"], next: ["M120,142 H98", "98,136 90,142 98,148"], state: ["M47,122 V56", "41,56 47,48 53,56"] };
+  function buildLoop() {
+    const g = cfg.loop; g.textContent = "";
+    Object.entries(ARROWS).forEach(([k, [d, head]]) => g.append(svg("path", { d, class: "larrow", id: "la-" + k }), svg("polygon", { points: head, class: "ahead", id: "lh-" + k })));
+    Object.entries(NODES).forEach(([k, [x, y, topic]]) => {
+      const n = svg("g", { class: "lnode", id: "ln-" + k, "data-explain": topic });
+      n.append(svg("rect", { x, y, width: 86, height: 40, rx: 8 }), svg("text", { x: x + 43, y: y + 16, "text-anchor": "middle" }, UI["loop." + k]), svg("text", { x: x + 43, y: y + 31, "text-anchor": "middle", class: "lv", id: "lv-" + k }, ""));
+      g.append(n);
+    });
+    g.append(svg("text", { x: 105, y: 82, "text-anchor": "middle", class: "lcentre", id: "lcentre" }, ""), svg("text", { x: 105, y: 94, "text-anchor": "middle", class: "lcentre", id: "lcentre2" }, ""));
+  }
+  // light one node of the loop (and the arrow into it); "none" clears everything
+  function wire(name, on, bad) {
+    Object.keys(NODES).forEach(k => {
+      const lit = on && k === name;
+      q(cfg.loop, "#ln-" + k).classList.toggle("on", lit); q(cfg.loop, "#ln-" + k).classList.toggle("bad", lit && !!bad);
+      q(cfg.loop, "#la-" + k).classList.toggle("on", lit); q(cfg.loop, "#lh-" + k).classList.toggle("on", lit);
+    });
+  }
+  const loopVal = (k, text) => { q(cfg.loop, "#lv-" + k).textContent = text; };
+  const loopCentre = (a, b) => { q(cfg.loop, "#lcentre").textContent = a || ""; q(cfg.loop, "#lcentre2").textContent = b || ""; };
 
   // ---- environment: queue shelf, machine lanes -------------------------------------------------------------------------------------------
+  const jobColour = j => COLOURS[j % COLOURS.length];
   function drawQueue(jobs, waiting, chosen, nextArrival) {
     cfg.queue.textContent = "";
     if (!waiting.length) cfg.queue.append(el("div", "qempty", UI["queue.empty"]));
     waiting.forEach(j => {
       const job = jobs[j], b = el("div", "qjob" + (j === chosen ? " pick" : "") + (S.shown.has(j) ? "" : " fresh"), "");
-      b.dataset.job = j; b.style.minWidth = (2.6 + 0.55 * job.p) + "rem";
+      b.dataset.job = j; b.style.borderLeft = "6px solid " + jobColour(j); b.style.minWidth = (2.6 + 0.55 * job.p) + "rem";
       b.append(el("b", null, "J" + (j + 1)), el("span", null, "due " + job.d));
       cfg.queue.append(b); S.shown.add(j);
     });
@@ -81,7 +108,7 @@
       lane.textContent = "";
       blocks.filter(b => b.machine === m).forEach(b => {
         const e = el("div", "mblk" + (b.late ? " late" : "") + (b === newBlock ? " fresh" : ""), "J" + (b.job + 1));
-        e.style.left = (b.start / HORIZON * 100) + "%"; e.style.width = ((b.end - b.start) / HORIZON * 100) + "%"; lane.append(e);
+        e.style.background = b.late ? "" : jobColour(b.job); e.style.left = (b.start / HORIZON * 100) + "%"; e.style.width = ((b.end - b.start) / HORIZON * 100) + "%"; lane.append(e);
       });
       if (now != null) { const l = el("div", "mnow"); l.style.left = (now / HORIZON * 100) + "%"; lane.append(l); }
     });
@@ -144,11 +171,11 @@
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
     p.forEach((pr, k) => {
       const row = el("div", "drow" + (k === chosenK ? " pick" : "")), bar = el("div", "dbar"), f = el("i"), mark = el("u");
-      f.style.width = "0%"; mark.style.left = (100 / n) + "%"; bar.append(f, mark);
+      f.style.width = "0%"; f.style.background = jobColour(st.state.waiting[k]); mark.style.left = (100 / n) + "%"; bar.append(f, mark);
       row.append(el("span", null, "J" + (st.state.waiting[k] + 1)), bar, el("b", null, Math.round(pr * 100) + "%")); cfg.dist.append(row);
       setTimeout(() => { f.style.width = (pr * 100) + "%"; }, 20);
     });
-    cfg.dist.append(el("div", "dlegend", "<s></s>".replace(/<s><\/s>/, "") + "| " + UI["dist.uniform"]));
+    cfg.dist.append(el("div", "dlegend", UI["dist.uniform"]));
   }
   async function spinWheel(chosenK, id) {
     const g = cfg.dist.querySelector("#wg"); if (!g || !S.mids) return;
@@ -244,8 +271,9 @@
     [[UI["ba.before"], p0], [UI["ba.after"], p1]].forEach(([title, p]) => {
       const col = el("div", "bacol"); col.append(el("div", "dtitle", title));
       p.forEach((pr, k) => {
-        const row = el("div", "drow" + (k === st.k ? " pick" : "")), bar = el("div", "dbar"), f = el("i"), mark = el("u"); f.style.width = (pr * 100) + "%"; mark.style.left = (100 / p.length) + "%"; bar.append(f, mark);
-        row.append(el("span", null, "J" + (st.state.waiting[k] + 1)), bar, el("b", null, Math.round(pr * 100) + "%")); col.append(row);
+        const row = el("div", "drow" + (k === st.k ? " pick" : "")), bar = el("div", "dbar"), f = el("i"), mark = el("u"); f.style.background = jobColour(st.state.waiting[k]); const shown = title === UI["ba.after"] ? p0[k] : pr; f.style.width = (shown * 100) + "%"; mark.style.left = (100 / p.length) + "%"; bar.append(f, mark);
+        const pct = el("b", null, Math.round(shown * 100) + "%"); row.append(el("span", null, "J" + (st.state.waiting[k] + 1)), bar, pct); col.append(row);
+        if (title === UI["ba.after"]) setTimeout(() => { f.style.width = (pr * 100) + "%"; pct.textContent = Math.round(pr * 100) + "%"; }, 900 / S.speed);
       });
       box.append(col);
     });
@@ -266,60 +294,67 @@
     S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = [];
     stripReset(); ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
   }
+  const panelOf = e => e.closest(".panel") || e;
   async function playDecision(id) {
-    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100);
-    // 1. the state leaves the environment
-    stripCur(k); setNarr(UI["narr.state"]);
+    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100), envBox = document.getElementById("env");
+    // 1. State: the situation leaves the environment
+    stripCur(k); setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }), "");
+    ["state", "action", "reward", "next"].forEach(n => loopVal(n, ""));
     const future = jobs.map((j, i) => i).filter(i => !st.state.waiting.includes(i) && !ep.steps.slice(0, k).some(s => s.job === i) && jobs[i].a > t).map(i => jobs[i].a);
     const nextArr = online() && future.length ? Math.min(...future) : null;
     drawQueue(jobs, st.state.waiting, null, nextArr); drawMachines(S.blocks, t, null);
-    wire("state", true); await sleep(250, id);
+    wire("state", true); loopVal("state", fill(UI["loop.v.state"], { t, n: st.state.waiting.length })); spot(envBox);
+    await hold(800, 250, id);
     await fly(cfg.queue, q(cfg.actor, "#ae1"), id, "tk state", "s", 650);
     // 2. the actor scores the waiting jobs and turns the scores into probabilities; the critic estimates the situation
-    setNarr(UI["narr.net"]);
+    setNarr(UI["narr.net"]); spot(cfg.actor.parentElement);
     drawDist(null); paintCritic(st, k);
     await actorPulses(id);
     drawDist(st, p, st.k);
     if (S.view === "wheel") await spinWheel(st.k, id); else await sleep(600, id);
-    await criticPulses(id);
-    // 3. the action goes back to the environment; the job moves from the queue onto a machine
-    wire("action", true); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
-    drawQueue(jobs, st.state.waiting, chosen, nextArr);
+    await hold(700, 0, id);
+    if (isAC()) { spot(cfg.critic); await criticPulses(id); await hold(600, 0, id); }
+    // 3. Action: the job leaves the queue and starts on a machine
+    wire("action", true); loopVal("action", fill(UI["loop.v.action"], { job: chosen + 1 })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
+    drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(cfg.queue.parentElement);
     const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = S.view === "wheel" ? q(cfg.dist, "#wheel") : (q(cfg.dist, ".drow.pick") || cfg.dist);
     await fly(from, qEl || cfg.queue, id, "tk action", "J" + (chosen + 1), 650);
+    await hold(700, 0, id);
     setNarr(fill(UI["narr.place"], { job: chosen + 1, m: st.state.machine + 1 }));
     const newBlock = { job: chosen, machine: st.state.machine, start: st.start, end: st.end, late: st.lateness > 0 }; S.blocks.push(newBlock);
     const lane = cfg.machines[st.state.machine], lr = lane.getBoundingClientRect();
     await fly(qEl || cfg.queue, { x: lr.left + lr.width * ((st.start + st.end) / 2) / HORIZON, y: lr.top + lr.height / 2 }, id, "tk job", "J" + (chosen + 1), 650);
-    drawQueue(jobs, st.state.waiting.filter(j => j !== chosen), null, nextArr); drawMachines(S.blocks, t, newBlock);
-    await sleep(200, id);
-    // 4. the reward comes back: pops up, travels along the reward wire, drops into the ledger and the strip
+    drawQueue(jobs, st.state.waiting.filter(j => j !== chosen), null, nextArr); drawMachines(S.blocks, t, newBlock); spot(lane);
+    await hold(700, 200, id);
+    // 4. Reward: it appears, is written into the ledger and the strip, and (actor-critic) the critic compares it with its guess
     const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0";
-    wire("reward", true, late); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome: late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"] }));
+    wire("reward", true, late); loopVal("reward", rtxt); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome: late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"] }));
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
     await popup(blkEl, rtxt, late ? "bad" : "good", id, 800);
-    const chip = ledgerAdd(k, st.reward); stripFill(k, chosen, st.reward, late);
+    const chip = ledgerAdd(k, st.reward); stripFill(k, chosen, st.reward, late); spot(panelOf(cfg.ledger));
     await fly(blkEl, chip, id, late ? "reward" : "good", rtxt, 700);
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500);
-    if (isAC()) { setNarr(UI["narr.compare"]); await fly(chip, q(cfg.critic, "#cval"), id, "reward", "r", 650); await criticCompare(st, k, ep, id); }
-    // 5. the next state
-    wire("state", false); setNarr(UI["narr.next"]);
+    await hold(800, 0, id);
+    if (isAC()) { setNarr(UI["narr.compare"]); spot(cfg.critic); await fly(chip, q(cfg.critic, "#cval"), id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
+    // 5. Next state
+    const nxt = ep.steps[k + 1]; wire("next", true); loopVal("next", nxt ? fill(UI["loop.v.next"], { t: nxt.state.t }) : "end"); setNarr(UI["narr.next"]); spot();
+    await hold(500, 200, id);
     S.k++;
-    if (S.k >= ep.steps.length) await finishEpisode(id); else await sleep(200, id);
+    if (S.k >= ep.steps.length) await finishEpisode(id);
   }
   async function finishEpisode(id) {
     const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), criticBefore = isAC() ? L.critic.slice() : null, adv = advantages(ep);
     const endSlot = q(cfg.strip, ".slot.end"); endSlot.classList.add("cur"); q(endSlot, "b").textContent = fill(UI["strip.cost"], { cost: ep.cost });
-    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true);
-    ledgerCredit(adv); await sleep(900, id);
+    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true); loopCentre(fill(UI["loop.done"], { cost: ep.cost }), "");
+    ledgerCredit(adv); spot(panelOf(cfg.ledger)); await hold(1600, 900, id);
     const chips = [...cfg.ledger.querySelectorAll(".lchip.got")];
     chips.forEach(c => fly(c, cfg.ba, id, "reward", q(c, "em").textContent, 800).catch(() => {}));
     await sleep(900, id);
     L.update(ep); hist()[S.active].push(ep.cost); S.ep = null;
-    setNarr(UI["narr.learn"]);
+    setNarr(UI["narr.learn"]); spot(panelOf(cfg.ba), panelOf(cfg.wbars));
     baShow(ep, adv, thetaBefore, L.theta.slice()); paintWeights(thetaBefore); paintCriticWeights(criticBefore); drawCurve();
-    await sleep(2600, id);
-    paintWeights(); paintCriticWeights(); paintCritic(null); wire("reward", false);
+    await hold(4200, 2600, id);
+    spot(); paintWeights(); paintCriticWeights(); paintCritic(null); wire("none", false); loopCentre("", "");
   }
 
   // ---- controls ------------------------------------------------------------------------------------------------------------------------------
@@ -366,7 +401,7 @@
     setTimeout(() => { const v = C.meanCost(R.sets, learner().greedy); setMsg(fill(UI["test.line"], { n: R.sets.length, random: R.random.toFixed(0), rule: R.rule.name, rulecost: R.rule.cost.toFixed(0), learner: v.toFixed(0) })); }, 30);
   }
   function redraw() {
-    stripReset(); ledgerReset(); baReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); setButtons();
+    stripReset(); ledgerReset(); baReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre("", ""); setButtons();
   }
   function resetAll() { newState(); redraw(); setMsg(""); setNarr(UI["narr.idle"]); }
 
