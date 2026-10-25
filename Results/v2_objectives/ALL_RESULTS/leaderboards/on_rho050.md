@@ -202,10 +202,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho050.md`](../tab
 | 4 | PPO Opt2 priority score +Consolidate windowed MDC expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.853 +/- 0.001 | 4089 +/- 1 |
 | 5 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 0.853 +/- 0.000 | 4090 +/- 3 |
 | 6 | PPO Opt2 priority score +Consolidate windowed WLST expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.853 +/- 0.000 | 4090 +/- 3 |
-| 7 | PPO Opt2 priority score +Consolidate windowed COVERT expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.852 +/- 0.002 | 4087 +/- 2 |
-| 8 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x1] | RL | 0.852 +/- 0.001 | 5140 +/- 1117 |
-| 9 | COVERT+Consolidate | Heuristic | 0.852 +/- 0.018 | 4088 +/- 2415 |
-| 10 | WLST+Consolidate | Heuristic | 0.851 +/- 0.018 | 4085 +/- 2414 |
+| 7 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +energy objective 1M-step budget [lambda x1] | RL | 0.853 +/- 0.003 | 8632 +/- 3257 |
+| 8 | PPO Opt2 priority score +Consolidate windowed COVERT expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 0.852 +/- 0.002 | 4087 +/- 2 |
+| 9 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x1] | RL | 0.852 +/- 0.001 | 5140 +/- 1117 |
+| 10 | COVERT+Consolidate | Heuristic | 0.852 +/- 0.018 | 4088 +/- 2415 |
 
 | top 5 | top 10 |
 |---|---|
@@ -224,7 +224,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho050.md`](../tab
 | 7 | COVERT+Consolidate | Heuristic | 825 +/- 59 | 4088 +/- 2415 |
 | 8 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 826 +/- 0 | 4090 +/- 3 |
 | 9 | PPO Opt2 priority score +Consolidate windowed WLST expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 826 +/- 0 | 4090 +/- 3 |
-| 10 | WLST+Consolidate | Heuristic | 827 +/- 61 | 4085 +/- 2414 |
+| 10 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +energy objective 1M-step budget [lambda x1] | RL | 826 +/- 5 | 8632 +/- 3257 |
 
 | top 5 | top 10 |
 |---|---|
@@ -243,7 +243,7 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho050.md`](../tab
 | 7 | COVERT+Consolidate | Heuristic | 715 +/- 52 | 4088 +/- 2415 |
 | 8 | PPO Opt2 priority score +Consolidate windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle WLST expert | RL | 715 +/- 0 | 4090 +/- 3 |
 | 9 | PPO Opt2 priority score +Consolidate windowed WLST expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 715 +/- 0 | 4090 +/- 3 |
-| 10 | WLST+Consolidate | Heuristic | 716 +/- 53 | 4085 +/- 2414 |
+| 10 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +energy objective 1M-step budget [lambda x1] | RL | 715 +/- 3 | 8632 +/- 3257 |
 
 | top 5 | top 10 |
 |---|---|
