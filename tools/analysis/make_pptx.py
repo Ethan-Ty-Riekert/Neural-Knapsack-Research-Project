@@ -1,4 +1,7 @@
-"""Build the final presentation: app/slides/Final_Presentation.pptx (16:9, four slides, editable; speaker notes included).
+"""WARNING (2026-10-26): the deck app/slides/Final_Presentation.pptx has been edited by hand and by tools/analysis/edit_final_deck.py;
+running this script rebuilds it from scratch and OVERWRITES those edits (a copy of the hand-edited deck is in app/slides/backup/).
+
+Build the final presentation: app/slides/Final_Presentation.pptx (16:9, four slides, editable; speaker notes included).
 
     python tools/analysis/make_slides.py      (first: draws the two result charts into app/slides/deck_assets/)
     python tools/analysis/make_pptx.py        (needs python-pptx)
