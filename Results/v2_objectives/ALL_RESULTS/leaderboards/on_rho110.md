@@ -145,10 +145,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 4 | SPT+FirstFit | Heuristic | 4.71 +/- 0.86 | 445610 +/- 154209 |
 | 5 | WSPT+BestFit | Heuristic | 4.79 +/- 0.98 | 367881 +/- 141653 |
 | 6 | WSPT+FirstFit | Heuristic | 5.17 +/- 0.98 | 409159 +/- 146537 |
-| 7 | SPT+WorstFit | Heuristic | 5.95 +/- 0.88 | 644925 +/- 189011 |
-| 8 | ATC+FirstFit | Heuristic | 6.15 +/- 1.24 | 205642 +/- 98055 |
-| 9 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 6.25 +/- 0.33 | 188789 +/- 35014 |
-| 10 | ATC+BestFit | Heuristic | 6.26 +/- 1.32 | 191577 +/- 108044 |
+| 7 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x1] | RL | 5.53 +/- 0.25 | 261489 +/- 38879 |
+| 8 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x4] | RL | 5.60 +/- 0.77 | 323156 +/- 90827 |
+| 9 | SPT+WorstFit | Heuristic | 5.95 +/- 0.88 | 644925 +/- 189011 |
+| 10 | ATC+FirstFit | Heuristic | 6.15 +/- 1.24 | 205642 +/- 98055 |
 
 | top 5 | top 10 |
 |---|---|
@@ -164,10 +164,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/on_rho110.md`](../tab
 | 4 | SPT+FirstFit | Heuristic | 10.18 +/- 1.00 | 445610 +/- 154209 |
 | 5 | WSPT+BestFit | Heuristic | 10.25 +/- 1.10 | 367881 +/- 141653 |
 | 6 | WSPT+FirstFit | Heuristic | 10.64 +/- 1.09 | 409159 +/- 146537 |
-| 7 | SPT+WorstFit | Heuristic | 11.42 +/- 0.99 | 644925 +/- 189011 |
-| 8 | ATC+FirstFit | Heuristic | 11.62 +/- 1.33 | 205642 +/- 98055 |
-| 9 | PPO Opt2 priority score +Consolidate look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 11.72 +/- 0.33 | 188789 +/- 35014 |
-| 10 | ATC+BestFit | Heuristic | 11.73 +/- 1.40 | 191577 +/- 108044 |
+| 7 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x1] | RL | 11.00 +/- 0.25 | 261489 +/- 38879 |
+| 8 | PPO Opt2 priority score +Consolidate windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x4] | RL | 11.07 +/- 0.77 | 323156 +/- 90827 |
+| 9 | SPT+WorstFit | Heuristic | 11.42 +/- 0.99 | 644925 +/- 189011 |
+| 10 | ATC+FirstFit | Heuristic | 11.62 +/- 1.33 | 205642 +/- 98055 |
 
 | top 5 | top 10 |
 |---|---|
