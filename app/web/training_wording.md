@@ -117,9 +117,7 @@ stage.heading: Watch the loop
 stage.tagline: The scheduler learns by trial and error: every decision goes round the loop, and each episode's rewards nudge the network.
 panel.env: Environment
 panel.agent: Learner
-panel.strip: Decisions in this episode
 panel.ledger: Rewards this episode
-panel.ba: Same situation, before and after learning
 panel.curveweights: Progress
 wire.state: State
 wire.action: Action
@@ -134,17 +132,9 @@ view.bars: Bars
 view.wheel: Wheel
 btn.stop: Stop
 speed.30: ×30
-dist.uniform: pure chance
+dist.uniform: pure chance. Taller bar = more likely to be picked
 dist.title: Chance of picking each job
 dist.title.wheel: The wheel: each slice is a job
-strip.slot: {k}
-strip.cost: Cost {cost}
-ba.empty: After an episode, one earlier decision is replayed here with the old and the new probabilities.
-ba.before: Before
-ba.after: After
-ba.line: Credit for job {job}: {credit}. Its chance went from {p0}% to {p1}%.
-ba.up: The learner now favours it more.
-ba.down: The learner now favours it less.
 weights.title: Weights (what the network has learned)
 related: Related
 back: ← Back

@@ -1,7 +1,7 @@
 /* stage_ui.js - "Watch the loop", stage layout (stage.html). The layout is the loop: the environment (job queue, two machine lanes) on the
    left, the learner (actor network with its probability distribution as bars or a wheel, and the critic or baseline) on the right, and
-   three wires between them that light up as the state, the action and the reward travel. Under them a film strip of the episode's
-   decisions and a learning row: the reward ledger, the same situation before and after learning, and the learning curve with the weights.
+   a small State, Action, Reward, Next state loop between them that lights up as the data travels. Under them a learning row: the reward
+   ledger of the episode, and the learning curve with the weights.
    Play keeps stepping through episode after episode at the chosen speed (x30 is a fast "spam the Step button") until Stop.
    Every sentence comes from training_wording.md; the world and learners from training_core.js. */
 (function () {
@@ -97,7 +97,7 @@
     if (!waiting.length) cfg.queue.append(el("div", "qempty", UI["queue.empty"]));
     waiting.forEach(j => {
       const job = jobs[j], b = el("div", "qjob" + (j === chosen ? " pick" : "") + (S.shown.has(j) ? "" : " fresh"), "");
-      b.dataset.job = j; b.style.borderLeft = "6px solid " + jobColour(j); b.style.minWidth = (2.6 + 0.55 * job.p) + "rem";
+      b.dataset.job = j; b.style.borderLeft = "6px solid " + jobColour(j); b.style.minWidth = (2.4 + 0.3 * job.p) + "rem";
       b.append(el("b", null, "J" + (j + 1)), el("span", null, "due " + job.d));
       cfg.queue.append(b); S.shown.add(j);
     });
@@ -169,13 +169,21 @@
       return;
     }
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
+    const W = 170, H = 165, x0 = 4, x1 = W - 4, yb = 140, yt = 20, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(26, slot * 0.7);
+    const yOf = v => yb - (v / top) * (yb - yt), cx = k => x0 + slot * (k + 0.5), g = svg("svg", { id: "vbars", viewBox: `0 0 ${W} ${H}` });
+    g.append(svg("line", { x1: x0, y1: yb, x2: x1, y2: yb, class: "vaxis" }), svg("line", { x1: x0, y1: yOf(1 / n), x2: x1, y2: yOf(1 / n), class: "vchance" }));
+    const bars = [];
     p.forEach((pr, k) => {
-      const row = el("div", "drow" + (k === chosenK ? " pick" : "")), bar = el("div", "dbar"), f = el("i"), mark = el("u");
-      f.style.width = "0%"; f.style.background = jobColour(st.state.waiting[k]); mark.style.left = (100 / n) + "%"; bar.append(f, mark);
-      row.append(el("span", null, "J" + (st.state.waiting[k] + 1)), bar, el("b", null, Math.round(pr * 100) + "%")); cfg.dist.append(row);
-      setTimeout(() => { f.style.width = (pr * 100) + "%"; }, 20);
+      const j = st.state.waiting[k], r = svg("rect", { x: cx(k) - bw / 2, y: yb, width: bw, height: 0, rx: 3, fill: jobColour(j), class: "vbar" + (k === chosenK ? " pick" : "") });
+      g.append(r, svg("text", { x: cx(k), y: yb + 14, "text-anchor": "middle", class: "vlbl" }, "J" + (j + 1)));
+      const pc = svg("text", { x: cx(k), y: yb, "text-anchor": "middle", class: "vpct" + (k === chosenK ? " pick" : ""), opacity: 0 }, Math.round(pr * 100) + "%"); g.append(pc); bars.push([r, pc, pr, k]);
     });
-    cfg.dist.append(el("div", "dlegend", UI["dist.uniform"]));
+    const line = svg("polyline", { points: p.map((pr, k) => `${cx(k)},${yOf(pr)}`).join(" "), class: "vline", opacity: 0 }), dots = p.map((pr, k) => svg("circle", { cx: cx(k), cy: yOf(pr), r: 3, class: "vdot", opacity: 0 }));
+    g.append(line, ...dots); cfg.dist.append(g, el("div", "dlegend", "- - - " + UI["dist.uniform"]));
+    setTimeout(() => {
+      bars.forEach(([r, pc, pr]) => { r.setAttribute("y", yOf(pr)); r.setAttribute("height", yb - yOf(pr)); pc.setAttribute("y", yOf(pr) - 5); });
+    }, 20);
+    setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); line.setAttribute("opacity", 1); dots.forEach(d => d.setAttribute("opacity", 1)); }, 520 / S.speed);
   }
   async function spinWheel(chosenK, id) {
     const g = cfg.dist.querySelector("#wg"); if (!g || !S.mids) return;
@@ -231,17 +239,7 @@
     await sleep(800, id); cv.style.borderColor = ""; cv.style.borderWidth = "";
   }
 
-  // ---- film strip, ledger ---------------------------------------------------------------------------------------------------------------
-  function stripReset() {
-    cfg.strip.textContent = "";
-    for (let i = 0; i < 8; i++) { const s = el("div", "slot"); s.dataset.k = i; s.append(el("small", null, fill(UI["strip.slot"], { k: i + 1 })), el("b", null, "·"), el("span", "r", "")); cfg.strip.append(s); }
-    const e = el("div", "slot end"); e.dataset.end = 1; e.append(el("small", null, "■"), el("b", null, "")); cfg.strip.append(e);
-  }
-  function stripCur(k) { cfg.strip.querySelectorAll(".slot").forEach(s => s.classList.toggle("cur", +s.dataset.k === k && !s.dataset.end)); }
-  function stripFill(k, job, reward, late) {
-    const s = q(cfg.strip, `.slot[data-k="${k}"]`); q(s, "b").textContent = "J" + (job + 1); const r = q(s, ".r"); r.textContent = late ? plain(reward, 1) : "0";
-    s.classList.add(late ? "bad" : "good", "pop"); setTimeout(() => s.classList.remove("pop"), 500);
-  }
+  // ---- ledger ---------------------------------------------------------------------------------------------------------------
   function ledgerReset() {
     cfg.ledger.textContent = ""; S.rewards = [];
     const row = el("div", "lrow"); for (let i = 0; i < 8; i++) { const c = el("div", "lchip empty"); c.dataset.k = i; c.append(el("small", null, String(i + 1)), el("b", null, "·"), el("em", null, "")); row.append(c); }
@@ -261,26 +259,6 @@
   }
   function ledgerCredit(adv) { adv.forEach((a, t) => { const c = q(cfg.ledger, `.lchip[data-k="${t}"]`); if (c) { c.classList.add(a >= 0 ? "up" : "down"); q(c, "em").textContent = num(a, 1); } }); }
 
-  // ---- before / after: the same situation with the old and the new probabilities ----------------------------------------------------------------
-  const probsWith = (theta, st) => C.softmax(st.state.waiting.map(j => theta.reduce((s, w, i) => s + w * C.features(st.state.jobs[j], st.state.t)[i], 0)));
-  function baReset() { cfg.ba.textContent = ""; cfg.ba.append(el("div", "baempty", UI["ba.empty"])); }
-  function baShow(ep, adv, thetaBefore, thetaAfter) {
-    let best = -1, bk = -1; ep.steps.forEach((st, k) => { if (st.state.waiting.length > 1 && Math.abs(adv[k]) > best) { best = Math.abs(adv[k]); bk = k; } });
-    cfg.ba.textContent = ""; if (bk < 0) { baReset(); return; }
-    const st = ep.steps[bk], p0 = probsWith(thetaBefore, st), p1 = probsWith(thetaAfter, st), box = el("div", "babox");
-    [[UI["ba.before"], p0], [UI["ba.after"], p1]].forEach(([title, p]) => {
-      const col = el("div", "bacol"); col.append(el("div", "dtitle", title));
-      p.forEach((pr, k) => {
-        const row = el("div", "drow" + (k === st.k ? " pick" : "")), bar = el("div", "dbar"), f = el("i"), mark = el("u"); f.style.background = jobColour(st.state.waiting[k]); const shown = title === UI["ba.after"] ? p0[k] : pr; f.style.width = (shown * 100) + "%"; mark.style.left = (100 / p.length) + "%"; bar.append(f, mark);
-        const pct = el("b", null, Math.round(shown * 100) + "%"); row.append(el("span", null, "J" + (st.state.waiting[k] + 1)), bar, pct); col.append(row);
-        if (title === UI["ba.after"]) setTimeout(() => { f.style.width = (pr * 100) + "%"; pct.textContent = Math.round(pr * 100) + "%"; }, 900 / S.speed);
-      });
-      box.append(col);
-    });
-    const a0 = Math.round(p0[st.k] * 100), a1 = Math.round(p1[st.k] * 100);
-    cfg.ba.append(box, el("div", "baline", fill(UI["ba.line"], { job: st.job + 1, credit: num(adv[bk], 1), p0: a0, p1: a1 }) + " " + (p1[st.k] >= p0[st.k] ? UI["ba.up"] : UI["ba.down"])));
-  }
-
   // ---- curve ---------------------------------------------------------------------------------------------------------------------------------
   function drawCurve() {
     const R = refs();
@@ -292,13 +270,13 @@
   function startEpisode() {
     const L = learner(), jobs = C.makeInstance(S.rng[S.mode], online());
     S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = [];
-    stripReset(); ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
+    ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
   }
   const panelOf = e => e.closest(".panel") || e;
   async function playDecision(id) {
     const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100), envBox = document.getElementById("env");
     // 1. State: the situation leaves the environment
-    stripCur(k); setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }), "");
+    setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }), "");
     ["state", "action", "reward", "next"].forEach(n => loopVal(n, ""));
     const future = jobs.map((j, i) => i).filter(i => !st.state.waiting.includes(i) && !ep.steps.slice(0, k).some(s => s.job === i) && jobs[i].a > t).map(i => jobs[i].a);
     const nextArr = online() && future.length ? Math.min(...future) : null;
@@ -317,7 +295,7 @@
     // 3. Action: the job leaves the queue and starts on a machine
     wire("action", true); loopVal("action", fill(UI["loop.v.action"], { job: chosen + 1 })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
     drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(cfg.queue.parentElement);
-    const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = S.view === "wheel" ? q(cfg.dist, "#wheel") : (q(cfg.dist, ".drow.pick") || cfg.dist);
+    const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = S.view === "wheel" ? q(cfg.dist, "#wheel") : (q(cfg.dist, ".vbar.pick") || cfg.dist);
     await fly(from, qEl || cfg.queue, id, "tk action", "J" + (chosen + 1), 650);
     await hold(700, 0, id);
     setNarr(fill(UI["narr.place"], { job: chosen + 1, m: st.state.machine + 1 }));
@@ -326,12 +304,12 @@
     await fly(qEl || cfg.queue, { x: lr.left + lr.width * ((st.start + st.end) / 2) / HORIZON, y: lr.top + lr.height / 2 }, id, "tk job", "J" + (chosen + 1), 650);
     drawQueue(jobs, st.state.waiting.filter(j => j !== chosen), null, nextArr); drawMachines(S.blocks, t, newBlock); spot(lane);
     await hold(700, 200, id);
-    // 4. Reward: it appears, is written into the ledger and the strip, and (actor-critic) the critic compares it with its guess
+    // 4. Reward: it appears, is written into the ledger, and (actor-critic) the critic compares it with its guess
     const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0";
     wire("reward", true, late); loopVal("reward", rtxt); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome: late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"] }));
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
     await popup(blkEl, rtxt, late ? "bad" : "good", id, 800);
-    const chip = ledgerAdd(k, st.reward); stripFill(k, chosen, st.reward, late); spot(panelOf(cfg.ledger));
+    const chip = ledgerAdd(k, st.reward); spot(panelOf(cfg.ledger));
     await fly(blkEl, chip, id, late ? "reward" : "good", rtxt, 700);
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500);
     await hold(800, 0, id);
@@ -344,15 +322,14 @@
   }
   async function finishEpisode(id) {
     const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), criticBefore = isAC() ? L.critic.slice() : null, adv = advantages(ep);
-    const endSlot = q(cfg.strip, ".slot.end"); endSlot.classList.add("cur"); q(endSlot, "b").textContent = fill(UI["strip.cost"], { cost: ep.cost });
     setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true); loopCentre(fill(UI["loop.done"], { cost: ep.cost }), "");
     ledgerCredit(adv); spot(panelOf(cfg.ledger)); await hold(1600, 900, id);
     const chips = [...cfg.ledger.querySelectorAll(".lchip.got")];
-    chips.forEach(c => fly(c, cfg.ba, id, "reward", q(c, "em").textContent, 800).catch(() => {}));
+    chips.forEach(c => fly(c, cfg.actor, id, "reward", q(c, "em").textContent, 800).catch(() => {}));
     await sleep(900, id);
     L.update(ep); hist()[S.active].push(ep.cost); S.ep = null;
-    setNarr(UI["narr.learn"]); spot(panelOf(cfg.ba), panelOf(cfg.wbars));
-    baShow(ep, adv, thetaBefore, L.theta.slice()); paintWeights(thetaBefore); paintCriticWeights(criticBefore); drawCurve();
+    setNarr(UI["narr.learn"]); spot(cfg.actor.parentElement, panelOf(cfg.wbars));
+    paintWeights(thetaBefore); paintCriticWeights(criticBefore); drawCurve();
     await hold(4200, 2600, id);
     spot(); paintWeights(); paintCriticWeights(); paintCritic(null); wire("none", false); loopCentre("", "");
   }
@@ -401,7 +378,7 @@
     setTimeout(() => { const v = C.meanCost(R.sets, learner().greedy); setMsg(fill(UI["test.line"], { n: R.sets.length, random: R.random.toFixed(0), rule: R.rule.name, rulecost: R.rule.cost.toFixed(0), learner: v.toFixed(0) })); }, 30);
   }
   function redraw() {
-    stripReset(); ledgerReset(); baReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre("", ""); setButtons();
+    ledgerReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre("", ""); setButtons();
   }
   function resetAll() { newState(); redraw(); setMsg(""); setNarr(UI["narr.idle"]); }
 
