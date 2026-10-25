@@ -69,16 +69,16 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .qempty, .qnext { font-size: .75rem; color: var(--muted); padding: .3rem .2rem; } .qnext { border: 2px dashed var(--rule); border-radius: .45rem; }
 .envfoot { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; color: var(--muted); } .envfoot .seg { flex-wrap: wrap; }
 /* machines */
-#machinesbox { flex: 1 1 0; }
-#lanes { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: .35rem; min-height: 0; }
-.lanewrap { position: relative; flex: 1 1 0; min-height: 2.4rem; max-height: 6.5rem; } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
+#machinesbox { flex: 0 0 auto; }
+#lanes { display: flex; flex-direction: column; gap: .35rem; }
+.lanewrap { position: relative; height: clamp(2.4rem, 5.6vh, 3.6rem); } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
 .mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.6rem; }
 .mblk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
 .mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
 .mnow { position: absolute; top: -.25rem; bottom: -.25rem; width: 3px; background: var(--ink); opacity: .5; }
 .maxis { margin-left: 4.6rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
 /* the MDP ring */
-#ring { flex: 0 0 auto; height: clamp(15rem, 42vh, 25rem); width: min(100%, 38rem); align-self: center; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: .25rem; min-height: 0; padding: .2rem; }
+#ring { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: .25rem; min-height: 0; padding: .2rem; }
 .lbox { background: var(--surface); border: 2px solid var(--rule); border-radius: .8rem; padding: .45rem .6rem; display: flex; flex-direction: column; gap: .2rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
 .lbox.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); } .lbox.bad.on { border-color: var(--scratch); background: color-mix(in srgb, var(--scratch) 9%, var(--surface)); }
 .lhead { display: flex; align-items: baseline; gap: .4rem; } .lhead b { font-family: var(--display); font-size: 1.1rem; } .lhead .n { color: var(--accent); }
