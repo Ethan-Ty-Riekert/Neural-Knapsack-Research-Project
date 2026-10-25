@@ -88,9 +88,9 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 #b-state { grid-area: 1 / 2; } #a-action { grid-area: 1 / 3; align-items: flex-end; justify-content: flex-start; } #b-action { grid-area: 2 / 3; } #a-reward { grid-area: 3 / 3; align-items: flex-start; justify-content: flex-start; } #b-reward { grid-area: 3 / 2; } #a-next { grid-area: 3 / 1; align-items: flex-start; justify-content: flex-end; } #b-next { grid-area: 2 / 1; } #a-state { grid-area: 1 / 1; align-items: flex-end; justify-content: flex-end; }
 #mdp { grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 2.6rem; font-weight: 700; color: var(--rule); letter-spacing: .08em; }
 /* network, probability graph, rewards */
-#netbox { flex: 0 0 auto; } #probbox { flex: 1 1 0; min-height: 7rem; } #rewardsbox { flex: 0 0 auto; }
-#actorsvg { width: 100%; height: auto; max-height: 6.6rem; align-self: center; flex: none; }
-#dist { position: relative; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: .1rem; }
+#netbox { flex: 1 1 0; } #probbox { flex: 0 0 auto; } #rewardsbox { flex: 0 0 auto; }
+#actorsvg { width: 100%; flex: 1 1 0; min-height: 5rem; align-self: center; }
+#dist { position: relative; height: clamp(6rem, 14vh, 9.5rem); display: flex; flex-direction: column; gap: .1rem; }
 .dtitle { font-size: .72rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; } .dlegend { font-size: .7rem; color: var(--muted); } .baempty { font-size: .8rem; color: var(--muted); }
 #vbars { width: 100%; flex: 1; min-height: 0; }
 #vbars .vaxis { stroke: var(--rule); stroke-width: 1.5; } #vbars .vchance { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
@@ -640,21 +640,20 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     if (!st) { cfg.dist.append(el("div", "baempty", UI["dist.title"])); return; }
     const n = p.length;
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
-    const W = 330, H = 120, x0 = 4, x1 = W - 4, yb = 98, yt = 16, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(30, slot * 0.7);
+    const W = 330, H = 78, x0 = 4, x1 = W - 4, yb = 62, yt = 14, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(30, slot * 0.7);
     const yOf = v => yb - (v / top) * (yb - yt), cx = k => x0 + slot * (k + 0.5), g = svg("svg", { id: "vbars", viewBox: `0 0 ${W} ${H}` });
     g.append(svg("line", { x1: x0, y1: yb, x2: x1, y2: yb, class: "vaxis" }), svg("line", { x1: x0, y1: yOf(1 / n), x2: x1, y2: yOf(1 / n), class: "vchance" }));
     const bars = [];
     p.forEach((pr, k) => {
       const j = st.state.waiting[k], r = svg("rect", { x: cx(k) - bw / 2, y: yb, width: bw, height: 0, rx: 3, fill: jobColour(j), class: "vbar" + (k === chosenK ? " pick" : "") });
-      g.append(r, svg("text", { x: cx(k), y: yb + 14, "text-anchor": "middle", class: "vlbl" }, "J" + (j + 1)));
+      g.append(r, svg("text", { x: cx(k), y: yb + 13, "text-anchor": "middle", class: "vlbl" }, "J" + (j + 1)));
       const pc = svg("text", { x: cx(k), y: yb, "text-anchor": "middle", class: "vpct" + (k === chosenK ? " pick" : ""), opacity: 0 }, Math.round(pr * 100) + "%"); g.append(pc); bars.push([r, pc, pr, k]);
     });
-    const line = svg("polyline", { points: p.map((pr, k) => `${cx(k)},${yOf(pr)}`).join(" "), class: "vline", opacity: 0 }), dots = p.map((pr, k) => svg("circle", { cx: cx(k), cy: yOf(pr), r: 3, class: "vdot", opacity: 0 }));
-    g.append(line, ...dots); cfg.dist.append(g, el("div", "dlegend", "- - - " + UI["dist.uniform"]));
+    cfg.dist.append(g, el("div", "dlegend", "- - - " + UI["dist.uniform"]));
     setTimeout(() => {
       bars.forEach(([r, pc, pr]) => { r.setAttribute("y", yOf(pr)); r.setAttribute("height", yb - yOf(pr)); pc.setAttribute("y", yOf(pr) - 5); });
     }, 20);
-    setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); line.setAttribute("opacity", 1); dots.forEach(d => d.setAttribute("opacity", 1)); }, 520 / S.speed);
+    setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); }, 520 / S.speed);
   }
   // ---- learner: the critic (actor-critic) or the baseline (REINFORCE) ----------------------------------------------------------------------
   function buildCritic() {

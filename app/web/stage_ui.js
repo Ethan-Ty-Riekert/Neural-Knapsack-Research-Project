@@ -143,21 +143,20 @@
     if (!st) { cfg.dist.append(el("div", "baempty", UI["dist.title"])); return; }
     const n = p.length;
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
-    const W = 330, H = 120, x0 = 4, x1 = W - 4, yb = 98, yt = 16, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(30, slot * 0.7);
+    const W = 330, H = 78, x0 = 4, x1 = W - 4, yb = 62, yt = 14, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(30, slot * 0.7);
     const yOf = v => yb - (v / top) * (yb - yt), cx = k => x0 + slot * (k + 0.5), g = svg("svg", { id: "vbars", viewBox: `0 0 ${W} ${H}` });
     g.append(svg("line", { x1: x0, y1: yb, x2: x1, y2: yb, class: "vaxis" }), svg("line", { x1: x0, y1: yOf(1 / n), x2: x1, y2: yOf(1 / n), class: "vchance" }));
     const bars = [];
     p.forEach((pr, k) => {
       const j = st.state.waiting[k], r = svg("rect", { x: cx(k) - bw / 2, y: yb, width: bw, height: 0, rx: 3, fill: jobColour(j), class: "vbar" + (k === chosenK ? " pick" : "") });
-      g.append(r, svg("text", { x: cx(k), y: yb + 14, "text-anchor": "middle", class: "vlbl" }, "J" + (j + 1)));
+      g.append(r, svg("text", { x: cx(k), y: yb + 13, "text-anchor": "middle", class: "vlbl" }, "J" + (j + 1)));
       const pc = svg("text", { x: cx(k), y: yb, "text-anchor": "middle", class: "vpct" + (k === chosenK ? " pick" : ""), opacity: 0 }, Math.round(pr * 100) + "%"); g.append(pc); bars.push([r, pc, pr, k]);
     });
-    const line = svg("polyline", { points: p.map((pr, k) => `${cx(k)},${yOf(pr)}`).join(" "), class: "vline", opacity: 0 }), dots = p.map((pr, k) => svg("circle", { cx: cx(k), cy: yOf(pr), r: 3, class: "vdot", opacity: 0 }));
-    g.append(line, ...dots); cfg.dist.append(g, el("div", "dlegend", "- - - " + UI["dist.uniform"]));
+    cfg.dist.append(g, el("div", "dlegend", "- - - " + UI["dist.uniform"]));
     setTimeout(() => {
       bars.forEach(([r, pc, pr]) => { r.setAttribute("y", yOf(pr)); r.setAttribute("height", yb - yOf(pr)); pc.setAttribute("y", yOf(pr) - 5); });
     }, 20);
-    setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); line.setAttribute("opacity", 1); dots.forEach(d => d.setAttribute("opacity", 1)); }, 520 / S.speed);
+    setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); }, 520 / S.speed);
   }
   // ---- learner: the critic (actor-critic) or the baseline (REINFORCE) ----------------------------------------------------------------------
   function buildCritic() {
