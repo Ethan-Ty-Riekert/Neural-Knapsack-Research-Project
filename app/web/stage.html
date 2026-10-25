@@ -6,70 +6,85 @@
 <style>
 /*__BASE__*/
 html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
-/* "Watch the loop", stage layout. Three columns read left to right like a sentence: the world (queue, machines) -> the loop (state, action,
-   reward, next state as four connected boxes that each hold their own content) -> progress. One caption bar says what is happening now. */
-.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .5rem; }
+/* "Watch the loop", sketch layout. Left column: the jobs and the progress graph with the learned weights. Centre: the machines and the MDP ring
+   (state, action, reward, next state). Right column: the network, its probability graph and the rewards. One orb travels between the boxes. */
+.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .45rem; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
-.top h1 { font-size: 1.6rem; line-height: 1; }
+.top h1 { font-size: 1.5rem; line-height: 1; }
 #controls { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; }
-.go { padding: .4rem 1rem; font-size: 1rem; border-radius: .55rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
+.go { padding: .38rem .95rem; font-size: 1rem; border-radius: .55rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
 .ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .55rem; padding: .3rem .7rem; font-weight: 600; font-size: .85rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
 .seg.small button { padding: .24rem .5rem; font-size: .78rem; }
 .sub { color: var(--muted); font-size: .8rem; }
-#narr { font-size: 1.2rem; font-weight: 700; text-align: center; min-height: 1.6rem; padding: .35rem .8rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid var(--rule); }
-.main { display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr) minmax(0, 17rem); gap: .6rem; min-height: 0; }
-.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .6rem .75rem; display: flex; flex-direction: column; gap: .4rem; min-height: 0; min-width: 0; }
+#narr { font-size: 1.1rem; font-weight: 700; text-align: center; min-height: 1.5rem; padding: .3rem .8rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid var(--rule); }
+.main { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) minmax(0, 27rem); gap: .5rem; min-height: 0; }
+.col { display: flex; flex-direction: column; gap: .5rem; min-height: 0; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
 .eyebrow { font-size: .8rem; }
 .explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
-.spot { outline: 3px solid var(--accent); outline-offset: 1px; transition: outline-color .3s; }
-/* 1. the world */
-#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: calc(2 * clamp(3.1rem, 6vh, 4.6rem) + .3rem); }
-.qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .75rem; line-height: 1.1; height: clamp(3.1rem, 6vh, 4.6rem); }
+.spot { outline: 3px solid var(--accent); outline-offset: 1px; }
+/* jobs */
+#jobs { flex: 0 0 auto; }
+#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: calc(3 * clamp(2.6rem, 5.4vh, 3.8rem) + .6rem); }
+.qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .75rem; line-height: 1.1; height: clamp(2.6rem, 5.4vh, 3.8rem); min-width: 3.4rem; }
 .qjob b { font-size: .9rem; } .qjob span { color: var(--muted); } .qjob.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } .qjob.fresh { animation: drop .5s ease; }
 @keyframes drop { from { transform: translateY(-1rem) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 .qempty, .qnext { font-size: .75rem; color: var(--muted); padding: .3rem .2rem; } .qnext { border: 2px dashed var(--rule); border-radius: .45rem; }
-#env { display: flex; flex-direction: column; }
-#lanes { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: .5rem; min-height: 0; }
-.lanewrap { position: relative; height: clamp(3rem, 8vh, 5.2rem); } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
-.mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.2rem; }
+.envfoot { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; color: var(--muted); } .envfoot .seg { flex-wrap: wrap; }
+/* machines */
+#machinesbox { flex: 0 0 auto; }
+#lanes { display: flex; flex-direction: column; gap: .35rem; }
+.lanewrap { position: relative; height: clamp(2.4rem, 5.6vh, 3.6rem); } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
+.mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.6rem; }
 .mblk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
 .mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
 .mnow { position: absolute; top: -.25rem; bottom: -.25rem; width: 3px; background: var(--ink); opacity: .5; }
-.maxis { margin-left: 4.2rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
-.envfoot { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .75rem; color: var(--muted); }
-/* 2. the loop: four connected boxes */
-#loop { display: grid; grid-template-columns: minmax(0, 1fr) 2.2rem minmax(0, 2fr); grid-template-rows: minmax(0, 1.55fr) 2rem minmax(0, 1fr); min-height: 0; }
-.lbox { background: var(--surface); border: 2px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .3rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
-.lbox.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); } .lbox.bad.on { border-color: var(--scratch); background: color-mix(in srgb, var(--scratch) 8%, var(--surface)); }
-.lhead { display: flex; align-items: baseline; gap: .5rem; } .lhead b { font-family: var(--display); font-size: 1.15rem; } .lhead span { color: var(--muted); font-size: .78rem; } .lhead .n { color: var(--accent); font-size: 1.15rem; }
-.lval { font-size: 1.05rem; font-weight: 700; display: flex; flex-direction: column; gap: .3rem; } .lval .lbig { font-size: 1.9rem; }
-.sjob { border-left: 6px solid var(--rule); border-radius: .3rem; background: color-mix(in srgb, var(--ink) 5%, transparent); padding: .1rem .45rem; font-size: .85rem; font-weight: 600; display: flex; justify-content: space-between; } .sjob span { color: var(--muted); font-weight: 400; } .lbig { font-size: 2.1rem; font-weight: 700; line-height: 1; font-family: var(--display); color: var(--ink) !important; }
-.larr { display: flex; align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 700; color: var(--rule); transition: color .3s; } .larr.on { color: var(--accent); }
-#b-state { grid-area: 1 / 1; } #a-action { grid-area: 1 / 2; } #b-action { grid-area: 1 / 3; } #a-reward { grid-area: 2 / 3; } #b-reward { grid-area: 3 / 3; } #a-next { grid-area: 3 / 2; } #b-next { grid-area: 3 / 1; } #a-state { grid-area: 2 / 1; }
-.actrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; flex: 1; min-height: 0; }
-#actorsvg { width: 100%; height: auto; max-height: 100%; align-self: center; }
-#dist { position: relative; min-height: 0; display: flex; flex-direction: column; gap: .15rem; }
+.maxis { margin-left: 4.6rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
+/* the MDP ring */
+#ring { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: .25rem; min-height: 0; padding: .2rem; }
+.lbox { background: var(--surface); border: 2px solid var(--rule); border-radius: .8rem; padding: .45rem .6rem; display: flex; flex-direction: column; gap: .2rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
+.lbox.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); } .lbox.bad.on { border-color: var(--scratch); background: color-mix(in srgb, var(--scratch) 9%, var(--surface)); }
+.lhead { display: flex; align-items: baseline; gap: .4rem; } .lhead b { font-family: var(--display); font-size: 1.1rem; } .lhead .n { color: var(--accent); }
+.lval { font-size: 1.15rem; font-weight: 700; line-height: 1.15; } .lbig { font-size: 1.9rem; font-weight: 700; line-height: 1; font-family: var(--display); }
+.larr { display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 700; color: var(--rule); transition: color .3s; } .larr.on { color: var(--accent); }
+#b-state { grid-area: 1 / 2; } #a-action { grid-area: 1 / 3; align-items: flex-end; justify-content: flex-start; } #b-action { grid-area: 2 / 3; } #a-reward { grid-area: 3 / 3; align-items: flex-start; justify-content: flex-start; } #b-reward { grid-area: 3 / 2; } #a-next { grid-area: 3 / 1; align-items: flex-start; justify-content: flex-end; } #b-next { grid-area: 2 / 1; } #a-state { grid-area: 1 / 1; align-items: flex-end; justify-content: flex-end; }
+#mdp { grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 2.6rem; font-weight: 700; color: var(--rule); letter-spacing: .08em; }
+/* network, probability graph, rewards */
+#netbox { flex: 0 0 auto; } #probbox { flex: 1 1 0; min-height: 7rem; } #rewardsbox { flex: 0 0 auto; }
+#actorsvg { width: 100%; height: auto; max-height: 6.6rem; align-self: center; flex: none; }
+#dist { position: relative; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: .1rem; }
 .dtitle { font-size: .72rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; } .dlegend { font-size: .7rem; color: var(--muted); } .baempty { font-size: .8rem; color: var(--muted); }
 #vbars { width: 100%; flex: 1; min-height: 0; }
 #vbars .vaxis { stroke: var(--rule); stroke-width: 1.5; } #vbars .vchance { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
 #vbars .vbar { transition: y .5s ease, height .5s ease; } #vbars .vbar.pick { stroke: var(--ink); stroke-width: 2; } #vbars .vlbl { font-size: 10px; font-weight: 700; fill: var(--ink); }
 #vbars .vpct { font-size: 10px; font-weight: 700; fill: var(--muted); transition: opacity .3s, y .5s; } #vbars .vpct.pick { fill: var(--accent); }
 #vbars .vline { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; transition: opacity .4s; } #vbars .vdot { fill: var(--ink); transition: opacity .4s; }
+/* critic (actor-critic) or baseline (REINFORCE), inside the network box */
+#critic { border-top: 1px dashed var(--rule); padding-top: .3rem; font-size: .72rem; flex: none; }
+.cgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .2rem; }
+.cchip { border: 2px solid var(--rule); border-radius: .4rem; padding: .05rem .1rem; text-align: center; line-height: 1.05; font-size: .55rem; color: var(--muted); transition: background .25s; }
+.cchip b { display: block; font-size: .75rem; color: var(--ink); } .cchip em { font-style: normal; font-size: .55rem; }
+.cchip.pos { border-color: color-mix(in srgb, var(--copied) 55%, transparent); } .cchip.neg { border-color: color-mix(in srgb, var(--scratch) 70%, transparent); }
+.cout { display: flex; align-items: center; gap: .5rem; margin-top: .25rem; }
+.cv { flex: none; border: 3px solid var(--ink); border-radius: 50%; width: 2.9rem; height: 2.9rem; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; font-size: .58rem; transition: border-color .3s, border-width .3s; } .cv b { font-size: .9rem; }
+.cdelta { font-size: .72rem; font-weight: 700; line-height: 1.2; }
+.bbars { display: grid; grid-template-columns: repeat(8, 1fr); gap: .2rem; align-items: end; height: 3.2rem; }
+.bb { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; font-size: .55rem; color: var(--muted); } .bb i { display: block; width: 100%; background: var(--rulebar); border-radius: .2rem; } .bb.cur i { background: var(--accent); } .bb b { font-size: .6rem; color: var(--ink); }
 .lrow { display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
 .lchip { border: 2px solid var(--rule); border-radius: .4rem; text-align: center; font-size: .72rem; line-height: 1.1; padding: .05rem 0 .1rem; transition: background .3s, border-color .3s, transform .2s; }
 .lchip small { display: block; color: var(--muted); font-size: .6rem; } .lchip b { font-size: .85rem; } .lchip em { display: block; font-style: normal; font-size: .65rem; font-weight: 700; min-height: .75rem; }
 .lchip.empty { opacity: .45; } .lchip.neg { border-color: var(--scratch); color: var(--scratch); } .lchip.zero { border-color: var(--win); color: var(--win); }
 .lchip.up { background: color-mix(in srgb, var(--win) 16%, transparent); } .lchip.down { background: color-mix(in srgb, var(--scratch) 16%, transparent); } .lchip.pulse { transform: scale(1.15); }
-.lret { font-size: .8rem; font-weight: 700; } #critic { font-size: .8rem; font-weight: 600; min-height: 1.1rem; }
-/* 3. progress */
-#learn { display: flex; flex-direction: column; }
-#curvebox { position: relative; flex: 1; min-height: 7rem; border: 2px solid var(--rule); border-radius: .5rem; } #curve { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); }
-.wrow { display: grid; grid-template-columns: 4.6rem 1fr 3.4rem; gap: .3rem; align-items: center; font-size: .78rem; margin-bottom: .2rem; }
+.lret { font-size: .8rem; font-weight: 700; }
+/* progress graph with the learned weights */
+#progress { flex: 1; }
+#curvebox { position: relative; flex: 1; min-height: 6rem; border: 2px solid var(--rule); border-radius: .5rem; } #curve { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); }
+.wrow { display: grid; grid-template-columns: 4.4rem 1fr 3rem; gap: .3rem; align-items: center; font-size: .8rem; margin-bottom: .2rem; }
 .wbar { position: relative; height: .85rem; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: .35rem; overflow: hidden; }
 .wbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); transition: left .5s, width .5s; } .wbar u { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .4; }
 .wrow .wv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; } .wrow.up .wv { color: var(--win); } .wrow.down .wv { color: var(--scratch); }
 #msg { font-size: .78rem; color: var(--muted); min-height: 1rem; }
-/* flying orbs */
+/* the orb */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 15; }
 .token { position: absolute; left: 0; top: 0; padding: .15rem .55rem; border-radius: 1rem; font-size: .8rem; font-weight: 700; color: #fff; background: var(--accent); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .25); }
 .token.action, .token.good { background: var(--win); } .token.job { background: var(--ink); } .token.reward { background: var(--scratch); }
@@ -87,7 +102,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
 .dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
 .related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
-@media (max-width: 1000px) { html, body { height: auto; } .app { height: auto; } .main { grid-template-columns: 1fr; } #loop { grid-template-rows: auto 2rem auto 2rem auto; } }
+@media (max-width: 1000px) { html, body { height: auto; } .app { height: auto; } .main { grid-template-columns: 1fr; } #ring { min-height: 24rem; } }
 </style>
 <div class="app">
   <div class="top">
@@ -96,35 +111,55 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
   </div>
   <div id="narr"></div>
   <div class="main">
-    <section class="panel" id="env">
-      <div class="eyebrow explainable" data-explain="world" data-ui="panel.world"></div>
-      <div class="eyebrow" data-ui="panel.queue"></div>
-      <div id="queue"></div>
-      <div id="lanes">
-        <div class="lanewrap"><span class="mname" data-machine="1"></span><div class="mlane" id="m0"></div></div>
-        <div class="lanewrap"><span class="mname" data-machine="2"></span><div class="mlane" id="m1"></div></div>
-        <div class="maxis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
-      </div>
-      <div class="envfoot"><span class="eyebrow" data-ui="mode.label"></span><span id="modeslot"></span></div>
-    </section>
-    <div id="loop">
-      <div class="lbox" id="b-state" data-explain="state"><div class="lhead"><b><span class="n">1</span> <span class="t" data-ui="loop.state"></span></b></div><span class="sub" data-ui="loop.sub.state"></span><div class="lval" id="v-state"></div></div>
-      <div class="larr" id="a-action">→</div>
-      <div class="lbox" id="b-action" data-explain="policy"><div class="lhead"><b><span class="n">2</span> <span class="t" data-ui="loop.action"></span></b><span data-ui="loop.sub.action"></span><span id="agenttitle" style="margin-left:auto"></span></div>
-        <div class="actrow"><svg id="actorsvg" viewBox="0 0 230 150" preserveAspectRatio="xMidYMid meet"></svg><div id="dist"></div></div></div>
-      <div class="larr" id="a-reward">↓</div>
-      <div class="lbox" id="b-reward" data-explain="reward"><div class="lhead"><b><span class="n">3</span> <span class="t" data-ui="loop.reward"></span></b><span data-ui="loop.sub.reward"></span><span class="lbig" id="v-reward" style="margin-left:auto"></span></div>
-        <div id="ledger"></div><div id="critic"></div></div>
-      <div class="larr" id="a-next">←</div>
-      <div class="lbox" id="b-next" data-explain="state"><div class="lhead"><b><span class="n">4</span> <span class="t" data-ui="loop.next"></span></b></div><span class="sub" data-ui="loop.sub.next"></span><div class="lval" id="v-next"></div><div class="sub" id="lstep"></div></div>
-      <div class="larr" id="a-state">↑</div>
+    <div class="col">
+      <section class="panel" id="jobs">
+        <div class="eyebrow explainable" data-explain="online" data-ui="box.jobs"></div>
+        <div id="queue"></div>
+        <div class="envfoot"><span id="modeslot"></span></div>
+      </section>
+      <section class="panel" id="progress">
+        <div class="eyebrow explainable" data-explain="curve" data-ui="box.progress"></div>
+        <div id="curvebox"><canvas id="curve"></canvas></div>
+        <div id="wbars"></div>
+        <div id="msg"></div>
+      </section>
     </div>
-    <section class="panel" id="learn">
-      <div class="eyebrow explainable" data-explain="curve" data-ui="panel.curveweights"></div>
-      <div id="curvebox"><canvas id="curve"></canvas></div>
-      <div id="wbars"></div>
-      <div id="msg"></div>
-    </section>
+    <div class="col">
+      <section class="panel" id="machinesbox">
+        <div class="eyebrow explainable" data-explain="world" data-ui="box.machines"></div>
+        <div id="lanes">
+          <div class="lanewrap"><span class="mname" data-machine="1"></span><div class="mlane" id="m0"></div></div>
+          <div class="lanewrap"><span class="mname" data-machine="2"></span><div class="mlane" id="m1"></div></div>
+          <div class="maxis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+        </div>
+      </section>
+      <div id="ring">
+        <div class="lbox" id="b-state" data-explain="state"><div class="lhead"><b><span class="n">1</span> <span data-ui="loop.state"></span></b></div><div class="lval" id="v-state"></div></div>
+        <div class="larr" id="a-action">↘</div>
+        <div class="lbox" id="b-action" data-explain="action"><div class="lhead"><b><span class="n">2</span> <span data-ui="loop.action"></span></b></div><div class="lval" id="v-action"></div></div>
+        <div class="larr" id="a-reward">↙</div>
+        <div class="lbox" id="b-reward" data-explain="reward"><div class="lhead"><b><span class="n">3</span> <span data-ui="loop.reward"></span></b></div><div class="lbig" id="v-reward"></div><div class="sub" id="v-rtext"></div></div>
+        <div class="larr" id="a-next">↖</div>
+        <div class="lbox" id="b-next" data-explain="state"><div class="lhead"><b><span class="n">4</span> <span data-ui="loop.next"></span></b></div><div class="sub" data-ui="loop.sub.next"></div><div class="lval" id="v-next"></div><div class="sub" id="lstep"></div></div>
+        <div class="larr" id="a-state">↗</div>
+        <div id="mdp" class="explainable" data-explain="chain" data-ui="loop.mdp"></div>
+      </div>
+    </div>
+    <div class="col">
+      <section class="panel" id="netbox">
+        <div class="eyebrow explainable" id="agenttitle" data-explain="network"></div>
+        <svg id="actorsvg" viewBox="0 0 230 150" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="critic"></div>
+      </section>
+      <section class="panel" id="probbox">
+        <div class="eyebrow explainable" data-explain="policy" data-ui="box.prob"></div>
+        <div id="dist"></div>
+      </section>
+      <section class="panel" id="rewardsbox">
+        <div class="eyebrow explainable" data-explain="reward" data-ui="box.rewards"></div>
+        <div id="ledger"></div>
+      </section>
+    </div>
   </div>
 </div>
 <div id="fx"></div>

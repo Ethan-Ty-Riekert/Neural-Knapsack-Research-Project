@@ -11,3 +11,5 @@ Re-publish by sending the file as it is.
 | `flow_ring.html` | Ring layout: the same page with a State, Action, Reward, Next state ring in the centre. |
 
 The first layout ("Watch it learn") is still built from `../training.html` + `../training_ui.js` (`../dist/training_demo.html`).
+
+`stage_loop_boxes.html` (2026-10-26): the "connected loop" layout (world | four linked loop boxes | progress) that came after `stage_panels.html` and before the sketch-based layout that is now `../stage.html`.

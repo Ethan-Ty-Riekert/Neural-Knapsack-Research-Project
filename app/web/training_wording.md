@@ -130,7 +130,17 @@ loop.done: Episode over, cost {cost}
 loop.sub.state: What the learner sees
 loop.sub.action: The network picks a job
 loop.sub.reward: What that choice earned
-loop.sub.next: The situation moves on
+loop.sub.next: Progress one step in time
+box.jobs: Jobs
+box.machines: Machines
+box.net: Network
+box.prob: Probability graph
+box.rewards: Rewards
+box.progress: Progress
+loop.mdp: MDP
+narr.gather: The state is gathered from the jobs that are waiting and the machines that are free.
+narr.prob: The scores become probabilities: one chance for each waiting job.
+narr.tick: Time moves one step forward and the loop starts again.
 view.label: Choice shown as
 view.bars: Bars
 view.wheel: Wheel

@@ -44,70 +44,85 @@ h1, h2 { font-family: var(--display); margin: 0; font-weight: 700; letter-spacin
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
-/* "Watch the loop", stage layout. Three columns read left to right like a sentence: the world (queue, machines) -> the loop (state, action,
-   reward, next state as four connected boxes that each hold their own content) -> progress. One caption bar says what is happening now. */
-.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .5rem; }
+/* "Watch the loop", sketch layout. Left column: the jobs and the progress graph with the learned weights. Centre: the machines and the MDP ring
+   (state, action, reward, next state). Right column: the network, its probability graph and the rewards. One orb travels between the boxes. */
+.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .45rem; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
-.top h1 { font-size: 1.6rem; line-height: 1; }
+.top h1 { font-size: 1.5rem; line-height: 1; }
 #controls { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; }
-.go { padding: .4rem 1rem; font-size: 1rem; border-radius: .55rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
+.go { padding: .38rem .95rem; font-size: 1rem; border-radius: .55rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
 .ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .55rem; padding: .3rem .7rem; font-weight: 600; font-size: .85rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
 .seg.small button { padding: .24rem .5rem; font-size: .78rem; }
 .sub { color: var(--muted); font-size: .8rem; }
-#narr { font-size: 1.2rem; font-weight: 700; text-align: center; min-height: 1.6rem; padding: .35rem .8rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid var(--rule); }
-.main { display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr) minmax(0, 17rem); gap: .6rem; min-height: 0; }
-.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .6rem .75rem; display: flex; flex-direction: column; gap: .4rem; min-height: 0; min-width: 0; }
+#narr { font-size: 1.1rem; font-weight: 700; text-align: center; min-height: 1.5rem; padding: .3rem .8rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid var(--rule); }
+.main { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) minmax(0, 27rem); gap: .5rem; min-height: 0; }
+.col { display: flex; flex-direction: column; gap: .5rem; min-height: 0; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
 .eyebrow { font-size: .8rem; }
 .explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
-.spot { outline: 3px solid var(--accent); outline-offset: 1px; transition: outline-color .3s; }
-/* 1. the world */
-#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: calc(2 * clamp(3.1rem, 6vh, 4.6rem) + .3rem); }
-.qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .75rem; line-height: 1.1; height: clamp(3.1rem, 6vh, 4.6rem); }
+.spot { outline: 3px solid var(--accent); outline-offset: 1px; }
+/* jobs */
+#jobs { flex: 0 0 auto; }
+#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: calc(3 * clamp(2.6rem, 5.4vh, 3.8rem) + .6rem); }
+.qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .75rem; line-height: 1.1; height: clamp(2.6rem, 5.4vh, 3.8rem); min-width: 3.4rem; }
 .qjob b { font-size: .9rem; } .qjob span { color: var(--muted); } .qjob.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } .qjob.fresh { animation: drop .5s ease; }
 @keyframes drop { from { transform: translateY(-1rem) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 .qempty, .qnext { font-size: .75rem; color: var(--muted); padding: .3rem .2rem; } .qnext { border: 2px dashed var(--rule); border-radius: .45rem; }
-#env { display: flex; flex-direction: column; }
-#lanes { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: .5rem; min-height: 0; }
-.lanewrap { position: relative; height: clamp(3rem, 8vh, 5.2rem); } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
-.mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.2rem; }
+.envfoot { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; color: var(--muted); } .envfoot .seg { flex-wrap: wrap; }
+/* machines */
+#machinesbox { flex: 0 0 auto; }
+#lanes { display: flex; flex-direction: column; gap: .35rem; }
+.lanewrap { position: relative; height: clamp(2.4rem, 5.6vh, 3.6rem); } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); }
+.mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.6rem; }
 .mblk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
 .mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
 .mnow { position: absolute; top: -.25rem; bottom: -.25rem; width: 3px; background: var(--ink); opacity: .5; }
-.maxis { margin-left: 4.2rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
-.envfoot { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .75rem; color: var(--muted); }
-/* 2. the loop: four connected boxes */
-#loop { display: grid; grid-template-columns: minmax(0, 1fr) 2.2rem minmax(0, 2fr); grid-template-rows: minmax(0, 1.55fr) 2rem minmax(0, 1fr); min-height: 0; }
-.lbox { background: var(--surface); border: 2px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .3rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
-.lbox.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); } .lbox.bad.on { border-color: var(--scratch); background: color-mix(in srgb, var(--scratch) 8%, var(--surface)); }
-.lhead { display: flex; align-items: baseline; gap: .5rem; } .lhead b { font-family: var(--display); font-size: 1.15rem; } .lhead span { color: var(--muted); font-size: .78rem; } .lhead .n { color: var(--accent); font-size: 1.15rem; }
-.lval { font-size: 1.05rem; font-weight: 700; display: flex; flex-direction: column; gap: .3rem; } .lval .lbig { font-size: 1.9rem; }
-.sjob { border-left: 6px solid var(--rule); border-radius: .3rem; background: color-mix(in srgb, var(--ink) 5%, transparent); padding: .1rem .45rem; font-size: .85rem; font-weight: 600; display: flex; justify-content: space-between; } .sjob span { color: var(--muted); font-weight: 400; } .lbig { font-size: 2.1rem; font-weight: 700; line-height: 1; font-family: var(--display); color: var(--ink) !important; }
-.larr { display: flex; align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 700; color: var(--rule); transition: color .3s; } .larr.on { color: var(--accent); }
-#b-state { grid-area: 1 / 1; } #a-action { grid-area: 1 / 2; } #b-action { grid-area: 1 / 3; } #a-reward { grid-area: 2 / 3; } #b-reward { grid-area: 3 / 3; } #a-next { grid-area: 3 / 2; } #b-next { grid-area: 3 / 1; } #a-state { grid-area: 2 / 1; }
-.actrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; flex: 1; min-height: 0; }
-#actorsvg { width: 100%; height: auto; max-height: 100%; align-self: center; }
-#dist { position: relative; min-height: 0; display: flex; flex-direction: column; gap: .15rem; }
+.maxis { margin-left: 4.6rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
+/* the MDP ring */
+#ring { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: .25rem; min-height: 0; padding: .2rem; }
+.lbox { background: var(--surface); border: 2px solid var(--rule); border-radius: .8rem; padding: .45rem .6rem; display: flex; flex-direction: column; gap: .2rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
+.lbox.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); } .lbox.bad.on { border-color: var(--scratch); background: color-mix(in srgb, var(--scratch) 9%, var(--surface)); }
+.lhead { display: flex; align-items: baseline; gap: .4rem; } .lhead b { font-family: var(--display); font-size: 1.1rem; } .lhead .n { color: var(--accent); }
+.lval { font-size: 1.15rem; font-weight: 700; line-height: 1.15; } .lbig { font-size: 1.9rem; font-weight: 700; line-height: 1; font-family: var(--display); }
+.larr { display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 700; color: var(--rule); transition: color .3s; } .larr.on { color: var(--accent); }
+#b-state { grid-area: 1 / 2; } #a-action { grid-area: 1 / 3; align-items: flex-end; justify-content: flex-start; } #b-action { grid-area: 2 / 3; } #a-reward { grid-area: 3 / 3; align-items: flex-start; justify-content: flex-start; } #b-reward { grid-area: 3 / 2; } #a-next { grid-area: 3 / 1; align-items: flex-start; justify-content: flex-end; } #b-next { grid-area: 2 / 1; } #a-state { grid-area: 1 / 1; align-items: flex-end; justify-content: flex-end; }
+#mdp { grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 2.6rem; font-weight: 700; color: var(--rule); letter-spacing: .08em; }
+/* network, probability graph, rewards */
+#netbox { flex: 0 0 auto; } #probbox { flex: 1 1 0; min-height: 7rem; } #rewardsbox { flex: 0 0 auto; }
+#actorsvg { width: 100%; height: auto; max-height: 6.6rem; align-self: center; flex: none; }
+#dist { position: relative; min-height: 0; flex: 1; display: flex; flex-direction: column; gap: .1rem; }
 .dtitle { font-size: .72rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; } .dlegend { font-size: .7rem; color: var(--muted); } .baempty { font-size: .8rem; color: var(--muted); }
 #vbars { width: 100%; flex: 1; min-height: 0; }
 #vbars .vaxis { stroke: var(--rule); stroke-width: 1.5; } #vbars .vchance { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .5; }
 #vbars .vbar { transition: y .5s ease, height .5s ease; } #vbars .vbar.pick { stroke: var(--ink); stroke-width: 2; } #vbars .vlbl { font-size: 10px; font-weight: 700; fill: var(--ink); }
 #vbars .vpct { font-size: 10px; font-weight: 700; fill: var(--muted); transition: opacity .3s, y .5s; } #vbars .vpct.pick { fill: var(--accent); }
 #vbars .vline { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; transition: opacity .4s; } #vbars .vdot { fill: var(--ink); transition: opacity .4s; }
+/* critic (actor-critic) or baseline (REINFORCE), inside the network box */
+#critic { border-top: 1px dashed var(--rule); padding-top: .3rem; font-size: .72rem; flex: none; }
+.cgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .2rem; }
+.cchip { border: 2px solid var(--rule); border-radius: .4rem; padding: .05rem .1rem; text-align: center; line-height: 1.05; font-size: .55rem; color: var(--muted); transition: background .25s; }
+.cchip b { display: block; font-size: .75rem; color: var(--ink); } .cchip em { font-style: normal; font-size: .55rem; }
+.cchip.pos { border-color: color-mix(in srgb, var(--copied) 55%, transparent); } .cchip.neg { border-color: color-mix(in srgb, var(--scratch) 70%, transparent); }
+.cout { display: flex; align-items: center; gap: .5rem; margin-top: .25rem; }
+.cv { flex: none; border: 3px solid var(--ink); border-radius: 50%; width: 2.9rem; height: 2.9rem; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; font-size: .58rem; transition: border-color .3s, border-width .3s; } .cv b { font-size: .9rem; }
+.cdelta { font-size: .72rem; font-weight: 700; line-height: 1.2; }
+.bbars { display: grid; grid-template-columns: repeat(8, 1fr); gap: .2rem; align-items: end; height: 3.2rem; }
+.bb { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; font-size: .55rem; color: var(--muted); } .bb i { display: block; width: 100%; background: var(--rulebar); border-radius: .2rem; } .bb.cur i { background: var(--accent); } .bb b { font-size: .6rem; color: var(--ink); }
 .lrow { display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
 .lchip { border: 2px solid var(--rule); border-radius: .4rem; text-align: center; font-size: .72rem; line-height: 1.1; padding: .05rem 0 .1rem; transition: background .3s, border-color .3s, transform .2s; }
 .lchip small { display: block; color: var(--muted); font-size: .6rem; } .lchip b { font-size: .85rem; } .lchip em { display: block; font-style: normal; font-size: .65rem; font-weight: 700; min-height: .75rem; }
 .lchip.empty { opacity: .45; } .lchip.neg { border-color: var(--scratch); color: var(--scratch); } .lchip.zero { border-color: var(--win); color: var(--win); }
 .lchip.up { background: color-mix(in srgb, var(--win) 16%, transparent); } .lchip.down { background: color-mix(in srgb, var(--scratch) 16%, transparent); } .lchip.pulse { transform: scale(1.15); }
-.lret { font-size: .8rem; font-weight: 700; } #critic { font-size: .8rem; font-weight: 600; min-height: 1.1rem; }
-/* 3. progress */
-#learn { display: flex; flex-direction: column; }
-#curvebox { position: relative; flex: 1; min-height: 7rem; border: 2px solid var(--rule); border-radius: .5rem; } #curve { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); }
-.wrow { display: grid; grid-template-columns: 4.6rem 1fr 3.4rem; gap: .3rem; align-items: center; font-size: .78rem; margin-bottom: .2rem; }
+.lret { font-size: .8rem; font-weight: 700; }
+/* progress graph with the learned weights */
+#progress { flex: 1; }
+#curvebox { position: relative; flex: 1; min-height: 6rem; border: 2px solid var(--rule); border-radius: .5rem; } #curve { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); }
+.wrow { display: grid; grid-template-columns: 4.4rem 1fr 3rem; gap: .3rem; align-items: center; font-size: .8rem; margin-bottom: .2rem; }
 .wbar { position: relative; height: .85rem; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: .35rem; overflow: hidden; }
 .wbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); transition: left .5s, width .5s; } .wbar u { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .4; }
 .wrow .wv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; } .wrow.up .wv { color: var(--win); } .wrow.down .wv { color: var(--scratch); }
 #msg { font-size: .78rem; color: var(--muted); min-height: 1rem; }
-/* flying orbs */
+/* the orb */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 15; }
 .token { position: absolute; left: 0; top: 0; padding: .15rem .55rem; border-radius: 1rem; font-size: .8rem; font-weight: 700; color: #fff; background: var(--accent); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .25); }
 .token.action, .token.good { background: var(--win); } .token.job { background: var(--ink); } .token.reward { background: var(--scratch); }
@@ -125,7 +140,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
 .dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
 .related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
-@media (max-width: 1000px) { html, body { height: auto; } .app { height: auto; } .main { grid-template-columns: 1fr; } #loop { grid-template-rows: auto 2rem auto 2rem auto; } }
+@media (max-width: 1000px) { html, body { height: auto; } .app { height: auto; } .main { grid-template-columns: 1fr; } #ring { min-height: 24rem; } }
 </style>
 <div class="app">
   <div class="top">
@@ -134,41 +149,61 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
   </div>
   <div id="narr"></div>
   <div class="main">
-    <section class="panel" id="env">
-      <div class="eyebrow explainable" data-explain="world" data-ui="panel.world"></div>
-      <div class="eyebrow" data-ui="panel.queue"></div>
-      <div id="queue"></div>
-      <div id="lanes">
-        <div class="lanewrap"><span class="mname" data-machine="1"></span><div class="mlane" id="m0"></div></div>
-        <div class="lanewrap"><span class="mname" data-machine="2"></span><div class="mlane" id="m1"></div></div>
-        <div class="maxis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
-      </div>
-      <div class="envfoot"><span class="eyebrow" data-ui="mode.label"></span><span id="modeslot"></span></div>
-    </section>
-    <div id="loop">
-      <div class="lbox" id="b-state" data-explain="state"><div class="lhead"><b><span class="n">1</span> <span class="t" data-ui="loop.state"></span></b></div><span class="sub" data-ui="loop.sub.state"></span><div class="lval" id="v-state"></div></div>
-      <div class="larr" id="a-action">→</div>
-      <div class="lbox" id="b-action" data-explain="policy"><div class="lhead"><b><span class="n">2</span> <span class="t" data-ui="loop.action"></span></b><span data-ui="loop.sub.action"></span><span id="agenttitle" style="margin-left:auto"></span></div>
-        <div class="actrow"><svg id="actorsvg" viewBox="0 0 230 150" preserveAspectRatio="xMidYMid meet"></svg><div id="dist"></div></div></div>
-      <div class="larr" id="a-reward">↓</div>
-      <div class="lbox" id="b-reward" data-explain="reward"><div class="lhead"><b><span class="n">3</span> <span class="t" data-ui="loop.reward"></span></b><span data-ui="loop.sub.reward"></span><span class="lbig" id="v-reward" style="margin-left:auto"></span></div>
-        <div id="ledger"></div><div id="critic"></div></div>
-      <div class="larr" id="a-next">←</div>
-      <div class="lbox" id="b-next" data-explain="state"><div class="lhead"><b><span class="n">4</span> <span class="t" data-ui="loop.next"></span></b></div><span class="sub" data-ui="loop.sub.next"></span><div class="lval" id="v-next"></div><div class="sub" id="lstep"></div></div>
-      <div class="larr" id="a-state">↑</div>
+    <div class="col">
+      <section class="panel" id="jobs">
+        <div class="eyebrow explainable" data-explain="online" data-ui="box.jobs"></div>
+        <div id="queue"></div>
+        <div class="envfoot"><span id="modeslot"></span></div>
+      </section>
+      <section class="panel" id="progress">
+        <div class="eyebrow explainable" data-explain="curve" data-ui="box.progress"></div>
+        <div id="curvebox"><canvas id="curve"></canvas></div>
+        <div id="wbars"></div>
+        <div id="msg"></div>
+      </section>
     </div>
-    <section class="panel" id="learn">
-      <div class="eyebrow explainable" data-explain="curve" data-ui="panel.curveweights"></div>
-      <div id="curvebox"><canvas id="curve"></canvas></div>
-      <div id="wbars"></div>
-      <div id="msg"></div>
-    </section>
+    <div class="col">
+      <section class="panel" id="machinesbox">
+        <div class="eyebrow explainable" data-explain="world" data-ui="box.machines"></div>
+        <div id="lanes">
+          <div class="lanewrap"><span class="mname" data-machine="1"></span><div class="mlane" id="m0"></div></div>
+          <div class="lanewrap"><span class="mname" data-machine="2"></span><div class="mlane" id="m1"></div></div>
+          <div class="maxis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+        </div>
+      </section>
+      <div id="ring">
+        <div class="lbox" id="b-state" data-explain="state"><div class="lhead"><b><span class="n">1</span> <span data-ui="loop.state"></span></b></div><div class="lval" id="v-state"></div></div>
+        <div class="larr" id="a-action">↘</div>
+        <div class="lbox" id="b-action" data-explain="action"><div class="lhead"><b><span class="n">2</span> <span data-ui="loop.action"></span></b></div><div class="lval" id="v-action"></div></div>
+        <div class="larr" id="a-reward">↙</div>
+        <div class="lbox" id="b-reward" data-explain="reward"><div class="lhead"><b><span class="n">3</span> <span data-ui="loop.reward"></span></b></div><div class="lbig" id="v-reward"></div><div class="sub" id="v-rtext"></div></div>
+        <div class="larr" id="a-next">↖</div>
+        <div class="lbox" id="b-next" data-explain="state"><div class="lhead"><b><span class="n">4</span> <span data-ui="loop.next"></span></b></div><div class="sub" data-ui="loop.sub.next"></div><div class="lval" id="v-next"></div><div class="sub" id="lstep"></div></div>
+        <div class="larr" id="a-state">↗</div>
+        <div id="mdp" class="explainable" data-explain="chain" data-ui="loop.mdp"></div>
+      </div>
+    </div>
+    <div class="col">
+      <section class="panel" id="netbox">
+        <div class="eyebrow explainable" id="agenttitle" data-explain="network"></div>
+        <svg id="actorsvg" viewBox="0 0 230 150" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="critic"></div>
+      </section>
+      <section class="panel" id="probbox">
+        <div class="eyebrow explainable" data-explain="policy" data-ui="box.prob"></div>
+        <div id="dist"></div>
+      </section>
+      <section class="panel" id="rewardsbox">
+        <div class="eyebrow explainable" data-explain="reward" data-ui="box.rewards"></div>
+        <div id="ledger"></div>
+      </section>
+    </div>
   </div>
 </div>
 <div id="fx"></div>
 <aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
 <script>
-window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy scheduler with 2 machines and 8 jobs. Press Step to see one decision at a time, or Train to watch the reward improve it.","toy_note":"A toy version of the real problem: 2 machines, no resource limits.","btn.step":"Step","btn.train":"Train","btn.pause":"Pause","btn.test":"Test","btn.reset":"Reset","speed.1":"\u00d71","speed.3":"\u00d73","speed.10":"\u00d710","learner.reinforce":"REINFORCE","learner.ac":"Actor-critic","learner.label":"Learner","panel.world":"The world","panel.queue":"Waiting jobs","panel.machines":"Machines","panel.loop":"The loop","panel.curve":"Cost while learning (lower is better)","panel.weights":"What it learned","panel.test":"Test on new jobs","loop.state":"State","loop.action":"Action","loop.reward":"Reward","loop.next":"Next state","loop.idle":"Press Step to see the first decision.","job.label":"Job {id}","job.detail":"length {p} \u00b7 due {d} \u00b7 weight {w}","curve.random":"Random order","curve.rule":"Best classic rule ({name})","curve.empty":"Press Train to start learning.","episodes":"Episodes: {n}","weights.timeleft":"Time left","weights.length":"Length","weights.importance":"Importance","weights.hint":"A bar to the left means it prefers a small value; to the right, a large value.","test.random":"Random order","test.rule":"Best classic rule ({name})","test.learner":"This learner","test.caption":"Average cost on {n} new job sets (lower is better).","test.note":"In this toy it can beat a single simple rule; the real 10-machine problem is much harder (see the card).","flow.heading":"Watch the loop","flow.tagline":"A job leaves the queue, the network decides, the machine runs it, and the reward teaches the learner. Press Play and follow one decision at a time.","panel.jobqueue":"Job queue","panel.chain":"Markov chain: one episode","panel.ring":"The decision loop","panel.network.ac":"Actor-critic network","panel.network.reinforce":"REINFORCE network","machine.name":"Machine {m}","mode.label":"Jobs","mode.offline":"All known up front","mode.online":"Arriving over time","btn.play":"Play","queue.empty":"No jobs waiting","queue.next":"Next arrival at time {t}","net.timeleft":"Time left","net.length":"Length","net.importance":"Importance","net.score":"Score","net.softmax":"Probabilities","net.actor":"Actor","net.critic":"Critic","net.summary":"Summary of the situation","net.value":"Expected reward from here","net.baseline":"Average reward from this step","chain.start":"Start","chain.node":"Time {t} \u00b7 {n} waiting","chain.action":"Start job {job}","chain.end":"Done \u00b7 cost {cost}","ring.decision":"Decision {k} of {n}","narr.idle":"Press Play to watch the learner schedule 8 jobs, or Step to go one decision at a time.","narr.state":"The learner looks at the situation: which jobs are waiting and how much time each has left.","narr.net":"The network scores every waiting job from its time left, length and importance.","narr.action":"It picks job {job} (probability {pct}%).","narr.place":"Job {job} starts on machine {m}.","narr.reward":"Reward {reward}: {outcome}.","narr.ontime":"the job will finish on time","narr.late":"the job will finish {late} ticks late","narr.next":"The situation changes and the loop repeats.","narr.update":"Episode over, total cost {cost}. The learner updates its weights from the rewards it saw.","test.line":"Test on {n} new job sets: random {random} \u00b7 best rule {rule} {rulecost} \u00b7 this learner {learner}","crit.f0":"Bias (always 1)","crit.f1":"Jobs waiting","crit.f2":"Cost already locked in","crit.f3":"Average spare time","crit.f4":"Tightest time left","crit.f5":"Work still to do","crit.f6":"Other machine ahead by","crit.got":"Got {r} now + expect {n} later, instead of {v}","crit.better":"Better than the critic expected by {d}","crit.worse":"Worse than the critic expected by {d}","base.step":"step {k}","base.note":"Usual reward from this step on: {b}","ledger.title":"Rewards this episode","ledger.return":"Return so far {r}","ledger.empty":"The reward of every decision drops in here.","narr.compare":"The critic had guessed what the reward would be. Now it compares its guess with what happened.","narr.learn":"The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.","stage.heading":"Watch the loop","stage.tagline":"The scheduler learns by trial and error: every decision goes round the loop, and each episode's rewards nudge the network.","panel.env":"Environment","panel.agent":"Learner","panel.ledger":"Rewards this episode","panel.curveweights":"Progress","wire.state":"State","wire.action":"Action","wire.reward":"Reward","loop.step":"Decision {k} of {n}","loop.v.state":"Time {t} \u00b7 {n} jobs waiting","loop.v.action":"Job {job}","loop.v.next":"t={t}","loop.done":"Episode over, cost {cost}","loop.sub.state":"What the learner sees","loop.sub.action":"The network picks a job","loop.sub.reward":"What that choice earned","loop.sub.next":"The situation moves on","view.label":"Choice shown as","view.bars":"Bars","view.wheel":"Wheel","btn.stop":"Stop","speed.30":"\u00d730","dist.uniform":"pure chance. Taller bar = more likely to be picked","dist.title":"Chance of picking each job","dist.title.wheel":"The wheel: each slice is a job","weights.title":"Weights (what the network has learned)","related":"Related","back":"\u2190 Back","close":"Close"},"labels":{"chip.network":"The network","chip.chain":"The chain","chip.online":"Online arrivals","chip.world":"The toy world","chip.state":"State","chip.action":"Action","chip.reward":"Reward","chip.policy":"The scoring rule","chip.reinforce":"REINFORCE","chip.actor_critic":"Actor-critic","chip.curve":"Learning curve","chip.weights":"What it learned","chip.test":"The test"},"factors":{},"notes":{},"rules":{},"placements":{},"options":{},"templates":{"loop.state.text":"Time {t} \u00b7 machine {m} is free \u00b7 {n} jobs waiting","loop.action.text":"Start job {job} (picked with probability {pct}%)","loop.reward.late":"{reward} \u00b7 job {job} finishes {late} ticks late (weight {w})","loop.reward.ontime":"0 \u00b7 job {job} finishes on time","loop.next.text":"Time {t} \u00b7 {n} jobs left","loop.next.done":"Episode over \u00b7 total cost {cost}","msg.episode":"Episode {n} finished with cost {cost}. The learner has updated itself from its rewards.","msg.trained":"Training finished after {n} episodes. Press Test to try it on new jobs.","msg.budget":"This learner has used its {n} training episodes. Press Reset to start again.","msg.testing":"Testing on {n} new job sets..."},"topics":{"world":{"kicker":"The toy world","title":"What this demo is, and what it is not","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Eight jobs wait to be run on two machines. Each job has a length, a deadline and an importance. Every time a machine becomes free, the scheduler picks one waiting job to start. A job that finishes after its deadline costs more the later it is and the more important it is."},{"h":"Formulation","open":true,"text":"A job *j* has length p_{j}, deadline d_{j} and weight w_{j}. Started at time s_{j} it finishes at C_{j} = s_{j} + p_{j} and is late by T_{j} = max(0, C_{j} \u2212 d_{j}). The cost of an episode (one set of 8 jobs) is\n\n{{J}}"},{"h":"How it relates to the research","open":false,"text":"This is the same kind of cost as in the main project, in miniature. The real problem has 10 machines, jobs that need CPU and memory, 100 jobs per instance and jobs that can arrive over time. The scheduler there is a neural network with many more weights, trained for millions of steps. Here the learner has three numbers, so you can watch every part of the loop."}]},"state":{"kicker":"The loop","title":"State: what the learner sees","related":["action","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The state is everything the learner knows when it must decide: the clock, which machine just became free, and which jobs are still waiting with their lengths, deadlines and importance."},{"h":"Formulation","open":false,"text":"At each decision time *t* the state is the list of waiting jobs together with the time left for each: (d_{j} \u2212 t \u2212 p_{j}), which is how long the job could still wait and finish on time. A negative number means it is already going to be late."}]},"action":{"kicker":"The loop","title":"Action: which job to start","related":["state","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The action is the choice of one waiting job to start on the free machine. The learner does not choose the machine: the first machine to become free takes the job, as in the project's priority-learning models."},{"h":"Formulation","open":false,"text":"The learner gives each waiting job a score (see the scoring rule) and picks a job at random in proportion to the scores, so that it keeps exploring while it learns."}]},"reward":{"kicker":"The loop","title":"Reward: what tells it how well it did","related":["state","action","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each decision the learner receives a reward: zero if the job will finish on time, and a negative number if it will finish late. The later and the more important the job, the more negative. The learner never sees a list of right answers, only these rewards."},{"h":"Formulation","open":true,"text":"{{reward}}\n\nAdding up the rewards of an episode gives minus the cost J of that episode, so improving the total reward is the same as reducing the cost."},{"h":"Deeper","open":false,"text":"The cost is divided by a constant (10) so that the numbers are easy to read. A job's reward is known as soon as it is started, because its finishing time is then fixed."}]},"policy":{"kicker":"The learner","title":"The scoring rule it learns","related":["weights","reinforce","actor_critic"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The learner scores each waiting job from three numbers: how much time is left before it is due, how long it is, and how important it is. Three weights say how much each number counts. The job with the highest score is the most likely to be picked."},{"h":"Formulation","open":true,"text":"With the three signals gathered in a list \u03c6_{j} (time left, length, importance, each scaled to a similar size) and three weights \u03b8:\n\n{{score}}\n\n{{policy}}\n\nLearning means changing the three weights \u03b8 so that choices with better rewards become more likely."},{"h":"Deeper","open":false,"text":"This is the same idea as Option 2 in the project, where a larger network scores each waiting job from its own features, but with one layer and three weights so that you can read it."}]},"reinforce":{"kicker":"The learner","title":"REINFORCE: learning from the whole episode","related":["policy","actor_critic","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each episode, REINFORCE looks at how much total reward came after each decision and compares it with the usual amount at that point. Decisions followed by better-than-usual rewards become more likely; decisions followed by worse-than-usual rewards become less likely."},{"h":"Formulation","open":true,"text":"With the return G_{t} (the rewards from decision t to the end) and a baseline b_{t} (a running average of that return):\n\n{{ret}}\n\n{{reinforce}}"},{"h":"Deeper","open":false,"text":"Plain REINFORCE is noisy because one episode is only one sample; the baseline reduces that noise. Source: Williams (1992)."}]},"actor_critic":{"kicker":"The learner","title":"Actor-critic: a learner with a guess about the future","related":["policy","reinforce","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Actor-critic adds a second small estimator, the critic, that guesses how well things will go from the current situation. The actor (the scoring rule) is then pushed by how much better or worse each decision turned out than the critic expected."},{"h":"Formulation","open":true,"text":"The critic estimates the value of a state from a few summary numbers (how many jobs wait, how many are already doomed to be late, how much slack is left). The advantage of a decision is how much better it went than the critic expected, summed over the rest of the episode with a discount factor:\n\n{{critic}}\n\n{{advantage}}"},{"h":"Deeper","open":false,"text":"The advantage is a generalised advantage estimate (Schulman et al. 2016) with a smoothing factor of 0.9. The critic is trained towards what actually happened."}]},"curve":{"kicker":"The learner","title":"Reading the learning curve","related":["reward","test","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each dot is the cost of one training episode on a fresh set of jobs, and the line is the average of the last 25 episodes. While it learns, the learner still picks jobs at random in proportion to their scores, so the cost is higher than when it picks its best guess. The grey lines show a random scheduler and the best of five classic rules, measured on new job sets."},{"h":"Deeper","open":false,"text":"The two learners start from the same place (all three weights zero, so every job is equally likely). Switch the learner and train again to compare their curves. Each press of Reset starts both learners again."}]},"weights":{"kicker":"The learner","title":"What it learned","related":["policy","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three bars are the learned weights. A bar to the left means the learner prefers a small value of that signal; a bar to the right, a large one. After training, the time-left weight is strongly to the left in nearly every run: the learner has discovered that jobs with little time left should go first, which is the idea behind the classic rules."},{"h":"Deeper","open":false,"text":"It also usually prefers short jobs (to the left) and important jobs (to the right). The exact numbers differ from run to run."}]},"test":{"kicker":"The learner","title":"The test on new jobs","related":["curve","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Test uses 200 new sets of jobs that the learner has never trained on, and lets it pick its best-scoring job every time. It is compared with a random scheduler and with the best of five classic rules on the same sets."},{"h":"Deeper","open":false,"text":"In this toy the learner can even beat a single simple rule, because it blends three signals. The real problem, with 10 machines and 100 jobs, is much harder: there the learned schedulers matched the best rules but did not beat them.\n\nUsing new job sets matters for the same reason as in the project: a learner can look good on the jobs it trained on and worse on new ones."}]},"network":{"kicker":"The learner","title":"The network that decides","related":["policy","reinforce","actor_critic","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three inputs are what the learner knows about one waiting job: how much time is left before it is due, how long it is, and how important it is. Each input is multiplied by a weight (the thickness and colour of the line show the weight: blue is positive, orange is negative) and added into a score. A softmax turns the scores of all waiting jobs into probabilities, and the learner picks a job with those probabilities."},{"h":"Formulation","open":true,"text":"{{score}}\n\n{{policy}}"},{"h":"The critic","open":false,"text":"The critic is a second small estimator. It looks at a summary of the whole situation (how many jobs wait, how many are already doomed to be late, how much time is left) and guesses how much reward is still to come. REINFORCE has no critic: it compares each decision with a plain running average of the reward that usually follows that step."}]},"chain":{"kicker":"The loop","title":"The chain of decisions","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each circle is a state: the situation at one decision time. Each arrow is the action taken there, with the reward it earned. Put together, one episode is a chain: state, action, reward, next state, and so on until all the jobs have been scheduled. A Markov chain has this \"the next state depends only on where you are and what you did\" property, which is what lets the learner improve its choices one decision at a time."},{"h":"Deeper","open":false,"text":"Strictly this is a Markov decision process: a Markov chain in which the decisions are made by the learner, not left to chance."}]},"online":{"kicker":"The toy world","title":"Jobs known up front, or arriving over time","related":["world","state"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Up front: all 8 jobs are waiting from time 0. Over time: jobs join the queue at different times, so a machine may have to wait for the next arrival and the learner never knows which jobs are still to come. This is the difference between the offline and online cases in the project."},{"h":"Deeper","open":false,"text":"In the online toy, a job's deadline is counted from its arrival, and the jobs arrive in the first 6 ticks, so the machines are kept busy. Each mode has its own learner, so switching back and forth does not mix their learning."}]}}}};
+window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy scheduler with 2 machines and 8 jobs. Press Step to see one decision at a time, or Train to watch the reward improve it.","toy_note":"A toy version of the real problem: 2 machines, no resource limits.","btn.step":"Step","btn.train":"Train","btn.pause":"Pause","btn.test":"Test","btn.reset":"Reset","speed.1":"\u00d71","speed.3":"\u00d73","speed.10":"\u00d710","learner.reinforce":"REINFORCE","learner.ac":"Actor-critic","learner.label":"Learner","panel.world":"The world","panel.queue":"Waiting jobs","panel.machines":"Machines","panel.loop":"The loop","panel.curve":"Cost while learning (lower is better)","panel.weights":"What it learned","panel.test":"Test on new jobs","loop.state":"State","loop.action":"Action","loop.reward":"Reward","loop.next":"Next state","loop.idle":"Press Step to see the first decision.","job.label":"Job {id}","job.detail":"length {p} \u00b7 due {d} \u00b7 weight {w}","curve.random":"Random order","curve.rule":"Best classic rule ({name})","curve.empty":"Press Train to start learning.","episodes":"Episodes: {n}","weights.timeleft":"Time left","weights.length":"Length","weights.importance":"Importance","weights.hint":"A bar to the left means it prefers a small value; to the right, a large value.","test.random":"Random order","test.rule":"Best classic rule ({name})","test.learner":"This learner","test.caption":"Average cost on {n} new job sets (lower is better).","test.note":"In this toy it can beat a single simple rule; the real 10-machine problem is much harder (see the card).","flow.heading":"Watch the loop","flow.tagline":"A job leaves the queue, the network decides, the machine runs it, and the reward teaches the learner. Press Play and follow one decision at a time.","panel.jobqueue":"Job queue","panel.chain":"Markov chain: one episode","panel.ring":"The decision loop","panel.network.ac":"Actor-critic network","panel.network.reinforce":"REINFORCE network","machine.name":"Machine {m}","mode.label":"Jobs","mode.offline":"All known up front","mode.online":"Arriving over time","btn.play":"Play","queue.empty":"No jobs waiting","queue.next":"Next arrival at time {t}","net.timeleft":"Time left","net.length":"Length","net.importance":"Importance","net.score":"Score","net.softmax":"Probabilities","net.actor":"Actor","net.critic":"Critic","net.summary":"Summary of the situation","net.value":"Expected reward from here","net.baseline":"Average reward from this step","chain.start":"Start","chain.node":"Time {t} \u00b7 {n} waiting","chain.action":"Start job {job}","chain.end":"Done \u00b7 cost {cost}","ring.decision":"Decision {k} of {n}","narr.idle":"Press Play to watch the learner schedule 8 jobs, or Step to go one decision at a time.","narr.state":"The learner looks at the situation: which jobs are waiting and how much time each has left.","narr.net":"The network scores every waiting job from its time left, length and importance.","narr.action":"It picks job {job} (probability {pct}%).","narr.place":"Job {job} starts on machine {m}.","narr.reward":"Reward {reward}: {outcome}.","narr.ontime":"the job will finish on time","narr.late":"the job will finish {late} ticks late","narr.next":"The situation changes and the loop repeats.","narr.update":"Episode over, total cost {cost}. The learner updates its weights from the rewards it saw.","test.line":"Test on {n} new job sets: random {random} \u00b7 best rule {rule} {rulecost} \u00b7 this learner {learner}","crit.f0":"Bias (always 1)","crit.f1":"Jobs waiting","crit.f2":"Cost already locked in","crit.f3":"Average spare time","crit.f4":"Tightest time left","crit.f5":"Work still to do","crit.f6":"Other machine ahead by","crit.got":"Got {r} now + expect {n} later, instead of {v}","crit.better":"Better than the critic expected by {d}","crit.worse":"Worse than the critic expected by {d}","base.step":"step {k}","base.note":"Usual reward from this step on: {b}","ledger.title":"Rewards this episode","ledger.return":"Return so far {r}","ledger.empty":"The reward of every decision drops in here.","narr.compare":"The critic had guessed what the reward would be. Now it compares its guess with what happened.","narr.learn":"The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.","stage.heading":"Watch the loop","stage.tagline":"The scheduler learns by trial and error: every decision goes round the loop, and each episode's rewards nudge the network.","panel.env":"Environment","panel.agent":"Learner","panel.ledger":"Rewards this episode","panel.curveweights":"Progress","wire.state":"State","wire.action":"Action","wire.reward":"Reward","loop.step":"Decision {k} of {n}","loop.v.state":"Time {t} \u00b7 {n} jobs waiting","loop.v.action":"Job {job}","loop.v.next":"t={t}","loop.done":"Episode over, cost {cost}","loop.sub.state":"What the learner sees","loop.sub.action":"The network picks a job","loop.sub.reward":"What that choice earned","loop.sub.next":"Progress one step in time","box.jobs":"Jobs","box.machines":"Machines","box.net":"Network","box.prob":"Probability graph","box.rewards":"Rewards","box.progress":"Progress","loop.mdp":"MDP","narr.gather":"The state is gathered from the jobs that are waiting and the machines that are free.","narr.prob":"The scores become probabilities: one chance for each waiting job.","narr.tick":"Time moves one step forward and the loop starts again.","view.label":"Choice shown as","view.bars":"Bars","view.wheel":"Wheel","btn.stop":"Stop","speed.30":"\u00d730","dist.uniform":"pure chance. Taller bar = more likely to be picked","dist.title":"Chance of picking each job","dist.title.wheel":"The wheel: each slice is a job","weights.title":"Weights (what the network has learned)","related":"Related","back":"\u2190 Back","close":"Close"},"labels":{"chip.network":"The network","chip.chain":"The chain","chip.online":"Online arrivals","chip.world":"The toy world","chip.state":"State","chip.action":"Action","chip.reward":"Reward","chip.policy":"The scoring rule","chip.reinforce":"REINFORCE","chip.actor_critic":"Actor-critic","chip.curve":"Learning curve","chip.weights":"What it learned","chip.test":"The test"},"factors":{},"notes":{},"rules":{},"placements":{},"options":{},"templates":{"loop.state.text":"Time {t} \u00b7 machine {m} is free \u00b7 {n} jobs waiting","loop.action.text":"Start job {job} (picked with probability {pct}%)","loop.reward.late":"{reward} \u00b7 job {job} finishes {late} ticks late (weight {w})","loop.reward.ontime":"0 \u00b7 job {job} finishes on time","loop.next.text":"Time {t} \u00b7 {n} jobs left","loop.next.done":"Episode over \u00b7 total cost {cost}","msg.episode":"Episode {n} finished with cost {cost}. The learner has updated itself from its rewards.","msg.trained":"Training finished after {n} episodes. Press Test to try it on new jobs.","msg.budget":"This learner has used its {n} training episodes. Press Reset to start again.","msg.testing":"Testing on {n} new job sets..."},"topics":{"world":{"kicker":"The toy world","title":"What this demo is, and what it is not","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Eight jobs wait to be run on two machines. Each job has a length, a deadline and an importance. Every time a machine becomes free, the scheduler picks one waiting job to start. A job that finishes after its deadline costs more the later it is and the more important it is."},{"h":"Formulation","open":true,"text":"A job *j* has length p_{j}, deadline d_{j} and weight w_{j}. Started at time s_{j} it finishes at C_{j} = s_{j} + p_{j} and is late by T_{j} = max(0, C_{j} \u2212 d_{j}). The cost of an episode (one set of 8 jobs) is\n\n{{J}}"},{"h":"How it relates to the research","open":false,"text":"This is the same kind of cost as in the main project, in miniature. The real problem has 10 machines, jobs that need CPU and memory, 100 jobs per instance and jobs that can arrive over time. The scheduler there is a neural network with many more weights, trained for millions of steps. Here the learner has three numbers, so you can watch every part of the loop."}]},"state":{"kicker":"The loop","title":"State: what the learner sees","related":["action","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The state is everything the learner knows when it must decide: the clock, which machine just became free, and which jobs are still waiting with their lengths, deadlines and importance."},{"h":"Formulation","open":false,"text":"At each decision time *t* the state is the list of waiting jobs together with the time left for each: (d_{j} \u2212 t \u2212 p_{j}), which is how long the job could still wait and finish on time. A negative number means it is already going to be late."}]},"action":{"kicker":"The loop","title":"Action: which job to start","related":["state","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The action is the choice of one waiting job to start on the free machine. The learner does not choose the machine: the first machine to become free takes the job, as in the project's priority-learning models."},{"h":"Formulation","open":false,"text":"The learner gives each waiting job a score (see the scoring rule) and picks a job at random in proportion to the scores, so that it keeps exploring while it learns."}]},"reward":{"kicker":"The loop","title":"Reward: what tells it how well it did","related":["state","action","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each decision the learner receives a reward: zero if the job will finish on time, and a negative number if it will finish late. The later and the more important the job, the more negative. The learner never sees a list of right answers, only these rewards."},{"h":"Formulation","open":true,"text":"{{reward}}\n\nAdding up the rewards of an episode gives minus the cost J of that episode, so improving the total reward is the same as reducing the cost."},{"h":"Deeper","open":false,"text":"The cost is divided by a constant (10) so that the numbers are easy to read. A job's reward is known as soon as it is started, because its finishing time is then fixed."}]},"policy":{"kicker":"The learner","title":"The scoring rule it learns","related":["weights","reinforce","actor_critic"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The learner scores each waiting job from three numbers: how much time is left before it is due, how long it is, and how important it is. Three weights say how much each number counts. The job with the highest score is the most likely to be picked."},{"h":"Formulation","open":true,"text":"With the three signals gathered in a list \u03c6_{j} (time left, length, importance, each scaled to a similar size) and three weights \u03b8:\n\n{{score}}\n\n{{policy}}\n\nLearning means changing the three weights \u03b8 so that choices with better rewards become more likely."},{"h":"Deeper","open":false,"text":"This is the same idea as Option 2 in the project, where a larger network scores each waiting job from its own features, but with one layer and three weights so that you can read it."}]},"reinforce":{"kicker":"The learner","title":"REINFORCE: learning from the whole episode","related":["policy","actor_critic","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each episode, REINFORCE looks at how much total reward came after each decision and compares it with the usual amount at that point. Decisions followed by better-than-usual rewards become more likely; decisions followed by worse-than-usual rewards become less likely."},{"h":"Formulation","open":true,"text":"With the return G_{t} (the rewards from decision t to the end) and a baseline b_{t} (a running average of that return):\n\n{{ret}}\n\n{{reinforce}}"},{"h":"Deeper","open":false,"text":"Plain REINFORCE is noisy because one episode is only one sample; the baseline reduces that noise. Source: Williams (1992)."}]},"actor_critic":{"kicker":"The learner","title":"Actor-critic: a learner with a guess about the future","related":["policy","reinforce","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Actor-critic adds a second small estimator, the critic, that guesses how well things will go from the current situation. The actor (the scoring rule) is then pushed by how much better or worse each decision turned out than the critic expected."},{"h":"Formulation","open":true,"text":"The critic estimates the value of a state from a few summary numbers (how many jobs wait, how many are already doomed to be late, how much slack is left). The advantage of a decision is how much better it went than the critic expected, summed over the rest of the episode with a discount factor:\n\n{{critic}}\n\n{{advantage}}"},{"h":"Deeper","open":false,"text":"The advantage is a generalised advantage estimate (Schulman et al. 2016) with a smoothing factor of 0.9. The critic is trained towards what actually happened."}]},"curve":{"kicker":"The learner","title":"Reading the learning curve","related":["reward","test","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each dot is the cost of one training episode on a fresh set of jobs, and the line is the average of the last 25 episodes. While it learns, the learner still picks jobs at random in proportion to their scores, so the cost is higher than when it picks its best guess. The grey lines show a random scheduler and the best of five classic rules, measured on new job sets."},{"h":"Deeper","open":false,"text":"The two learners start from the same place (all three weights zero, so every job is equally likely). Switch the learner and train again to compare their curves. Each press of Reset starts both learners again."}]},"weights":{"kicker":"The learner","title":"What it learned","related":["policy","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three bars are the learned weights. A bar to the left means the learner prefers a small value of that signal; a bar to the right, a large one. After training, the time-left weight is strongly to the left in nearly every run: the learner has discovered that jobs with little time left should go first, which is the idea behind the classic rules."},{"h":"Deeper","open":false,"text":"It also usually prefers short jobs (to the left) and important jobs (to the right). The exact numbers differ from run to run."}]},"test":{"kicker":"The learner","title":"The test on new jobs","related":["curve","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Test uses 200 new sets of jobs that the learner has never trained on, and lets it pick its best-scoring job every time. It is compared with a random scheduler and with the best of five classic rules on the same sets."},{"h":"Deeper","open":false,"text":"In this toy the learner can even beat a single simple rule, because it blends three signals. The real problem, with 10 machines and 100 jobs, is much harder: there the learned schedulers matched the best rules but did not beat them.\n\nUsing new job sets matters for the same reason as in the project: a learner can look good on the jobs it trained on and worse on new ones."}]},"network":{"kicker":"The learner","title":"The network that decides","related":["policy","reinforce","actor_critic","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three inputs are what the learner knows about one waiting job: how much time is left before it is due, how long it is, and how important it is. Each input is multiplied by a weight (the thickness and colour of the line show the weight: blue is positive, orange is negative) and added into a score. A softmax turns the scores of all waiting jobs into probabilities, and the learner picks a job with those probabilities."},{"h":"Formulation","open":true,"text":"{{score}}\n\n{{policy}}"},{"h":"The critic","open":false,"text":"The critic is a second small estimator. It looks at a summary of the whole situation (how many jobs wait, how many are already doomed to be late, how much time is left) and guesses how much reward is still to come. REINFORCE has no critic: it compares each decision with a plain running average of the reward that usually follows that step."}]},"chain":{"kicker":"The loop","title":"The chain of decisions","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each circle is a state: the situation at one decision time. Each arrow is the action taken there, with the reward it earned. Put together, one episode is a chain: state, action, reward, next state, and so on until all the jobs have been scheduled. A Markov chain has this \"the next state depends only on where you are and what you did\" property, which is what lets the learner improve its choices one decision at a time."},{"h":"Deeper","open":false,"text":"Strictly this is a Markov decision process: a Markov chain in which the decisions are made by the learner, not left to chance."}]},"online":{"kicker":"The toy world","title":"Jobs known up front, or arriving over time","related":["world","state"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Up front: all 8 jobs are waiting from time 0. Over time: jobs join the queue at different times, so a machine may have to wait for the next arrival and the learner never knows which jobs are still to come. This is the difference between the offline and online cases in the project."},{"h":"Deeper","open":false,"text":"In the online toy, a job's deadline is counted from its arrival, and the jobs arrive in the first 6 ticks, so the machines are kept busy. Each mode has its own learner, so switching back and forth does not mix their learning."}]}}}};
 /* mathml.js - tiny MathML builders shared by the browser demos (the browser renders MathML natively, no library).
    MathML.I identifier, N number, O operator, T text, R row, sub, sup, frac, sum(under, body), ind(...) indicator 1[...], M(...) display block. */
 (function () {
@@ -499,7 +534,7 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
   // at x1 the film is calm: one orb at a time travels slowly and the part it reaches is highlighted and held; from x3 up it moves faster
   const calm = () => S.speed === 1;
   const hold = (calmMs, fastMs, id) => sleep(calm() ? calmMs : fastMs, id);
-  function spot(...els) { document.querySelectorAll(".spot").forEach(e => e.classList.remove("spot")); els.forEach(e => { const b = e && e.closest(".lbox, .panel"); if (b) b.classList.add("spot"); }); }
+  function spot(...els) { document.querySelectorAll(".spot").forEach(e => e.classList.remove("spot")); els.forEach(e => { const b = e && (e.closest(".lbox, .panel") || e); if (b) b.classList.add("spot"); }); }
 
   // ---- flying tokens, pop-ups, pulses -----------------------------------------------------------------------------------------------
   const point = x => { if (x.getBoundingClientRect) { const r = x.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; } return x; };
@@ -537,11 +572,8 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     });
   }
   const loopVal = (k, text) => { const e = byId("v-" + k); if (e) e.textContent = text; };
-  // box 1 shows the state itself: the time and, for every waiting job, how much time it has left
-  function loopState(t, st) {
-    const box = byId("v-state"); box.textContent = ""; box.append(el("div", "lbig", fill(UI["loop.v.state"], { t, n: st.state.waiting.length })));
-    st.state.waiting.forEach(j => { const r = el("div", "sjob"); r.style.borderLeftColor = jobColour(j); r.append(el("b", null, "J" + (j + 1)), el("span", null, UI["net.timeleft"] + " " + Math.max(0, st.state.jobs[j].d - t))); box.append(r); });
-  }
+  // box 1 shows the state: the time, the free machine and how many jobs wait
+  function loopState(t, st) { byId("v-state").textContent = fill(TP["loop.state.text"], { t, m: st.state.machine + 1, n: st.state.waiting.length }); }
   const loopCentre = a => { byId("lstep").textContent = a || ""; };
 
   // ---- environment: queue shelf, machine lanes -------------------------------------------------------------------------------------------
@@ -608,7 +640,7 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     if (!st) { cfg.dist.append(el("div", "baempty", UI["dist.title"])); return; }
     const n = p.length;
     cfg.dist.append(el("div", "dtitle", UI["dist.title"]));
-    const W = 170, H = 165, x0 = 4, x1 = W - 4, yb = 140, yt = 20, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(26, slot * 0.7);
+    const W = 330, H = 120, x0 = 4, x1 = W - 4, yb = 98, yt = 16, top = Math.max(0.4, Math.max(...p) * 1.15), slot = (x1 - x0) / n, bw = Math.min(30, slot * 0.7);
     const yOf = v => yb - (v / top) * (yb - yt), cx = k => x0 + slot * (k + 0.5), g = svg("svg", { id: "vbars", viewBox: `0 0 ${W} ${H}` });
     g.append(svg("line", { x1: x0, y1: yb, x2: x1, y2: yb, class: "vaxis" }), svg("line", { x1: x0, y1: yOf(1 / n), x2: x1, y2: yOf(1 / n), class: "vchance" }));
     const bars = [];
@@ -625,16 +657,49 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     setTimeout(() => { bars.forEach(([, pc]) => pc.setAttribute("opacity", 1)); line.setAttribute("opacity", 1); dots.forEach(d => d.setAttribute("opacity", 1)); }, 520 / S.speed);
   }
   // ---- learner: the critic (actor-critic) or the baseline (REINFORCE) ----------------------------------------------------------------------
-  function buildCritic() { cfg.critic.textContent = ""; }
-  const paintCriticWeights = () => {};
-  const paintCritic = () => { if (cfg.critic) cfg.critic.textContent = ""; };
-  async function criticPulses(id) { await sleep(300, id); }
+  function buildCritic() {
+    const box = cfg.critic; box.textContent = "";
+    if (isAC()) {
+      box.append(el("div", "dtitle", UI["net.critic"] + " · " + UI["net.summary"]));
+      const grid = el("div", "cgrid"); for (let i = 0; i < 7; i++) { const c = el("div", "cchip"); c.dataset.i = i; c.append(el("span", null, UI["crit.f" + i]), el("b", null, "·"), el("em", null, "")); grid.append(c); }
+      const out = el("div", "cout"), v = el("div", "cv"), dl = el("div", "cdelta");
+      v.id = "cval"; v.append(el("span", null, "V(s)"), el("b", null, "")); out.append(v, el("div", null, UI["net.value"]), dl); dl.id = "cdelta"; box.append(grid, out);
+    } else {
+      box.append(el("div", "dtitle", UI["net.baseline"]));
+      const bars = el("div", "bbars"); for (let t = 0; t < 8; t++) { const b = el("div", "bb"); b.dataset.t = t; b.append(el("b", null, ""), el("i"), el("span", null, fill(UI["base.step"], { k: t + 1 }))); bars.append(b); }
+      box.append(bars);
+    }
+    paintCriticWeights();
+  }
+  function paintCriticWeights(before) {
+    const L = learner();
+    if (isAC()) {
+      L.critic.forEach((w, i) => { const c = q(cfg.critic, `.cchip[data-i="${i}"]`); c.classList.toggle("pos", w >= 0.005); c.classList.toggle("neg", w <= -0.005); q(c, "em").textContent = before ? `×${plain(before[i], 2)}→${plain(w, 2)}` : `×${plain(w, 2)}`; });
+    } else {
+      const top = Math.max(2, ...Array.from({ length: 8 }, (_, t) => Math.abs(L.baseline(t))));
+      for (let t = 0; t < 8; t++) { const b = q(cfg.critic, `.bb[data-t="${t}"]`), v = L.baseline(t); q(b, "i").style.height = (Math.abs(v) / top * 2.2) + "rem"; q(b, "b").textContent = plain(v, 1); }
+    }
+  }
+  function paintCritic(st, k) {
+    const L = learner();
+    if (isAC()) {
+      const f = st ? C.stateFeatures(st.state) : null;
+      for (let i = 0; i < 7; i++) q(cfg.critic, `.cchip[data-i="${i}"] b`).textContent = f ? f[i].toFixed(2) : "·";
+      q(cfg.critic, "#cval b").textContent = st ? plain(L.value(st.state), 1) : ""; q(cfg.critic, "#cdelta").textContent = "";
+    } else for (let t = 0; t < 8; t++) q(cfg.critic, `.bb[data-t="${t}"]`).classList.toggle("cur", !!st && t === k);
+  }
+  async function criticPulses(id) {
+    if (!isAC()) { await sleep(300, id); return; }
+    const chips = [...cfg.critic.querySelectorAll(".cchip")]; chips.forEach(c => { c.style.background = "color-mix(in srgb, var(--accent) 14%, transparent)"; });
+    await sleep(600, id); chips.forEach(c => { c.style.background = ""; });
+  }
   async function criticCompare(st, k, ep, id) {  // actor-critic only: the critic's guess against what happened
     if (!isAC()) return;
     const L = learner(), v = L.value(st.state), next = k + 1 < ep.steps.length ? L.value(ep.steps[k + 1].state) : 0, delta = st.reward + next - v;
-    cfg.critic.textContent = fill(UI["crit.got"], { r: plain(st.reward, 1), n: plain(next, 1), v: plain(v, 1) }) + " — " + fill(delta >= 0 ? UI["crit.better"] : UI["crit.worse"], { d: Math.abs(delta).toFixed(1) });
-    cfg.critic.style.color = delta >= 0 ? css("--win") : css("--scratch");
-    await sleep(900, id);
+    const d = q(cfg.critic, "#cdelta"); d.textContent = fill(UI["crit.got"], { r: plain(st.reward, 1), n: plain(next, 1), v: plain(v, 1) }) + " — " + fill(delta >= 0 ? UI["crit.better"] : UI["crit.worse"], { d: Math.abs(delta).toFixed(1) });
+    d.style.color = delta >= 0 ? css("--win") : css("--scratch");
+    const cv = q(cfg.critic, "#cval"); cv.style.borderColor = delta >= 0 ? css("--win") : css("--scratch"); cv.style.borderWidth = ".3rem";
+    await sleep(900, id); cv.style.borderColor = ""; cv.style.borderWidth = "";
   }
 
   // ---- ledger ---------------------------------------------------------------------------------------------------------------
@@ -670,64 +735,68 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = [];
     ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
   }
-    async function playDecision(id) {
-    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100), envBox = byId("env");
-    // 1. State: the situation leaves the environment
-    setNarr(UI["narr.state"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }));
-    ["state", "reward", "next"].forEach(n => loopVal(n, ""));
+  const BOX = { jobs: () => byId("jobs"), machines: () => byId("machinesbox"), state: () => byId("b-state"), net: () => byId("netbox"), prob: () => byId("probbox"),
+    action: () => byId("b-action"), reward: () => byId("b-reward"), rewards: () => byId("rewardsbox"), next: () => byId("b-next"), progress: () => byId("progress") };
+  // One decision as an orb's journey: jobs + machines -> state -> network -> probability graph -> action -> machine -> reward -> rewards -> next state -> state
+  async function playDecision(id) {
+    const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100);
+    // 1. State: gathered from the waiting jobs and the free machine
+    setNarr(UI["narr.gather"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }));
+    ["state", "action", "reward", "rtext", "next"].forEach(n => loopVal(n, ""));
     const future = jobs.map((j, i) => i).filter(i => !st.state.waiting.includes(i) && !ep.steps.slice(0, k).some(s => s.job === i) && jobs[i].a > t).map(i => jobs[i].a);
     const nextArr = online() && future.length ? Math.min(...future) : null;
-    drawQueue(jobs, st.state.waiting, null, nextArr); drawMachines(S.blocks, t, null);
-    wire("state", true); loopState(t, st); spot(envBox);
-    await hold(800, 250, id);
-    await fly(cfg.queue, q(cfg.actor, "#ae1"), id, "tk state", "s", 650);
-    // 2. the actor scores the waiting jobs and turns the scores into probabilities; the critic estimates the situation
-    setNarr(UI["narr.net"]); spot(cfg.actor);
-    drawDist(null); paintCritic(st, k);
-    await actorPulses(id);
-    drawDist(st, p, st.k);
-    await sleep(600, id);
-    await hold(700, 0, id);
-    // 3. Action: the job leaves the queue and starts on a machine
+    drawQueue(jobs, st.state.waiting, null, nextArr); drawMachines(S.blocks, t, null); drawDist(null); paintCritic(null);
+    spot(BOX.jobs(), BOX.machines());
+    await Promise.all([fly(BOX.jobs(), BOX.state(), id, "tk state", "jobs", 650), fly(BOX.machines(), BOX.state(), id, "tk state", "free machine", 650)]);
+    wire("state", true); loopState(t, st); spot(BOX.state()); await hold(900, 250, id);
+    // 2. State -> network: the actor scores every waiting job (and, for actor-critic, the critic estimates the situation)
+    setNarr(UI["narr.net"]); spot(BOX.net());
+    await fly(BOX.state(), BOX.net(), id, "tk state", "s", 650);
+    paintCritic(st, k); await actorPulses(id); if (isAC()) await criticPulses(id);
+    await hold(500, 0, id);
+    // 3. Network -> probability graph
+    setNarr(UI["narr.prob"]); spot(BOX.prob());
+    await fly(BOX.net(), BOX.prob(), id, "tk action", "scores", 650);
+    drawDist(st, p, st.k); await sleep(700, id); await hold(900, 0, id);
+    // 4. Probability graph -> action: the learner picks a job
     wire("action", true); loopVal("action", fill(UI["loop.v.action"], { job: chosen + 1 })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
-    drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(cfg.queue);
-    const qEl = cfg.queue.querySelector(`[data-job="${chosen}"]`), from = q(cfg.dist, ".vbar.pick") || cfg.dist;
-    await fly(from, qEl || cfg.queue, id, "tk action", "J" + (chosen + 1), 650);
-    await hold(700, 0, id);
-    setNarr(fill(UI["narr.place"], { job: chosen + 1, m: st.state.machine + 1 }));
+    drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(BOX.action());
+    await fly(q(cfg.dist, ".vbar.pick") || BOX.prob(), BOX.action(), id, "tk action", "J" + (chosen + 1), 650); await hold(900, 300, id);
+    // 5. Action -> machine: the job starts
+    setNarr(fill(UI["narr.place"], { job: chosen + 1, m: st.state.machine + 1 })); spot(BOX.machines());
     const newBlock = { job: chosen, machine: st.state.machine, start: st.start, end: st.end, late: st.lateness > 0 }; S.blocks.push(newBlock);
     const lane = cfg.machines[st.state.machine], lr = lane.getBoundingClientRect();
-    await fly(qEl || cfg.queue, { x: lr.left + lr.width * ((st.start + st.end) / 2) / HORIZON, y: lr.top + lr.height / 2 }, id, "tk job", "J" + (chosen + 1), 650);
-    drawQueue(jobs, st.state.waiting.filter(j => j !== chosen), null, nextArr); drawMachines(S.blocks, t, newBlock); spot(lane);
-    await hold(700, 200, id);
-    // 4. Reward: it appears, is written into the ledger, and (actor-critic) the critic compares it with its guess
-    const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0";
-    wire("reward", true, late); loopVal("reward", rtxt); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome: late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"] }));
+    await fly(BOX.action(), { x: lr.left + lr.width * ((st.start + st.end) / 2) / HORIZON, y: lr.top + lr.height / 2 }, id, "tk job", "J" + (chosen + 1), 650);
+    drawQueue(jobs, st.state.waiting.filter(j => j !== chosen), null, nextArr); drawMachines(S.blocks, t, newBlock);
+    await hold(800, 200, id);
+    // 6. Machine -> reward: how well did that choice do?
+    const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0", outcome = late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"];
+    wire("reward", true, late); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome })); spot(BOX.reward());
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
-    await popup(blkEl, rtxt, late ? "bad" : "good", id, 800);
-    const chip = ledgerAdd(k, st.reward); spot(cfg.ledger);
-    await fly(blkEl, chip, id, late ? "reward" : "good", rtxt, 700);
-    chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500);
-    await hold(800, 0, id);
-    if (isAC()) { setNarr(UI["narr.compare"]); spot(cfg.critic); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
-    // 5. Next state
-    const nxt = ep.steps[k + 1]; wire("next", true); loopVal("next", nxt ? fill(UI["loop.v.next"], { t: nxt.state.t }) : "end"); setNarr(UI["narr.next"]); spot();
-    await hold(500, 200, id);
+    await fly(blkEl, BOX.reward(), id, late ? "reward" : "good", rtxt, 650); loopVal("reward", rtxt); loopVal("rtext", outcome); await hold(900, 0, id);
+    // 7. Reward -> rewards box (and, for actor-critic, the critic compares it with its guess)
+    const chip = ledgerAdd(k, st.reward); spot(BOX.rewards());
+    await fly(BOX.reward(), chip, id, late ? "reward" : "good", rtxt, 650);
+    chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500); await hold(700, 0, id);
+    if (isAC()) { setNarr(UI["narr.compare"]); spot(BOX.net()); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
+    // 8. Reward -> next state (time moves on) -> back to state
+    const nxt = ep.steps[k + 1]; wire("next", true); loopVal("next", nxt ? fill(UI["loop.v.next"], { t: nxt.state.t }) : "end"); setNarr(UI["narr.tick"]); spot(BOX.next());
+    await fly(BOX.reward(), BOX.next(), id, "tk state", "+1", 600); await hold(700, 200, id);
     S.k++;
-    if (S.k >= ep.steps.length) await finishEpisode(id);
+    if (S.k >= ep.steps.length) { await finishEpisode(id); return; }
+    wire("state", true); await fly(BOX.next(), BOX.state(), id, "tk state", "s", 600);
   }
   async function finishEpisode(id) {
-    const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), adv = advantages(ep);
-    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("reward", true); loopCentre(fill(UI["loop.done"], { cost: ep.cost }));
-    ledgerCredit(adv); spot(cfg.ledger); await hold(1600, 900, id);
-    const chips = [...cfg.ledger.querySelectorAll(".lchip.got")];
-    chips.forEach(c => fly(c, cfg.actor, id, "reward", q(c, "em").textContent, 800).catch(() => {}));
+    const L = learner(), ep = S.ep, thetaBefore = L.theta.slice(), criticBefore = isAC() ? L.critic.slice() : null, adv = advantages(ep);
+    setNarr(fill(UI["narr.update"], { cost: ep.cost })); wire("none", false); loopCentre(fill(UI["loop.done"], { cost: ep.cost }));
+    ledgerCredit(adv); spot(BOX.rewards()); await hold(1600, 900, id);
+    [...cfg.ledger.querySelectorAll(".lchip.got")].forEach(c => fly(c, BOX.net(), id, "reward", q(c, "em").textContent, 800).catch(() => {}));
     await sleep(900, id);
     L.update(ep); hist()[S.active].push(ep.cost); S.ep = null;
-    setNarr(UI["narr.learn"]); spot(cfg.actor, cfg.wbars);
-    paintWeights(thetaBefore); drawCurve();
+    setNarr(UI["narr.learn"]); spot(BOX.net(), BOX.progress());
+    paintWeights(thetaBefore); paintCriticWeights(criticBefore); drawCurve();
     await hold(4200, 2600, id);
-    spot(); paintWeights(); paintCritic(null); wire("none", false); loopCentre("");
+    spot(); paintWeights(); paintCriticWeights(); paintCritic(null); loopCentre("");
   }
 
   // ---- controls ------------------------------------------------------------------------------------------------------------------------------
@@ -762,7 +831,7 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
       owed += Math.min(now - last, 100) / 1000 * 30; last = now;
       let ep = null; while (owed >= 1 && budgetLeft()) { owed -= 1; ep = L.train(C.makeInstance(S.rng[S.mode], online())); hist()[S.active].push(ep.cost); }
       if (ep) { drawQueue(ep.steps[0].state.jobs, [], null, null); drawMachines(ep.blocks, null, null); }
-      paintWeights(); drawCurve(); setButtons(); setNarr("");
+      paintWeights(); paintCriticWeights(); drawCurve(); setButtons(); setNarr("");
       if (!budgetLeft()) { S.busy = false; setButtons(); setMsg(fill(TP["msg.trained"], { n: L.episodes })); return; }
       requestAnimationFrame(tick);
     };
