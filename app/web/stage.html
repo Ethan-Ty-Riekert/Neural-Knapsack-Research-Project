@@ -8,7 +8,7 @@
 html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 /* "Watch the loop", sketch layout. Left column: the jobs and the progress graph with the learned weights. Centre: the machines and the MDP ring
    (state, action, reward, next state). Right column: the network, its probability graph and the rewards. One orb travels between the boxes. */
-.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: .45rem; }
+.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: .45rem; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
 .top h1 { font-size: 1.5rem; line-height: 1; }
 #controls { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; }
@@ -16,7 +16,6 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .55rem; padding: .3rem .7rem; font-weight: 600; font-size: .85rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
 .seg.small button { padding: .24rem .5rem; font-size: .78rem; }
 .sub { color: var(--muted); font-size: .8rem; }
-#narr { font-size: 1.1rem; font-weight: 700; text-align: center; min-height: 1.5rem; padding: .3rem .8rem; border-radius: .7rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid var(--rule); }
 .main { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) minmax(0, 27rem); gap: .5rem; min-height: 0; }
 .col { display: flex; flex-direction: column; gap: .5rem; min-height: 0; min-width: 0; }
 .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
@@ -109,7 +108,6 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
     <div><h1 data-ui="stage.heading"></h1><div class="sub" data-ui="stage.tagline"></div></div>
     <div id="controls"></div>
   </div>
-  <div id="narr"></div>
   <div class="main">
     <div class="col">
       <section class="panel" id="jobs">
@@ -170,7 +168,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 document.querySelectorAll("[data-machine]").forEach(e => { e.textContent = RACE_DATA.text.ui["machine.name"].replace("{m}", e.dataset.machine); });
 StageUI.init({
   explain: document.getElementById("explain"), fx: document.getElementById("fx"), queue: document.getElementById("queue"), machines: [document.getElementById("m0"), document.getElementById("m1")],
-  narr: document.getElementById("narr"), msg: document.getElementById("msg"), controls: document.getElementById("controls"), modeSlot: document.getElementById("modeslot"),
+  msg: document.getElementById("msg"), controls: document.getElementById("controls"), modeSlot: document.getElementById("modeslot"),
   agentTitle: document.getElementById("agenttitle"), actor: document.getElementById("actorsvg"), dist: document.getElementById("dist"),
   critic: document.getElementById("critic"), ledger: document.getElementById("ledger"), curve: document.getElementById("curve"), wbars: document.getElementById("wbars")
 });

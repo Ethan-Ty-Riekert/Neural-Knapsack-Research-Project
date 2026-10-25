@@ -16,7 +16,7 @@
 
   const online = () => S.mode === "online", learner = () => S.L[S.mode][S.active], hist = () => S.hist[S.mode], isAC = () => S.active === "ac";
   const refs = () => TrainingShared.refs(online());
-  const setNarr = t => { cfg.narr.textContent = t; };
+  const setNarr = () => {};  // the caption bar was removed (the lit boxes and the orb say what is happening)
   const setMsg = t => { cfg.msg.textContent = t; };
   const plain = (x, d = 1) => (x < 0 ? "−" : "") + Math.abs(x).toFixed(d);
   const num = (x, d = 1) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d);

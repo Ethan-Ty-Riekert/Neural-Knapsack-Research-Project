@@ -113,8 +113,8 @@ ledger.empty: The reward of every decision drops in here.
 narr.compare: The critic had guessed what the reward would be. Now it compares its guess with what happened.
 narr.learn: The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.
 // --- the "stage" layout (stage.html): the layout is the loop ---
-stage.heading: Watch the loop
-stage.tagline: The scheduler learns by trial and error: every decision goes round the loop, and each episode's rewards nudge the network.
+stage.heading: How Reinforcement Learning Works
+stage.tagline: The scheduler learns by trial and error through sequential decision making with a Markov decision process.
 panel.env: Environment
 panel.agent: Learner
 panel.ledger: Rewards this episode
