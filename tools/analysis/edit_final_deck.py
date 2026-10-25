@@ -40,7 +40,7 @@ P = "http://schemas.openxmlformats.org/presentationml/2006/main"
 stops = s1._element.cSld.find(f"{{{P}}}bg").iter(f"{{{A}}}gs")
 last = max(stops, key=lambda g: int(g.get("pos")))
 for alpha in last.iter(f"{{{A}}}alpha"):
-    alpha.set("val", "22000")
+    alpha.set("val", "8000")
 
 
 # ---------------------------------------------------------------- helpers (same look as tools/analysis/make_pptx.py)
