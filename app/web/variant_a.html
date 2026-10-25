@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scheduler Race Panel</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
@@ -67,7 +69,9 @@
 <script>
 /*__DATA__*/
 /*__CORE__*/
-RaceUI.init({
+if (typeof RaceUI === "undefined") {  // this file is the template: the data and code are filled in by tools/analysis/make_demo_artifacts.py
+  document.body.innerHTML = '<p style="font:18px sans-serif;padding:2rem">This is the page template, so it has no data. Open <b>app/web/dist/variant_a.html</b> instead (build it with <code>python tools/analysis/make_demo_artifacts.py</code>).</p>';
+} else RaceUI.init({
   explain: document.getElementById("explain"), situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
   lanes: document.getElementById("lanes"), verdict: document.getElementById("verdict"), start: document.getElementById("go"),
   laneHTML: '<div class="top2"><div><div class="t"></div><div class="d"></div></div><div class="pct"></div></div><div class="track"><div class="fill"></div></div>',

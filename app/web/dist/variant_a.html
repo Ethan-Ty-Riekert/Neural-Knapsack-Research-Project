@@ -1,19 +1,20 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scheduler Race Panel</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
 <style>
 /* base.css - tokens and shared components for the browser demo variants (inlined at build time). */
 :root {
-  --bg: #f1f4f8; --surface: #ffffff; --ink: #0e2238; --muted: #56677a; --rule: #d6dde6;
+  --bg: #ffffff; --surface: #ffffff; --ink: #0e2238; --muted: #56677a; --rule: #cbd9ee;
   --accent: #2a6fd1; --accent-ink: #ffffff; --rulebar: #8793a1; --copied: #2a6fd1; --scratch: #e0702a; --win: #14866d;
   --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; --body: "Figtree", "Segoe UI", system-ui, sans-serif;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0c1623; --surface: #14243a; --ink: #eaf0f7; --muted: #9db0c4; --rule: #28405c;
-  --accent: #5b9bf0; --accent-ink: #08121f; --rulebar: #7f8c9b; --copied: #5b9bf0; --scratch: #f28a4a; --win: #3cc5a4; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #0c1623; --surface: #14243a; --ink: #eaf0f7; --muted: #9db0c4; --rule: #28405c;
-  --accent: #5b9bf0; --accent-ink: #08121f; --rulebar: #7f8c9b; --copied: #5b9bf0; --scratch: #f28a4a; --win: #3cc5a4; color-scheme: dark; }
+/* White background only, for now (a deliberate single look): the page stays white even when the device or viewer is in dark mode.
+   The dark palette is kept here for later: re-add it under @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ... } }
+   and :root[data-theme="dark"] { ... } with: --bg #0c1623; --surface #14243a; --ink #eaf0f7; --muted #9db0c4; --rule #28405c;
+   --accent #5b9bf0; --accent-ink #08121f; --rulebar #7f8c9b; --copied #5b9bf0; --scratch #f28a4a; --win #3cc5a4; color-scheme: dark. */
+:root { color-scheme: light; }
 html { font-size: clamp(15px, 2.5vh, 32px); height: 100%; }
 body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.25; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -493,7 +494,9 @@ window.RACE_DATA = {"metrics":["active_machine_ticks","late_jobs","mean_flow_tim
   } };
 })();
 
-RaceUI.init({
+if (typeof RaceUI === "undefined") {  // this file is the template: the data and code are filled in by tools/analysis/make_demo_artifacts.py
+  document.body.innerHTML = '<p style="font:18px sans-serif;padding:2rem">This is the page template, so it has no data. Open <b>app/web/dist/variant_a.html</b> instead (build it with <code>python tools/analysis/make_demo_artifacts.py</code>).</p>';
+} else RaceUI.init({
   explain: document.getElementById("explain"), situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
   lanes: document.getElementById("lanes"), verdict: document.getElementById("verdict"), start: document.getElementById("go"),
   laneHTML: '<div class="top2"><div><div class="t"></div><div class="d"></div></div><div class="pct"></div></div><div class="track"><div class="fill"></div></div>',
