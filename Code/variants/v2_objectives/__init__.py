@@ -41,6 +41,14 @@ REFERENCE_LAMBDAS = {
     "off_tf05": (15.8, 146.0, 153.0),
     "on_rho095": (17.6, 176.0, 17.6),
     "off_tf05_w1": (16.7, 215.0, 75.7),
+    # added 2026-10-25 for the multi-objective gap grid, computed the same way (J / term on the best-J heuristic's mean metrics;
+    # the method reproduces the on_rho095 and off_tf05 values above): on_rho050 WLST+Consolidate, on_rho075 WLST+Consolidate,
+    # on_rho075_tight WLST+Consolidate, on_rho110 MDC+Consolidate, off_tf08_w1 WLST+FirstFit
+    "on_rho050": (14.7, 127.2, 4.9),
+    "on_rho075": (14.5, 117.4, 5.5),
+    "on_rho075_tight": (15.0, 115.4, 27.4),
+    "on_rho110": (28.3, 384.0, 76.3),
+    "off_tf08_w1": (39.5, 1311.2, 758.7),
 }
 
 

@@ -246,7 +246,8 @@ def write_tables(results):
             fr = [r for r in recs if r["family"] == fam]
             return fr[0] if fr else None
         h, rl, pso, cp = best("Heuristic"), best("RL"), best("PSO"), best("CP-SAT")
-        gap = f"{100 * (rl['objective_J'] / h['objective_J'] - 1):+.1f}%" if (h and rl) else "-"
+        # a zero reference (the best heuristic reaches J = 0, as at off_tf02) has no relative gap
+        gap = f"{100 * (rl['objective_J'] / h['objective_J'] - 1):+.1f}%" if (h and rl and h['objective_J']) else "-"
         rl_cell = (f"{rl['method']} ({rl['objective_J']:.0f}, {rl['n_seeds']} seed{'s' if rl['n_seeds'] > 1 else ''})"
                    if rl else "-")
         pso_cell = f"{pso['objective_J']:.0f}" if pso else "-"

@@ -1,6 +1,6 @@
 # Plan: multi-objective training and evaluation where no composite-objective model exists (2026-10-25, S2W14)
 
-**Status: PLAN ONLY, nothing queued. Needs the user's go-ahead on the decisions in section 5 (the methodology rule: announce, justify, then run).**
+**Status 2026-10-25 17:00: QUEUED (user chose the full grid). Changed from the plan: off_tf02 and off_tf02_w1 are excluded (the best heuristic reaches J = 0 there, so reference weights are 0 and nothing can be improved), so 5 settings x 18 = 90 runs, not 126. Reference weights (from the best-J heuristic, method reproduces the existing on_rho095 and off_tf05 values): on_rho050 (14.7, 127.2, 4.9), on_rho075 (14.5, 117.4, 5.5), on_rho075_tight (15.0, 115.4, 27.4), on_rho110 (28.3, 384.0, 76.3), off_tf08_w1 (39.5, 1311.2, 758.7) as (lambda_T, lambda_U, lambda_E). Tags `v2_<preset>_o2[c]wmlubrze<q|g|kqg>x_lam<1|4>_s<0-2>`. CPU target raised from 65 to 80 (the user-approved cap).**
 
 ## 1. What exists (checked against the results archive and the submitted report)
 - Main series: models trained on J = sum_j w_j T_j^2 alone (lambda_T = lambda_U = lambda_E = 0). Report: "The main objective of this project is J alone".

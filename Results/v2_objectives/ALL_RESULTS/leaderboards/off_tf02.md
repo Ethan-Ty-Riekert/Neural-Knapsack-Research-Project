@@ -61,7 +61,15 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf02.md`](../tabl
 
 ## weighted late jobs (lower is better)
 
-Every method has the same value here, so there is no ranking.
+| rank | method | family | weighted late jobs | J |
+|---|---|---|---|---|
+| 1 | PPO Opt2 priority score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0.1 +/- 0.1 | 1 +/- 1 |
+| 2 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 0.2 +/- 0.1 | 4 +/- 5 |
+| 3 | PPO Opt2 priority score windowed WLST expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 1.3 +/- 0.1 | 8 +/- 0 |
+
+| top 5 |
+|---|
+| ![top 5](../figures/leaderboards/off_tf02/top5_weighted_late_jobs.png) |
 
 ## weighted tardiness (lower is better)
 
@@ -122,11 +130,41 @@ Every method has the same value here, so there is no ranking.
 
 ## mean wait (lower is better)
 
-Every method has the same value here, so there is no ranking.
+| rank | method | family | mean wait | J |
+|---|---|---|---|---|
+| 1 | EDF+FirstFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 2 | EDF+BestFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 3 | EDF+Consolidate | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 4 | EDF+WorstFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 5 | LST+FirstFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 6 | LST+BestFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 7 | LST+Consolidate | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 8 | LST+WorstFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 9 | WLST+FirstFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+| 10 | WLST+BestFit | Heuristic | 49.50 +/- 0.00 | 0 +/- 0 |
+
+| top 5 | top 10 |
+|---|---|
+| ![top 5](../figures/leaderboards/off_tf02/top5_mean_wait.png) | ![top 10](../figures/leaderboards/off_tf02/top10_mean_wait.png) |
 
 ## mean flow time (lower is better)
 
-Every method has the same value here, so there is no ranking.
+| rank | method | family | mean flow time | J |
+|---|---|---|---|---|
+| 1 | PPO Opt2 priority score windowed WLST expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 8 +/- 0 |
+| 2 | EDF+FirstFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 3 | EDF+BestFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 4 | EDF+Consolidate | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 5 | EDF+WorstFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 6 | LST+FirstFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 7 | LST+BestFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 8 | LST+Consolidate | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 9 | LST+WorstFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+| 10 | WLST+FirstFit | Heuristic | 54.54 +/- 0.27 | 0 +/- 0 |
+
+| top 5 | top 10 |
+|---|---|
+| ![top 5](../figures/leaderboards/off_tf02/top5_mean_flow_time.png) | ![top 10](../figures/leaderboards/off_tf02/top10_mean_flow_time.png) |
 
 ## makespan (lower is better)
 
