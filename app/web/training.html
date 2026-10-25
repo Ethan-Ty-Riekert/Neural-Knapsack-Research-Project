@@ -1,0 +1,125 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch It Learn</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/*__BASE__*/
+html { font-size: clamp(14px, 2.25vh, 30px); }
+/* "Watch it learn": the world and the reward loop on the left, the learner's progress on the right; one screen. */
+.app { height: 100%; box-sizing: border-box; padding-block: .8rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto 1fr; gap: .7rem; }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.top h1 { font-size: 1.9rem; }
+.top .sub { color: var(--muted); font-size: .85rem; max-width: 46rem; margin-top: .15rem; }
+.top .right { display: flex; align-items: center; gap: .6rem; font-size: .85rem; color: var(--muted); }
+.cols { display: grid; grid-template-columns: 6fr 5fr; gap: 1rem; min-height: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .9rem; padding: .7rem .9rem; display: flex; flex-direction: column; gap: .5rem; min-height: 0; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: .8rem; min-height: 0; }
+.col > .grow { flex: 1; }
+.explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
+/* waiting jobs */
+#queue { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; min-height: 6.4rem; align-content: start; }
+.job { border: 2px solid var(--rule); border-radius: .5rem; padding: .25rem .4rem; font-size: .72rem; line-height: 1.15; display: grid; gap: .05rem; position: relative; }
+.job b { font-size: .85rem; } .job span { color: var(--muted); }
+.job.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.job .pbar { height: .3rem; background: color-mix(in srgb, var(--ink) 9%, transparent); border-radius: .2rem; overflow: hidden; } .job .pbar i { display: block; height: 100%; background: var(--accent); }
+.job em { position: absolute; right: .35rem; top: .2rem; font-style: normal; font-weight: 700; color: var(--accent); font-size: .72rem; }
+/* machines */
+.lane { position: relative; height: 2.1rem; border: 2px solid var(--rule); border-radius: .5rem; background: var(--surface); margin-left: 2.6rem; }
+.lanewrap { position: relative; }
+.lanewrap > .mname { position: absolute; left: 0; top: .55rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.blk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .35rem; font-size: .72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid #fff; }
+.blk.late { background: var(--scratch); color: #fff; }
+.blk.fresh { outline: 3px solid var(--ink); outline-offset: 1px; }
+.nowline { position: absolute; top: -.2rem; bottom: -.2rem; width: 3px; background: var(--ink); opacity: .55; }
+.axis { margin-left: 2.6rem; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); }
+/* loop strip */
+#loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; }
+.lbox { border: 2px solid var(--rule); border-radius: .6rem; padding: .3rem .5rem; min-height: 3.6rem; position: relative; }
+.lbox .name { font-size: .72rem; font-weight: 700; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; }
+.lbox .val { font-size: .78rem; line-height: 1.2; margin-top: .1rem; }
+.lbox + .lbox::before { content: "\2192"; position: absolute; left: -.62rem; top: 1.2rem; color: var(--accent); font-weight: 700; }
+/* controls and curve */
+#controls { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.go { padding: .5rem 1.1rem; font-size: 1.05rem; border-radius: .6rem; } .ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .6rem; padding: .45rem .9rem; font-weight: 600; font-size: .95rem; }
+.go:disabled { opacity: .4; cursor: not-allowed; }
+.seg.small button { padding: .3rem .5rem; font-size: .8rem; }
+#msg { font-size: .85rem; color: var(--muted); min-height: 2.6rem; }
+#curvebox { position: relative; flex: 1; min-height: 6rem; } #curve { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wrow, .trow { display: grid; grid-template-columns: 6.2rem 1fr 3rem; gap: .5rem; align-items: center; font-size: .85rem; }
+.wbar, .tbar { position: relative; height: .9rem; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: .4rem; overflow: hidden; }
+.wbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); } .wbar u { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .4; }
+.tbar i { display: block; height: 100%; }
+.wv, .trow b { text-align: right; font-variant-numeric: tabular-nums; }
+.tcap { font-size: .72rem; color: var(--muted); margin: .1rem 0 0; }
+.wnote { font-size: .72rem; color: var(--muted); }
+.legendrow { display: flex; gap: .9rem; font-size: .75rem; color: var(--muted); }
+.legendrow i { display: inline-block; width: .8rem; height: .3rem; border-radius: .2rem; margin-right: .3rem; vertical-align: .15rem; }
+/* slide-over explanation card (same look as the race page) */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(38rem, 96vw); background: var(--surface); color: var(--ink); border-left: 1px solid var(--rule); box-shadow: -.6rem 0 2rem rgba(0, 0, 0, .18); transform: translateX(105%); transition: transform .3s ease; z-index: 20; display: flex; flex-direction: column; font-size: .92rem; }
+.drawer.open { transform: none; }
+.drawer .dhead { display: flex; justify-content: space-between; padding: .6rem .8rem 0; }
+.drawer .dhead button { border: 0; background: transparent; font-size: 1rem; padding: .3rem .5rem; border-radius: .4rem; }
+.drawer .dhead button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dbody { overflow: auto; padding: .3rem 1.2rem 1.5rem; flex: 1; }
+.dbody h2 { font-size: 1.35rem; margin: .1rem 0 .6rem; } .dbody p { margin: .4rem 0; line-height: 1.45; }
+.sec { border-top: 1px solid var(--rule); padding: .4rem 0; } .sec summary { cursor: pointer; font-weight: 700; font-family: var(--display); padding: .25rem 0; } .sbody { padding-bottom: .3rem; }
+.dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
+.dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
+.related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
+@media (max-width: 1250px) { .job { font-size: .66rem; } .lbox .val { font-size: .72rem; } }
+@media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .cols { grid-template-columns: 1fr; } #curvebox { min-height: 12rem; } }
+</style>
+<div class="app">
+  <div class="top">
+    <div><h1 data-ui="heading"></h1><div class="sub" data-ui="tagline"></div></div>
+    <div class="right"><span data-ui="learner.label"></span><span id="learner"></span><span id="episodes"></span></div>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <section class="panel">
+        <div class="eyebrow explainable" data-explain="world" data-ui="panel.world"></div>
+        <div class="eyebrow explainable" data-explain="policy" data-ui="panel.queue" style="margin-top:.1rem"></div>
+        <div id="queue"></div>
+        <div class="lanewrap"><span class="mname">M1</span><div class="lane" id="lane0"></div></div>
+        <div class="lanewrap"><span class="mname">M2</span><div class="lane" id="lane1"></div></div>
+        <div class="axis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+      </section>
+      <section class="panel grow">
+        <div class="eyebrow" data-ui="panel.loop"></div>
+        <div id="loop">
+          <div class="lbox explainable" data-box="state" data-explain="state"><div class="name" data-ui="loop.state"></div><div class="val"></div></div>
+          <div class="lbox explainable" data-box="action" data-explain="action"><div class="name" data-ui="loop.action"></div><div class="val"></div></div>
+          <div class="lbox explainable" data-box="reward" data-explain="reward"><div class="name" data-ui="loop.reward"></div><div class="val"></div></div>
+          <div class="lbox" data-box="next"><div class="name" data-ui="loop.next"></div><div class="val"></div></div>
+        </div>
+        <div id="msg" aria-live="polite"></div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel" style="flex:1">
+        <div id="controls"></div>
+        <div class="eyebrow explainable" data-explain="curve" data-ui="panel.curve"></div>
+        <div id="curvebox"><canvas id="curve"></canvas></div>
+      </section>
+      <section class="panel">
+        <div class="eyebrow explainable" data-explain="weights" data-ui="panel.weights"></div>
+        <div id="weights"></div>
+      </section>
+      <section class="panel">
+        <div class="eyebrow explainable" data-explain="test" data-ui="panel.test"></div>
+        <div id="test"></div>
+      </section>
+    </div>
+  </div>
+</div>
+<aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+TrainingUI.init({
+  explain: document.getElementById("explain"), queue: document.getElementById("queue"), lanes: [document.getElementById("lane0"), document.getElementById("lane1")],
+  loop: document.getElementById("loop"), msg: document.getElementById("msg"), curve: document.getElementById("curve"), weights: document.getElementById("weights"),
+  test: document.getElementById("test"), controls: document.getElementById("controls"), learner: document.getElementById("learner"), episodes: document.getElementById("episodes")
+});
+</script>

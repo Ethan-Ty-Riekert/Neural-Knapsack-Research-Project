@@ -3,34 +3,12 @@
    only the formulas (MathML, rendered by the browser, no library) and the logic that fills the numbers in. Every formula is copied
    from the project code or docs; the wording file names the source in each card. */
 (function () {
-  const D = window.RACE_DATA, TX = D.text, TP = TX.templates, LB = TX.labels;
-
-  // ---- markup in the wording file: **bold** *italic* `code` a_{j} x^{2} and {{formula}} slots ------------------------------
-  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  function inline(s) {
-    s = esc(s);
-    s = s.replace(/\^\{([^}]*)\}/g, (m, x) => "<sup>" + x.replace(/\*/g, "&#42;") + "</sup>");
-    s = s.replace(/([A-Za-zλρσφℓπθγΦΔĈ])_\{([^}]*)\}/g, "<i>$1</i><sub>$2</sub>");
-    return s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>").replace(/`([^`]+)`/g, "<code>$1</code>");
-  }
-  let slots = {};
-  const slot = n => (slots[n] != null ? slots[n] : F[n] != null ? F[n] : `<span class="missing">[unknown slot ${n}]</span>`);
-  function md(text) {
-    return text.split(/\n\s*\n/).map(p => {
-      p = p.trim(); if (!p) return "";
-      const only = p.match(/^\{\{(\w+)\}\}$/); if (only) return slot(only[1]);
-      return "<p>" + inline(p).replace(/\{\{(\w+)\}\}/g, (_, n) => slot(n)) + "</p>";
-    }).join("");
-  }
-  const fill = (tpl, v) => tpl.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+  const D = window.RACE_DATA, TX = D.text, TP = TX.templates, LB = TX.labels, F = {};
+  const K = Cards.create({ text: TX, formulas: F });  // shared card engine (cards.js): text markup, slide-over, Related links
+  const { esc, md, fill } = K;
 
   // ---- MathML helpers --------------------------------------------------------------------------------------------------
-  const I = s => `<mi>${s}</mi>`, N = s => `<mn>${s}</mn>`, O = s => `<mo>${s}</mo>`, T = s => `<mtext>${s}</mtext>`;
-  const R = (...x) => `<mrow>${x.join("")}</mrow>`;
-  const sub = (a, b) => `<msub>${a}${b}</msub>`, sup = (a, b) => `<msup>${a}${b}</msup>`, frac = (a, b) => `<mfrac>${a}${b}</mfrac>`;
-  const sum = (u, b) => R(`<munder>${O("∑")}${u}</munder>`, b);
-  const ind = (...x) => R(`<mi mathvariant="double-struck">1</mi>`, O("["), ...x, O("]"));
-  const M = (...x) => `<math display="block">${x.join("")}</math>`;
+  const { I, N, O, T, R, sub, sup, frac, sum, ind, M } = MathML;  // shared builders (mathml.js)
   const wj = sub(I("w"), I("j")), pj = sub(I("p"), I("j")), dj = sub(I("d"), I("j")), aj = sub(I("a"), I("j")),
         Cj = sub(I("C"), I("j")), sj = sub(I("s"), I("j")), Tj = sub(I("T"), I("j")), tt = I("t");
   const pos = x => R(O("("), x, sub(O(")"), O("+")));                     // (x)_+  = max(0, x)
@@ -40,7 +18,7 @@
   const key = sub(I("key"), I("j")), prio = sub(I("priority"), I("j"));
 
   // ---- formulas (filled into the wording with {{name}}) ------------------------------------------------------------------
-  const F = {
+  Object.assign(F, {
     tard: M(Tj, O("="), maxOf(N(0), R(Cj, O("−"), dj))),
     J: M(I("J"), O("="), sum(I("j"), R(wj, sup(Tj, N(2))))),
     late: M(sub(I("N"), T("late")), O("="), sum(I("j"), ind(Tj, O(">"), N(0)))),
@@ -52,7 +30,7 @@
     dueOn: M(dj, O("="), aj, O("+"), I("U"), O("["), T(TP["math.slack_range"]), O("]")),
     score: M(I("S"), O("="), sum(I("m"), frac(R(sub(I("λ"), I("m")), sub(I("x"), I("m"))), sub(I("x"), R(I("m"), O(","), T("ref")))))),
     pct: M(T("bar"), O("="), N("100"), O("·"), I("exp"), O("("), O("−"), N("4"), O("·"), frac(R(I("S"), O("−"), sup(I("S"), O("*"))), sup(I("S"), O("*"))), O(")")),
-  };
+  });
   const phi = atc => M(sub(I("φ"), I("j")), O("="), O("("), pj, O(","), dj, O(","), wj, O(","), sub(I("u"), R(I("j"), N("1"))), O(","), O("…"), O(","), sub(I("u"), R(I("j"), I("R"))), O(","), T("scheduled"), atc ? R(O(","), sub(I("I"), R(I("j"), T("ATC")))) : "", O(")"));
   const policy = atc => phi(atc) +
     M(sub(I("h"), I("j")), O("="), sub(I("W"), N(2)), T(" ReLU"), O("("), sub(I("W"), N(1)), sub(I("φ"), I("j")), O("+"), sub(I("b"), N(1)), O(")"), O("+"), sub(I("b"), N(2)), note("math.policy.shared")) +
@@ -90,15 +68,7 @@
 
   // ---- helpers -----------------------------------------------------------------------------------------------------------
   const fmt = (x, d = 0) => (x == null || Number.isNaN(x) ? "n/a" : x.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }));
-  const section = (h, html, open) => ({ h, html, open: !!open });
-
-  function topicCard(id, ctx, extra) {
-    const t = TX.topics[id];
-    slots = Object.assign({}, extra);
-    const sections = t.sections.map(s => section(s.h, md(s.text), s.open));
-    if (t.metric) sections.push(section(TP["factor.section.insore"], md(fill(TP["factor.insore"], { metric: t.metric })), false));
-    return { kicker: t.kicker, title: t.title, sections, related: t.related };
-  }
+  const topicCard = (id, ctx, extra) => K.topicCard(id, extra);
   function weightsTable(ctx) {
     const imp = (ctx && ctx.importance) || {};
     const rows = Object.keys(TX.factors).map(k => `<tr><td>${esc(TX.factors[k].label)}</td><td>${esc(LB["level." + (imp[k] >= 3 ? 5 : imp[k] > 0 ? 2 : 0)])}</td><td>${fmt(imp[k] || 0)}</td></tr>`).join("");
@@ -153,26 +123,5 @@
     return topicCard(id, data, id === "objective" ? { weights_table: weightsTable(data) } : {});
   }
 
-  // ---- the slide-over card ----------------------------------------------------------------------------------------------
-  let root, body, hist = [];
-  function render(id, data) {
-    const spec = build(id, data || {});
-    body.innerHTML = `<div class="eyebrow">${esc(spec.kicker)}</div><h2>${esc(spec.title)}</h2>` +
-      spec.sections.map(s => `<details class="sec" ${s.open ? "open" : ""}><summary>${esc(s.h)}</summary><div class="sbody">${s.html}</div></details>`).join("") +
-      `<div class="related"><span class="eyebrow">${esc(TX.ui.related)}</span>${(spec.related || []).map(x => `<button type="button" class="chip" data-go="${x}">${esc(LB["chip." + x] || (TX.topics[x] ? TX.topics[x].title : x))}</button>`).join("")}</div>`;
-    body.scrollTop = 0;
-    root.querySelector(".back").hidden = hist.length < 2;
-  }
-  function open(id, data) { hist.push({ id, data }); render(id, data); root.classList.add("open"); root.setAttribute("aria-hidden", "false"); }
-  function close() { root.classList.remove("open"); root.setAttribute("aria-hidden", "true"); hist = []; }
-  function back() { if (hist.length > 1) { hist.pop(); const h = hist[hist.length - 1]; render(h.id, h.data); } }
-  function init(el, getCtx) {
-    root = el;
-    root.innerHTML = `<div class="dhead"><button type="button" class="back" hidden>${esc(TX.ui.back)}</button><button type="button" class="x" aria-label="${esc(TX.ui.close)}">✕</button></div><div class="dbody"></div>`;
-    body = root.querySelector(".dbody");
-    root.querySelector(".x").onclick = close; root.querySelector(".back").onclick = back;
-    root.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) open(g.dataset.go, getCtx()); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
-  }
-  window.Explain = { init, open, close };
+  window.Explain = { init: (el, getCtx) => K.init(el, getCtx, build), open: K.open, close: K.close };
 })();

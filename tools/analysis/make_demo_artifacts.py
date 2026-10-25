@@ -42,7 +42,7 @@ def export():
 
 def main():
     data = "window.RACE_DATA = " + json.dumps(export(), separators=(",", ":")) + ";"
-    core = "\n".join((WEB / f).read_text(encoding="utf-8") for f in ("race_core.js", "explain.js", "race_ui.js"))
+    core = "\n".join((WEB / f).read_text(encoding="utf-8") for f in ("mathml.js", "cards.js", "race_core.js", "explain.js", "race_ui.js"))
     css = (WEB / "base.css").read_text(encoding="utf-8")
     out = WEB / "dist"
     out.mkdir(exist_ok=True)

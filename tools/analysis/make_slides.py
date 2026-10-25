@@ -142,10 +142,75 @@ def slide_simple(path):
     plt.close(fig)
 
 
+DECK_BLUE, DECK_SOFT, DECK_GREY, DECK_ORANGE, DECK_INK = "#2a6fd1", "#8fb3e8", "#8793a1", "#e0702a", "#0e2238"
+
+
+def _deck_axes(figsize):
+    fig, ax = plt.subplots(figsize=figsize, dpi=200)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color("#cbd9ee")
+    ax.tick_params(colors=DECK_INK, labelsize=14)
+    return fig, ax
+
+
+def deck_chart_headline(path):
+    """Final deck, results graph 1: cost on 50 fresh test cases at busy load (lower is better), best rule vs three learned kinds."""
+    heur, models = load("on_rho095")
+    best = min(heur.values())
+    groups = [("Best classic rule", [best], DECK_GREY), ("AI that copies a rule", models["windowed clone only (EDFL)"], DECK_BLUE),
+              ("AI: copy + extra training", models["windowed clone+PPO (A3w)"], DECK_SOFT), ("AI learning on its own", models["windowed scratch"], DECK_ORANGE)]
+    fig, ax = _deck_axes((7.2, 4.6))
+    for i, (label, vals, colour) in enumerate(groups):
+        mean = float(np.mean(vals))
+        ax.barh(i, mean, color=colour, height=0.62)
+        if len(vals) > 1:
+            ax.scatter(vals, [i] * len(vals), s=22, color=DECK_INK, zorder=3, alpha=0.75)
+        ax.text(max(vals) + 2200, i, f"{mean:,.0f}", va="center", fontsize=15, color=DECK_INK, fontweight="bold")
+    ax.set_yticks(range(len(groups)))
+    ax.set_yticklabels([g[0] for g in groups], fontsize=15)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 70000)
+    ax.set_xlabel("Total lateness cost (lower is better)", fontsize=14, color=DECK_INK)
+    fig.tight_layout()
+    fig.savefig(path, transparent=False, facecolor="white")
+    plt.close(fig)
+
+
+def deck_chart_scenarios(path):
+    """Final deck, results graph 2: the same two learned kinds in five scenarios, cost relative to the best classic rule (1.0)."""
+    scen = [("on_rho050", "Quiet"), ("on_rho075", "Normal"), ("on_rho075_tight", "Normal,\ntight"), ("on_rho110", "Overloaded"), ("off_tf05", "Offline")]
+    fig, ax = _deck_axes((7.2, 4.6))
+    ax.axhline(1.0, color=DECK_GREY, lw=2)
+    for k, (name, label) in enumerate(scen):
+        heur, models = load(name)
+        best = min(heur.values())
+        for off, (key, colour) in enumerate((("clone only", DECK_BLUE), ("A3w", DECK_SOFT))):
+            vals = next((v for a, v in models.items() if key in a or (key == "A3w" and "clone+PPO" in a)), None)
+            if not vals:
+                continue
+            ratios = np.array(vals) / best
+            x = k + (off - 0.5) * 0.36
+            ax.bar(x, ratios.mean(), width=0.32, color=colour)
+            ax.scatter([x] * len(ratios), ratios, s=16, color=DECK_INK, alpha=0.75, zorder=3)
+    ax.set_xticks(range(len(scen)))
+    ax.set_xticklabels([s[1] for s in scen], fontsize=14)
+    ax.set_ylim(0.9, 1.3)
+    ax.set_ylabel("Cost relative to best rule", fontsize=14, color=DECK_INK)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in (DECK_BLUE, DECK_SOFT)] + [plt.Line2D([0], [0], color=DECK_GREY, lw=3)]
+    ax.legend(handles, ["AI copies a rule", "AI: copy + extra training", "Best classic rule (= 1.0)"], frameon=False, fontsize=13, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(path, facecolor="white")
+    plt.close(fig)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "deck_assets").mkdir(exist_ok=True)
     slide_simple(OUT / "deck_assets" / "result_simple.png")
+    deck_chart_headline(OUT / "deck_assets" / "final_chart1.png")
+    deck_chart_scenarios(OUT / "deck_assets" / "final_chart2.png")
     text_slide(OUT / "01_headline.png", "Can reinforcement learning beat the best online scheduling heuristic?",
                ["On 50 fresh instances, no learned policy was significantly better than the best heuristic we scored "
                 "(MDC+Consolidate at load 0.95).",
