@@ -19,24 +19,25 @@
     });
     return box;
   }
-  function row(label, hint, control) {
+  function row(label, hint, control, topic) {  // topic: id of the explanation card opened by clicking the label
     const r = el("div", "row"), q = el("div", "q", label);
     if (hint) q.appendChild(el("span", "hint", hint));
+    if (topic) { q.dataset.explain = topic; q.classList.add("explainable"); q.title = "Click for the maths"; q.appendChild(el("span", "info", " ⓘ")); }
     r.append(q, control); return r;
   }
 
   function renderControls() {
     const sit = cfg.situation; sit.textContent = "";
     sit.appendChild(row("Jobs arrive", null, seg(["Over time", "Known in advance"], state.arrival === "online" ? "Over time" : "Known in advance",
-      o => { state.arrival = o === "Over time" ? "online" : "offline"; changed(); })));
+      o => { state.arrival = o === "Over time" ? "online" : "offline"; changed(); }), "arrival"));
     if (state.arrival === "online") {
       const hints = { Quiet: "about half used", Normal: "about 3/4 used", Busy: "nearly full", Overloaded: "more work than capacity" };
-      sit.appendChild(row("Machines", hints[state.busy], seg(Object.keys(C.BUSY), state.busy, o => { state.busy = o; if (o !== "Normal") state.tight = false; changed(); })));
+      sit.appendChild(row("Machines", hints[state.busy], seg(Object.keys(C.BUSY), state.busy, o => { state.busy = o; if (o !== "Normal") state.tight = false; changed(); }), "machines"));
       sit.appendChild(row("Deadlines", state.busy === "Normal" ? null : "tight only tested at Normal",
-        seg(["Normal", "Tight"], state.tight ? "Tight" : "Normal", o => { state.tight = o === "Tight"; changed(); }, state.busy === "Normal" ? [] : ["Tight"])));
+        seg(["Normal", "Tight"], state.tight ? "Tight" : "Normal", o => { state.tight = o === "Tight"; changed(); }, state.busy === "Normal" ? [] : ["Tight"]), "deadlines"));
     } else {
-      sit.appendChild(row("Deadlines", null, seg(Object.keys(C.DEADLINES), state.deadlines, o => { state.deadlines = o; changed(); })));
-      sit.appendChild(row("Jobs", null, seg(["All equal", "Some matter more"], state.equal ? "All equal" : "Some matter more", o => { state.equal = o === "All equal"; changed(); })));
+      sit.appendChild(row("Deadlines", null, seg(Object.keys(C.DEADLINES), state.deadlines, o => { state.deadlines = o; changed(); }), "deadlines"));
+      sit.appendChild(row("Jobs", null, seg(["All equal", "Some matter more"], state.equal ? "All equal" : "Some matter more", o => { state.equal = o === "All equal"; changed(); }), "importance_jobs"));
     }
     cfg.examples.textContent = "";
     Object.keys(D.examples).forEach(name => {
@@ -47,21 +48,35 @@
     cfg.factors.textContent = "";
     D.factors.forEach(f => {
       cfg.factors.appendChild(row(f.question.split(" (")[0], (f.question.match(/\((.*)\)/) || [])[1] || null,
-        seg(["Ignore", "Some", "A lot"], levelName(state.imp[f.key]), o => { state.imp[f.key] = C.LEVELS[o]; changed(); })));
+        seg(["Ignore", "Some", "A lot"], levelName(state.imp[f.key]), o => { state.imp[f.key] = C.LEVELS[o]; changed(); }), "f_" + f.key));
     });
   }
 
-  function lanes(result, fraction) {
-    cfg.lanes.textContent = "";
-    result.racers.forEach(r => {
-      const lane = el("div", "lane k-" + (r.family === "H" ? "rule" : r.kind) + (r === result.winner ? " win" : ""));
-      lane.innerHTML = cfg.laneHTML;
-      lane.querySelector(".t").textContent = r.title; lane.querySelector(".d").textContent = shortDetail(r.detail);
-      const w = r.percent * fraction;
-      lane.querySelector(".pct").textContent = Math.round(w) + "%";
-      cfg.place(lane, w);
+  // Lanes are built once per race and then moved: each lane is positioned by its current rank (leader on top) and slides
+  // (CSS transition on transform) when another racer passes it. The starting order is random.
+  let field = [], lastRes = null;
+  function build(result) {
+    lastRes = result;
+    cfg.lanes.textContent = ""; cfg.lanes.style.setProperty("--n", result.racers.length);
+    const order = result.racers.map((r, i) => ({ r, i, shuffle: Math.random() })).sort((a, b) => a.shuffle - b.shuffle);
+    field = order.map((o, slot) => {
+      const lane = el("div", "lane k-" + (o.r.family === "H" ? "rule" : o.r.kind));
+      lane.innerHTML = cfg.laneHTML; lane.dataset.explain = "racer"; lane.dataset.idx = o.i; lane.title = "Click for the exact score and the maths";
+      lane.querySelector(".t").textContent = o.r.title; lane.querySelector(".d").textContent = shortDetail(o.r.detail);
+      lane.style.transform = "translateY(" + slot * 100 + "%)";
       cfg.lanes.appendChild(lane);
+      return { r: o.r, lane, slot, p: 1.4 + Math.random() * 2.2 };  // p: this racer's own speed curve (higher = faster start)
     });
+  }
+  function progress(f, t) { return 1 - Math.pow(1 - t, f.p); }  // 0 at start, 1 at the finish for every racer
+  function update(t) {
+    const now = field.map(f => ({ f, w: f.r.percent * progress(f, t) }));
+    now.forEach(x => { x.f.lane.querySelector(".pct").textContent = Math.round(x.w) + "%"; cfg.place(x.f.lane, x.w); });
+    now.slice().sort((a, b) => b.w - a.w || a.f.slot - b.f.slot).forEach((x, rank) => { x.f.lane.style.transform = "translateY(" + rank * 100 + "%)"; });
+  }
+  function clearRace(msg) {
+    field = []; cfg.lanes.textContent = ""; cfg.verdict.textContent = "";
+    cfg.lanes.appendChild(el("div", "idle", msg));
   }
 
   function verdict(result) {
@@ -73,18 +88,52 @@
   }
 
   function current() { return C.run(C.presetFor(state), state.imp); }
-  function changed() { running++; renderControls(); const res = current(); lanes(res, 1); verdict(res); }
+  const IDLE = "Choose your situation and what matters, then press Start the race.";
+  let finished = false;  // a finished race stays on screen until step 1 or 2 changes
+  function changed() { running++; finished = false; lastRes = null; window.Explain.close(); renderControls(); clearRace(IDLE); }  // any change to steps 1 or 2 resets the race
 
+  function finish(res) {
+    const w = field.find(f => f.r === res.winner);
+    if (w) w.lane.classList.add("win");
+    verdict(res); finished = true;
+  }
   function start() {
-    const res = current(), id = ++running; verdict(res);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { lanes(res, 1); return; }
-    const t0 = performance.now(), dur = 3200;
+    finished = false;
+    const res = current(), id = ++running;
+    if (!res.racers.length) { clearRace("Nothing to compare for this combination - choose something that matters."); return; }
+    build(res); cfg.verdict.textContent = "";
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { update(1); finish(res); return; }
+    const t0 = performance.now(), dur = 4200;
+    update(0);
     (function frame(now) {
       if (id !== running) return;
-      const t = Math.min((now - t0) / dur, 1); lanes(res, 1 - Math.pow(1 - t, 2));
-      if (t < 1) requestAnimationFrame(frame);
+      const t = Math.min((now - t0) / dur, 1); update(t);
+      if (t < 1) requestAnimationFrame(frame); else finish(res);
     })(t0);
   }
 
-  window.RaceUI = { init(c) { cfg = c; renderControls(); c.start.onclick = start; const res = current(); lanes(res, 1); verdict(res); } };
+  // Boot (or re-boot after the page is updated in place): restore the choices and, if a race had finished, show its final result.
+  function boot(data) {
+    if (data && data.state) { Object.assign(state, data.state); }
+    renderControls(); cfg.start.onclick = start;
+    const res = current();
+    if (data && data.finished && res.racers.length) { build(res); update(1); finish(res); } else clearRace(IDLE);
+  }
+  // Clicking anything marked data-explain opens its card; a racer card gets that racer's numbers, the others the current race context.
+  function context(target) {
+    const res = lastRes || current();
+    if (target.dataset.explain === "racer") return { racer: res.racers[+target.dataset.idx], ctx: res.ctx };
+    return res.ctx;
+  }
+  window.RaceUI = { init(c) {
+    cfg = c;
+    window.Explain.init(c.explain, () => context({ dataset: {} }));
+    c.verdict.dataset.explain = "winner"; c.verdict.title = "Click to see how to read this";
+    document.addEventListener("click", e => {
+      const t = e.target.closest("[data-explain]");
+      if (t && !t.closest(".seg") && !t.closest("#explain")) window.Explain.open(t.dataset.explain, context(t));
+    });
+    window.claude?.hot?.snapshot?.(() => ({ state: JSON.parse(JSON.stringify(state)), finished }));
+    window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+  } };
 })();

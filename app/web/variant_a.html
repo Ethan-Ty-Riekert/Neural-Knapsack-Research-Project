@@ -15,32 +15,58 @@
 .panel .row { grid-template-columns: 9.6rem 1fr; }
 .right { justify-content: space-between; }
 .race-head { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
-#lanes { display: flex; flex-direction: column; justify-content: space-around; flex: 1; gap: .4rem; min-height: 0; }
+#lanes { position: relative; flex: 1; min-height: 13rem; --n: 5; }
+#verdict { flex: none; min-height: 6rem; }  /* space is reserved so the lanes keep their height when the winner text appears */
+.lane { position: absolute; left: 0; right: 0; top: 0; height: calc(100% / var(--n)); display: flex; flex-direction: column; justify-content: center; transition: transform .55s cubic-bezier(.3, .7, .3, 1); box-sizing: border-box; padding-block: .15rem; }
+.idle { height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-size: 1.1rem; padding: 0 1rem; }
+.lane.win .track { outline: 3px solid var(--win); outline-offset: 2px; }
 .lane .top2 { display: flex; justify-content: space-between; align-items: flex-end; gap: .6rem; }
 .track { height: 1.35rem; background: color-mix(in srgb, var(--ink) 9%, transparent); border-radius: .5rem; overflow: hidden; margin-top: .25rem; }
 .fill { height: 100%; background: var(--c); border-radius: .5rem; }
+.explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
+.info { color: var(--accent); font-weight: 700; } .tip { font-style: italic; }
+.lane { cursor: pointer; } .lane:hover .t { color: var(--accent); } #verdict { cursor: pointer; }
+/* slide-over explanation card: overlays the page, so the one-screen layout is untouched */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(38rem, 96vw); background: var(--surface); color: var(--ink); border-left: 1px solid var(--rule); box-shadow: -.6rem 0 2rem rgba(0, 0, 0, .18); transform: translateX(105%); transition: transform .3s ease; z-index: 20; display: flex; flex-direction: column; font-size: .92rem; }
+.drawer.open { transform: none; }
+.drawer .dhead { display: flex; justify-content: space-between; padding: .6rem .8rem 0; }
+.drawer .dhead button { border: 0; background: transparent; font-size: 1rem; padding: .3rem .5rem; border-radius: .4rem; }
+.drawer .dhead button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dbody { overflow: auto; padding: .3rem 1.2rem 1.5rem; flex: 1; }
+.dbody h2 { font-size: 1.35rem; margin: .1rem 0 .6rem; }
+.dbody p { margin: .4rem 0; line-height: 1.45; }
+.sec { border-top: 1px solid var(--rule); padding: .4rem 0; }
+.sec summary { cursor: pointer; font-weight: 700; font-family: var(--display); padding: .25rem 0; }
+.sbody { padding-bottom: .3rem; }
+.dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
+.dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
+.mini { border-collapse: collapse; width: 100%; font-size: .82rem; margin: .4rem 0; font-variant-numeric: tabular-nums; }
+.mini th, .mini td { border-bottom: 1px solid var(--rule); padding: .25rem .35rem; text-align: right; } .mini th:first-child, .mini td:first-child { text-align: left; }
+.mini tr.on td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
 @media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .cols { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; gap: .25rem; } }
 </style>
 <div class="app">
-  <div class="top"><h1>Which scheduler wins for you?</h1>
-    <div class="legend"><span><i style="background:var(--rulebar)"></i>Classic rule</span><span><i style="background:var(--copied)"></i>AI scheduler that copies a rule</span><span><i style="background:var(--scratch)"></i>AI scheduler with its own model</span></div></div>
+  <div class="top"><h1>Scheduler Race</h1>
+    <div class="legend"><span class="explainable" data-explain="kind_rule"><i style="background:var(--rulebar)"></i>Classic rule</span><span class="explainable" data-explain="kind_copied"><i style="background:var(--copied)"></i>AI scheduler that copies a rule</span><span class="explainable" data-explain="kind_own"><i style="background:var(--scratch)"></i>AI scheduler with its own model</span><span class="tip">Click any label, bar or legend item for the maths</span></div></div>
   <div class="cols">
     <div class="left">
-      <section class="panel"><div class="eyebrow">The situation</div><div id="situation" style="display:flex;flex-direction:column;gap:.5rem"></div></section>
-      <section class="panel"><div class="eyebrow">2 · What matters to you</div><div id="examples" class="chips"></div><div id="factors" style="display:flex;flex-direction:column;gap:.45rem"></div></section>
+      <section class="panel"><div class="eyebrow explainable" data-explain="setup">The situation <span class="info">ⓘ</span></div><div id="situation" style="display:flex;flex-direction:column;gap:.5rem"></div></section>
+      <section class="panel"><div class="eyebrow explainable" data-explain="objective">2 · What matters to you <span class="info">ⓘ</span></div><div id="examples" class="chips"></div><div id="factors" style="display:flex;flex-direction:column;gap:.45rem"></div></section>
     </div>
     <section class="panel right">
-      <div class="race-head"><div class="eyebrow">3 · The race (100% = best result found)</div><button id="go" class="go" type="button">Start the race</button></div>
+      <div class="race-head"><div class="eyebrow explainable" data-explain="bar">3 · The race (100% = best result found) <span class="info">ⓘ</span></div><button id="go" class="go" type="button">Start the race</button></div>
       <div id="lanes"></div>
       <div id="verdict" class="verdict" aria-live="polite"></div>
     </section>
   </div>
 </div>
+<aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
 <script>
 /*__DATA__*/
 /*__CORE__*/
 RaceUI.init({
-  situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
+  explain: document.getElementById("explain"), situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
   lanes: document.getElementById("lanes"), verdict: document.getElementById("verdict"), start: document.getElementById("go"),
   laneHTML: '<div class="top2"><div><div class="t"></div><div class="d"></div></div><div class="pct"></div></div><div class="track"><div class="fill"></div></div>',
   place(lane, w) { lane.querySelector(".fill").style.width = w + "%"; }

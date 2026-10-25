@@ -26,7 +26,7 @@
   }
 
   function run(preset, importance) {
-    const rows = (D.presets[preset] || []).map(r => ({ family: r[0], title: r[1], detail: r[2], kind: r[3], model: r[4], v: r[5] }));
+    const rows = (D.presets[preset] || []).map(r => ({ family: r[0], title: r[1], detail: r[2], kind: r[3], model: r[4], v: r[5], meta: r[6] || {} }));
     const w = weights(importance);
     const refs = D.metrics.map((_, j) => reference(rows, j));
     const scored = rows.map(r => {
@@ -52,7 +52,8 @@
       if (gap >= 0) note = "No AI scheduler beat the best classic rule here. That is the usual result in this project: the AI schedulers mostly learned to copy a good rule and finish close to it.";
       else if (gap > -NOISE) note = "The best AI scheduler is only " + (-gap * 100).toFixed(1) + "% ahead of the best classic rule, which is within the run-to-run noise of this project (gaps under about 5% were not significant).";
     }
-    return { racers, note, winner: racers.slice().sort((a, b) => b.percent - a.percent)[0] };
+    const ctx = { preset, weights: w, refs, best, worst, scale, steepness: STEEPNESS, noise: NOISE, metrics: D.metrics, importance };  // what the explanation cards need to redo the sums
+    return { racers, note, ctx, winner: racers.slice().sort((a, b) => b.percent - a.percent)[0] };
   }
 
   window.RaceCore = { BUSY, DEADLINES, LEVELS, presetFor, run, data: D };

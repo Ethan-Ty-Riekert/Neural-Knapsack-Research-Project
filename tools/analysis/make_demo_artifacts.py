@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "app" / "web"
 sys.path.insert(0, str(ROOT / "app"))
-from scoring import EXAMPLES, FACTORS, HEURISTIC, ai_kind, friendly_name, load_results, short_label  # noqa: E402
+from scoring import EXAMPLES, FACTORS, HEURISTIC, ai_kind, friendly_name, load_results, model_meta, short_label, RULE_NAMES  # noqa: E402
 
 KIND = {"copied": "copied", "copied + trained": "trained", "trial and error": "scratch"}
 
@@ -27,21 +27,22 @@ def export():
         rows = []
         for r in grp.itertuples():
             vals = [None if getattr(r, m) != getattr(r, m) else round(float(getattr(r, m)), 3) for m in metrics]
+            sds = [None if getattr(r, m + "_std") != getattr(r, m + "_std") else round(float(getattr(r, m + "_std")), 3) for m in metrics]
+            title, detail = friendly_name(r.method, r.family)
+            meta = dict(model_meta(r.method, r.family), n=int(r.n_seeds), i=int(r.n_instances), sd=sds)
             if r.family == HEURISTIC:
-                title, detail = friendly_name(r.method, r.family)
-                rows.append(["H", title, detail, "rule", r.method, vals])
+                rows.append(["H", title, detail, "rule", r.method, vals, meta])
             else:
-                title, detail = friendly_name(r.method, r.family)
-                rows.append(["R", title, detail, KIND[ai_kind(r.method)], short_label(r.method), vals])
+                rows.append(["R", title, detail, KIND[ai_kind(r.method)], short_label(r.method), vals, meta])
         presets[preset] = rows
     return {"metrics": metrics, "presets": presets,
             "factors": [{"key": k, "question": q, "metrics": ms} for k, (q, ms) in FACTORS.items()],
-            "examples": EXAMPLES}
+            "examples": EXAMPLES, "rule_names": RULE_NAMES}
 
 
 def main():
     data = "window.RACE_DATA = " + json.dumps(export(), separators=(",", ":")) + ";"
-    core = (WEB / "race_core.js").read_text(encoding="utf-8") + "\n" + (WEB / "race_ui.js").read_text(encoding="utf-8")
+    core = "\n".join((WEB / f).read_text(encoding="utf-8") for f in ("race_core.js", "explain.js", "race_ui.js"))
     css = (WEB / "base.css").read_text(encoding="utf-8")
     out = WEB / "dist"
     out.mkdir(exist_ok=True)

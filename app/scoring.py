@@ -164,7 +164,7 @@ def race_entries(scored, per_family=2, ai_mix=AI_MIX):
 RULE_NAMES = {"EDFL": "Earliest deadline first (longest first on ties)", "EDF": "Earliest deadline first",
               "WLST": "Weighted least slack", "LST": "Least slack first", "WSPT": "Weighted shortest job first",
               "SPT": "Shortest job first", "LPT": "Longest job first", "WMDD": "Weighted modified due date",
-              "MDC": "Modified due date (MDC)", "COVERT": "COVERT (urgency versus cost)",
+              "MDC": "Marginal delay cost (MDC)", "COVERT": "COVERT (urgency versus cost)",
               "ATC": "Apparent tardiness cost (ATC)", "RandomRule": "Random order"}
 OPTION_TEXT = {"Opt0": "picks job and machine directly", "Opt1": "picks which rule to apply", "Opt2": "scores each waiting job",
                "Opt3": "scores each waiting job", "Opt4": "picks a job-machine pair"}
@@ -212,3 +212,19 @@ def friendly_name(method, family):
         what = OPTION_TEXT.get(opt, "learned model") + (" using an urgency hint" if "ATC prior" in label else "")
     budget = " (2M steps)" if "2M steps" in label else " (1M steps)" if "1M steps" in label else ""
     return "AI scheduler", f"{what[0].upper()}{what[1:]} | {algo}{budget}"  # "[what it does] | [model]"
+
+
+def model_meta(method, family):
+    """-> dict describing what a racer is, for the browser demo's explanation cards (keys kept short: they are exported
+    for every archive row). Heuristic: rule, plc (placement). Learned: opt (0-4), algo, win (visible window, 0 = all job
+    slots), exp (rule that was copied, or ''), plc, steps ('1M', '2M' or ''), tuned (bool), kind (ai_kind)."""
+    if family == HEURISTIC:
+        rule, _, plc = method.partition("+")
+        return {"rule": rule, "plc": plc or "FirstFit"}
+    label = short_label(method)
+    algo, opt = label.split(" | ")[0].split()[:2]
+    win = 40 if "window 40" in label else 60 if "window 60" in label else 20 if "window" in label else 0
+    expert = next((r for r in RULE_NAMES if f"{r} expert" in label), "")
+    return {"opt": int(opt[3:]), "algo": algo, "win": win, "exp": expert, "plc": "Consolidate" if "Consolidate" in label else "FirstFit",
+            "steps": "2M" if "2M steps" in label else "1M" if "1M steps" in label else "", "tuned": "tuned" in label,
+            "kind": ai_kind(method), "atc": "ATC prior" in label}
