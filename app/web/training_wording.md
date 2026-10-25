@@ -114,7 +114,7 @@ narr.compare: The critic had guessed what the reward would be. Now it compares i
 narr.learn: The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.
 // --- the "stage" layout (stage.html): the layout is the loop ---
 stage.heading: How Reinforcement Learning Works
-stage.tagline: The scheduler learns by trial and error through sequential decision making with a Markov decision process.
+stage.tagline: The scheduler learns by trial and error through sequential decision making with a Markov Decision Process (MDP).
 panel.env: Environment
 panel.agent: Learner
 panel.ledger: Rewards this episode
