@@ -128,11 +128,12 @@ loop.v.action: Job {job}
 loop.v.next: t={t}
 loop.done: Episode over, cost {cost}
 log.state: {n} jobs waiting, {b} of 2 machines active
-log.action: Choose J{job} ({pct}%)
-log.late: Penalise J{job}: {r} ({late} late)
-log.ontime: J{job} on time: 0
+log.action: Place J{job} on machine {m} ({pct}%)
+log.late: Penalise J{job}: {r} (ends t={end}, due {due}, {late} late)
+log.ontime: J{job} on time: 0 (ends t={end}, due {due})
 log.next: t={a} → t={b}
 log.end: episode over
+log.job: J{id} (len {p}, due {d}, imp {w})
 loop.sub.state: What the learner sees
 loop.sub.action: The network picks a job
 loop.sub.reward: What that choice earned

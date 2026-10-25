@@ -76,12 +76,15 @@
   }
   // every ring box keeps a log of what it was given during the episode; the newest row is highlighted
   const logClear = () => ["state", "action", "reward", "next"].forEach(k => { byId("v-" + k).textContent = ""; });
-  function logRow(k, n, text, bad) {
+  function logRow(k, n, text, bad, list) {
     const box = byId("v-" + k); box.querySelectorAll(".cur").forEach(r => r.classList.remove("cur"));
-    const r = el("div", "mrow cur" + (bad ? " bad" : "")); r.append(el("i", null, String(n)), el("span", null, text)); box.append(r); box.scrollTop = box.scrollHeight;
+    const r = el("div", "mrow cur" + (bad ? " bad" : "")), body = el("div"); body.append(el("span", null, text)); if (list) body.append(el("div", "mlist", list)); r.append(el("i", null, String(n)), body); box.append(r); box.scrollTop = box.scrollHeight;
   }
   // box 1 shows the state: the time, the free machine and how many jobs wait
-  function loopState(k, t, st) { logRow("state", k + 1, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length })); }
+  function loopState(k, t, st) {  // the waiting jobs with their numbers; the row is cut off with "..." when it is too long for the box
+    const list = st.state.waiting.map(j => fill(UI["log.job"], { id: j + 1, p: st.state.jobs[j].p, d: st.state.jobs[j].d, w: st.state.jobs[j].w })).join(", ");
+    logRow("state", k + 1, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length }), false, list);
+  }
   const loopCentre = a => { byId("lstep").textContent = a || ""; };
 
   // ---- environment: queue shelf, machine lanes -------------------------------------------------------------------------------------------
@@ -265,7 +268,7 @@
     await fly(BOX.net(), BOX.prob(), id, "tk action", "scores", 650);
     drawDist(st, p, st.k); await sleep(700, id); await hold(900, 0, id);
     // 4. Probability graph -> action: the learner picks a job
-    wire("action", true); logRow("action", k + 1, fill(UI["log.action"], { job: chosen + 1, pct })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
+    wire("action", true); logRow("action", k + 1, fill(UI["log.action"], { job: chosen + 1, m: st.state.machine + 1, pct })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
     drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(BOX.action());
     await fly(q(cfg.dist, ".vbar.pick") || BOX.prob(), BOX.action(), id, "tk action", "J" + (chosen + 1), 650); await hold(900, 300, id);
     // 5. Action -> machine: the job starts
@@ -279,7 +282,7 @@
     const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0", outcome = late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"];
     wire("reward", true, late); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome })); spot(BOX.reward());
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
-    await fly(blkEl, BOX.reward(), id, late ? "reward" : "good", rtxt, 650); logRow("reward", k + 1, late ? fill(UI["log.late"], { job: chosen + 1, r: rtxt, late: st.lateness }) : fill(UI["log.ontime"], { job: chosen + 1 }), late); await hold(900, 0, id);
+    await fly(blkEl, BOX.reward(), id, late ? "reward" : "good", rtxt, 650); logRow("reward", k + 1, late ? fill(UI["log.late"], { job: chosen + 1, r: rtxt, end: st.end, due: jobs[chosen].d, late: st.lateness }) : fill(UI["log.ontime"], { job: chosen + 1, end: st.end, due: jobs[chosen].d }), late); await hold(900, 0, id);
     // 7. Reward -> rewards box (and, for actor-critic, the critic compares it with its guess)
     const chip = ledgerAdd(k, st.reward); spot(BOX.rewards());
     await fly(BOX.reward(), chip, id, late ? "reward" : "good", rtxt, 650);
