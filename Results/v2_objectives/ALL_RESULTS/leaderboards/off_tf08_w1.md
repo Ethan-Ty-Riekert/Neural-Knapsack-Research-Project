@@ -164,10 +164,10 @@ Top 10 methods on each metric. Full ranking by J: [`tables/off_tf08_w1.md`](../t
 | 4 | PPO Opt3 ATC-prior score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle 1M-step budget | RL | 54.54 +/- 0.00 | 130680 +/- 215 |
 | 5 | PPO Opt2 priority score windowed MDC expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 152000 +/- 19 |
 | 6 | PPO Opt2 priority score windowed COVERT expert +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle | RL | 54.54 +/- 0.00 | 168539 +/- 1 |
-| 7 | PPO Opt3 ATC-prior score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle ATC expert | RL | 54.54 +/- 0.00 | 173184 +/- 458 |
-| 8 | WLST+FirstFit | Heuristic | 54.54 +/- 0.27 | 129805 +/- 12950 |
-| 9 | WLST+BestFit | Heuristic | 54.54 +/- 0.27 | 129805 +/- 12950 |
-| 10 | WLST+WorstFit | Heuristic | 54.54 +/- 0.27 | 129805 +/- 12950 |
+| 7 | PPO Opt2 priority score windowed look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle +late-count objective 1M-step budget [lambda x4] | RL | 54.54 +/- 0.00 | 169137 +/- 22671 |
+| 8 | PPO Opt3 ATC-prior score windowed +EDF imitation warm start look-ahead fixed scaling arrival-aware critic lateness shaping reward scaling event-driven idle ATC expert | RL | 54.54 +/- 0.00 | 173184 +/- 458 |
+| 9 | WLST+FirstFit | Heuristic | 54.54 +/- 0.27 | 129805 +/- 12950 |
+| 10 | WLST+BestFit | Heuristic | 54.54 +/- 0.27 | 129805 +/- 12950 |
 
 | top 5 | top 10 |
 |---|---|
