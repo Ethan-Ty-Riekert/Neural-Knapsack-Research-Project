@@ -206,12 +206,9 @@ def friendly_name(method, family):
     label = short_label(method)
     expert = next((r for r in RULE_NAMES if f"{r} expert" in label), None)  # dict order: WLST before LST, EDFL before EDF
     algo, opt = label.split(" | ")[0].split()[:2]
-    parts = []
     if "clone only" in label or "clone + PPO" in label:
-        parts.append(f"copies {RULE_NAMES[expert].lower()}" if expert else "copies a classic rule")
-    parts.append(OPTION_TEXT.get(opt, "learned model") + (" with an urgency (ATC) hint" if "ATC prior" in label else ""))
-    if "window" in label:
-        parts.append("looks at the " + ("40" if "window 40" in label else "60" if "window 60" in label else "20") + " most urgent jobs")
-    parts.append(algo + (" trained 2M steps" if "2M steps" in label else " trained 1M steps" if "1M steps" in label else "")
-                 + (", tuned" if "tuned" in label else ""))
-    return "AI scheduler", " | ".join(parts)
+        what = f"copies {RULE_NAMES[expert].lower()}" if expert else "copies a classic rule"
+    else:
+        what = OPTION_TEXT.get(opt, "learned model") + (" using an urgency hint" if "ATC prior" in label else "")
+    budget = " (2M steps)" if "2M steps" in label else " (1M steps)" if "1M steps" in label else ""
+    return "AI scheduler", f"{what[0].upper()}{what[1:]} | {algo}{budget}"  # "[what it does] | [model]"

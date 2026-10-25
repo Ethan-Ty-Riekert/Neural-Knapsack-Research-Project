@@ -7,6 +7,8 @@
   let cfg, running = 0;
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const levelName = v => (v === 0 ? "Ignore" : v <= 2 ? "Some" : "A lot");
+  // second line of a racer: "[what it does] | [model]" (first and last part of the exported detail; capitalised)
+  const shortDetail = d => { const p = d.split(" | "); const s = p.length > 2 ? p[0] + " | " + p[p.length - 1] : d; return s.charAt(0).toUpperCase() + s.slice(1); };
 
   function seg(options, value, onPick, disabled) {
     const box = el("div", "seg"); box.setAttribute("role", "radiogroup");
@@ -54,7 +56,7 @@
     result.racers.forEach(r => {
       const lane = el("div", "lane k-" + (r.family === "H" ? "rule" : r.kind) + (r === result.winner ? " win" : ""));
       lane.innerHTML = cfg.laneHTML;
-      lane.querySelector(".t").textContent = r.title; lane.querySelector(".d").textContent = r.detail;
+      lane.querySelector(".t").textContent = r.title; lane.querySelector(".d").textContent = shortDetail(r.detail);
       const w = r.percent * fraction;
       lane.querySelector(".pct").textContent = Math.round(w) + "%";
       cfg.place(lane, w);
