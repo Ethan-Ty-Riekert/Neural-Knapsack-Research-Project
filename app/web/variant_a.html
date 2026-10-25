@@ -1,0 +1,48 @@
+<title>Scheduler Race Panel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/*__BASE__*/
+/* Variant A: controls on the left, the race on the right, everything on one screen. */
+.app { height: 100%; box-sizing: border-box; padding-block: .8rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto 1fr; gap: .7rem; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.top h1 { font-size: 1.9rem; }
+.cols { display: grid; grid-template-columns: 5fr 6fr; gap: 1rem; min-height: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .9rem; padding: .8rem 1rem; display: flex; flex-direction: column; gap: .55rem; min-height: 0; min-width: 0; }
+.left { display: flex; flex-direction: column; gap: .8rem; min-height: 0; }
+.left .panel:last-child { flex: 1; }
+.chips { display: flex; gap: .4rem; flex-wrap: wrap; }
+.panel .row { grid-template-columns: 9.6rem 1fr; }
+.right { justify-content: space-between; }
+.race-head { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
+#lanes { display: flex; flex-direction: column; justify-content: space-around; flex: 1; gap: .4rem; min-height: 0; }
+.lane .top2 { display: flex; justify-content: space-between; align-items: flex-end; gap: .6rem; }
+.track { height: 1.35rem; background: color-mix(in srgb, var(--ink) 9%, transparent); border-radius: .5rem; overflow: hidden; margin-top: .25rem; }
+.fill { height: 100%; background: var(--c); border-radius: .5rem; }
+@media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .cols { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; gap: .25rem; } }
+</style>
+<div class="app">
+  <div class="top"><h1>Which scheduler wins for you?</h1>
+    <div class="legend"><span><i style="background:var(--rulebar)"></i>Classic rule</span><span><i style="background:var(--copied)"></i>AI scheduler that copies a rule</span><span><i style="background:var(--scratch)"></i>AI scheduler with its own model</span></div></div>
+  <div class="cols">
+    <div class="left">
+      <section class="panel"><div class="eyebrow">The situation</div><div id="situation" style="display:flex;flex-direction:column;gap:.5rem"></div></section>
+      <section class="panel"><div class="eyebrow">2 · What matters to you</div><div id="examples" class="chips"></div><div id="factors" style="display:flex;flex-direction:column;gap:.45rem"></div></section>
+    </div>
+    <section class="panel right">
+      <div class="race-head"><div class="eyebrow">3 · The race (100% = best result found)</div><button id="go" class="go" type="button">Start the race</button></div>
+      <div id="lanes"></div>
+      <div id="verdict" class="verdict" aria-live="polite"></div>
+    </section>
+  </div>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+RaceUI.init({
+  situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
+  lanes: document.getElementById("lanes"), verdict: document.getElementById("verdict"), start: document.getElementById("go"),
+  laneHTML: '<div class="top2"><div><div class="t"></div><div class="d"></div></div><div class="pct"></div></div><div class="track"><div class="fill"></div></div>',
+  place(lane, w) { lane.querySelector(".fill").style.width = w + "%"; }
+});
+</script>

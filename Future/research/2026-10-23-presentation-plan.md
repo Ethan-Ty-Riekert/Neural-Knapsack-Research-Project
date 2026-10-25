@@ -155,3 +155,5 @@ date (MDC)", "AI scheduler (copied)"); an expander states what was and was not t
 limits were NOT tested; late jobs are scored, never refused). Settings without a trained AI scheduler (offline relaxed) race four rules.
 
 **Revision 2026-10-25 (AI kinds, corrected):** the race shows 2 classic rules + 1 AI scheduler that copied a rule + 2 different AI schedulers that did NOT copy (trial and error); "copied then trained" is not raced. Missing non-copying models at on_rho050, on_rho075_tight, off_tf08_w1, off_tf02(_w1) are being trained (log 2026-10-25). `race_entries(ai_mix=AI_MIX)` in `app/scoring.py`.
+
+**Revision 2026-10-25 (one-screen layouts):** the user asked for everything to fit on one page, simpler layout and larger text, as two artefacts to compare. Built `app/web/variant_a.html` (controls left, race right) and `variant_b.html` (step cards on top, race track below), published as private Artifacts; they run entirely in the browser from archive numbers. Streamlit app unchanged until a layout is chosen.

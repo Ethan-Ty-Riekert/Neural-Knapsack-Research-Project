@@ -49,8 +49,9 @@ print("race checks passed")
 
 # plain-language layer
 assert friendly_name("MDC+Consolidate", "Heuristic") == ("Modified due date (MDC)", "classic rule; packs jobs onto few machines")
-assert friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[0] == "AI scheduler (copied)"
-assert "weighted least slack" in friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[1]
+assert friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[0] == "AI scheduler"
+assert "trial and error" not in " ".join(friendly_name(m, "RL")[1] for m in ("PPO Opt2 priority score 1M-step budget", "A2C Opt1 rule selection")), "no 'trial and error' in racer text"
+assert "copies weighted least slack" in friendly_name("PPO Opt2 priority score windowed +Consolidate +EDF imitation warm start WLST expert", "RL")[1]
 assert all(set(m) <= set(METRIC_INFO) for _, m in FACTORS.values()) and all(set(e) <= set(FACTORS) for e in EXAMPLES.values())
 assert factor_weights({"late": 2, "delay": 0}) == {"late_jobs": 2.0, "objective_J": 0.0}
 print("plain-language checks passed")

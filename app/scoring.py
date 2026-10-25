@@ -166,6 +166,8 @@ RULE_NAMES = {"EDFL": "Earliest deadline first (longest first on ties)", "EDF": 
               "SPT": "Shortest job first", "LPT": "Longest job first", "WMDD": "Weighted modified due date",
               "MDC": "Modified due date (MDC)", "COVERT": "COVERT (urgency versus cost)",
               "ATC": "Apparent tardiness cost (ATC)", "RandomRule": "Random order"}
+OPTION_TEXT = {"Opt0": "picks job and machine directly", "Opt1": "picks which rule to apply", "Opt2": "scores each waiting job",
+               "Opt3": "scores each waiting job", "Opt4": "picks a job-machine pair"}
 PLACEMENT_NAMES = {"FirstFitConsolidate": "packs jobs onto few machines", "Consolidate": "packs jobs onto few machines",
                    "BestFit": "tightest-fitting machine", "FirstFit": "first machine that fits"}
 
@@ -180,7 +182,7 @@ FACTORS = {  # key: (question shown, {metric: weight})
 EXAMPLES = {  # one-click examples: label -> {factor key: importance 0-5}
     "Never be late": {"late": 5},
     "Customers hate waiting": {"wait": 5, "flow": 3},
-    "Keep the energy bill low": {"energy": 5},
+    "Energy Usage": {"energy": 5},
     "A bit of everything": {"late": 2, "delay": 2, "wait": 2, "energy": 2},
 }
 
@@ -203,11 +205,13 @@ def friendly_name(method, family):
         return rule, (f"classic rule; {detail}" if detail else "classic rule")
     label = short_label(method)
     expert = next((r for r in RULE_NAMES if f"{r} expert" in label), None)  # dict order: WLST before LST, EDFL before EDF
-    if "clone only" in label and expert:
-        return "AI scheduler (copied)", f"learned by watching: {RULE_NAMES[expert].lower()}"
-    if "clone + PPO" in label and expert:
-        return "AI scheduler (copied, then trained more)", f"started from: {RULE_NAMES[expert].lower()}"
-    if "clone only" in label:
-        return "AI scheduler (copied)", "learned by watching a classic rule"
-    detail = "reinforcement learning" + (", with an urgency hint (ATC)" if "ATC prior" in label else "")
-    return "AI scheduler (learned by trial and error)", detail + (", looks at the 20 most urgent jobs" if "window 20" in label else "")
+    algo, opt = label.split(" | ")[0].split()[:2]
+    parts = []
+    if "clone only" in label or "clone + PPO" in label:
+        parts.append(f"copies {RULE_NAMES[expert].lower()}" if expert else "copies a classic rule")
+    parts.append(OPTION_TEXT.get(opt, "learned model") + (" with an urgency (ATC) hint" if "ATC prior" in label else ""))
+    if "window" in label:
+        parts.append("looks at the " + ("40" if "window 40" in label else "60" if "window 60" in label else "20") + " most urgent jobs")
+    parts.append(algo + (" trained 2M steps" if "2M steps" in label else " trained 1M steps" if "1M steps" in label else "")
+                 + (", tuned" if "tuned" in label else ""))
+    return "AI scheduler", " | ".join(parts)

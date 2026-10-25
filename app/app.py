@@ -2,7 +2,7 @@
 
     streamlit run app/app.py
 
-Tab 1: three steps (situation, what matters, start). The top 2 classic rules and 3 AI schedulers race (1 that copied a rule, 2 that learned by trial and error) on a bar scale where
+Tab 1: three steps (situation, what matters, start). The top 2 classic rules and 3 AI schedulers race (1 that copied a rule, 2 different models of their own) on a bar scale where
 100% is the best score of the scenario. Tab 2: the slides (app/slides/). Everything shown comes from the archive of tested scenarios
 (app/scoring.py explains the mapping from questions to the recorded metrics).
 """
@@ -60,7 +60,7 @@ tab_race, tab_slides = st.tabs(["Which scheduler wins?", "Slides"])
 with tab_race:
     st.title("Which scheduler wins for you?")
     st.write("A *scheduler* decides which job runs next and on which machine. Describe your situation and what matters to you, "
-             "then watch the best classic rules race three AI schedulers: one that copied a rule and two different ones that learned by trial and error, without copying.")
+             "then watch the best classic rules race three AI schedulers: one that copied a rule and two different models of their own.")
 
     st.header("1. Your situation")
     c1, c2, c3 = st.columns(3)
@@ -142,9 +142,9 @@ with tab_race:
                         "run-to-run noise of this project (gaps under about 5% were not significant).")
         else:
             st.info("We did not train an AI scheduler for this exact setting, so four classic rules race instead.")
-        n_scratch = int((entries["family"] == "RL").sum() - (entries["detail"].str.startswith(("learned by watching",))).sum())
+        n_scratch = int((entries["kind"] == "trial and error").sum())
         if len(rl_scores) and n_scratch < 2:
-            st.caption(f"Only {n_scratch} AI scheduler(s) that learned without copying were trained for this setting, so fewer than three AI schedulers race.")
+            st.caption(f"Only {n_scratch} AI scheduler model(s) that do not copy a rule were trained for this setting, so fewer than three AI schedulers race.")
         with st.expander("What does this show, and what did we test?"):
             st.markdown(
                 "- Scores come from 50 test cases per setting (generated job sets). The best classic rule was picked on those same "

@@ -1,0 +1,55 @@
+<title>Scheduler Race Track</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/*__BASE__*/
+/* Variant B: three step cards across the top, a race track across the bottom, everything on one screen. */
+.app { height: 100%; box-sizing: border-box; padding-block: .8rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto auto 1fr; gap: .7rem; }
+.top h1 { font-size: 1.9rem; }
+html { font-size: clamp(14px, 2.1vh, 28px); }
+.steps { display: grid; grid-template-columns: 1fr 1.3fr .62fr; gap: .8rem; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: .9rem; padding: .7rem .9rem; display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+.card .row { grid-template-columns: 5.3rem 1fr; }
+.card .row .hint { display: none; }
+.chips { display: flex; gap: .35rem; flex-wrap: wrap; }
+.chips .chip { padding: .3rem .65rem; font-size: .85rem; }
+#factors { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem .9rem; }
+#factors .row { grid-template-columns: 1fr; gap: .15rem; }
+#factors .row > .q { font-size: .82rem; }
+#factors .seg button { padding: .28rem .2rem; font-size: .85rem; }
+.startcard { justify-content: space-between; }
+.startcard .go { width: 100%; padding: .9rem .8rem; }
+.track-area { background: var(--surface); border: 1px solid var(--rule); border-radius: .9rem; padding: .8rem 1rem; display: flex; flex-direction: column; gap: .5rem; min-height: 0; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+#lanes { flex: 1; display: flex; flex-direction: column; justify-content: space-around; min-height: 0; }
+.lane { display: grid; grid-template-columns: 16rem 1fr; gap: 1rem; align-items: center; }
+.road { position: relative; height: 2.1rem; border-radius: 1.05rem; background: color-mix(in srgb, var(--ink) 8%, transparent); margin-right: 1.2rem; }
+.road::after { content: ""; position: absolute; right: 0; top: -.2rem; bottom: -.2rem; width: 4px; background: repeating-linear-gradient(var(--ink) 0 .35rem, transparent .35rem .7rem); }
+.trail { position: absolute; left: 0; top: .55rem; bottom: .55rem; background: var(--c); opacity: .45; border-radius: .5rem; }
+.runner { position: absolute; top: 0; height: 100%; transform: translateX(-100%); background: var(--c); color: #fff; border-radius: 1.05rem; padding: 0 .9rem; display: flex; align-items: center; min-width: 3.4rem; justify-content: center; box-sizing: border-box; }
+.runner .pct { color: #fff; font-size: 1.05rem; }
+@media (max-width: 900px) { html, body { height: auto; } .app { height: auto; } .steps { grid-template-columns: 1fr; } .lane { grid-template-columns: 1fr; gap: .3rem; } }
+</style>
+<div class="app">
+  <div class="top head"><h1>Which scheduler wins for you?</h1>
+    <div class="legend"><span><i style="background:var(--rulebar)"></i>Classic rule</span><span><i style="background:var(--copied)"></i>AI scheduler that copies a rule</span><span><i style="background:var(--scratch)"></i>AI scheduler with its own model</span></div></div>
+  <div class="steps">
+    <section class="card"><div class="eyebrow">The situation</div><div id="situation" style="display:flex;flex-direction:column;gap:.4rem"></div></section>
+    <section class="card"><div class="eyebrow">2 · What matters to you</div><div id="examples" class="chips"></div><div id="factors"></div></section>
+    <section class="card startcard"><div class="eyebrow">3 · Go</div><button id="go" class="go" type="button">Start the race</button><div id="verdict" class="verdict" aria-live="polite"></div></section>
+  </div>
+  <section class="track-area">
+    <div class="eyebrow">The race: how close each gets to the best result found (finish line = 100%)</div>
+    <div id="lanes"></div>
+  </section>
+</div>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+RaceUI.init({
+  situation: document.getElementById("situation"), examples: document.getElementById("examples"), factors: document.getElementById("factors"),
+  lanes: document.getElementById("lanes"), verdict: document.getElementById("verdict"), start: document.getElementById("go"),
+  laneHTML: '<div><div class="t"></div><div class="d"></div></div><div class="road"><div class="trail"></div><div class="runner"><span class="pct"></span></div></div>',
+  place(lane, w) { lane.querySelector(".trail").style.width = w + "%"; lane.querySelector(".runner").style.left = w + "%"; }
+});
+</script>
