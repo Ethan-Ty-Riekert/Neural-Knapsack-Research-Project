@@ -76,14 +76,21 @@
   }
   // every ring box keeps a log of what it was given during the episode; the newest row is highlighted
   const logClear = () => ["state", "action", "reward", "next"].forEach(k => { byId("v-" + k).textContent = ""; });
-  function logRow(k, n, text, bad, list) {
+  function logRow(k, n, text, bad) {
     const box = byId("v-" + k); box.querySelectorAll(".cur").forEach(r => r.classList.remove("cur"));
-    const r = el("div", "mrow cur" + (bad ? " bad" : "")), body = el("div"); body.append(el("span", null, text)); if (list) body.append(el("div", "mlist", list)); r.append(el("i", null, String(n)), body); box.append(r); box.scrollTop = box.scrollHeight;
+    const r = el("div", "mrow cur" + (bad ? " bad" : "")), body = el("div"); body.append(el("span", null, text)); r.append(el("i", null, String(n)), body); box.append(r);
+    // no scroll bar: when the box is full the oldest entries move out of the top and a "..." row stands in for them
+    let more = box.querySelector(".more");
+    while (box.scrollHeight > box.clientHeight + 1 && box.querySelectorAll(".mrow:not(.more)").length > 1) {
+      if (!more) { more = el("div", "mrow more"); more.append(el("i", null, ""), el("span", null, "...")); box.prepend(more); }
+      box.querySelector(".mrow:not(.more)").remove();
+    }
   }
+
   // box 1 shows the state: the time, the free machine and how many jobs wait
   function loopState(k, t, st) {  // the current step: a summary line, then one waiting job per row; rows are cut off with "..." when the box is too narrow or too short
     const box = byId("v-state"); box.textContent = "";
-    const head = el("div", "mrow cur"), body = el("div"); body.append(el("span", null, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length }))); head.append(el("i", null, String(k + 1)), body);
+    const head = el("div", "mrow cur"), body = el("div"); body.append(el("span", null, fill(UI["log.state"], { t, n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length }))); head.append(el("i", null, String(k + 1)), body);
     const list = el("div", "jlist"), rows = st.state.waiting.map(j => el("div", "jrow", fill(UI["log.job"], { id: j + 1, p: st.state.jobs[j].p, d: st.state.jobs[j].d, w: st.state.jobs[j].w })));
     box.append(head, list);
     const show = n => { list.textContent = ""; rows.slice(0, n).forEach(r => list.append(r)); if (n < rows.length) list.append(el("div", "jrow more", "...")); };
@@ -294,7 +301,7 @@
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500); await hold(700, 0, id);
     if (isAC()) { setNarr(UI["narr.compare"]); spot(BOX.net()); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
     // 8. Reward -> next state (time moves on) -> back to state
-    const nxt = ep.steps[k + 1]; wire("next", true); logRow("next", k + 1, nxt ? fill(UI["log.next"], { a: t, b: nxt.state.t, m: nxt.state.machine + 1 }) : UI["log.end"]); setNarr(UI["narr.tick"]); spot(BOX.next());
+    const nxt = ep.steps[k + 1]; wire("next", true); logRow("next", k + 1, nxt ? fill(UI["log.next"], { b: nxt.state.t, m: nxt.state.machine + 1 }) : UI["log.end"]); setNarr(UI["narr.tick"]); spot(BOX.next());
     await fly(BOX.reward(), BOX.next(), id, "tk state", "+1", 600); await hold(700, 200, id);
     S.k++;
     if (S.k >= ep.steps.length) { await finishEpisode(id); return; }

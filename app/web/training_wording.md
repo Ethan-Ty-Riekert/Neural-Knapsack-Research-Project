@@ -127,11 +127,11 @@ loop.v.state: Time {t} · {n} jobs waiting
 loop.v.action: Job {job}
 loop.v.next: t={t}
 loop.done: Episode over, cost {cost}
-log.state: {n} jobs waiting, {b} of 2 machines active
+log.state: t={t}: {n} jobs waiting, {b} of 2 machines active
 log.action: Place J{job} on machine {m} ({pct}%)
 log.late: Penalise J{job}: {r} (ends t={end}, due {due}, {late} late)
 log.ontime: J{job} on time: 0 (ends t={end}, due {due})
-log.next: t={a} → t={b}: machine {m} is free next
+log.next: Next: machine {m} is free at t={b}
 log.end: episode over
 log.job: J{id} · length {p} · due {d} · importance {w}
 loop.sub.state: What the learner sees
