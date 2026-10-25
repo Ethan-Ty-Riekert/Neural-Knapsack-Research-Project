@@ -1,0 +1,171 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch The Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/*__BASE__*/
+html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
+/* "Watch the loop", stage layout: the environment (queue, machines) on the left, the learner (network) on the right, arrows between them
+   carry the state, the action and the reward; under them a film strip of the episode's decisions and a learning row. One screen. */
+.app { height: 100%; box-sizing: border-box; padding-block: .5rem; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: .45rem; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.top h1 { font-size: 1.5rem; line-height: 1; } .top .sub { color: var(--muted); font-size: .72rem; max-width: 40rem; }
+#controls { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; }
+.go { padding: .38rem .9rem; font-size: .95rem; border-radius: .55rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
+.ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .55rem; padding: .3rem .7rem; font-weight: 600; font-size: .85rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
+.seg.small button { padding: .24rem .45rem; font-size: .74rem; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; }
+.explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
+.rowa { display: grid; grid-template-columns: minmax(0, 1fr) 4.6rem minmax(0, 1.4fr); gap: .3rem; min-height: 0; }
+/* environment */
+#queue { display: flex; flex-wrap: wrap; gap: .3rem; align-content: flex-start; min-height: 3.6rem; }
+.qjob { border: 2px solid var(--rule); border-radius: .45rem; background: var(--surface); padding: .1rem .35rem; display: flex; flex-direction: column; justify-content: center; font-size: .68rem; line-height: 1.1; height: clamp(3.1rem, 6.5vh, 5rem); }
+.qjob b { font-size: .8rem; } .qjob span { color: var(--muted); } .qjob.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); } .qjob.fresh { animation: drop .5s ease; }
+@keyframes drop { from { transform: translateY(-1rem) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.qempty, .qnext { font-size: .7rem; color: var(--muted); padding: .3rem .2rem; } .qnext { border: 2px dashed var(--rule); border-radius: .45rem; }
+#env { display: flex; flex-direction: column; }
+#lanes { flex: 1; display: flex; flex-direction: column; gap: .35rem; min-height: 0; }
+.lanewrap { position: relative; flex: 1 1 0; min-height: 2.3rem; max-height: 8rem; } .lanewrap > .mname { position: absolute; left: 0; top: 50%; transform: translateY(-50%); font-size: .72rem; font-weight: 700; color: var(--muted); }
+.mlane { position: relative; height: 100%; border: 2px solid var(--ink); border-radius: .5rem; background: var(--surface); margin-left: 4.2rem; }
+.mblk { position: absolute; top: .18rem; bottom: .18rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
+.mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
+.mnow { position: absolute; top: -.25rem; bottom: -.25rem; width: 3px; background: var(--ink); opacity: .5; }
+.maxis { flex: none; margin-left: 4.2rem; display: flex; justify-content: space-between; font-size: .66rem; color: var(--muted); }
+.envfoot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: .5rem; font-size: .72rem; color: var(--muted); }
+/* wires between the environment and the learner */
+#wire { display: flex; flex-direction: column; justify-content: center; gap: .9rem; }
+.wl { position: relative; text-align: center; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-bottom: .9rem; transition: color .25s; }
+.wl::after { content: ""; position: absolute; left: .2rem; right: .2rem; bottom: .25rem; height: 3px; background: var(--rule); border-radius: 2px; transition: background .25s; }
+.wl::before { content: ""; position: absolute; bottom: .08rem; border: 6px solid transparent; transition: border-color .25s; }
+.wl.right::before { right: .1rem; border-left: 9px solid var(--rule); border-right: 0; } .wl.left::before { left: .1rem; border-right: 9px solid var(--rule); border-left: 0; }
+.wl.on { color: var(--accent); } .wl.on::after { background: var(--accent); } .wl.on.right::before { border-left-color: var(--accent); } .wl.on.left::before { border-right-color: var(--accent); }
+.wl.bad.on { color: var(--scratch); } .wl.bad.on::after { background: var(--scratch); } .wl.bad.on.left::before { border-right-color: var(--scratch); }
+/* learner */
+#agent { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .35rem; }
+.agenttop { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.agentmid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; min-height: 0; }
+#actorsvg { width: 100%; height: auto; max-height: 100%; }
+#dist { position: relative; min-height: 0; display: flex; flex-direction: column; gap: .15rem; }
+.dtitle { font-size: .66rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+.drow { display: grid; grid-template-columns: 2.1rem 1fr 2.4rem; gap: .3rem; align-items: center; font-size: .72rem; }
+.dbar { position: relative; height: .8rem; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: .35rem; }
+.dbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--rulebar); border-radius: .35rem; transition: width .5s ease; }
+.dbar u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); opacity: .55; }
+.drow.pick .dbar i { background: var(--accent); } .drow.pick b { color: var(--accent); }
+.drow b { text-align: right; font-variant-numeric: tabular-nums; }
+.dlegend { font-size: .62rem; color: var(--muted); } .dlegend s { text-decoration: none; display: inline-block; width: 2px; height: .6rem; background: var(--ink); opacity: .55; vertical-align: -1px; margin-right: .2rem; }
+#wheel { width: 100%; max-height: 100%; }
+#wheel .slice { stroke: var(--surface); stroke-width: 2; } #wheel .lbl { font-size: 9px; font-weight: 700; fill: #fff; } #wheel .ptr { fill: var(--ink); }
+#critic { border-top: 1px dashed var(--rule); padding-top: .3rem; font-size: .7rem; }
+.cgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; }
+.cchip { border: 2px solid var(--rule); border-radius: .4rem; padding: .08rem .2rem; text-align: center; line-height: 1.05; font-size: .6rem; color: var(--muted); }
+.cchip b { display: block; font-size: .78rem; color: var(--ink); } .cchip em { font-style: normal; font-size: .58rem; }
+.cchip.pos { border-color: color-mix(in srgb, var(--copied) 55%, transparent); } .cchip.neg { border-color: color-mix(in srgb, var(--scratch) 70%, transparent); }
+.cout { display: flex; align-items: center; gap: .6rem; margin-top: .3rem; }
+.cv { flex: none; border: 3px solid var(--ink); border-radius: 50%; width: 3.2rem; height: 3.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; font-size: .62rem; transition: border-color .3s, border-width .3s; }
+.cv b { font-size: .95rem; } .cdelta { font-size: .72rem; font-weight: 700; line-height: 1.2; }
+.bbars { display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; align-items: end; height: 3.4rem; }
+.bb { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; font-size: .58rem; color: var(--muted); } .bb i { display: block; width: 100%; background: var(--rulebar); border-radius: .2rem; } .bb.cur i { background: var(--accent); } .bb b { font-size: .62rem; color: var(--ink); }
+/* film strip */
+#strip { display: grid; grid-template-columns: repeat(8, 1fr) 7rem; gap: .3rem; }
+.slot { border: 2px solid var(--rule); border-radius: .5rem; padding: .15rem .3rem; text-align: center; line-height: 1.1; font-size: .66rem; color: var(--muted); min-height: 2.5rem; transition: border-color .25s, background .25s; }
+.slot small { display: block; font-size: .58rem; } .slot b { display: block; font-size: .8rem; color: var(--ink); } .slot.cur { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.slot .r { font-weight: 700; } .slot.good .r { color: var(--win); } .slot.bad .r { color: var(--scratch); } .slot.pop { animation: drop .4s ease; }
+.slot.end { background: var(--ink); color: var(--bg); border-color: var(--ink); } .slot.end b { color: var(--bg); }
+#narr { font-size: .85rem; font-weight: 600; text-align: center; min-height: 1.3rem; color: var(--ink); }
+#msg { font-size: .72rem; color: var(--muted); text-align: center; min-height: 1rem; }
+/* learning row */
+.rowc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.2fr); gap: .5rem; }
+.lrow { display: grid; grid-template-columns: repeat(8, 1fr); gap: .2rem; }
+.lchip { border: 2px solid var(--rule); border-radius: .4rem; text-align: center; font-size: .66rem; line-height: 1.05; padding: .05rem 0 .1rem; transition: background .3s, border-color .3s, transform .2s; }
+.lchip small { display: block; color: var(--muted); font-size: .55rem; } .lchip b { font-size: .76rem; } .lchip em { display: block; font-style: normal; font-size: .58rem; font-weight: 700; min-height: .7rem; }
+.lchip.empty { opacity: .45; } .lchip.neg { border-color: var(--scratch); color: var(--scratch); } .lchip.zero { border-color: var(--win); color: var(--win); }
+.lchip.up { background: color-mix(in srgb, var(--win) 16%, transparent); } .lchip.down { background: color-mix(in srgb, var(--scratch) 16%, transparent); } .lchip.pulse { transform: scale(1.15); }
+.lret { font-size: .72rem; font-weight: 700; text-align: center; margin-top: .2rem; }
+.babox { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; } .bacol .dtitle { margin-bottom: .1rem; } .baline { font-size: .72rem; margin-top: .2rem; font-weight: 600; }
+.baempty { font-size: .72rem; color: var(--muted); }
+.progress { display: grid; grid-template-columns: 1fr 1.1fr; gap: .5rem; align-items: stretch; }
+#curvebox { position: relative; min-height: 5.5rem; border: 2px solid var(--rule); border-radius: .5rem; } #curve { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); }
+.wrow { display: grid; grid-template-columns: 4.2rem 1fr 3.6rem; gap: .3rem; align-items: center; font-size: .68rem; margin-bottom: .25rem; }
+.wbar { position: relative; height: .8rem; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: .35rem; overflow: hidden; }
+.wbar i { position: absolute; top: 0; bottom: 0; background: var(--accent); transition: left .5s, width .5s; } .wbar u { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .4; }
+.wrow .wv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; } .wrow.up .wv { color: var(--win); } .wrow.down .wv { color: var(--scratch); }
+/* flying tokens */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 15; }
+.token { position: absolute; left: 0; top: 0; padding: .12rem .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 700; color: #fff; background: var(--accent); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .25); }
+.token.action, .token.good { background: var(--win); } .token.job { background: var(--ink); } .token.reward { background: var(--scratch); }
+.popup { position: absolute; padding: .2rem .65rem; border-radius: 1rem; font-weight: 700; font-size: 1.05rem; background: var(--surface); border: 2px solid var(--win); color: var(--win); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .2); }
+.popup.bad { border-color: var(--scratch); color: var(--scratch); }
+.pulse { fill: var(--accent); }
+#actorsvg .edge { stroke: var(--rulebar); stroke-width: 2; fill: none; transition: stroke-width .4s, stroke .4s; } #actorsvg .node { fill: var(--surface); stroke: var(--ink); stroke-width: 2; } #actorsvg .node.soft { fill: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+#actorsvg .ntxt { font-size: 11px; font-weight: 700; fill: var(--ink); } #actorsvg .small { font-size: 9px; fill: var(--muted); } #actorsvg .wtxt { font-size: 9px; font-weight: 700; fill: var(--ink); }
+/* explanation card, same look as the other pages */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(38rem, 96vw); background: var(--surface); color: var(--ink); border-left: 1px solid var(--rule); box-shadow: -.6rem 0 2rem rgba(0, 0, 0, .18); transform: translateX(105%); transition: transform .3s ease; z-index: 20; display: flex; flex-direction: column; font-size: .92rem; }
+.drawer.open { transform: none; } .drawer .dhead { display: flex; justify-content: space-between; padding: .6rem .8rem 0; }
+.drawer .dhead button { border: 0; background: transparent; font-size: 1rem; padding: .3rem .5rem; border-radius: .4rem; } .drawer .dhead button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dbody { overflow: auto; padding: .3rem 1.2rem 1.5rem; flex: 1; } .dbody h2 { font-size: 1.35rem; margin: .1rem 0 .6rem; } .dbody p { margin: .4rem 0; line-height: 1.45; }
+.sec { border-top: 1px solid var(--rule); padding: .4rem 0; } .sec summary { cursor: pointer; font-weight: 700; font-family: var(--display); padding: .25rem 0; } .sbody { padding-bottom: .3rem; }
+.dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
+.dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
+.related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
+@media (max-width: 900px) { html, body { height: auto; } .app { height: auto; } .rowa, .rowc, .agentmid { grid-template-columns: 1fr; } #wire { flex-direction: row; justify-content: space-around; } #strip { grid-template-columns: repeat(4, 1fr); } }
+</style>
+<div class="app">
+  <div class="top">
+    <div><h1 data-ui="stage.heading"></h1><div class="sub" data-ui="stage.tagline"></div></div>
+    <div id="controls"></div>
+  </div>
+  <div class="rowa">
+    <section class="panel" id="env">
+      <div class="eyebrow explainable" data-explain="online" data-ui="panel.env"></div>
+      <div class="eyebrow" data-ui="panel.jobqueue" style="margin-top:.1rem"></div>
+      <div id="queue"></div>
+      <div id="lanes">
+        <div class="lanewrap"><span class="mname" data-machine="1"></span><div class="mlane" id="m0"></div></div>
+        <div class="lanewrap"><span class="mname" data-machine="2"></span><div class="mlane" id="m1"></div></div>
+        <div class="maxis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+      </div>
+      <div class="envfoot"><span class="eyebrow" data-ui="mode.label"></span><span id="modeslot"></span></div>
+    </section>
+    <div id="wire">
+      <div class="wl right explainable" id="w-state" data-explain="state" data-ui="wire.state"></div>
+      <div class="wl left explainable" id="w-action" data-explain="action" data-ui="wire.action"></div>
+      <div class="wl left explainable" id="w-reward" data-explain="reward" data-ui="wire.reward"></div>
+    </div>
+    <section class="panel" id="agent">
+      <div class="agenttop"><span class="eyebrow explainable" id="agenttitle" data-explain="network"></span><span id="viewbox"></span></div>
+      <div class="agentmid">
+        <svg id="actorsvg" viewBox="0 0 230 150" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="dist"></div>
+      </div>
+      <div id="critic"></div>
+    </section>
+  </div>
+  <section class="panel" id="stripbox" style="padding:.4rem .6rem">
+    <div class="eyebrow explainable" data-explain="chain" data-ui="panel.strip"></div>
+    <div id="strip"></div>
+    <div id="narr"></div>
+  </section>
+  <div class="rowc">
+    <section class="panel"><div class="eyebrow explainable" data-explain="reward" data-ui="panel.ledger"></div><div id="ledger"></div></section>
+    <section class="panel"><div class="eyebrow explainable" data-explain="policy" data-ui="panel.ba"></div><div id="ba"></div></section>
+    <section class="panel"><div class="eyebrow explainable" data-explain="curve" data-ui="panel.curveweights"></div>
+      <div class="progress"><div id="curvebox"><canvas id="curve"></canvas></div><div id="wbars"></div></div><div id="msg"></div></section>
+  </div>
+</div>
+<div id="fx"></div>
+<aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+document.querySelectorAll("[data-machine]").forEach(e => { e.textContent = RACE_DATA.text.ui["machine.name"].replace("{m}", e.dataset.machine); });
+StageUI.init({
+  explain: document.getElementById("explain"), fx: document.getElementById("fx"), queue: document.getElementById("queue"), machines: [document.getElementById("m0"), document.getElementById("m1")],
+  narr: document.getElementById("narr"), msg: document.getElementById("msg"), controls: document.getElementById("controls"), modeSlot: document.getElementById("modeslot"),
+  agentTitle: document.getElementById("agenttitle"), viewBox: document.getElementById("viewbox"), actor: document.getElementById("actorsvg"), dist: document.getElementById("dist"),
+  critic: document.getElementById("critic"), strip: document.getElementById("strip"), ledger: document.getElementById("ledger"), ba: document.getElementById("ba"),
+  curve: document.getElementById("curve"), wbars: document.getElementById("wbars"),
+  wires: { state: document.getElementById("w-state"), action: document.getElementById("w-action"), reward: document.getElementById("w-reward") }
+});
+</script>

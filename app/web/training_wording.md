@@ -95,6 +95,52 @@ narr.late: the job will finish {late} ticks late
 narr.next: The situation changes and the loop repeats.
 narr.update: Episode over, total cost {cost}. The learner updates its weights from the rewards it saw.
 test.line: Test on {n} new job sets: random {random} · best rule {rule} {rulecost} · this learner {learner}
+crit.f0: Bias (always 1)
+crit.f1: Jobs waiting
+crit.f2: Cost already locked in
+crit.f3: Average spare time
+crit.f4: Tightest time left
+crit.f5: Work still to do
+crit.f6: Other machine ahead by
+crit.got: Got {r} now + expect {n} later, instead of {v}
+crit.better: Better than the critic expected by {d}
+crit.worse: Worse than the critic expected by {d}
+base.step: step {k}
+base.note: Usual reward from this step on: {b}
+ledger.title: Rewards this episode
+ledger.return: Return so far {r}
+ledger.empty: The reward of every decision drops in here.
+narr.compare: The critic had guessed what the reward would be. Now it compares its guess with what happened.
+narr.learn: The rewards have flowed in: weights that led to better-than-expected rewards are strengthened, the others weakened. Watch the old and new values.
+// --- the "stage" layout (stage.html): the layout is the loop ---
+stage.heading: Watch the loop
+stage.tagline: Environment on the left, learner on the right. Press Play and follow a decision from the queue, through the network, onto a machine and back as a reward.
+panel.env: Environment
+panel.agent: Learner
+panel.strip: Decisions in this episode
+panel.ledger: Rewards this episode
+panel.ba: Same situation, before and after learning
+panel.curveweights: Progress
+wire.state: State
+wire.action: Action
+wire.reward: Reward
+view.label: Choice shown as
+view.bars: Bars
+view.wheel: Wheel
+btn.stop: Stop
+speed.30: ×30
+dist.uniform: pure chance
+dist.title: Chance of picking each job
+dist.title.wheel: The wheel: each slice is a job
+strip.slot: {k}
+strip.cost: Cost {cost}
+ba.empty: After an episode, one earlier decision is replayed here with the old and the new probabilities.
+ba.before: Before
+ba.after: After
+ba.line: Credit for job {job}: {credit}. Its chance went from {p0}% to {p1}%.
+ba.up: The learner now favours it more.
+ba.down: The learner now favours it less.
+weights.title: Weights (what the network has learned)
 related: Related
 back: ← Back
 close: Close

@@ -12,8 +12,8 @@ sys.path.insert(0, str(ROOT / "app"))
 from wording import load  # noqa: E402
 
 W = load(ROOT / "app" / "web" / "training_wording.md")
-PAGES = ["training.html", "flow.html"]
-SCRIPTS = ["training_ui.js", "flow_ui.js", "flow_centre_chain.js", "flow_centre_ring.js", "training_shared.js"]
+PAGES = ["training.html", "stage.html"]
+SCRIPTS = ["training_ui.js", "stage_ui.js", "training_shared.js"]
 html = "\n".join((ROOT / "app" / "web" / f).read_text(encoding="utf-8") for f in PAGES)
 js = "\n".join((ROOT / "app" / "web" / f).read_text(encoding="utf-8") for f in SCRIPTS)
 SLOTS = {"J", "reward", "score", "policy", "ret", "reinforce", "critic", "advantage"}  # formulas built in training_shared.js
@@ -36,5 +36,4 @@ for key in ui_keys:
     assert key in W["ui"], f"a page uses UI text {key!r} that is missing from ## UI"
 for key in set(re.findall(r'TP\["([\w.]+)"\]', js)):
     assert key in W["templates"], f"a page uses template {key!r} that is missing from ## TEMPLATES"
-assert "panel.chain" in W["ui"] and "panel.ring" in W["ui"], "the two centre-box titles must exist"
 print("training demo wording checks passed")

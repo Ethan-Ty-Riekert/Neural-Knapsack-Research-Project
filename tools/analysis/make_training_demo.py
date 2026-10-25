@@ -2,8 +2,8 @@
 
     python tools/analysis/make_training_demo.py
 
-Writes app/web/dist/training_demo.html (the first layout, also copied to app/slides/ next to the deck), and the two animated layouts
-app/web/dist/flow_chain.html (centre box: the chain of the episode) and app/web/dist/flow_ring.html (centre box: the decision ring).
+Writes app/web/dist/training_demo.html (the first layout, also copied to app/slides/ next to the deck) and app/web/dist/stage.html (the
+animated "stage" layout: the environment on the left, the learner on the right, the loop drawn between them).
 Each page inlines base.css, the wording (app/web/training_wording.md parsed by app/wording.py) and its scripts.
 """
 import json
@@ -33,8 +33,7 @@ def main():
     out = WEB / "dist"
     out.mkdir(exist_ok=True)
     pages = {"training_demo.html": page("training.html", COMMON + ("training_ui.js",)),
-             "flow_chain.html": page("flow.html", COMMON + ("flow_centre_chain.js", "flow_ui.js"), [("__CENTRE_TITLE__", "panel.chain"), ("<title>Watch The Loop</title>", "<title>Watch The Chain</title>")]),
-             "flow_ring.html": page("flow.html", COMMON + ("flow_centre_ring.js", "flow_ui.js"), [("__CENTRE_TITLE__", "panel.ring"), ("<title>Watch The Loop</title>", "<title>Watch The Ring</title>")])}
+             "stage.html": page("stage.html", COMMON + ("stage_ui.js",))}
     for name, html in pages.items():
         (out / name).write_text(html, encoding="utf-8")
         print("wrote", out / name, f"{len(html) / 1024:.0f} KB")
