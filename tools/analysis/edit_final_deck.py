@@ -1,5 +1,5 @@
 """Edit app/slides/Final_Presentation.pptx IN PLACE (the user edited it by hand, so it is not rebuilt from make_pptx.py):
-slide 1: the two tinted panels become slightly transparent; slide 2: new content (objective function and what was compared)."""
+slide 1: the gradient background becomes slightly more transparent (panels and text untouched); slide 2: new content (objective function and what was compared)."""
 import copy
 import sys
 from pathlib import Path
@@ -35,9 +35,12 @@ def set_alpha(shape, alpha_pct):
 
 
 s1 = prs.slides[0]
-for sh in s1.shapes:
-    if sh.name in ("Rounded Rectangle 5", "Rounded Rectangle 40"):  # the schedule card and the question bar sitting on the gradient
-        set_alpha(sh, 55)
+# the slide background is a gradient whose last stop is already part transparent (alpha 39 %): make that stop more transparent so the slide is lighter
+P = "http://schemas.openxmlformats.org/presentationml/2006/main"
+stops = s1._element.cSld.find(f"{{{P}}}bg").iter(f"{{{A}}}gs")
+last = max(stops, key=lambda g: int(g.get("pos")))
+for alpha in last.iter(f"{{{A}}}alpha"):
+    alpha.set("val", "22000")
 
 
 # ---------------------------------------------------------------- helpers (same look as tools/analysis/make_pptx.py)
@@ -115,19 +118,26 @@ for r in title.text_frame.paragraphs[0].runs[1:]:
     r.text = ""
 
 B = {"bold": True}
-# ---- left card: the objective
+# ---- left card: the objective (the whole combined objective; every term is examined)
 panel(s2, 0.7, 1.75, 5.6, 3.55)
 rich(s2, 0.95, 1.9, 5.1, 0.3, [[("WHAT IT MINIMISES", {"bold": True, "colour": BLUE, "size": 11})]])
-rich(s2, 0.95, 2.18, 5.1, 0.7, [[("J", {"math": True, "size": 32}), (" = Σ w", {"math": True, "size": 32}), ("j", {"math": True, "size": 32, "sub": True}), (" T", {"math": True, "size": 32}), ("j", {"math": True, "size": 32, "sub": True}), ("2", {"math": True, "size": 32, "sup": True})]])
-rich(s2, 0.95, 2.9, 5.15, 0.55, [[("Main objective: how late each job finishes, squared, ", {"size": 12, "colour": MUTED}), ("weighted by how important it is.", {"size": 12, "colour": MUTED})]])
-rich(s2, 0.95, 3.45, 5.1, 0.25, [[("ADDED IN THE COMBINED-OBJECTIVE TESTS", {"bold": True, "colour": BLUE, "size": 9.5})]])
-m = {"math": True, "size": 14.5}
-ms = dict(m, sub=True)
-rich(s2, 0.95, 3.7, 5.2, 0.4, [[("J", m), ("λ", ms), (" = J + λ", m), ("T", ms), (" Σ w", m), ("j", ms), (" T", m), ("j", ms), (" + λ", m), ("U", ms), (" Σ w", m), ("j", ms), (" U", m), ("j", ms), (" + λ", m), ("E", ms), (" E", m)]])
-rich(s2, 0.95, 4.1, 5.15, 0.6, [[("T", {"math": True, "size": 11}), ("j", {"math": True, "size": 11, "sub": True}), (" = how late job j finishes (0 if on time)   ", {"size": 10.5, "colour": MUTED}),
-                                 ("U", {"math": True, "size": 11}), ("j", {"math": True, "size": 11, "sub": True}), (" = 1 if it is late   ", {"size": 10.5, "colour": MUTED}),
-                                 ("w", {"math": True, "size": 11}), ("j", {"math": True, "size": 11, "sub": True}), (" = its importance   ", {"size": 10.5, "colour": MUTED}),
-                                 ("E", {"math": True, "size": 11}), (" = energy (machine-time switched on)", {"size": 10.5, "colour": MUTED})]], space=2)
+f = {"math": True, "size": 22}
+fs = dict(f, sub=True)
+fp = dict(f, sup=True)
+rich(s2, 0.95, 2.2, 5.2, 0.4, [[("J", f), ("λ", fs), (" = Σ w", f), ("j", fs), (" T", f), ("j", fs), ("2", fp), (" + λ", f), ("T", fs), (" Σ w", f), ("j", fs), (" T", f), ("j", fs)]])
+rich(s2, 0.95, 2.65, 5.2, 0.4, [[("      + λ", f), ("U", fs), (" Σ w", f), ("j", fs), (" U", f), ("j", fs), (" + λ", f), ("E", fs), (" E", f)]])
+y = 3.12
+for key, desc in [("Σ w T²", "lateness squared, weighted by importance"),
+                  ("λT Σ w T", "lateness itself, weighted by importance"),
+                  ("λU Σ w U", "how many jobs finish late (deadlines missed)"),
+                  ("λE E", "energy: how long machines are switched on")]:
+    rich(s2, 0.95, y, 1.3, 0.3, [[(key, {"math": True, "size": 12, "colour": BLUE})]], space=0)
+    rich(s2, 2.3, y, 3.85, 0.3, [[(desc, {"size": 10.5, "colour": MUTED})]], space=0)
+    y += 0.3
+rich(s2, 0.95, 4.33, 5.2, 0.3, [[("T", {"math": True, "size": 10.5}), ("j", {"math": True, "size": 10.5, "sub": True}), (" = how late job j finishes   ", {"size": 9.5, "colour": MUTED}),
+                                 ("U", {"math": True, "size": 10.5}), ("j", {"math": True, "size": 10.5, "sub": True}), (" = 1 if late   ", {"size": 9.5, "colour": MUTED}),
+                                 ("w", {"math": True, "size": 10.5}), ("j", {"math": True, "size": 10.5, "sub": True}), (" = importance   ", {"size": 9.5, "colour": MUTED}),
+                                 ("λ", {"math": True, "size": 10.5}), (" = weight of each goal", {"size": 9.5, "colour": MUTED})]], space=0)
 box(s2, 0.95, 4.68, 5.1, 0.012, SOFT)
 for i, (head, body) in enumerate([("State", "jobs, free machine capacity"), ("Action", "start a job, or wait"), ("Reward", "minus the lateness cost")]):
     rich(s2, 0.95 + i * 1.74, 4.76, 1.65, 0.5, [[(head, {"bold": True, "colour": BLUE, "size": 11})], [(body, {"size": 9.5, "colour": MUTED})]], space=0)
@@ -160,9 +170,10 @@ box(s2, 11.05, 5.07, 0.14, 0.14, GREY, None, MSO_SHAPE.ROUNDED_RECTANGLE, 0.3)
 rich(s2, 11.25, 5.04, 1.4, 0.2, [[("chosen by a fixed rule", {"size": 9, "colour": MUTED})]])
 
 s2.notes_slide.notes_text_frame.text = (
-    "Left: what the schedulers try to minimise. The main objective is J, the sum over jobs of importance times lateness squared, so a few very late jobs "
-    "cost more than many slightly late ones. The combined-objective tests added three more terms (linear lateness, the number of late jobs, energy) to ask "
-    "whether RL does better when no single hand-made rule targets the objective. The three words underneath are the MDP: state, action, reward. "
+    "Left: what every scheduler tries to minimise, the whole combined objective. Squared lateness punishes a few very late jobs more than many slightly "
+    "late ones; linear lateness, the number of late jobs and energy are the other goals, and the lambdas set how much each one counts. Every method was "
+    "scored on the full objective, with the weights of each term varied, to ask when RL is competitive when no single hand-made rule targets all the goals. "
+    "The three words underneath are the MDP: state, action, reward. "
     "Right: what was compared on the same 50 unseen test cases per setting. Classic methods are 49 dispatching heuristics (a priority rule that picks the "
     "next job plus a placement rule that picks the machine) and an exact solver, CP-SAT, which gives a proven bound. The RL schedulers were trained with PPO "
     "and A2C and differ in how much the network decides: Option 0 picks the job and machine directly; Option 1 only picks which dispatching rule to apply; "
