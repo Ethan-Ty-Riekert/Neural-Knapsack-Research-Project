@@ -74,9 +74,14 @@
       const lit = on && k === name, b = byId("b-" + k); b.classList.toggle("on", lit); b.classList.toggle("bad", lit && !!bad); byId("a-" + k).classList.toggle("on", lit);
     });
   }
-  const loopVal = (k, text) => { const e = byId("v-" + k); if (e) e.textContent = text; };
+  // every ring box keeps a log of what it was given during the episode; the newest row is highlighted
+  const logClear = () => ["state", "action", "reward", "next"].forEach(k => { byId("v-" + k).textContent = ""; });
+  function logRow(k, n, text, bad) {
+    const box = byId("v-" + k); box.querySelectorAll(".cur").forEach(r => r.classList.remove("cur"));
+    const r = el("div", "mrow cur" + (bad ? " bad" : "")); r.append(el("i", null, String(n)), el("span", null, text)); box.append(r); box.scrollTop = box.scrollHeight;
+  }
   // box 1 shows the state: the time, the free machine and how many jobs wait
-  function loopState(t, st) { byId("v-state").textContent = fill(TP["loop.state.text"], { t, m: st.state.machine + 1, n: st.state.waiting.length }); }
+  function loopState(k, t, st) { logRow("state", k + 1, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length })); }
   const loopCentre = a => { byId("lstep").textContent = a || ""; };
 
   // ---- environment: queue shelf, machine lanes -------------------------------------------------------------------------------------------
@@ -234,7 +239,7 @@
   // ---- one decision as a short film ------------------------------------------------------------------------------------------------------------
   function startEpisode() {
     const L = learner(), jobs = C.makeInstance(S.rng[S.mode], online());
-    S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = [];
+    S.ep = C.runEpisode(jobs, L.sample); S.k = 0; S.shown = new Set(); S.blocks = []; logClear();
     ledgerReset(); drawQueue(jobs, [], null, null); drawMachines([], null, null); drawDist(null); paintCritic(null);
   }
   const BOX = { jobs: () => byId("jobs"), machines: () => byId("machinesbox"), state: () => byId("b-state"), net: () => byId("netbox"), prob: () => byId("probbox"),
@@ -244,13 +249,12 @@
     const ep = S.ep, k = S.k, st = ep.steps[k], jobs = st.state.jobs, L = learner(), p = L.probs(st.state), t = st.state.t, chosen = st.job, pct = Math.round(p[st.k] * 100);
     // 1. State: gathered from the waiting jobs and the free machine
     setNarr(UI["narr.gather"]); loopCentre(fill(UI["loop.step"], { k: k + 1, n: ep.steps.length }));
-    ["state", "action", "reward", "rtext", "next"].forEach(n => loopVal(n, ""));
     const future = jobs.map((j, i) => i).filter(i => !st.state.waiting.includes(i) && !ep.steps.slice(0, k).some(s => s.job === i) && jobs[i].a > t).map(i => jobs[i].a);
     const nextArr = online() && future.length ? Math.min(...future) : null;
     drawQueue(jobs, st.state.waiting, null, nextArr); drawMachines(S.blocks, t, null); drawDist(null); paintCritic(null);
     spot(BOX.jobs(), BOX.machines());
     await Promise.all([fly(BOX.jobs(), BOX.state(), id, "tk state", "jobs", 650), fly(BOX.machines(), BOX.state(), id, "tk state", "free machine", 650)]);
-    wire("state", true); loopState(t, st); spot(BOX.state()); await hold(900, 250, id);
+    wire("state", true); loopState(k, t, st); spot(BOX.state()); await hold(900, 250, id);
     // 2. State -> network: the actor scores every waiting job (and, for actor-critic, the critic estimates the situation)
     setNarr(UI["narr.net"]); spot(BOX.net());
     await fly(BOX.state(), BOX.net(), id, "tk state", "s", 650);
@@ -261,7 +265,7 @@
     await fly(BOX.net(), BOX.prob(), id, "tk action", "scores", 650);
     drawDist(st, p, st.k); await sleep(700, id); await hold(900, 0, id);
     // 4. Probability graph -> action: the learner picks a job
-    wire("action", true); loopVal("action", fill(UI["loop.v.action"], { job: chosen + 1 })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
+    wire("action", true); logRow("action", k + 1, fill(UI["log.action"], { job: chosen + 1, pct })); setNarr(fill(UI["narr.action"], { job: chosen + 1, pct }));
     drawQueue(jobs, st.state.waiting, chosen, nextArr); spot(BOX.action());
     await fly(q(cfg.dist, ".vbar.pick") || BOX.prob(), BOX.action(), id, "tk action", "J" + (chosen + 1), 650); await hold(900, 300, id);
     // 5. Action -> machine: the job starts
@@ -275,14 +279,14 @@
     const late = st.lateness > 0, rtxt = late ? plain(st.reward, 1) : "0", outcome = late ? fill(UI["narr.late"], { late: st.lateness }) : UI["narr.ontime"];
     wire("reward", true, late); setNarr(fill(UI["narr.reward"], { reward: rtxt, outcome })); spot(BOX.reward());
     const blkEl = lane.querySelector(".mblk.fresh") || lane;
-    await fly(blkEl, BOX.reward(), id, late ? "reward" : "good", rtxt, 650); loopVal("reward", rtxt); loopVal("rtext", outcome); await hold(900, 0, id);
+    await fly(blkEl, BOX.reward(), id, late ? "reward" : "good", rtxt, 650); logRow("reward", k + 1, late ? fill(UI["log.late"], { job: chosen + 1, r: rtxt, late: st.lateness }) : fill(UI["log.ontime"], { job: chosen + 1 }), late); await hold(900, 0, id);
     // 7. Reward -> rewards box (and, for actor-critic, the critic compares it with its guess)
     const chip = ledgerAdd(k, st.reward); spot(BOX.rewards());
     await fly(BOX.reward(), chip, id, late ? "reward" : "good", rtxt, 650);
     chip.classList.add("pulse"); setTimeout(() => chip.classList.remove("pulse"), 500); await hold(700, 0, id);
     if (isAC()) { setNarr(UI["narr.compare"]); spot(BOX.net()); await fly(chip, cfg.critic, id, "reward", "r", 650); await criticCompare(st, k, ep, id); await hold(600, 0, id); }
     // 8. Reward -> next state (time moves on) -> back to state
-    const nxt = ep.steps[k + 1]; wire("next", true); loopVal("next", nxt ? fill(UI["loop.v.next"], { t: nxt.state.t }) : "end"); setNarr(UI["narr.tick"]); spot(BOX.next());
+    const nxt = ep.steps[k + 1]; wire("next", true); logRow("next", k + 1, nxt ? fill(UI["log.next"], { a: t, b: nxt.state.t }) : UI["log.end"]); setNarr(UI["narr.tick"]); spot(BOX.next());
     await fly(BOX.reward(), BOX.next(), id, "tk state", "+1", 600); await hold(700, 200, id);
     S.k++;
     if (S.k >= ep.steps.length) { await finishEpisode(id); return; }
@@ -344,7 +348,7 @@
     setTimeout(() => { const v = C.meanCost(R.sets, learner().greedy); setMsg(fill(UI["test.line"], { n: R.sets.length, random: R.random.toFixed(0), rule: R.rule.name, rulecost: R.rule.cost.toFixed(0), learner: v.toFixed(0) })); }, 30);
   }
   function redraw() {
-    ledgerReset(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre(""); setButtons();
+    ledgerReset(); logClear(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre(""); setButtons();
   }
   function resetAll() { newState(); redraw(); setMsg(""); setNarr(UI["narr.idle"]); }
 
