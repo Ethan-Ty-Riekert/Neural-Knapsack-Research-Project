@@ -67,6 +67,7 @@
     M(sub(I("r"), I("t")), O("("), I("θ"), O(")"), O("="), frac(R(sub(I("π"), I("θ")), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")")), R(sub(I("π"), T("old")), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"))));
   F.reward = M(sub(I("r"), I("t")), O("="), O("−"), frac(R(I("Δ"), sub(I("J"), I("t"))), I("c")), O("+"), I("γ"), I("Φ"), O("("), sub(I("s"), R(I("t"), O("+"), N(1))), O(")"), O("−"), I("Φ"), O("("), sub(I("s"), I("t")), O(")")) +
     M(I("Φ"), O("("), sub(I("s"), I("t")), O(")"), O("="), O("−"), sum(R(I("j"), T(" " + TP["math.unfinished"])), R(wj, O("["), sup(pos(R(sub(I("Ĉ"), I("j")), O("−"), dj)), N(2)), O("−"), sup(pos(R(tt, O("−"), dj)), N(2)), O("]")))) + md(TP["math.reward.note"]);
+  F.objfull = M(I("J"), O("="), sub(I("λ"), I("T")), sum(I("j"), R(wj, Tj)), O("+"), sub(I("λ"), I("S")), sum(I("j"), R(wj, sup(Tj, N(2)))), O("+"), sub(I("λ"), I("U")), sum(I("j"), R(wj, sub(I("U"), I("j")))), O("+"), sub(I("λ"), I("E")), I("E"));
   F.copy = M(sup(I("L"), T("copy")), O("("), I("θ"), O(")"), O("="), O("−"), sub(I("E"), R(I("s"), O("∼"), T(TP["math.visited"]))), O("["), I("log"), sub(I("π"), I("θ")), O("("), sup(I("a"), O("*")), O("("), I("s"), O(")"), O("|"), I("s"), O(")"), O("]"));
 
   // formulas of the classic rules, keyed like the RULES section of the wording file
@@ -132,6 +133,9 @@
       if (scorer) w += md(fill(meta.win ? TP["racer.ai.window"] : TP["racer.ai.allslots"], { win: meta.win, plc: meta.plc }));
       w += md((copies ? (meta.exp ? fill(TP["racer.ai.copied"], { rule: ruleName(meta.exp) }) : TP["racer.ai.copied.generic"]) : fill(TP["racer.ai.scratch"], { algo: meta.algo })) +
               (meta.steps ? " " + fill(TP["racer.ai.budget"], { steps: meta.steps }) : ""));
+      const extra = (meta.obj || []).map(t => LB["objterm." + t]);
+      w += md(copies ? TP["racer.ai.obj.copy"] + " " + (extra.length ? fill(TP["racer.ai.obj.multi"], { terms: extra.join(", ") }) : TP["racer.ai.obj.j"])
+                     : (extra.length ? fill(TP["racer.ai.obj.multi"], { terms: extra.join(", ") }) : TP["racer.ai.obj.j"]));
       what = w;
       math = (scorer ? (meta.opt === 3 || meta.atc ? F.policy_atc : F.policy) : meta.opt === 1 ? F.opt1 : meta.opt === 0 ? F.opt0 : md(TP["racer.ai.math.other"])) + (copies ? F.copy : F.ppo);
       deeper = md(copies ? TP["racer.ai.deeper.copy"] : TP["racer.ai.deeper.scratch"]) + F.reward +

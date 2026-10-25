@@ -89,6 +89,9 @@ chip.kind_own: Own-model AI
 objective.table.thing: Thing
 objective.table.setting: Setting
 objective.table.lambda: λ
+objterm.lin: linear lateness
+objterm.late: late jobs
+objterm.energy: energy
 metric.objective_J: Cost J (squared lateness)
 metric.late_jobs: Late jobs
 metric.mean_wait: Mean wait
@@ -115,7 +118,7 @@ energy.hint: fewer machines switched on
 ## NOTES
 // the sentence under the winner line
 noai: We did not train an AI scheduler for this exact setting, so four classic rules race instead.
-noimprove: No AI scheduler beat the best classic rule here. That is the usual result in this project: the AI schedulers mostly learned to copy a good rule and finish close to it.
+noimprove: No AI scheduler beat the classical results, the normal result found in this project
 noise: The best AI scheduler is only {pct}% ahead of the best classic rule, which is within the run-to-run noise of this project (gaps under about 5% were not significant).
 
 ## RULES
@@ -182,13 +185,13 @@ Consolidate.cite: Per-job version of the 'allocate where power increases least' 
 0.plain: The network picks a (job, machine) pair, or idle, directly: max_jobs × M + 1 choices.
 1.short: picks which rule to apply
 1.name: Option 1, rule selection
-1.plain: The network does not pick jobs: at each step it chooses which classic rule (and placement) to apply.
+1.plain: Instead of directly placing jobs, it selects a rule to do so
 2.short: scores each waiting job
 2.name: Option 2, priority learning
-2.plain: The network gives every waiting job a score and the best-scoring job is started. A fixed placement rule then picks its machine.
+2.plain: The network gives every waiting job a score (within a window) and the best-scoring job is started. A fixed placement rule then picks its machine.
 3.short: scores each waiting job
 3.name: Option 3, priority learning with an ATC hint
-3.plain: As Option 2, with one extra input per job: its ATC urgency index.
+3.plain: As Option 2, along with the ATC urgency index.
 4.short: picks a job-machine pair
 4.name: Option 4, job × machine branching
 4.plain: The network picks a job and then a machine in two steps.
@@ -228,6 +231,9 @@ racer.ai.copied: Trained by copying **{rule}** (behaviour cloning).
 racer.ai.copied.generic: Trained by copying **a classic rule** (behaviour cloning).
 racer.ai.scratch: Trained with {algo} from scratch (no rule copied).
 racer.ai.budget: Budget: {steps} environment steps.
+racer.ai.obj.j: Training objective: the squared-lateness cost J only.
+racer.ai.obj.multi: Training objective: the squared-lateness cost J plus {terms}, at fixed reference weights.
+racer.ai.obj.copy: Its objective only trains its value estimate and any fine-tuning; the choices themselves are copied from the rule.
 racer.ai.math.other: See Code/methods/rl/action_spaces in the project for this option's action space.
 racer.ai.deeper.copy: Copying: expert labels come from the copied rule on the states the network itself visits (DAgger; Ross, Gordon & Bagnell 2011), then the value head is warmed up with the policy frozen.
 racer.ai.deeper.scratch: Training objective: the shaped reward below, which keeps the optimal policy of minimising J (Ng, Harada & Russell 1999).
@@ -265,19 +271,27 @@ kicker: The situation
 title: The scheduling problem and the experimental setup
 related: arrival, machines, deadlines, objective
 --- In plain words (open)
-Jobs need machines. Each job has a length, a deadline, an importance and a resource demand (like CPU and memory). A scheduler decides, over time, which waiting job to start and on which machine, or to leave machines idle. Lateness costs more the later a job finishes.
+Users send jobs to a server that require machines to process their request. Each job have values like deadline, resource demand (CPU, memory, ...), and processing duration. A scheduler must decide which waiting job to start on which machine whilst fitting a set of constraints e.g a machine at 100% capacity can't take in another job.
 --- Formulation (open)
-Job *j* has arrival a_{j}, length p_{j}, deadline d_{j}, weight w_{j} and resource demand u_{jr}. There are *M* = 10 machines with capacity C_{r} per resource *r*. A job started at time s_{j} on machine *m* occupies u_{jr} of resource *r* on *m* for ticks s_{j} … s_{j} + p_{j} − 1 and may never exceed C_{r}. It completes at C_{j} = s_{j} + p_{j}. Cost to minimise:
+Job *j* has arrival a_{j}, processing duration p_{j}, deadline d_{j}, weight w_{j} and resource demand u_{jr}. There are *M* = 10 machines with capacity C_{r} per resource *r*. A job started at time s_{j} on machine *m* occupies u_{jr} of resource *r* on machine *m* for ticks [s_{j}, s_{j} + p_{j} − 1] and may never exceed C_{r}. It completes at C_{j} = s_{j} + p_{j}, and is late by
 
 {{tard}}
 
+The objective is a weighted sum of up to four terms (linear lateness, squared lateness, late jobs, energy), each with a switch λ:
+
+{{objfull}}
+
+Which terms are switched on depends on the model. Most models here use only the squared-lateness term (λ_{S} = 1, the others 0), which gives the cost
+
 {{J}}
+
+Models labelled '+tardiness obj', '+late-job obj' or '+energy obj' were trained with the extra terms switched on as well. Jobs are never dropped here, so the dropped-job term of the full objective is always zero.
 
 Idling is always allowed (it can pay to leave a machine empty).
 --- Experimental setup
-Each scenario has 50 held-out test instances (generated job sets, random seeds 500000 and up). Every method is run once on every instance and the metrics are averaged over the 50. Learned models are trained separately (3 to 10 training runs per kind) and their average is shown. A second set of 50 fresh instances (seeds 700000 and up) is used only for the confirmation results on the slides.
+Each scenario has 50 held-out test instances (generated job sets, random seeds 500000 and up). Every method is run once on every instance and the metrics are averaged over the 50. Learned models are trained separately (3 to 10 training runs per kind) and their average is shown. A second set of 50 fresh instances (seeds 700000 and up) is used only for the confirmation results.
 
-The results in this tool are exploratory and the best rule of each scenario was picked on these same 50 instances, so rules look slightly better here than on new instances.
+Given **all jobs are known** in advance, we give the environment 100 time units with 100 jobs whose values are drawn uniformly to find its best schedule. In the case of **online job arrivals**, the same setup is used with the addition of Poisson arrivals over the same 100 time units at differing job arrival loads ρ.
 
 ### arrival
 kicker: The situation
@@ -287,8 +301,6 @@ related: setup, machines, deadlines
 **Over time (online):** a job is only revealed when it arrives, so the scheduler cannot plan for jobs it has not seen. **Known in advance (offline):** every job is known at time 0 and the scheduler can see them all.
 --- Formulation
 Online, arrival times a_{j} come from a Poisson process with rate λ and a decision at time *t* may use only jobs with a_{j} ≤ *t*. Offline, a_{j} = 0 for all jobs. Offline instances have 100 jobs; online instances run over a horizon of 100 ticks with a preferred horizon *H*, and jobs may finish after it (the cost still counts their lateness).
---- Deeper
-The online heuristics are restricted to the jobs that have already arrived (for example ATC's mean job length uses only revealed jobs), so they are fair comparisons for the learned models. A clairvoyant one-step rollout that knows future arrivals was measured only as an upper bound (3 instances) and is not an online policy.
 
 ### machines
 kicker: The situation
@@ -297,13 +309,11 @@ related: setup, arrival, deadlines
 --- In plain words (open)
 Quiet: the machines are about half used on average. Normal: about three quarters. Busy: nearly full. Overloaded: more work arrives than the machines can ever finish, so a queue builds up.
 --- Formulation (open)
-Load factor (standard queueing utilisation, Kleinrock 1975), with arrival rate λ, *M* machines and capacity C_{r}:
+ρ (rho) says how busy the machines are. λ (lambda) is how many jobs arrive per tick (the rate of the Poisson arrivals). They are linked: the more jobs arrive per tick, the busier the machines. Standard queueing utilisation (Kleinrock 1975), for resource *r*, with *M* machines of capacity C_{r}, where *E*[p u_{r}] is the average work one job brings on that resource:
 
 {{rho}}
 
-Levels used: ρ = 0.50, 0.75, 0.95, 1.10. The arrival rate for a target ρ is λ = ρ divided by the ρ that rate 1 would give, estimated from a large fixed-seed sample of the project's own job generator (lognormal job sizes). ρ < 1: the cluster can keep up on average; ρ ≥ 1: work must accumulate.
---- Deeper
-Source: `Code/core/difficulty.py`. Presets: on_rho050, on_rho075, on_rho095, on_rho110. Each scenario is a separate set of 50 test instances, so scores are comparable only within a scenario.
+We choose the busyness we want to test, ρ = 0.50, 0.75, 0.95 or 1.10, and then set λ to the arrival rate that gives exactly that ρ. Because ρ grows in proportion to λ, this is a single scaling: λ = ρ ÷ (the ρ you would get at one job per tick), where that reference value is measured on a large sample from the project's own job generator (lognormal job sizes). ρ < 1: the machines can keep up on average. ρ ≥ 1: more work arrives than they can finish, so a queue builds up.
 
 ### deadlines
 kicker: The situation
@@ -316,7 +326,7 @@ Tight deadlines leave jobs little spare time, so more of them end up late and th
 
 {{dueOff}}
 
-Relaxed, Medium, Tight use TF = 0.2, 0.5, 0.8 with RDD = 0.6; deadlines are never earlier than a job's own length. Using the makespan bound for *L* is this project's own adaptation of the scheme to parallel machines.
+Relaxed, Medium, Tight use TF = 0.2, 0.5, 0.8 with RDD = 0.6; deadlines are never earlier than a job's own length.
 
 **Online**:
 
@@ -330,37 +340,41 @@ title: Are all jobs equally important?
 related: objective, setup
 --- In plain words (open)
 If all jobs are equal, lateness of any job costs the same. If some matter more, being late on an important job costs more.
---- Formulation
-Weights w_{j} enter the cost through J = Σ w_{j} T_{j}^{2}. 'All equal' sets w_{j} = 1; 'Some matter more' draws integer weights from 1 to 5. Tested offline only.
+--- Formulation (open)
+Weights w_{j} enter the cost through J = Σ w_{j} T_{j}^{2}. The 'All equal' option sets w_{j} = 1; 'Some matter more' draws integer weights from 1 to 5. Tested offline only.
 
 {{J}}
 
 ### objective
 kicker: What matters to you
-title: The objective: how your choices become a score
+title: The objective and your choices
 related: f_delay, f_late, f_wait, f_flow, f_energy, bar
 --- In plain words (open)
-Each thing you rate is a measured quantity of a finished schedule (late jobs, delay cost, waiting, flow time, energy). Your ratings are weights; the score of a method is the weighted sum of its measured quantities, each divided by what the best classic rule achieves on that quantity. Lower is better.
+Every option provided to rate is a measured quantity of a finished schedule. The ratings decide the weights of how much each metric mattters and how the models will be scored against. Lower overall score is better.
 --- Formulation (open)
 With metric values x_{m} of a method, the best rule's value x_{m,ref} on that metric, and your weights λ_{m} (Ignore = 0, Some = 2, A lot = 5):
 
 {{score}}
 
-The race bar then compares *S* with the best score *S*^{*} found among all rules and learned models:
+The race will then compares *S* with the best score *S*^{*} found among all rules and learned models to make a relative score:
 
 {{pct}}
 
-Your current weights:
+With the current selected weights:
 
 {{weights_table}}
 --- How it relates to what the AI was trained for (open)
-The classic rules aim at lateness; the learned schedulers were trained to minimise the cost *J* (squared lateness) only:
+The learned schedulers are trained by reinforcement learning to minimise an objective built from the same kinds of terms as your choices:
+
+{{objfull}}
+
+Most of the models raced here were trained with only the squared-lateness term switched on, which is the cost
 
 {{J}}
 
-So the 'Avoid long delays' row is exactly the training objective. The other rows (late jobs, waiting, flow time, energy) are measured on the same finished schedules afterwards; the learned models were not trained for them. That is why a model can look good on delay and poor on energy.
---- Deeper
-Every metric is a mean over the 50 test instances, so a weighted sum of metrics equals the mean of the weighted sum per instance: any weighting can be scored exactly from the stored results without retraining. When the best rule scores zero on a metric (for example no late jobs at light load) the mean over the rules is used as the divisor instead. Source: `app/scoring.py` (score, reference_values).
+A smaller group, labelled '+tardiness obj', '+late-job obj' and '+energy obj' in the results, were trained with the extra terms (linear lateness, late jobs, energy) switched on as well, at fixed reference weights. Models that copy a rule are trained by imitation, so the objective only trains their value estimate and any fine-tuning.
+
+Your own weights cannot be trained into a model in advance, because there are endless combinations of them. They are applied afterwards to the recorded measurements of each finished schedule. So no model was trained for your exact mix: a model trained only for lateness can look good on delay and poor on energy. Each racer's card says which objective it was trained on.
 
 ### f_delay
 kicker: What matters to you

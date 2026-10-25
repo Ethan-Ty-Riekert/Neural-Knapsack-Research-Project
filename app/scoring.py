@@ -226,4 +226,5 @@ def model_meta(method, family):
     win = 40 if "window 40" in label else 60 if "window 60" in label else 20 if "window" in label else 0
     return {"opt": int(opt[3:]), "algo": algo, "win": win, "exp": copied_rule(label), "plc": "Consolidate" if "Consolidate" in label else "FirstFit",
             "steps": "2M" if "2M steps" in label else "1M" if "1M steps" in label else "", "tuned": "tuned" in label,
-            "kind": ai_kind(method), "atc": "ATC prior" in label}
+            "kind": ai_kind(method), "atc": "ATC prior" in label,
+            "obj": [t for t, key in (("lin", "linear-tardiness"), ("late", "late-count"), ("energy", "energy objective")) if key in method]}

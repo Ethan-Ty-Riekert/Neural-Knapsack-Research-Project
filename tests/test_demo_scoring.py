@@ -78,7 +78,7 @@ print("model meta checks passed")
 import re as _re  # noqa: E402
 from scoring import WORDING  # noqa: E402
 _SLOTS = {"tard", "J", "late", "wait", "flow", "energy", "rho", "dueOff", "dueOn", "score", "pct", "copy", "ppo", "reward", "policy",
-          "policy_atc", "opt1", "opt0", "racer_table", "racer_sum", "racer_what", "racer_math", "racer_deeper", "weights_table"}
+          "policy_atc", "opt1", "opt0", "objfull", "racer_table", "racer_sum", "racer_what", "racer_math", "racer_deeper", "weights_table"}
 _topics = WORDING["topics"]
 for _id, _t in _topics.items():
     for _r in _t["related"]:
