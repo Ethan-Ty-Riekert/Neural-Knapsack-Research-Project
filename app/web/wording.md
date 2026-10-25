@@ -82,7 +82,7 @@ chip.f_wait: Wait
 chip.f_flow: Flow time
 chip.f_energy: Energy
 chip.bar: The bar
-chip.winner: The winner
+chip.winner: Understanding the results
 chip.kind_rule: Classic rules
 chip.kind_copied: Copying AI
 chip.kind_own: Own-model AI
@@ -282,11 +282,11 @@ The objective is a weighted sum of up to four terms (linear lateness, squared la
 
 {{objfull}}
 
-Which terms are switched on depends on the model. Most models here use only the squared-lateness term (λ_{S} = 1, the others 0), which gives the cost
+Each model is trained on a choice of which terms to switch on (its card says which). Switching on only the squared-lateness term (λ_{S} = 1, the others 0) gives the cost
 
 {{J}}
 
-Models labelled '+tardiness obj', '+late-job obj' or '+energy obj' were trained with the extra terms switched on as well. Jobs are never dropped here, so the dropped-job term of the full objective is always zero.
+Models labelled '+tardiness obj', '+late-job obj' or '+energy obj' have the extra terms switched on as well. Jobs are never dropped here, so the dropped-job term of the full objective is always zero.
 
 Idling is always allowed (it can pay to leave a machine empty).
 --- Experimental setup
@@ -296,7 +296,7 @@ Given **all jobs are known** in advance, we give the environment 100 time units 
 
 ### arrival
 kicker: The situation
-title: How jobs reach you: online or known in advance
+title: Are jobs are provided
 related: setup, machines, deadlines
 --- In plain words (open)
 **Over time (online):** a job is only revealed when it arrives, so the scheduler cannot plan for jobs it has not seen. **Known in advance (offline):** every job is known at time 0 and the scheduler can see them all.
@@ -342,9 +342,15 @@ related: objective, setup
 --- In plain words (open)
 If all jobs are equal, lateness of any job costs the same. If some matter more, being late on an important job costs more.
 --- Formulation (open)
-Weights w_{j} enter the cost through J = Σ w_{j} T_{j}^{2}. The 'All equal' option sets w_{j} = 1; 'Some matter more' draws integer weights from 1 to 5. Tested offline only.
+The weight w_{j} multiplies every lateness term of the objective (linear lateness, squared lateness and late jobs). Energy has no weights. The full objective is
+
+{{objfull}}
+
+With only the squared-lateness term switched on, the objective is the cost J:
 
 {{J}}
+
+The 'All equal' option sets w_{j} = 1 for every job; 'Some matter more' draws integer weights from 1 to 5. Tested offline only.
 
 ### objective
 kicker: What matters to you
@@ -369,13 +375,13 @@ The learned schedulers are trained by reinforcement learning to minimise an obje
 
 {{objfull}}
 
-Most of the models raced here were trained with only the squared-lateness term switched on, which is the cost
+Each learned model is trained on a choice of these terms, and its card says which. With only the squared-lateness term switched on, the objective is the cost
 
 {{J}}
 
-A smaller group, labelled '+tardiness obj', '+late-job obj' and '+energy obj' in the results, were trained with the extra terms (linear lateness, late jobs, energy) switched on as well, at fixed reference weights. Models that copy a rule are trained by imitation, so the objective only trains their value estimate and any fine-tuning.
+Models labelled '+tardiness obj', '+late-job obj' and '+energy obj' in the results have the extra terms (linear lateness, late jobs, energy) switched on as well, at fixed reference weights. Models that copy a rule are trained by imitation, so the objective only trains their value estimate and any fine-tuning.
 
-Your own weights cannot be trained into a model in advance, because there are endless combinations of them. They are applied afterwards to the recorded measurements of each finished schedule. So no model was trained for your exact mix: a model trained only for lateness can look good on delay and poor on energy. Each racer's card says which objective it was trained on.
+Your own weights decide how every finished schedule is scored here. There are endless combinations of weights, so a model cannot be trained for each one in advance; a model can therefore do better on some of your priorities than on others.
 
 ### f_delay
 kicker: What matters to you
@@ -454,7 +460,7 @@ The exponential scale is a display choice, not a statistical statement. A bar at
 
 ### winner
 kicker: The race
-title: Reading the winner and the 'within noise' note
+title: Understanding the results
 related: bar, setup
 --- In plain words (open)
 The winner is the racer with the lowest score. When a learned model is within about 5% of the best rule, the project treats the two as equivalent: differences that small were not statistically significant in the earlier tests.

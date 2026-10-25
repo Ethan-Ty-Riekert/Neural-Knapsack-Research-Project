@@ -18,8 +18,8 @@ h1, h2 { font-family: var(--display); margin: 0; font-weight: 700; letter-spacin
 .row { display: grid; grid-template-columns: 7.2rem 1fr; gap: .6rem; align-items: center; }
 .row > .q { font-weight: 600; font-size: .95rem; }
 .row .hint { display: block; font-weight: 400; color: var(--muted); font-size: .75rem; }
-.seg { display: flex; gap: .3rem; min-width: 0; }
-.seg button { flex: 1 1 0; min-width: 0; padding: .42rem .3rem; border: 2px solid var(--rule); background: var(--surface); border-radius: .5rem; font-weight: 600; font-size: .95rem; }
+.seg { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
+.seg button { flex: 1 1 auto; white-space: nowrap; padding: .42rem .55rem; border: 2px solid var(--rule); background: var(--surface); border-radius: .5rem; font-weight: 600; font-size: .95rem; }
 .seg button[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .seg button:disabled { opacity: .38; cursor: not-allowed; }
 .seg button:focus-visible, .chip:focus-visible, .go:focus-visible { outline: 3px solid var(--scratch); outline-offset: 2px; }

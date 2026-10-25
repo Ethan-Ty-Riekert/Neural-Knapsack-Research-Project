@@ -44,6 +44,8 @@
 .mini th, .mini td { border-bottom: 1px solid var(--rule); padding: .25rem .35rem; text-align: right; } .mini th:first-child, .mini td:first-child { text-align: left; }
 .mini tr.on td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
 .related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
+/* narrower windows: give the option buttons more room so labels such as "Overloaded" stay on one line */
+@media (max-width: 1250px) { .panel .row { grid-template-columns: 8.2rem 1fr; gap: .4rem; } .seg button { padding: .35rem .3rem; font-size: .82rem; } .row > .q { font-size: .85rem; } .row .hint { font-size: .68rem; } }
 @media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .cols { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; gap: .25rem; } }
 </style>
 <div class="app">
