@@ -1,0 +1,111 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch The Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/*__BASE__*/
+html { font-size: clamp(13px, 2.1vh, 28px); }
+/* "Watch the loop": job queue (left), machines and the centre box (middle), the network and the learning curve (right); one screen. */
+.app { height: 100%; box-sizing: border-box; padding-block: .6rem; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); display: grid; grid-template-rows: auto 1fr; gap: .5rem; }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.top h1 { font-size: 1.7rem; } .top .sub { color: var(--muted); font-size: .8rem; max-width: 52rem; }
+.main { display: grid; grid-template-columns: 11rem 1fr 24rem; gap: .7rem; min-height: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .55rem .7rem; display: flex; flex-direction: column; gap: .4rem; min-height: 0; min-width: 0; }
+.mid { display: grid; grid-template-rows: auto 1fr auto; gap: .6rem; min-height: 0; }
+.explainable { cursor: pointer; } .explainable:hover { color: var(--accent); }
+/* queue */
+#qpanel { gap: .4rem; } #queue { flex: 1; display: flex; flex-direction: column; gap: .3rem; overflow: hidden; align-items: stretch; }
+.qjob { flex: none; border: 2px solid var(--rule); border-radius: .5rem; background: var(--surface); padding: .1rem .45rem; display: flex; flex-direction: column; justify-content: center; font-size: .72rem; line-height: 1.1; transition: border-color .2s; }
+.qjob b { font-size: .85rem; } .qjob span { color: var(--muted); }
+.qjob.pick { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.qjob.fresh { animation: drop .5s ease; }
+@keyframes drop { from { transform: translateY(-1.2rem) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.qempty, .qnext { font-size: .72rem; color: var(--muted); text-align: center; padding: .3rem 0; }
+.qnext { border: 2px dashed var(--rule); border-radius: .5rem; }
+/* machines */
+#machines { display: flex; gap: .7rem; justify-content: center; }
+.mwrap { flex: 1; max-width: 12rem; text-align: center; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.mbox { position: relative; height: 10.6rem; border: 3px solid var(--ink); border-radius: .4rem; background: var(--surface); margin-bottom: .2rem; overflow: hidden; }
+.mblk { position: absolute; left: .25rem; right: .25rem; background: var(--accent); color: var(--accent-ink); border-radius: .3rem; font-size: .7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; box-sizing: border-box; }
+.mblk.late { background: var(--scratch); color: #fff; } .mblk.fresh { outline: 3px solid var(--ink); outline-offset: -1px; animation: drop .4s ease; }
+.mnow { position: absolute; left: 0; right: 0; height: 2px; background: var(--ink); opacity: .45; }
+/* centre */
+#centre { border: 2px solid var(--rule); border-radius: .8rem; padding: .5rem; min-height: 0; background: var(--surface); position: relative; }
+#centretitle { position: absolute; top: .35rem; left: .7rem; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+#narr { font-size: .9rem; min-height: 2.4rem; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--ink); font-weight: 600; padding: 0 .5rem; }
+#controls { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; justify-content: center; }
+.go { padding: .42rem 1rem; font-size: 1rem; border-radius: .6rem; } .go:disabled { opacity: .4; cursor: not-allowed; }
+.ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .6rem; padding: .36rem .8rem; font-weight: 600; font-size: .9rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
+.seg.small button { padding: .28rem .5rem; font-size: .78rem; }
+#msg { font-size: .75rem; color: var(--muted); min-height: 1.2rem; text-align: center; }
+/* network */
+#netpanel { padding: .5rem .6rem; }
+#netsvg { width: 100%; flex: 0 0 auto; height: auto; max-height: 52%; }
+#netsvg .edge { stroke: var(--rulebar); stroke-width: 2; fill: none; transition: stroke-width .3s; } #netsvg .edge.thin { stroke-width: 2; } #netsvg .edge.faint { stroke: var(--rule); stroke-width: 1; } #netsvg .edge.faint.show { stroke: var(--accent); }
+#netsvg .node { fill: var(--surface); stroke: var(--ink); stroke-width: 2; } #netsvg .node.score, #netsvg .node.soft { fill: color-mix(in srgb, var(--accent) 14%, var(--surface)); } #netsvg .node.value { fill: color-mix(in srgb, var(--win) 16%, var(--surface)); }
+#netsvg .ntxt { font-size: 11px; font-weight: 700; fill: var(--ink); } #netsvg .small { font-size: 9px; fill: var(--muted); } #netsvg .bracket { font-size: 10px; font-weight: 700; fill: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+#netsvg .wtxt { font-size: 9px; font-weight: 700; fill: var(--ink); } #netsvg .pbar { fill: var(--rulebar); } #netsvg .pbar.pick { fill: var(--accent); } #netsvg .ptxt { font-size: 8.5px; fill: var(--ink); transform: translateX(0); }
+#netsvg .pulse { fill: var(--accent); } #netsvg #cnum { font-size: 11px; font-weight: 700; fill: var(--ink); }
+#netsvg.flash .node { stroke: var(--accent); }
+#curvebox { flex: 1; position: relative; border: 2px solid var(--rule); border-radius: .6rem; min-height: 0; } #curve { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); }
+.ctitle { display: flex; justify-content: space-between; align-items: baseline; }
+/* flying tokens */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 15; }
+.token { position: absolute; left: 0; top: 0; padding: .15rem .5rem; border-radius: 1rem; font-size: .75rem; font-weight: 700; color: #fff; background: var(--accent); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .25); }
+.token.action { background: var(--win); } .token.job { background: var(--ink); } .token.reward { background: var(--scratch); }
+.popup { position: absolute; padding: .2rem .7rem; border-radius: 1rem; font-weight: 700; font-size: 1.1rem; background: var(--surface); border: 2px solid var(--win); color: var(--win); box-shadow: 0 .2rem .8rem rgba(0, 0, 0, .2); }
+.popup.bad { border-color: var(--scratch); color: var(--scratch); }
+/* explanation card, same look as the other pages */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(38rem, 96vw); background: var(--surface); color: var(--ink); border-left: 1px solid var(--rule); box-shadow: -.6rem 0 2rem rgba(0, 0, 0, .18); transform: translateX(105%); transition: transform .3s ease; z-index: 20; display: flex; flex-direction: column; font-size: .92rem; }
+.drawer.open { transform: none; } .drawer .dhead { display: flex; justify-content: space-between; padding: .6rem .8rem 0; }
+.drawer .dhead button { border: 0; background: transparent; font-size: 1rem; padding: .3rem .5rem; border-radius: .4rem; } .drawer .dhead button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dbody { overflow: auto; padding: .3rem 1.2rem 1.5rem; flex: 1; } .dbody h2 { font-size: 1.35rem; margin: .1rem 0 .6rem; } .dbody p { margin: .4rem 0; line-height: 1.45; }
+.sec { border-top: 1px solid var(--rule); padding: .4rem 0; } .sec summary { cursor: pointer; font-weight: 700; font-family: var(--display); padding: .25rem 0; } .sbody { padding-bottom: .3rem; }
+.dbody math { font-size: 1.12rem; } .dbody math[display="block"] { margin: .5rem 0; overflow-x: auto; max-width: 100%; }
+.dbody code { background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0 .25rem; border-radius: .25rem; font-size: .85em; }
+.related { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .9rem; padding-top: .7rem; border-top: 1px solid var(--rule); }
+@media (max-width: 1100px) { .main { grid-template-columns: 9.5rem 1fr 20rem; } }
+@media (max-width: 800px) { html, body { height: auto; } .app { height: auto; } .main { grid-template-columns: 1fr; } #centre { min-height: 14rem; } .mbox { height: 8rem; } }
+</style>
+<div class="app">
+  <div class="top"><div><h1 data-ui="flow.heading"></h1><div class="sub" data-ui="flow.tagline"></div></div><div class="sub"><span id="episodes"></span></div></div>
+  <div class="main">
+    <section class="panel" id="qpanel">
+      <div class="eyebrow explainable" data-explain="online" data-ui="panel.jobqueue"></div>
+      <div id="queue"></div>
+      <div><div class="eyebrow explainable" data-explain="online" data-ui="mode.label" style="margin-bottom:.25rem"></div><div id="modeslot"></div></div>
+    </section>
+    <div class="mid">
+      <div id="machines">
+        <div class="mwrap"><div class="mbox" id="m0"></div><span data-machine="1"></span></div>
+        <div class="mwrap"><div class="mbox" id="m1"></div><span data-machine="2"></span></div>
+      </div>
+      <div id="centre"><span id="centretitle" class="explainable" data-explain="chain" data-ui="__CENTRE_TITLE__"></span><div id="centreinner" style="height:100%"></div></div>
+      <div>
+        <div id="narr"></div>
+        <div id="controls"></div>
+        <div id="msg" aria-live="polite"></div>
+      </div>
+    </div>
+    <section class="panel" id="netpanel">
+      <div class="eyebrow explainable" id="nettitle" data-explain="network"></div>
+      <svg id="netsvg" viewBox="0 0 320 262" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="ctitle"><span class="eyebrow explainable" data-explain="curve" data-ui="panel.curve"></span></div>
+      <div id="curvebox"><canvas id="curve"></canvas></div>
+    </section>
+  </div>
+</div>
+<div id="fx"></div>
+<aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
+<script>
+/*__DATA__*/
+/*__CORE__*/
+document.querySelectorAll("[data-machine]").forEach(e => { e.textContent = RACE_DATA.text.ui["machine.name"].replace("{m}", e.dataset.machine); });
+FlowUI.init({
+  explain: document.getElementById("explain"), fx: document.getElementById("fx"), queue: document.getElementById("queue"), machines: [document.getElementById("m0"), document.getElementById("m1")],
+  centre: document.getElementById("centreinner"), narr: document.getElementById("narr"), msg: document.getElementById("msg"), controls: document.getElementById("controls"),
+  modeSlot: document.getElementById("modeslot"), net: document.getElementById("netsvg"), netTitle: document.getElementById("nettitle"), curve: document.getElementById("curve"),
+  episodes: document.getElementById("episodes")
+}, FlowCentre);
+</script>

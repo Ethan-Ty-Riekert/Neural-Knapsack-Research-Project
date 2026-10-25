@@ -11,7 +11,7 @@
    Learners: "reinforce" (episode return minus a running per-step average) and "actor-critic" (per-decision advantage from a linear
    value estimate). */
 (function (root) {
-  const MACHINES = 2, JOBS = 8, COST_SCALE = 10, TRAIN_EPISODES = 600;  // budget of the demo: 600 episodes, about 20 s at 30 episodes per second
+  const MACHINES = 2, JOBS = 8, COST_SCALE = 10, TRAIN_EPISODES = 600, ARRIVAL_SPAN = 6, ONLINE_SLACK = 7;  // budget of the demo: 600 episodes, about 20 s at 30 episodes per second
 
   function makeRng(seed) {  // mulberry32
     let a = seed >>> 0;
@@ -24,31 +24,40 @@
     };
   }
 
-  function makeInstance(rand) {
+  // online = true: jobs arrive over time (arrival a, spread over the first ARRIVAL_SPAN ticks; the deadline is counted from the arrival)
+  function makeInstance(rand, online) {
     const jobs = [];
     for (let i = 0; i < JOBS; i++) {
-      const p = 1 + Math.floor(rand() * 5), w = 1 + Math.floor(rand() * 3), d = p + Math.floor(rand() * 10);
-      jobs.push({ id: i, p, w, d });
+      const p = 1 + Math.floor(rand() * 5), w = 1 + Math.floor(rand() * 3), a = online ? Math.floor(rand() * ARRIVAL_SPAN) : 0, d = a + p + Math.floor(rand() * (online ? ONLINE_SLACK : 10));
+      jobs.push({ id: i, p, w, d, a });
     }
+    if (online) jobs.sort((x, y) => x.a - y.a).forEach((j, i) => { j.id = i; });  // job numbers follow the arrival order
     return jobs;
   }
 
   const features = (job, t) => [(job.d - t - job.p) / 10, job.p / 5, job.w / 3];
 
-  // One episode. choose(state) -> index into state.waiting. Returns the cost J, every decision and the machine blocks.
+  // One episode. choose(state) -> index into state.waiting (the jobs that have arrived and are not yet started). A machine with nothing
+  // to do waits for the next arrival (an idle gap, recorded in idles). Returns the cost J, every decision, the machine blocks and idles.
   function runEpisode(jobs, choose) {
-    const free = new Array(MACHINES).fill(0), waiting = jobs.map((_, i) => i), steps = [], blocks = [];
+    const free = new Array(MACHINES).fill(0), left = jobs.map((_, i) => i), steps = [], blocks = [], idles = [];
     let cost = 0;
-    while (waiting.length) {
+    while (left.length) {
       let m = 0;
       for (let k = 1; k < MACHINES; k++) if (free[k] < free[m]) m = k;
-      const t = free[m], state = { t, machine: m, waiting: waiting.slice(), jobs, free: free.slice() };
+      let t = free[m];
+      let waiting = left.filter(j => jobs[j].a <= t);
+      if (!waiting.length) {  // nothing has arrived yet: this machine idles until the next arrival
+        const next = Math.min(...left.map(j => jobs[j].a));
+        idles.push({ machine: m, start: t, end: next }); free[m] = next; continue;
+      }
+      const state = { t, machine: m, waiting: waiting.slice(), jobs, free: free.slice(), arrived: jobs.filter(j => j.a <= t).length };
       const k = choose(state), j = waiting[k], job = jobs[j], C = t + job.p, T = Math.max(0, C - job.d), c = job.w * T * T;
       steps.push({ state, k, job: j, start: t, end: C, lateness: T, cost: c, reward: -c / COST_SCALE });
       blocks.push({ job: j, machine: m, start: t, end: C, late: T > 0 });
-      cost += c; free[m] = C; waiting.splice(k, 1);
+      cost += c; free[m] = C; left.splice(left.indexOf(j), 1);
     }
-    return { cost, steps, blocks, makespan: Math.max(...free) };
+    return { cost, steps, blocks, idles, makespan: Math.max(...free) };
   }
 
   // classic rules, as choosers
@@ -83,6 +92,7 @@
     const learner = {
       kind, theta, critic, probs, rand,
       value: state => dot(critic, stateFeatures(state)),
+      baseline: t => base[Math.min(t, JOBS - 1)],  // REINFORCE's running average of the reward from decision t onwards (for display)
       greedy: state => { const p = probs(state); let b = 0; p.forEach((x, k) => { if (x > p[b]) b = k; }); return b; },
       sample: state => { const p = probs(state); let u = rand(), k = 0; while (k < p.length - 1 && u > p[k]) { u -= p[k]; k++; } return k; },
       get episodes() { return episodes; },
@@ -124,7 +134,7 @@
 
   // mean cost of a chooser over a list of job sets
   const meanCost = (sets, choose) => sets.reduce((s, jobs) => s + runEpisode(jobs, choose).cost, 0) / sets.length;
-  const testSets = (n, seed) => { const r = makeRng(seed); return Array.from({ length: n }, () => makeInstance(r)); };
+  const testSets = (n, seed, online) => { const r = makeRng(seed); return Array.from({ length: n }, () => makeInstance(r, online)); };
 
   const core = { MACHINES, JOBS, COST_SCALE, TRAIN_EPISODES, makeRng, makeInstance, features, runEpisode, RULES, randomChooser, createLearner, meanCost, testSets, softmax, stateFeatures };
   if (typeof module !== "undefined" && module.exports) module.exports = core; else root.TrainingCore = core;

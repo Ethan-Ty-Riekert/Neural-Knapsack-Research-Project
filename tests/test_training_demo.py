@@ -12,9 +12,11 @@ sys.path.insert(0, str(ROOT / "app"))
 from wording import load  # noqa: E402
 
 W = load(ROOT / "app" / "web" / "training_wording.md")
-html = (ROOT / "app" / "web" / "training.html").read_text(encoding="utf-8")
-ui_js = (ROOT / "app" / "web" / "training_ui.js").read_text(encoding="utf-8")
-SLOTS = {"J", "reward", "score", "policy", "ret", "reinforce", "critic", "advantage"}  # formulas built in training_ui.js
+PAGES = ["training.html", "flow.html"]
+SCRIPTS = ["training_ui.js", "flow_ui.js", "flow_centre_chain.js", "flow_centre_ring.js", "training_shared.js"]
+html = "\n".join((ROOT / "app" / "web" / f).read_text(encoding="utf-8") for f in PAGES)
+js = "\n".join((ROOT / "app" / "web" / f).read_text(encoding="utf-8") for f in SCRIPTS)
+SLOTS = {"J", "reward", "score", "policy", "ret", "reinforce", "critic", "advantage"}  # formulas built in training_shared.js
 
 topics = W["topics"]
 for tid, t in topics.items():
@@ -27,10 +29,12 @@ for tid, t in topics.items():
 for tid in topics:
     assert f"chip.{tid}" in W["labels"], f"card {tid!r} needs a chip.{tid} label in ## LABELS"
 for tid in re.findall(r'data-explain="(\w+)"', html):
-    assert tid in topics or tid == "learner", f"page links to card {tid!r} that is not in the wording file"
-for key in set(re.findall(r'data-ui="([\w.]+)"', html)) | set(re.findall(r'UI(?:\.(\w+)|\["([\w.]+)"\])', ui_js) and
-                                                              [a or b for a, b in re.findall(r'UI(?:\.(\w+)|\["([\w.]+)"\])', ui_js)]):
-    assert key in W["ui"], f"the page uses UI text {key!r} that is missing from ## UI"
-for key in set(re.findall(r'TP\["([\w.]+)"\]', ui_js)):
-    assert key in W["templates"], f"the page uses template {key!r} that is missing from ## TEMPLATES"
+    assert tid in topics or tid == "learner", f"a page links to card {tid!r} that is not in the wording file"
+ui_keys = set(re.findall(r'data-ui="([\w.]+)"', html)) - {"__CENTRE_TITLE__"}
+ui_keys |= {a or b for a, b in re.findall(r'UI(?:\.(\w+)|\["([\w.]+)"\])', js)}
+for key in ui_keys:
+    assert key in W["ui"], f"a page uses UI text {key!r} that is missing from ## UI"
+for key in set(re.findall(r'TP\["([\w.]+)"\]', js)):
+    assert key in W["templates"], f"a page uses template {key!r} that is missing from ## TEMPLATES"
+assert "panel.chain" in W["ui"] and "panel.ring" in W["ui"], "the two centre-box titles must exist"
 print("training demo wording checks passed")

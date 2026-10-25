@@ -3,35 +3,16 @@
    (exported as RACE_DATA.text); explanation cards use the shared engine (cards.js). */
 (function () {
   const C = window.TrainingCore, D = window.RACE_DATA, TX = D.text, UI = TX.ui, TP = TX.templates, LB = TX.labels;
-  const { I, N, O, T, R, sub, sup, frac, sum, M } = MathML;
   const F = {};
   const K = Cards.create({ text: TX, formulas: F });
-  const fill = K.fill;
-
-  // ---- formulas for the cards ---------------------------------------------------------------------------------------------
-  const wj = sub(I("w"), I("j")), Tj = sub(I("T"), I("j")), phi = sub(I("φ"), I("j")), th = I("θ");
-  const grad = R(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"));
-  Object.assign(F, {
-    J: M(I("J"), O("="), sum(I("j"), R(wj, sup(Tj, N(2))))),
-    reward: M(sub(I("r"), I("t")), O("="), O("−"), frac(R(wj, sup(Tj, N(2))), N(10)), T("   (job j started at time t)")),
-    score: M(sub(I("z"), I("j")), O("="), sup(th, O("⊤")), phi, O("="), sub(th, T("time left")), O("·"), T("time left"), O("+"), sub(th, T("length")), O("·"), T("length"), O("+"), sub(th, T("importance")), O("·"), T("importance")),
-    policy: M(I("π"), O("("), I("j"), O("|"), I("s"), O(")"), O("="), frac(R(I("exp"), O("("), sub(I("z"), I("j")), O(")")), R(sum(I("k"), R(I("exp"), O("("), sub(I("z"), I("k")), O(")")))))),
-    ret: M(sub(I("G"), I("t")), O("="), sum(R(I("k"), O("≥"), I("t")), sub(I("r"), I("k")))),
-    reinforce: M(th, O("←"), th, O("+"), I("α"), O("("), sub(I("G"), I("t")), O("−"), sub(I("b"), I("t")), O(")"), grad) +
-      M(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"), O("="), sub(phi, T("chosen")), O("−"), sum(I("j"), R(I("π"), O("("), I("j"), O(")"), phi))),
-    critic: M(I("V"), O("("), I("s"), O(")"), O("="), sup(I("w"), O("⊤")), I("ψ"), O("("), I("s"), O(")")),
-    advantage: M(sub(I("δ"), I("t")), O("="), sub(I("r"), I("t")), O("+"), I("V"), O("("), sub(I("s"), R(I("t"), O("+"), N(1))), O(")"), O("−"), I("V"), O("("), sub(I("s"), I("t")), O(")")) +
-      M(sub(I("A"), I("t")), O("="), sum(I("k"), R(sup(N("0.9"), I("k")), sub(I("δ"), R(I("t"), O("+"), I("k"))))), O(","), T("   "), th, O("←"), th, O("+"), I("α"), sub(I("A"), I("t")), grad),
-  });
+  const { el, fill, css } = TrainingShared;
+  TrainingShared.formulas(F);  // formulas for the cards
 
   const build = (id) => K.topicCard(id, {});
 
   // ---- state ---------------------------------------------------------------------------------------------------------------
   const KINDS = { reinforce: "reinforce", ac: "actor-critic" }, HORIZON = 20, WINDOW = 25;
-  const testSets = C.testSets(200, 424242);
-  const refRandom = C.meanCost(testSets, C.randomChooser(C.makeRng(7)));
-  const refRules = Object.entries(C.RULES).map(([k, f]) => [k, C.meanCost(testSets, f)]).sort((a, b) => a[1] - b[1]);
-  const refRule = { name: refRules[0][0], cost: refRules[0][1] };
+  const REF = TrainingShared.refs(false), testSets = REF.sets, refRandom = REF.random, refRule = REF.rule;
   let S, cfg, raf = 0, resets = 0;
 
   function reset() {
@@ -44,7 +25,6 @@
     setButtons();
   }
   const learner = () => S.L[S.active];
-  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const setMsg = t => { cfg.msg.textContent = t; };
 
   // ---- the world --------------------------------------------------------------------------------------------------------------
@@ -88,33 +68,9 @@
   }
 
   // ---- curve and weights ------------------------------------------------------------------------------------------------------
-  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   function drawCurve() {
-    const cv = cfg.curve, dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-    if (!w || !h) return;
-    cv.width = w * dpr; cv.height = h * dpr;
-    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const padL = 38, padR = 10, padT = 8, padB = 22, maxY = 200, maxX = C.TRAIN_EPISODES;
-    const X = e => padL + (w - padL - padR) * e / maxX, Y = c => padT + (h - padT - padB) * (1 - Math.min(c, maxY) / maxY);
-    g.font = "12px " + css("--body"); g.fillStyle = css("--muted"); g.strokeStyle = css("--rule"); g.lineWidth = 1;
-    [0, 50, 100, 150, 200].forEach(v => { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(w - padR, Y(v)); g.stroke(); g.textAlign = "right"; g.fillText(v, padL - 5, Y(v) + 4); });
-    [0, 200, 400, 600].forEach(v => { g.textAlign = "center"; g.fillText(v, X(v), h - 6); });
-    const line = (cost, colour, dash, label) => {
-      g.strokeStyle = colour; g.lineWidth = 2; g.setLineDash(dash); g.beginPath(); g.moveTo(padL, Y(cost)); g.lineTo(w - padR, Y(cost)); g.stroke(); g.setLineDash([]);
-      g.fillStyle = colour; g.textAlign = "right"; g.fillText(label, w - padR - 2, Y(cost) - 4);
-    };
-    line(refRandom, css("--rulebar"), [6, 4], UI["curve.random"]);
-    line(refRule.cost, css("--rulebar"), [], fill(UI["curve.rule"], { name: refRule.name }));
-    Object.entries(S.hist).forEach(([kind, hist]) => {
-      if (!hist.length) return;
-      const colour = kind === "reinforce" ? css("--copied") : css("--win"), active = kind === S.active;
-      g.globalAlpha = active ? 0.35 : 0.18; g.fillStyle = colour;
-      hist.forEach((c, i) => { g.beginPath(); g.arc(X(i + 1), Y(c), 2, 0, 6.3); g.fill(); });
-      g.globalAlpha = 1; g.strokeStyle = colour; g.lineWidth = active ? 3 : 2; g.beginPath();
-      hist.forEach((c, i) => { const s = Math.max(0, i - WINDOW + 1), avg = hist.slice(s, i + 1).reduce((a, b) => a + b, 0) / (i + 1 - s); i ? g.lineTo(X(i + 1), Y(avg)) : g.moveTo(X(1), Y(avg)); });
-      g.stroke();
-    });
-    if (!S.hist.reinforce.length && !S.hist.ac.length) { g.fillStyle = css("--muted"); g.textAlign = "center"; g.font = "15px " + css("--body"); g.fillText(UI["curve.empty"], w / 2, h / 2); }
+    TrainingShared.drawCurve(cfg.curve, { hist: S.hist, active: S.active, refs: REF, empty: UI["curve.empty"],
+      labels: { random: UI["curve.random"], rule: fill(UI["curve.rule"], { name: refRule.name }) }, colours: { reinforce: css("--copied"), ac: css("--win") } });
   }
   function drawWeights() {
     cfg.weights.textContent = "";

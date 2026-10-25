@@ -153,7 +153,7 @@ html { font-size: clamp(14px, 2.25vh, 30px); }
 </div>
 <aside id="explain" class="drawer" aria-hidden="true" aria-label="Explanation"></aside>
 <script>
-window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy scheduler with 2 machines and 8 jobs. Press Step to see one decision at a time, or Train to watch the reward improve it.","toy_note":"A toy version of the real problem: 2 machines, no resource limits.","btn.step":"Step","btn.train":"Train","btn.pause":"Pause","btn.test":"Test","btn.reset":"Reset","speed.1":"\u00d71","speed.3":"\u00d73","speed.10":"\u00d710","learner.reinforce":"REINFORCE","learner.ac":"Actor-critic","learner.label":"Learner","panel.world":"The world","panel.queue":"Waiting jobs","panel.machines":"Machines","panel.loop":"The loop","panel.curve":"Cost while learning (lower is better)","panel.weights":"What it learned","panel.test":"Test on new jobs","loop.state":"State","loop.action":"Action","loop.reward":"Reward","loop.next":"Next state","loop.idle":"Press Step to see the first decision.","job.label":"Job {id}","job.detail":"length {p} \u00b7 due {d} \u00b7 weight {w}","curve.random":"Random order","curve.rule":"Best classic rule ({name})","curve.empty":"Press Train to start learning.","episodes":"Episodes: {n}","weights.timeleft":"Time left","weights.length":"Length","weights.importance":"Importance","weights.hint":"A bar to the left means it prefers a small value; to the right, a large value.","test.random":"Random order","test.rule":"Best classic rule ({name})","test.learner":"This learner","test.caption":"Average cost on {n} new job sets (lower is better).","test.note":"In this toy it can beat a single simple rule; the real 10-machine problem is much harder (see the card).","related":"Related","back":"\u2190 Back","close":"Close"},"labels":{"chip.world":"The toy world","chip.state":"State","chip.action":"Action","chip.reward":"Reward","chip.policy":"The scoring rule","chip.reinforce":"REINFORCE","chip.actor_critic":"Actor-critic","chip.curve":"Learning curve","chip.weights":"What it learned","chip.test":"The test"},"factors":{},"notes":{},"rules":{},"placements":{},"options":{},"templates":{"loop.state.text":"Time {t} \u00b7 machine {m} is free \u00b7 {n} jobs waiting","loop.action.text":"Start job {job} (picked with probability {pct}%)","loop.reward.late":"{reward} \u00b7 job {job} finishes {late} ticks late (weight {w})","loop.reward.ontime":"0 \u00b7 job {job} finishes on time","loop.next.text":"Time {t} \u00b7 {n} jobs left","loop.next.done":"Episode over \u00b7 total cost {cost}","msg.episode":"Episode {n} finished with cost {cost}. The learner has updated itself from its rewards.","msg.trained":"Training finished after {n} episodes. Press Test to try it on new jobs.","msg.budget":"This learner has used its {n} training episodes. Press Reset to start again.","msg.testing":"Testing on {n} new job sets..."},"topics":{"world":{"kicker":"The toy world","title":"What this demo is, and what it is not","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Eight jobs wait to be run on two machines. Each job has a length, a deadline and an importance. Every time a machine becomes free, the scheduler picks one waiting job to start. A job that finishes after its deadline costs more the later it is and the more important it is."},{"h":"Formulation","open":true,"text":"A job *j* has length p_{j}, deadline d_{j} and weight w_{j}. Started at time s_{j} it finishes at C_{j} = s_{j} + p_{j} and is late by T_{j} = max(0, C_{j} \u2212 d_{j}). The cost of an episode (one set of 8 jobs) is\n\n{{J}}"},{"h":"How it relates to the research","open":false,"text":"This is the same kind of cost as in the main project, in miniature. The real problem has 10 machines, jobs that need CPU and memory, 100 jobs per instance and jobs that can arrive over time. The scheduler there is a neural network with many more weights, trained for millions of steps. Here the learner has three numbers, so you can watch every part of the loop."}]},"state":{"kicker":"The loop","title":"State: what the learner sees","related":["action","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The state is everything the learner knows when it must decide: the clock, which machine just became free, and which jobs are still waiting with their lengths, deadlines and importance."},{"h":"Formulation","open":false,"text":"At each decision time *t* the state is the list of waiting jobs together with the time left for each: (d_{j} \u2212 t \u2212 p_{j}), which is how long the job could still wait and finish on time. A negative number means it is already going to be late."}]},"action":{"kicker":"The loop","title":"Action: which job to start","related":["state","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The action is the choice of one waiting job to start on the free machine. The learner does not choose the machine: the first machine to become free takes the job, as in the project's priority-learning models."},{"h":"Formulation","open":false,"text":"The learner gives each waiting job a score (see the scoring rule) and picks a job at random in proportion to the scores, so that it keeps exploring while it learns."}]},"reward":{"kicker":"The loop","title":"Reward: what tells it how well it did","related":["state","action","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each decision the learner receives a reward: zero if the job will finish on time, and a negative number if it will finish late. The later and the more important the job, the more negative. The learner never sees a list of right answers, only these rewards."},{"h":"Formulation","open":true,"text":"{{reward}}\n\nAdding up the rewards of an episode gives minus the cost J of that episode, so improving the total reward is the same as reducing the cost."},{"h":"Deeper","open":false,"text":"The cost is divided by a constant (10) so that the numbers are easy to read. A job's reward is known as soon as it is started, because its finishing time is then fixed."}]},"policy":{"kicker":"The learner","title":"The scoring rule it learns","related":["weights","reinforce","actor_critic"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The learner scores each waiting job from three numbers: how much time is left before it is due, how long it is, and how important it is. Three weights say how much each number counts. The job with the highest score is the most likely to be picked."},{"h":"Formulation","open":true,"text":"With the three signals gathered in a list \u03c6_{j} (time left, length, importance, each scaled to a similar size) and three weights \u03b8:\n\n{{score}}\n\n{{policy}}\n\nLearning means changing the three weights \u03b8 so that choices with better rewards become more likely."},{"h":"Deeper","open":false,"text":"This is the same idea as Option 2 in the project, where a larger network scores each waiting job from its own features, but with one layer and three weights so that you can read it."}]},"reinforce":{"kicker":"The learner","title":"REINFORCE: learning from the whole episode","related":["policy","actor_critic","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each episode, REINFORCE looks at how much total reward came after each decision and compares it with the usual amount at that point. Decisions followed by better-than-usual rewards become more likely; decisions followed by worse-than-usual rewards become less likely."},{"h":"Formulation","open":true,"text":"With the return G_{t} (the rewards from decision t to the end) and a baseline b_{t} (a running average of that return):\n\n{{ret}}\n\n{{reinforce}}"},{"h":"Deeper","open":false,"text":"Plain REINFORCE is noisy because one episode is only one sample; the baseline reduces that noise. Source: Williams (1992)."}]},"actor_critic":{"kicker":"The learner","title":"Actor-critic: a learner with a guess about the future","related":["policy","reinforce","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Actor-critic adds a second small estimator, the critic, that guesses how well things will go from the current situation. The actor (the scoring rule) is then pushed by how much better or worse each decision turned out than the critic expected."},{"h":"Formulation","open":true,"text":"The critic estimates the value of a state from a few summary numbers (how many jobs wait, how many are already doomed to be late, how much slack is left). The advantage of a decision is how much better it went than the critic expected, summed over the rest of the episode with a discount factor:\n\n{{critic}}\n\n{{advantage}}"},{"h":"Deeper","open":false,"text":"The advantage is a generalised advantage estimate (Schulman et al. 2016) with a smoothing factor of 0.9. The critic is trained towards what actually happened."}]},"curve":{"kicker":"The learner","title":"Reading the learning curve","related":["reward","test","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each dot is the cost of one training episode on a fresh set of jobs, and the line is the average of the last 25 episodes. While it learns, the learner still picks jobs at random in proportion to their scores, so the cost is higher than when it picks its best guess. The grey lines show a random scheduler and the best of five classic rules, measured on new job sets."},{"h":"Deeper","open":false,"text":"The two learners start from the same place (all three weights zero, so every job is equally likely). Switch the learner and train again to compare their curves. Each press of Reset starts both learners again."}]},"weights":{"kicker":"The learner","title":"What it learned","related":["policy","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three bars are the learned weights. A bar to the left means the learner prefers a small value of that signal; a bar to the right, a large one. After training, the time-left weight is strongly to the left in nearly every run: the learner has discovered that jobs with little time left should go first, which is the idea behind the classic rules."},{"h":"Deeper","open":false,"text":"It also usually prefers short jobs (to the left) and important jobs (to the right). The exact numbers differ from run to run."}]},"test":{"kicker":"The learner","title":"The test on new jobs","related":["curve","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Test uses 200 new sets of jobs that the learner has never trained on, and lets it pick its best-scoring job every time. It is compared with a random scheduler and with the best of five classic rules on the same sets."},{"h":"Deeper","open":false,"text":"In this toy the learner can even beat a single simple rule, because it blends three signals. The real problem, with 10 machines and 100 jobs, is much harder: there the learned schedulers matched the best rules but did not beat them.\n\nUsing new job sets matters for the same reason as in the project: a learner can look good on the jobs it trained on and worse on new ones."}]}}}};
+window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy scheduler with 2 machines and 8 jobs. Press Step to see one decision at a time, or Train to watch the reward improve it.","toy_note":"A toy version of the real problem: 2 machines, no resource limits.","btn.step":"Step","btn.train":"Train","btn.pause":"Pause","btn.test":"Test","btn.reset":"Reset","speed.1":"\u00d71","speed.3":"\u00d73","speed.10":"\u00d710","learner.reinforce":"REINFORCE","learner.ac":"Actor-critic","learner.label":"Learner","panel.world":"The world","panel.queue":"Waiting jobs","panel.machines":"Machines","panel.loop":"The loop","panel.curve":"Cost while learning (lower is better)","panel.weights":"What it learned","panel.test":"Test on new jobs","loop.state":"State","loop.action":"Action","loop.reward":"Reward","loop.next":"Next state","loop.idle":"Press Step to see the first decision.","job.label":"Job {id}","job.detail":"length {p} \u00b7 due {d} \u00b7 weight {w}","curve.random":"Random order","curve.rule":"Best classic rule ({name})","curve.empty":"Press Train to start learning.","episodes":"Episodes: {n}","weights.timeleft":"Time left","weights.length":"Length","weights.importance":"Importance","weights.hint":"A bar to the left means it prefers a small value; to the right, a large value.","test.random":"Random order","test.rule":"Best classic rule ({name})","test.learner":"This learner","test.caption":"Average cost on {n} new job sets (lower is better).","test.note":"In this toy it can beat a single simple rule; the real 10-machine problem is much harder (see the card).","flow.heading":"Watch the loop","flow.tagline":"A job leaves the queue, the network decides, the machine runs it, and the reward teaches the learner. Press Play and follow one decision at a time.","panel.jobqueue":"Job queue","panel.chain":"Markov chain: one episode","panel.ring":"The decision loop","panel.network.ac":"Actor-critic network","panel.network.reinforce":"REINFORCE network","machine.name":"Machine {m}","mode.label":"Jobs","mode.offline":"All known up front","mode.online":"Arriving over time","btn.play":"Play","queue.empty":"No jobs waiting","queue.next":"Next arrival at time {t}","net.timeleft":"Time left","net.length":"Length","net.importance":"Importance","net.score":"Score","net.softmax":"Probabilities","net.actor":"Actor","net.critic":"Critic","net.summary":"Summary of the situation","net.value":"Expected reward from here","net.baseline":"Average reward from this step","chain.start":"Start","chain.node":"Time {t} \u00b7 {n} waiting","chain.action":"Start job {job}","chain.end":"Done \u00b7 cost {cost}","ring.decision":"Decision {k} of {n}","narr.idle":"Press Play to watch the learner schedule 8 jobs, or Step to go one decision at a time.","narr.state":"The learner looks at the situation: which jobs are waiting and how much time each has left.","narr.net":"The network scores every waiting job from its time left, length and importance.","narr.action":"It picks job {job} (probability {pct}%).","narr.place":"Job {job} starts on machine {m}.","narr.reward":"Reward {reward}: {outcome}.","narr.ontime":"the job will finish on time","narr.late":"the job will finish {late} ticks late","narr.next":"The situation changes and the loop repeats.","narr.update":"Episode over, total cost {cost}. The learner updates its weights from the rewards it saw.","test.line":"Test on {n} new job sets: random {random} \u00b7 best rule {rule} {rulecost} \u00b7 this learner {learner}","related":"Related","back":"\u2190 Back","close":"Close"},"labels":{"chip.network":"The network","chip.chain":"The chain","chip.online":"Online arrivals","chip.world":"The toy world","chip.state":"State","chip.action":"Action","chip.reward":"Reward","chip.policy":"The scoring rule","chip.reinforce":"REINFORCE","chip.actor_critic":"Actor-critic","chip.curve":"Learning curve","chip.weights":"What it learned","chip.test":"The test"},"factors":{},"notes":{},"rules":{},"placements":{},"options":{},"templates":{"loop.state.text":"Time {t} \u00b7 machine {m} is free \u00b7 {n} jobs waiting","loop.action.text":"Start job {job} (picked with probability {pct}%)","loop.reward.late":"{reward} \u00b7 job {job} finishes {late} ticks late (weight {w})","loop.reward.ontime":"0 \u00b7 job {job} finishes on time","loop.next.text":"Time {t} \u00b7 {n} jobs left","loop.next.done":"Episode over \u00b7 total cost {cost}","msg.episode":"Episode {n} finished with cost {cost}. The learner has updated itself from its rewards.","msg.trained":"Training finished after {n} episodes. Press Test to try it on new jobs.","msg.budget":"This learner has used its {n} training episodes. Press Reset to start again.","msg.testing":"Testing on {n} new job sets..."},"topics":{"world":{"kicker":"The toy world","title":"What this demo is, and what it is not","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Eight jobs wait to be run on two machines. Each job has a length, a deadline and an importance. Every time a machine becomes free, the scheduler picks one waiting job to start. A job that finishes after its deadline costs more the later it is and the more important it is."},{"h":"Formulation","open":true,"text":"A job *j* has length p_{j}, deadline d_{j} and weight w_{j}. Started at time s_{j} it finishes at C_{j} = s_{j} + p_{j} and is late by T_{j} = max(0, C_{j} \u2212 d_{j}). The cost of an episode (one set of 8 jobs) is\n\n{{J}}"},{"h":"How it relates to the research","open":false,"text":"This is the same kind of cost as in the main project, in miniature. The real problem has 10 machines, jobs that need CPU and memory, 100 jobs per instance and jobs that can arrive over time. The scheduler there is a neural network with many more weights, trained for millions of steps. Here the learner has three numbers, so you can watch every part of the loop."}]},"state":{"kicker":"The loop","title":"State: what the learner sees","related":["action","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The state is everything the learner knows when it must decide: the clock, which machine just became free, and which jobs are still waiting with their lengths, deadlines and importance."},{"h":"Formulation","open":false,"text":"At each decision time *t* the state is the list of waiting jobs together with the time left for each: (d_{j} \u2212 t \u2212 p_{j}), which is how long the job could still wait and finish on time. A negative number means it is already going to be late."}]},"action":{"kicker":"The loop","title":"Action: which job to start","related":["state","reward","policy"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The action is the choice of one waiting job to start on the free machine. The learner does not choose the machine: the first machine to become free takes the job, as in the project's priority-learning models."},{"h":"Formulation","open":false,"text":"The learner gives each waiting job a score (see the scoring rule) and picks a job at random in proportion to the scores, so that it keeps exploring while it learns."}]},"reward":{"kicker":"The loop","title":"Reward: what tells it how well it did","related":["state","action","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each decision the learner receives a reward: zero if the job will finish on time, and a negative number if it will finish late. The later and the more important the job, the more negative. The learner never sees a list of right answers, only these rewards."},{"h":"Formulation","open":true,"text":"{{reward}}\n\nAdding up the rewards of an episode gives minus the cost J of that episode, so improving the total reward is the same as reducing the cost."},{"h":"Deeper","open":false,"text":"The cost is divided by a constant (10) so that the numbers are easy to read. A job's reward is known as soon as it is started, because its finishing time is then fixed."}]},"policy":{"kicker":"The learner","title":"The scoring rule it learns","related":["weights","reinforce","actor_critic"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The learner scores each waiting job from three numbers: how much time is left before it is due, how long it is, and how important it is. Three weights say how much each number counts. The job with the highest score is the most likely to be picked."},{"h":"Formulation","open":true,"text":"With the three signals gathered in a list \u03c6_{j} (time left, length, importance, each scaled to a similar size) and three weights \u03b8:\n\n{{score}}\n\n{{policy}}\n\nLearning means changing the three weights \u03b8 so that choices with better rewards become more likely."},{"h":"Deeper","open":false,"text":"This is the same idea as Option 2 in the project, where a larger network scores each waiting job from its own features, but with one layer and three weights so that you can read it."}]},"reinforce":{"kicker":"The learner","title":"REINFORCE: learning from the whole episode","related":["policy","actor_critic","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"After each episode, REINFORCE looks at how much total reward came after each decision and compares it with the usual amount at that point. Decisions followed by better-than-usual rewards become more likely; decisions followed by worse-than-usual rewards become less likely."},{"h":"Formulation","open":true,"text":"With the return G_{t} (the rewards from decision t to the end) and a baseline b_{t} (a running average of that return):\n\n{{ret}}\n\n{{reinforce}}"},{"h":"Deeper","open":false,"text":"Plain REINFORCE is noisy because one episode is only one sample; the baseline reduces that noise. Source: Williams (1992)."}]},"actor_critic":{"kicker":"The learner","title":"Actor-critic: a learner with a guess about the future","related":["policy","reinforce","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Actor-critic adds a second small estimator, the critic, that guesses how well things will go from the current situation. The actor (the scoring rule) is then pushed by how much better or worse each decision turned out than the critic expected."},{"h":"Formulation","open":true,"text":"The critic estimates the value of a state from a few summary numbers (how many jobs wait, how many are already doomed to be late, how much slack is left). The advantage of a decision is how much better it went than the critic expected, summed over the rest of the episode with a discount factor:\n\n{{critic}}\n\n{{advantage}}"},{"h":"Deeper","open":false,"text":"The advantage is a generalised advantage estimate (Schulman et al. 2016) with a smoothing factor of 0.9. The critic is trained towards what actually happened."}]},"curve":{"kicker":"The learner","title":"Reading the learning curve","related":["reward","test","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each dot is the cost of one training episode on a fresh set of jobs, and the line is the average of the last 25 episodes. While it learns, the learner still picks jobs at random in proportion to their scores, so the cost is higher than when it picks its best guess. The grey lines show a random scheduler and the best of five classic rules, measured on new job sets."},{"h":"Deeper","open":false,"text":"The two learners start from the same place (all three weights zero, so every job is equally likely). Switch the learner and train again to compare their curves. Each press of Reset starts both learners again."}]},"weights":{"kicker":"The learner","title":"What it learned","related":["policy","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three bars are the learned weights. A bar to the left means the learner prefers a small value of that signal; a bar to the right, a large one. After training, the time-left weight is strongly to the left in nearly every run: the learner has discovered that jobs with little time left should go first, which is the idea behind the classic rules."},{"h":"Deeper","open":false,"text":"It also usually prefers short jobs (to the left) and important jobs (to the right). The exact numbers differ from run to run."}]},"test":{"kicker":"The learner","title":"The test on new jobs","related":["curve","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Test uses 200 new sets of jobs that the learner has never trained on, and lets it pick its best-scoring job every time. It is compared with a random scheduler and with the best of five classic rules on the same sets."},{"h":"Deeper","open":false,"text":"In this toy the learner can even beat a single simple rule, because it blends three signals. The real problem, with 10 machines and 100 jobs, is much harder: there the learned schedulers matched the best rules but did not beat them.\n\nUsing new job sets matters for the same reason as in the project: a learner can look good on the jobs it trained on and worse on new ones."}]},"network":{"kicker":"The learner","title":"The network that decides","related":["policy","reinforce","actor_critic","weights"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"The three inputs are what the learner knows about one waiting job: how much time is left before it is due, how long it is, and how important it is. Each input is multiplied by a weight (the thickness and colour of the line show the weight: blue is positive, orange is negative) and added into a score. A softmax turns the scores of all waiting jobs into probabilities, and the learner picks a job with those probabilities."},{"h":"Formulation","open":true,"text":"{{score}}\n\n{{policy}}"},{"h":"The critic","open":false,"text":"The critic is a second small estimator. It looks at a summary of the whole situation (how many jobs wait, how many are already doomed to be late, how much time is left) and guesses how much reward is still to come. REINFORCE has no critic: it compares each decision with a plain running average of the reward that usually follows that step."}]},"chain":{"kicker":"The loop","title":"The chain of decisions","related":["state","action","reward","curve"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Each circle is a state: the situation at one decision time. Each arrow is the action taken there, with the reward it earned. Put together, one episode is a chain: state, action, reward, next state, and so on until all the jobs have been scheduled. A Markov chain has this \"the next state depends only on where you are and what you did\" property, which is what lets the learner improve its choices one decision at a time."},{"h":"Deeper","open":false,"text":"Strictly this is a Markov decision process: a Markov chain in which the decisions are made by the learner, not left to chance."}]},"online":{"kicker":"The toy world","title":"Jobs known up front, or arriving over time","related":["world","state"],"metric":"","sections":[{"h":"In plain words","open":true,"text":"Up front: all 8 jobs are waiting from time 0. Over time: jobs join the queue at different times, so a machine may have to wait for the next arrival and the learner never knows which jobs are still to come. This is the difference between the offline and online cases in the project."},{"h":"Deeper","open":false,"text":"In the online toy, a job's deadline is counted from its arrival, and the jobs arrive in the first 6 ticks, so the machines are kept busy. Each mode has its own learner, so switching back and forth does not mix their learning."}]}}}};
 /* mathml.js - tiny MathML builders shared by the browser demos (the browser renders MathML natively, no library).
    MathML.I identifier, N number, O operator, T text, R row, sub, sup, frac, sum(under, body), ind(...) indicator 1[...], M(...) display block. */
 (function () {
@@ -241,7 +241,7 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
    Learners: "reinforce" (episode return minus a running per-step average) and "actor-critic" (per-decision advantage from a linear
    value estimate). */
 (function (root) {
-  const MACHINES = 2, JOBS = 8, COST_SCALE = 10, TRAIN_EPISODES = 600;  // budget of the demo: 600 episodes, about 20 s at 30 episodes per second
+  const MACHINES = 2, JOBS = 8, COST_SCALE = 10, TRAIN_EPISODES = 600, ARRIVAL_SPAN = 6, ONLINE_SLACK = 7;  // budget of the demo: 600 episodes, about 20 s at 30 episodes per second
 
   function makeRng(seed) {  // mulberry32
     let a = seed >>> 0;
@@ -254,31 +254,40 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     };
   }
 
-  function makeInstance(rand) {
+  // online = true: jobs arrive over time (arrival a, spread over the first ARRIVAL_SPAN ticks; the deadline is counted from the arrival)
+  function makeInstance(rand, online) {
     const jobs = [];
     for (let i = 0; i < JOBS; i++) {
-      const p = 1 + Math.floor(rand() * 5), w = 1 + Math.floor(rand() * 3), d = p + Math.floor(rand() * 10);
-      jobs.push({ id: i, p, w, d });
+      const p = 1 + Math.floor(rand() * 5), w = 1 + Math.floor(rand() * 3), a = online ? Math.floor(rand() * ARRIVAL_SPAN) : 0, d = a + p + Math.floor(rand() * (online ? ONLINE_SLACK : 10));
+      jobs.push({ id: i, p, w, d, a });
     }
+    if (online) jobs.sort((x, y) => x.a - y.a).forEach((j, i) => { j.id = i; });  // job numbers follow the arrival order
     return jobs;
   }
 
   const features = (job, t) => [(job.d - t - job.p) / 10, job.p / 5, job.w / 3];
 
-  // One episode. choose(state) -> index into state.waiting. Returns the cost J, every decision and the machine blocks.
+  // One episode. choose(state) -> index into state.waiting (the jobs that have arrived and are not yet started). A machine with nothing
+  // to do waits for the next arrival (an idle gap, recorded in idles). Returns the cost J, every decision, the machine blocks and idles.
   function runEpisode(jobs, choose) {
-    const free = new Array(MACHINES).fill(0), waiting = jobs.map((_, i) => i), steps = [], blocks = [];
+    const free = new Array(MACHINES).fill(0), left = jobs.map((_, i) => i), steps = [], blocks = [], idles = [];
     let cost = 0;
-    while (waiting.length) {
+    while (left.length) {
       let m = 0;
       for (let k = 1; k < MACHINES; k++) if (free[k] < free[m]) m = k;
-      const t = free[m], state = { t, machine: m, waiting: waiting.slice(), jobs, free: free.slice() };
+      let t = free[m];
+      let waiting = left.filter(j => jobs[j].a <= t);
+      if (!waiting.length) {  // nothing has arrived yet: this machine idles until the next arrival
+        const next = Math.min(...left.map(j => jobs[j].a));
+        idles.push({ machine: m, start: t, end: next }); free[m] = next; continue;
+      }
+      const state = { t, machine: m, waiting: waiting.slice(), jobs, free: free.slice(), arrived: jobs.filter(j => j.a <= t).length };
       const k = choose(state), j = waiting[k], job = jobs[j], C = t + job.p, T = Math.max(0, C - job.d), c = job.w * T * T;
       steps.push({ state, k, job: j, start: t, end: C, lateness: T, cost: c, reward: -c / COST_SCALE });
       blocks.push({ job: j, machine: m, start: t, end: C, late: T > 0 });
-      cost += c; free[m] = C; waiting.splice(k, 1);
+      cost += c; free[m] = C; left.splice(left.indexOf(j), 1);
     }
-    return { cost, steps, blocks, makespan: Math.max(...free) };
+    return { cost, steps, blocks, idles, makespan: Math.max(...free) };
   }
 
   // classic rules, as choosers
@@ -313,6 +322,7 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     const learner = {
       kind, theta, critic, probs, rand,
       value: state => dot(critic, stateFeatures(state)),
+      baseline: t => base[Math.min(t, JOBS - 1)],  // REINFORCE's running average of the reward from decision t onwards (for display)
       greedy: state => { const p = probs(state); let b = 0; p.forEach((x, k) => { if (x > p[b]) b = k; }); return b; },
       sample: state => { const p = probs(state); let u = rand(), k = 0; while (k < p.length - 1 && u > p[k]) { u -= p[k]; k++; } return k; },
       get episodes() { return episodes; },
@@ -354,46 +364,102 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
 
   // mean cost of a chooser over a list of job sets
   const meanCost = (sets, choose) => sets.reduce((s, jobs) => s + runEpisode(jobs, choose).cost, 0) / sets.length;
-  const testSets = (n, seed) => { const r = makeRng(seed); return Array.from({ length: n }, () => makeInstance(r)); };
+  const testSets = (n, seed, online) => { const r = makeRng(seed); return Array.from({ length: n }, () => makeInstance(r, online)); };
 
   const core = { MACHINES, JOBS, COST_SCALE, TRAIN_EPISODES, makeRng, makeInstance, features, runEpisode, RULES, randomChooser, createLearner, meanCost, testSets, softmax, stateFeatures };
   if (typeof module !== "undefined" && module.exports) module.exports = core; else root.TrainingCore = core;
 })(typeof window !== "undefined" ? window : globalThis);
+
+/* training_shared.js - pieces shared by the training demo pages (training_ui.js: first layout; flow_ui.js: animated layouts):
+   DOM helpers, the formulas used by the cards, reference scores (random order and the best classic rule) per mode, and the learning-curve
+   drawing. Needs training_core.js, mathml.js and window.RACE_DATA.text (training_wording.md). */
+(function () {
+  const C = window.TrainingCore;
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const fill = (tpl, v) => tpl.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  // formulas for the explanation cards: {{J}} {{reward}} {{score}} {{policy}} {{ret}} {{reinforce}} {{critic}} {{advantage}}
+  function formulas(F) {
+    const { I, N, O, T, R, sub, sup, frac, sum, M } = MathML;
+    const wj = sub(I("w"), I("j")), Tj = sub(I("T"), I("j")), phi = sub(I("φ"), I("j")), th = I("θ");
+    const grad = R(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"));
+    return Object.assign(F, {
+      J: M(I("J"), O("="), sum(I("j"), R(wj, sup(Tj, N(2))))),
+      reward: M(sub(I("r"), I("t")), O("="), O("−"), frac(R(wj, sup(Tj, N(2))), N(10)), T("   (job j started at time t)")),
+      score: M(sub(I("z"), I("j")), O("="), sup(th, O("⊤")), phi, O("="), sub(th, T("time left")), O("·"), T("time left"), O("+"), sub(th, T("length")), O("·"), T("length"), O("+"), sub(th, T("importance")), O("·"), T("importance")),
+      policy: M(I("π"), O("("), I("j"), O("|"), I("s"), O(")"), O("="), frac(R(I("exp"), O("("), sub(I("z"), I("j")), O(")")), R(sum(I("k"), R(I("exp"), O("("), sub(I("z"), I("k")), O(")")))))),
+      ret: M(sub(I("G"), I("t")), O("="), sum(R(I("k"), O("≥"), I("t")), sub(I("r"), I("k")))),
+      reinforce: M(th, O("←"), th, O("+"), I("α"), O("("), sub(I("G"), I("t")), O("−"), sub(I("b"), I("t")), O(")"), grad) +
+        M(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"), O("="), sub(phi, T("chosen")), O("−"), sum(I("j"), R(I("π"), O("("), I("j"), O(")"), phi))),
+      critic: M(I("V"), O("("), I("s"), O(")"), O("="), sup(I("w"), O("⊤")), I("ψ"), O("("), I("s"), O(")")),
+      advantage: M(sub(I("δ"), I("t")), O("="), sub(I("r"), I("t")), O("+"), I("V"), O("("), sub(I("s"), R(I("t"), O("+"), N(1))), O(")"), O("−"), I("V"), O("("), sub(I("s"), I("t")), O(")")) +
+        M(sub(I("A"), I("t")), O("="), sum(I("k"), R(sup(N("0.9"), I("k")), sub(I("δ"), R(I("t"), O("+"), I("k"))))), O(","), T("   "), th, O("←"), th, O("+"), I("α"), sub(I("A"), I("t")), grad),
+    });
+  }
+
+  // reference scores on 200 fresh job sets (random order, and the best of the classic rules), per mode
+  const refCache = {};
+  function refs(online) {
+    const key = online ? "online" : "offline";
+    if (!refCache[key]) {
+      const sets = C.testSets(200, 424242, online);
+      const rules = Object.entries(C.RULES).map(([k, f]) => [k, C.meanCost(sets, f)]).sort((a, b) => a[1] - b[1]);
+      refCache[key] = { sets, random: C.meanCost(sets, C.randomChooser(C.makeRng(7))), rule: { name: rules[0][0], cost: rules[0][1] } };
+    }
+    return refCache[key];
+  }
+
+  // learning curve: o = { hist: {kind: [cost per episode]}, active, refs, labels: {random, rule}, colours: {kind: css colour}, empty }
+  function drawCurve(cv, o) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const padL = 36, padR = 8, padT = 8, padB = 20, maxY = o.maxY || 200, maxX = C.TRAIN_EPISODES, WINDOW = 25;
+    const X = e => padL + (w - padL - padR) * e / maxX, Y = c => padT + (h - padT - padB) * (1 - Math.min(c, maxY) / maxY);
+    g.font = "11px " + css("--body"); g.fillStyle = css("--muted"); g.strokeStyle = css("--rule"); g.lineWidth = 1;
+    const ticks = o.ticks || [0, 50, 100, 150, 200];
+    ticks.forEach(v => { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(w - padR, Y(v)); g.stroke(); g.textAlign = "right"; g.fillText(v, padL - 4, Y(v) + 4); });
+    [0, 200, 400, 600].forEach(v => { g.textAlign = "center"; g.fillText(v, X(v), h - 5); });
+    const line = (cost, dash, label) => {
+      g.strokeStyle = css("--rulebar"); g.lineWidth = 2; g.setLineDash(dash); g.beginPath(); g.moveTo(padL, Y(cost)); g.lineTo(w - padR, Y(cost)); g.stroke(); g.setLineDash([]);
+      g.fillStyle = css("--rulebar"); g.textAlign = "right"; g.fillText(label, w - padR - 2, Y(cost) - 3);
+    };
+    line(o.refs.random, [6, 4], o.labels.random);
+    line(o.refs.rule.cost, [], o.labels.rule);
+    let any = false;
+    Object.entries(o.hist).forEach(([kind, hist]) => {
+      if (!hist.length) return;
+      any = true;
+      const colour = o.colours[kind], active = kind === o.active;
+      g.globalAlpha = active ? 0.35 : 0.18; g.fillStyle = colour;
+      hist.forEach((c, i) => { g.beginPath(); g.arc(X(i + 1), Y(c), 1.8, 0, 6.3); g.fill(); });
+      g.globalAlpha = 1; g.strokeStyle = colour; g.lineWidth = active ? 3 : 2; g.beginPath();
+      hist.forEach((c, i) => { const s = Math.max(0, i - WINDOW + 1), avg = hist.slice(s, i + 1).reduce((a, b) => a + b, 0) / (i + 1 - s); i ? g.lineTo(X(i + 1), Y(avg)) : g.moveTo(X(1), Y(avg)); });
+      g.stroke();
+    });
+    if (!any && o.empty) { g.fillStyle = css("--muted"); g.textAlign = "center"; g.font = "14px " + css("--body"); g.fillText(o.empty, w / 2, h / 2); }
+  }
+
+  window.TrainingShared = { el, fill, css, formulas, refs, drawCurve };
+})();
 
 /* training_ui.js - the "Watch it learn" page: the toy world, the State -> Action -> Reward -> Next state strip, Step / Train / Test, the
    learning curve and the learned weights. The world and the learners are in training_core.js; every sentence is in training_wording.md
    (exported as RACE_DATA.text); explanation cards use the shared engine (cards.js). */
 (function () {
   const C = window.TrainingCore, D = window.RACE_DATA, TX = D.text, UI = TX.ui, TP = TX.templates, LB = TX.labels;
-  const { I, N, O, T, R, sub, sup, frac, sum, M } = MathML;
   const F = {};
   const K = Cards.create({ text: TX, formulas: F });
-  const fill = K.fill;
-
-  // ---- formulas for the cards ---------------------------------------------------------------------------------------------
-  const wj = sub(I("w"), I("j")), Tj = sub(I("T"), I("j")), phi = sub(I("φ"), I("j")), th = I("θ");
-  const grad = R(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"));
-  Object.assign(F, {
-    J: M(I("J"), O("="), sum(I("j"), R(wj, sup(Tj, N(2))))),
-    reward: M(sub(I("r"), I("t")), O("="), O("−"), frac(R(wj, sup(Tj, N(2))), N(10)), T("   (job j started at time t)")),
-    score: M(sub(I("z"), I("j")), O("="), sup(th, O("⊤")), phi, O("="), sub(th, T("time left")), O("·"), T("time left"), O("+"), sub(th, T("length")), O("·"), T("length"), O("+"), sub(th, T("importance")), O("·"), T("importance")),
-    policy: M(I("π"), O("("), I("j"), O("|"), I("s"), O(")"), O("="), frac(R(I("exp"), O("("), sub(I("z"), I("j")), O(")")), R(sum(I("k"), R(I("exp"), O("("), sub(I("z"), I("k")), O(")")))))),
-    ret: M(sub(I("G"), I("t")), O("="), sum(R(I("k"), O("≥"), I("t")), sub(I("r"), I("k")))),
-    reinforce: M(th, O("←"), th, O("+"), I("α"), O("("), sub(I("G"), I("t")), O("−"), sub(I("b"), I("t")), O(")"), grad) +
-      M(I("∇"), I("log"), sub(I("π"), th), O("("), sub(I("a"), I("t")), O("|"), sub(I("s"), I("t")), O(")"), O("="), sub(phi, T("chosen")), O("−"), sum(I("j"), R(I("π"), O("("), I("j"), O(")"), phi))),
-    critic: M(I("V"), O("("), I("s"), O(")"), O("="), sup(I("w"), O("⊤")), I("ψ"), O("("), I("s"), O(")")),
-    advantage: M(sub(I("δ"), I("t")), O("="), sub(I("r"), I("t")), O("+"), I("V"), O("("), sub(I("s"), R(I("t"), O("+"), N(1))), O(")"), O("−"), I("V"), O("("), sub(I("s"), I("t")), O(")")) +
-      M(sub(I("A"), I("t")), O("="), sum(I("k"), R(sup(N("0.9"), I("k")), sub(I("δ"), R(I("t"), O("+"), I("k"))))), O(","), T("   "), th, O("←"), th, O("+"), I("α"), sub(I("A"), I("t")), grad),
-  });
+  const { el, fill, css } = TrainingShared;
+  TrainingShared.formulas(F);  // formulas for the cards
 
   const build = (id) => K.topicCard(id, {});
 
   // ---- state ---------------------------------------------------------------------------------------------------------------
   const KINDS = { reinforce: "reinforce", ac: "actor-critic" }, HORIZON = 20, WINDOW = 25;
-  const testSets = C.testSets(200, 424242);
-  const refRandom = C.meanCost(testSets, C.randomChooser(C.makeRng(7)));
-  const refRules = Object.entries(C.RULES).map(([k, f]) => [k, C.meanCost(testSets, f)]).sort((a, b) => a[1] - b[1]);
-  const refRule = { name: refRules[0][0], cost: refRules[0][1] };
+  const REF = TrainingShared.refs(false), testSets = REF.sets, refRandom = REF.random, refRule = REF.rule;
   let S, cfg, raf = 0, resets = 0;
 
   function reset() {
@@ -406,7 +472,6 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
     setButtons();
   }
   const learner = () => S.L[S.active];
-  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const setMsg = t => { cfg.msg.textContent = t; };
 
   // ---- the world --------------------------------------------------------------------------------------------------------------
@@ -450,33 +515,9 @@ window.RACE_DATA = {"text":{"ui":{"heading":"Watch it learn","tagline":"A toy sc
   }
 
   // ---- curve and weights ------------------------------------------------------------------------------------------------------
-  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   function drawCurve() {
-    const cv = cfg.curve, dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-    if (!w || !h) return;
-    cv.width = w * dpr; cv.height = h * dpr;
-    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const padL = 38, padR = 10, padT = 8, padB = 22, maxY = 200, maxX = C.TRAIN_EPISODES;
-    const X = e => padL + (w - padL - padR) * e / maxX, Y = c => padT + (h - padT - padB) * (1 - Math.min(c, maxY) / maxY);
-    g.font = "12px " + css("--body"); g.fillStyle = css("--muted"); g.strokeStyle = css("--rule"); g.lineWidth = 1;
-    [0, 50, 100, 150, 200].forEach(v => { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(w - padR, Y(v)); g.stroke(); g.textAlign = "right"; g.fillText(v, padL - 5, Y(v) + 4); });
-    [0, 200, 400, 600].forEach(v => { g.textAlign = "center"; g.fillText(v, X(v), h - 6); });
-    const line = (cost, colour, dash, label) => {
-      g.strokeStyle = colour; g.lineWidth = 2; g.setLineDash(dash); g.beginPath(); g.moveTo(padL, Y(cost)); g.lineTo(w - padR, Y(cost)); g.stroke(); g.setLineDash([]);
-      g.fillStyle = colour; g.textAlign = "right"; g.fillText(label, w - padR - 2, Y(cost) - 4);
-    };
-    line(refRandom, css("--rulebar"), [6, 4], UI["curve.random"]);
-    line(refRule.cost, css("--rulebar"), [], fill(UI["curve.rule"], { name: refRule.name }));
-    Object.entries(S.hist).forEach(([kind, hist]) => {
-      if (!hist.length) return;
-      const colour = kind === "reinforce" ? css("--copied") : css("--win"), active = kind === S.active;
-      g.globalAlpha = active ? 0.35 : 0.18; g.fillStyle = colour;
-      hist.forEach((c, i) => { g.beginPath(); g.arc(X(i + 1), Y(c), 2, 0, 6.3); g.fill(); });
-      g.globalAlpha = 1; g.strokeStyle = colour; g.lineWidth = active ? 3 : 2; g.beginPath();
-      hist.forEach((c, i) => { const s = Math.max(0, i - WINDOW + 1), avg = hist.slice(s, i + 1).reduce((a, b) => a + b, 0) / (i + 1 - s); i ? g.lineTo(X(i + 1), Y(avg)) : g.moveTo(X(1), Y(avg)); });
-      g.stroke();
-    });
-    if (!S.hist.reinforce.length && !S.hist.ac.length) { g.fillStyle = css("--muted"); g.textAlign = "center"; g.font = "15px " + css("--body"); g.fillText(UI["curve.empty"], w / 2, h / 2); }
+    TrainingShared.drawCurve(cfg.curve, { hist: S.hist, active: S.active, refs: REF, empty: UI["curve.empty"],
+      labels: { random: UI["curve.random"], rule: fill(UI["curve.rule"], { name: refRule.name }) }, colours: { reinforce: css("--copied"), ac: css("--win") } });
   }
   function drawWeights() {
     cfg.weights.textContent = "";

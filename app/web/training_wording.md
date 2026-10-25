@@ -54,6 +54,47 @@ test.rule: Best classic rule ({name})
 test.learner: This learner
 test.caption: Average cost on {n} new job sets (lower is better).
 test.note: In this toy it can beat a single simple rule; the real 10-machine problem is much harder (see the card).
+// --- the animated layouts (flow_a.html, flow_b.html) ---
+flow.heading: Watch the loop
+flow.tagline: A job leaves the queue, the network decides, the machine runs it, and the reward teaches the learner. Press Play and follow one decision at a time.
+panel.jobqueue: Job queue
+panel.chain: Markov chain: one episode
+panel.ring: The decision loop
+panel.network.ac: Actor-critic network
+panel.network.reinforce: REINFORCE network
+machine.name: Machine {m}
+mode.label: Jobs
+mode.offline: All known up front
+mode.online: Arriving over time
+btn.play: Play
+queue.empty: No jobs waiting
+queue.next: Next arrival at time {t}
+net.timeleft: Time left
+net.length: Length
+net.importance: Importance
+net.score: Score
+net.softmax: Probabilities
+net.actor: Actor
+net.critic: Critic
+net.summary: Summary of the situation
+net.value: Expected reward from here
+net.baseline: Average reward from this step
+chain.start: Start
+chain.node: Time {t} · {n} waiting
+chain.action: Start job {job}
+chain.end: Done · cost {cost}
+ring.decision: Decision {k} of {n}
+narr.idle: Press Play to watch the learner schedule 8 jobs, or Step to go one decision at a time.
+narr.state: The learner looks at the situation: which jobs are waiting and how much time each has left.
+narr.net: The network scores every waiting job from its time left, length and importance.
+narr.action: It picks job {job} (probability {pct}%).
+narr.place: Job {job} starts on machine {m}.
+narr.reward: Reward {reward}: {outcome}.
+narr.ontime: the job will finish on time
+narr.late: the job will finish {late} ticks late
+narr.next: The situation changes and the loop repeats.
+narr.update: Episode over, total cost {cost}. The learner updates its weights from the rewards it saw.
+test.line: Test on {n} new job sets: random {random} · best rule {rule} {rulecost} · this learner {learner}
 related: Related
 back: ← Back
 close: Close
@@ -71,6 +112,9 @@ msg.budget: This learner has used its {n} training episodes. Press Reset to star
 msg.testing: Testing on {n} new job sets...
 
 ## LABELS
+chip.network: The network
+chip.chain: The chain
+chip.online: Online arrivals
 chip.world: The toy world
 chip.state: State
 chip.action: Action
@@ -201,3 +245,34 @@ Test uses 200 new sets of jobs that the learner has never trained on, and lets i
 In this toy the learner can even beat a single simple rule, because it blends three signals. The real problem, with 10 machines and 100 jobs, is much harder: there the learned schedulers matched the best rules but did not beat them.
 
 Using new job sets matters for the same reason as in the project: a learner can look good on the jobs it trained on and worse on new ones.
+
+### network
+kicker: The learner
+title: The network that decides
+related: policy, reinforce, actor_critic, weights
+--- In plain words (open)
+The three inputs are what the learner knows about one waiting job: how much time is left before it is due, how long it is, and how important it is. Each input is multiplied by a weight (the thickness and colour of the line show the weight: blue is positive, orange is negative) and added into a score. A softmax turns the scores of all waiting jobs into probabilities, and the learner picks a job with those probabilities.
+--- Formulation (open)
+{{score}}
+
+{{policy}}
+--- The critic
+The critic is a second small estimator. It looks at a summary of the whole situation (how many jobs wait, how many are already doomed to be late, how much time is left) and guesses how much reward is still to come. REINFORCE has no critic: it compares each decision with a plain running average of the reward that usually follows that step.
+
+### chain
+kicker: The loop
+title: The chain of decisions
+related: state, action, reward, curve
+--- In plain words (open)
+Each circle is a state: the situation at one decision time. Each arrow is the action taken there, with the reward it earned. Put together, one episode is a chain: state, action, reward, next state, and so on until all the jobs have been scheduled. A Markov chain has this "the next state depends only on where you are and what you did" property, which is what lets the learner improve its choices one decision at a time.
+--- Deeper
+Strictly this is a Markov decision process: a Markov chain in which the decisions are made by the learner, not left to chance.
+
+### online
+kicker: The toy world
+title: Jobs known up front, or arriving over time
+related: world, state
+--- In plain words (open)
+Up front: all 8 jobs are waiting from time 0. Over time: jobs join the queue at different times, so a machine may have to wait for the next arrival and the learner never knows which jobs are still to come. This is the difference between the offline and online cases in the project.
+--- Deeper
+In the online toy, a job's deadline is counted from its arrival, and the jobs arrive in the first 6 ticks, so the machines are kept busy. Each mode has its own learner, so switching back and forth does not mix their learning.
