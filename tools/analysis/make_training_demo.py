@@ -2,8 +2,8 @@
 
     python tools/analysis/make_training_demo.py
 
-Writes app/web/dist/training_demo.html (the first layout, also copied to app/slides/ next to the deck) and app/web/dist/stage.html (the
-animated "stage" layout: the environment on the left, the learner on the right, the loop drawn between them).
+Writes app/web/dist/training_demo.html (the first layout, kept) and app/web/dist/stage.html (the animated sketch layout: jobs, machines, the MDP ring,
+network, probability graph and rewards). The animated page is also copied to app/slides/training_demo.html, the page the final deck links to.
 Each page inlines base.css, the wording (app/web/training_wording.md parsed by app/wording.py) and its scripts.
 """
 import json
@@ -37,7 +37,7 @@ def main():
     for name, html in pages.items():
         (out / name).write_text(html, encoding="utf-8")
         print("wrote", out / name, f"{len(html) / 1024:.0f} KB")
-    shutil.copyfile(out / "training_demo.html", ROOT / "app" / "slides" / "training_demo.html")  # the deck's "Interactive training demo" button opens this copy
+    shutil.copyfile(out / "stage.html", ROOT / "app" / "slides" / "training_demo.html")  # the deck's "Interactive demo" button opens this copy: the current (sketch) layout
 
 
 if __name__ == "__main__":
