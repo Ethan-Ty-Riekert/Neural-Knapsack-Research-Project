@@ -35,12 +35,21 @@ def set_alpha(shape, alpha_pct):
 
 
 s1 = prs.slides[0]
-# the slide background is a gradient whose last stop is already part transparent (alpha 39 %): make that stop more transparent so the slide is lighter
+# The slide background is a gradient (direction right to left: the stop at pos 100000 is the LEFT edge, pos 0 the right edge).
+# Make the whole gradient lighter: the far (left) stop more transparent, and every other stop pushed towards white.
 P = "http://schemas.openxmlformats.org/presentationml/2006/main"
-stops = s1._element.cSld.find(f"{{{P}}}bg").iter(f"{{{A}}}gs")
-last = max(stops, key=lambda g: int(g.get("pos")))
-for alpha in last.iter(f"{{{A}}}alpha"):
-    alpha.set("val", "8000")
+for gs in s1._element.cSld.find(f"{{{P}}}bg").iter(f"{{{A}}}gs"):
+    colour = gs[0]
+    if colour.tag == f"{{{A}}}srgbClr":  # fixed light blues: blend 60 % of the way to white
+        v = colour.get("val")
+        colour.set("val", "".join("%02X" % round(int(v[i:i + 2], 16) + (255 - int(v[i:i + 2], 16)) * 0.6) for i in (0, 2, 4)))
+    for child in colour:
+        if child.tag == f"{{{A}}}alpha":
+            child.set("val", "8000")
+        elif child.tag == f"{{{A}}}lumOff" and gs.get("pos") == "0":
+            child.set("val", "98000")
+        elif child.tag == f"{{{A}}}lumMod" and gs.get("pos") == "0":
+            child.set("val", "2000")
 
 
 # ---------------------------------------------------------------- helpers (same look as tools/analysis/make_pptx.py)
