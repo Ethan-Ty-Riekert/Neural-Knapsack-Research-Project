@@ -29,7 +29,12 @@
           L: { offline: { reinforce: C.createLearner("reinforce", seed), ac: C.createLearner("actor-critic", seed + 1) }, online: { reinforce: C.createLearner("reinforce", seed + 2), ac: C.createLearner("actor-critic", seed + 3) } },
           hist: { offline: { reinforce: [], ac: [] }, online: { reinforce: [], ac: [] } }, rng: { offline: C.makeRng(seed + 999), online: C.makeRng(seed + 1999) } };
   }
-  function cancel() { if (S) S.runId++; if (cfg && cfg.fx) cfg.fx.textContent = ""; }
+  // while Train runs, the left column (jobs and the progress graph) pops out to the right so the graph can be read; the centre gets narrower
+  function setWide(on) {
+    const m = document.querySelector(".main"); if (!m) return;
+    m.classList.toggle("wide", on); setTimeout(() => { if (cfg && cfg.curve && S) drawCurve(); }, 550);
+  }
+  function cancel() { if (S) S.runId++; if (cfg && cfg.fx) cfg.fx.textContent = ""; setWide(false); }
   const guard = id => { if (S.runId !== id) throw ABORT; };
   // wait for an animation, but never hang if the browser pauses animations (for example in a hidden tab): give up shortly after its duration
   const done = (anim, ms) => Promise.race([anim.finished.catch(() => {}), new Promise(r => setTimeout(r, ms + 150))]);
@@ -346,24 +351,36 @@
   function doStep() { if (!S.busy) run(true); }
   function doTrain() {  // no film: fast training for when the learner should just get on with it
     if (S.busy) return; const L = learner(); if (!budgetLeft()) { setMsg(fill(TP["msg.budget"], { n: C.TRAIN_EPISODES })); return; }
-    const id = ++S.runId; S.busy = true; S.ep = null; setButtons(); let last = performance.now(), owed = 0;
+    const id = ++S.runId; S.busy = true; S.ep = null; setButtons(); setWide(true); let last = performance.now(), owed = 0;
     const tick = now => {
       if (S.runId !== id) return;
       owed += Math.min(now - last, 100) / 1000 * 30; last = now;
       let ep = null; while (owed >= 1 && budgetLeft()) { owed -= 1; ep = L.train(C.makeInstance(S.rng[S.mode], online())); hist()[S.active].push(ep.cost); }
       if (ep) { drawQueue(ep.steps[0].state.jobs, [], null, null); drawMachines(ep.blocks, null, null); }
       paintWeights(); paintCriticWeights(); drawCurve(); setButtons(); setNarr("");
-      if (!budgetLeft()) { S.busy = false; setButtons(); setMsg(fill(TP["msg.trained"], { n: L.episodes })); return; }
+      if (!budgetLeft()) { S.busy = false; setButtons(); setWide(false); setMsg(fill(TP["msg.trained"], { n: L.episodes })); return; }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   }
+  function testShow(rows, note) {  // the Test result, drawn in the corner under Next state: one bar per scheduler (lower cost is better)
+    const box = byId("testbox"); box.textContent = "";
+    if (!rows) return;
+    box.append(el("div", "ttitle", UI["panel.test"]));
+    if (note) { box.append(el("div", "tcap", note)); return; }
+    const top = Math.max(...rows.map(r => r.v));
+    rows.forEach(r => { const d = el("div", "trow" + (r.me ? " me" : "")), bar = el("div", "tbar"); bar.style.width = (r.v / top * 100) + "%"; d.append(el("span", null, r.label), el("b", null, r.v.toFixed(0)), bar); box.append(d); });
+  }
   function doTest() {
-    const R = refs(); setMsg(fill(TP["msg.testing"], { n: R.sets.length }));
-    setTimeout(() => { const v = C.meanCost(R.sets, learner().greedy); setMsg(fill(UI["test.line"], { n: R.sets.length, random: R.random.toFixed(0), rule: R.rule.name, rulecost: R.rule.cost.toFixed(0), learner: v.toFixed(0) })); }, 30);
+    const R = refs(); testShow([], fill(TP["msg.testing"], { n: R.sets.length }));
+    setTimeout(() => {
+      const v = C.meanCost(R.sets, learner().greedy);
+      testShow([{ label: UI["test.random"], v: R.random }, { label: fill(UI["test.rule"], { name: R.rule.name }), v: R.rule.cost }, { label: UI["test.learner"], v, me: true }]);
+      byId("testbox").append(el("div", "tcap", fill(UI["test.caption"], { n: R.sets.length })));
+    }, 30);
   }
   function redraw() {
-    ledgerReset(); logClear(); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre(""); setButtons();
+    ledgerReset(); logClear(); testShow(null); drawQueue([], [], null, null); drawMachines([], null, null); buildLoop(); buildActor(); buildCritic(); drawDist(null); paintCritic(null); drawCurve(); wire("none", false); loopCentre(""); setButtons();
   }
   function resetAll() { newState(); redraw(); setMsg(""); setNarr(UI["narr.idle"]); }
 

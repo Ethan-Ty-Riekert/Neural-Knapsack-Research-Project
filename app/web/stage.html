@@ -16,7 +16,8 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .ghost { background: var(--surface); color: var(--ink); border: 2px solid var(--rule); border-radius: .55rem; padding: .3rem .7rem; font-weight: 600; font-size: .85rem; } .ghost:disabled { opacity: .4; cursor: not-allowed; }
 .seg.small button { padding: .24rem .5rem; font-size: .78rem; }
 .sub { color: var(--muted); font-size: .8rem; }
-.main { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) minmax(0, 27rem); gap: .5rem; min-height: 0; }
+.main { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr) minmax(0, 27rem); gap: .5rem; min-height: 0;  transition: grid-template-columns .5s ease; }
+.main.wide { grid-template-columns: minmax(0, 30rem) minmax(0, 1fr) minmax(0, 27rem); }  /* while Train runs the left column widens so the progress graph is easier to read */
 .col { display: flex; flex-direction: column; gap: .5rem; min-height: 0; min-width: 0; }
 .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .35rem; min-height: 0; min-width: 0; transition: border-color .3s, background .3s; }
 .eyebrow { font-size: .8rem; }
@@ -47,6 +48,11 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 .lval { font-size: 1.15rem; font-weight: 700; line-height: 1.15; } .lbig { font-size: 1.9rem; font-weight: 700; line-height: 1; font-family: var(--display); }
 .larr { display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 700; color: var(--rule); transition: color .3s; } .larr.on { color: var(--accent); }
 #b-state { grid-area: 1 / 2; } #a-action { grid-area: 1 / 3; align-items: flex-end; justify-content: flex-start; } #b-action { grid-area: 2 / 3; } #a-reward { grid-area: 3 / 3; align-items: flex-start; justify-content: flex-start; } #b-reward { grid-area: 3 / 2; } #a-next { grid-area: 3 / 1; align-items: flex-start; justify-content: flex-end; } #b-next { grid-area: 2 / 1; } #a-state { grid-area: 1 / 1; align-items: flex-end; justify-content: flex-end; }
+/* the result of the Test button fills the empty corner under Next state */
+#testbox { grid-area: 3 / 1; align-self: stretch; margin-top: 1.9rem; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: .2rem; font-size: clamp(.72rem, 1.6vh, .9rem); line-height: 1.2; }
+#testbox .ttitle { font-weight: 700; } #testbox .tcap { color: var(--muted); font-size: .85em; }
+.trow { display: grid; grid-template-columns: 1fr auto; gap: .1rem .4rem; align-items: center; } .trow b { font-variant-numeric: tabular-nums; }
+.tbar { grid-column: 1 / 3; height: .35rem; border-radius: .2rem; background: var(--rulebar); } .trow.me .tbar { background: var(--accent); } .trow.me { color: var(--accent); font-weight: 700; }
 #mdp { grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 2.6rem; font-weight: 700; color: var(--rule); letter-spacing: .08em; }
 /* what each ring box was given, step by step (newest highlighted) */
 .mlog { flex: 1; min-height: 0; overflow: hidden; font-size: clamp(.82rem, 1.9vh, 1.05rem); line-height: 1.25; display: flex; flex-direction: column; gap: .15rem; }
@@ -149,6 +155,7 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
         <div class="larr" id="a-next">↖</div>
         <div class="lbox" id="b-next" data-explain="state"><div class="lhead"><b><span class="n">4</span> <span data-ui="loop.next"></span></b></div><div class="sub" data-ui="loop.sub.next"></div><div class="sub" id="lstep"></div><div class="mlog" id="v-next"></div></div>
         <div class="larr" id="a-state">↗</div>
+        <div id="testbox"></div>
         <div id="mdp" class="explainable" data-explain="chain" data-ui="loop.mdp"></div>
       </div>
     </div>
