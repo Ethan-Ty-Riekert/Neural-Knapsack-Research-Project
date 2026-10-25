@@ -14,7 +14,7 @@ J_comp = J + 39.5 m_T * weighted tardiness + 1311.2 m_U * weighted late jobs + 7
 | J + late jobs (x0.5) | WLST+FirstFit | 194,709 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 194,709 | +0.0% |
 | J + late jobs (x1) | WLST+FirstFit | 259,614 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 259,614 | +0.0% |
 | J + late jobs (x2) | WLST+FirstFit | 389,423 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 389,423 | +0.0% |
-| J + late jobs (x4) | WMDD+BestFit | 601,052 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 649,040 | +8.0% |
+| J + late jobs (x4) | WMDD+BestFit | 601,052 | PPO Opt2 priority score windowed look-ahead fixed scaling arrival-awar (3 seeds) | 648,485 | +7.9% |
 | J + energy (x0.25) | LST+Consolidate | 161,291 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 162,351 | +0.7% |
 | J + energy (x0.5) | LST+Consolidate | 192,777 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 194,896 | +1.1% |
 | J + energy (x1) | LST+Consolidate | 255,749 | PPO Opt2 priority score windowed +EDF imitation warm start look-ahead  (3 seeds) | 259,988 | +1.7% |

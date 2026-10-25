@@ -133,7 +133,7 @@ log.late: Penalise J{job}: {r} (ends t={end}, due {due}, {late} late)
 log.ontime: J{job} on time: 0 (ends t={end}, due {due})
 log.next: t={a} → t={b}: machine {m} is free next
 log.end: episode over
-log.job: J{id} (len {p}, due {d}, imp {w})
+log.job: J{id} · length {p} · due {d} · importance {w}
 loop.sub.state: What the learner sees
 loop.sub.action: The network picks a job
 loop.sub.reward: What that choice earned

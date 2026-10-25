@@ -51,7 +51,10 @@ html { font-size: clamp(12px, min(2vh, 1.15vw), 28px); }
 /* what each ring box was given, step by step (newest highlighted) */
 .mlog { flex: 1; min-height: 0; overflow-y: auto; font-size: clamp(.82rem, 1.9vh, 1.05rem); line-height: 1.25; display: flex; flex-direction: column; gap: .15rem; }
 .mrow { display: flex; gap: .4rem; color: var(--muted); } .mrow i { font-style: normal; min-width: 1.1rem; text-align: right; flex: none; } .mrow.cur { color: var(--ink); font-weight: 700; } .mrow.bad, .mrow.bad.cur { color: var(--scratch); }
-.mrow > div { min-width: 0; } .mlist { font-weight: 400; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; } .mrow:not(.cur) .mlist { display: none; }
+.mrow > div { min-width: 0; }
+.jlist { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: .1rem; margin-top: .1rem; }
+.jrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); flex: none; } .jrow.more { color: var(--muted); font-weight: 700; }
+#v-state { overflow: hidden; }
 /* network, probability graph, rewards */
 #netbox { flex: 0 0 auto; } #probbox { flex: 1 1 0; min-height: 7rem; } #rewardsbox { flex: 0 0 auto; }
 #actorsvg { width: 100%; height: auto; max-height: 11rem; align-self: center; flex: none; }

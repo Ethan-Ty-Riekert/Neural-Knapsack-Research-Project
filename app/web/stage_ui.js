@@ -81,9 +81,14 @@
     const r = el("div", "mrow cur" + (bad ? " bad" : "")), body = el("div"); body.append(el("span", null, text)); if (list) body.append(el("div", "mlist", list)); r.append(el("i", null, String(n)), body); box.append(r); box.scrollTop = box.scrollHeight;
   }
   // box 1 shows the state: the time, the free machine and how many jobs wait
-  function loopState(k, t, st) {  // the waiting jobs with their numbers; the row is cut off with "..." when it is too long for the box
-    const list = st.state.waiting.map(j => fill(UI["log.job"], { id: j + 1, p: st.state.jobs[j].p, d: st.state.jobs[j].d, w: st.state.jobs[j].w })).join(", ");
-    logRow("state", k + 1, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length }), false, list);
+  function loopState(k, t, st) {  // the current step: a summary line, then one waiting job per row; rows are cut off with "..." when the box is too narrow or too short
+    const box = byId("v-state"); box.textContent = "";
+    const head = el("div", "mrow cur"), body = el("div"); body.append(el("span", null, fill(UI["log.state"], { n: st.state.waiting.length, b: st.state.free.filter(f => f > t).length }))); head.append(el("i", null, String(k + 1)), body);
+    const list = el("div", "jlist"), rows = st.state.waiting.map(j => el("div", "jrow", fill(UI["log.job"], { id: j + 1, p: st.state.jobs[j].p, d: st.state.jobs[j].d, w: st.state.jobs[j].w })));
+    box.append(head, list);
+    const show = n => { list.textContent = ""; rows.slice(0, n).forEach(r => list.append(r)); if (n < rows.length) list.append(el("div", "jrow more", "...")); };
+    let n = rows.length; show(n);
+    while (list.scrollHeight > list.clientHeight + 1 && n > 1) { n--; show(n); }
   }
   const loopCentre = a => { byId("lstep").textContent = a || ""; };
 
