@@ -1,0 +1,511 @@
+<title>Showcase Study Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a sticky contents column beside one long reading column; sections are scripts, Q&A and maths. The palette is the project's own (navy ink, blue accent, orange for cautions). */
+:root {
+  --bg: #ffffff; --surface: #f3f7fc; --ink: #0e2238; --muted: #56677a; --rule: #cbd9ee;
+  --accent: #2a6fd1; --accent-soft: #e6effb; --warn: #c2571a; --warn-soft: #fcefe6; --good: #14866d;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0c1623; --surface: #14243a; --ink: #eaf0f7; --muted: #9db0c4; --rule: #28405c;
+  --accent: #5b9bf0; --accent-soft: #17304f; --warn: #f28a4a; --warn-soft: #3a2619; --good: #3cc5a4; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0c1623; --surface: #14243a; --ink: #eaf0f7; --muted: #9db0c4; --rule: #28405c;
+  --accent: #5b9bf0; --accent-soft: #17304f; --warn: #f28a4a; --warn-soft: #3a2619; --good: #3cc5a4; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-block: 1.2rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); }
+h2 { font-size: 1.65rem; margin: 3rem 0 .4rem; padding-top: .8rem; border-top: 3px solid var(--ink); }
+h3 { font-size: 1.15rem; margin: 1.6rem 0 .3rem; }
+p { margin: .5rem 0; max-width: 68ch; } ul, ol { margin: .4rem 0; padding-left: 1.3rem; max-width: 70ch; } li { margin: .25rem 0; }
+a { color: var(--accent); }
+.eyebrow { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.wrap { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 2.2rem; max-width: 78rem; margin: 0 auto; }
+nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); align-self: start; display: flex; flex-direction: column; gap: .15rem; font-size: .92rem; max-height: calc(100vh - 2rem); overflow: auto; }
+nav a { text-decoration: none; color: var(--muted); padding: .25rem .6rem; border-left: 3px solid var(--rule); } nav a:hover { color: var(--accent); border-color: var(--accent); }
+nav .grp { margin-top: .8rem; } main { min-width: 0; }
+.lede { font-size: 1.12rem; color: var(--muted); max-width: 60ch; }
+.tools { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1rem 0 0; }
+button { font: inherit; font-weight: 600; color: var(--ink); background: var(--surface); border: 2px solid var(--rule); border-radius: .5rem; padding: .35rem .8rem; cursor: pointer; } button:hover { border-color: var(--accent); }
+button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: .8rem; padding: .9rem 1.1rem; margin: .9rem 0; max-width: 72ch; }
+.card.say { border-left: 5px solid var(--accent); } .card.warn { background: var(--warn-soft); border-color: var(--warn); }
+.card h4 { margin: 0 0 .3rem; font-family: var(--display); font-size: 1rem; }
+.tag { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: .1rem .5rem; border-radius: 1rem; background: var(--accent-soft); color: var(--accent); margin-right: .4rem; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.slide { display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: 1rem; margin-top: 1.4rem; } .slide .n { font-family: var(--display); font-size: 3.2rem; line-height: 1; color: var(--accent); }
+.say p { max-width: none; } .say p::first-line { font-weight: 500; }
+table { border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; } th, td { border-bottom: 1px solid var(--rule); padding: .35rem .7rem; text-align: right; } th:first-child, td:first-child { text-align: left; } th { font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.scroll { overflow-x: auto; max-width: 100%; margin: .6rem 0; }
+details { border-top: 1px solid var(--rule); } details:last-of-type { border-bottom: 1px solid var(--rule); }
+summary { cursor: pointer; padding: .65rem .2rem; font-weight: 600; font-family: var(--display); font-size: 1.04rem; list-style: none; display: flex; gap: .6rem; } summary::-webkit-details-marker { display: none; }
+summary::before { content: "+"; color: var(--accent); font-weight: 700; width: 1rem; flex: none; } details[open] > summary::before { content: "−"; }
+details > .body { padding: 0 .2rem 1rem 1.6rem; }
+.eq { margin: .6rem 0; overflow-x: auto; max-width: 100%; } .eq math { font-size: 1.18rem; } .m math { font-size: 1.05em; }
+.say-it { border-left: 4px solid var(--good); padding: .1rem 0 .1rem .8rem; margin: .7rem 0; max-width: 66ch; } .say-it b { color: var(--good); }
+.proj { border-left: 4px solid var(--accent); padding: .1rem 0 .1rem .8rem; margin: .7rem 0; max-width: 66ch; } .proj b { color: var(--accent); }
+.verify { color: var(--warn); font-weight: 600; font-size: .85em; }
+code { background: var(--surface); padding: 0 .3rem; border-radius: .25rem; font-size: .9em; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; } .two .card { margin: 0; max-width: none; }
+@media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } nav { position: static; flex-direction: row; flex-wrap: wrap; max-height: none; gap: .3rem; } nav a { border: 1px solid var(--rule); border-radius: 1rem; } nav .grp { margin: 0; } .slide { grid-template-columns: 1fr; } }
+@media print { nav, .tools { display: none; } .wrap { display: block; } details > .body { display: block; } body { font-size: 11pt; } h2 { page-break-before: always; } .card, details { break-inside: avoid; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<nav aria-label="Contents">
+  <span class="eyebrow">Contents</span>
+  <a href="#start">Read this first</a>
+  <a href="#script">1 · Script</a><a href="#demo">2 · Driving the demos</a><a href="#numbers">3 · Numbers card</a>
+  <a href="#qa">4 · Questions and answers</a>
+  <a href="#maths">5 · Maths notes</a>
+  <a href="#bridges">6 · Links to other fields</a>
+  <a href="#checks">7 · Check before you present</a>
+</nav>
+<main>
+<header id="start">
+  <span class="eyebrow">Curtin University · Final-year research showcase</span>
+  <h1>How Reinforcement Learning Works: study guide</h1>
+  <p class="lede">A script for each slide, answers to the questions a mixed science audience will ask, and the mathematics behind every model and number in the deck. Everything here comes from your report (10 Oct), your final-week findings (21 Oct) and your code.</p>
+  <div class="tools"><button type="button" id="open-all">Expand all answers</button><button type="button" id="close-all">Collapse all</button></div>
+  <div class="card warn"><h4>Two evidence sets: keep them straight</h4>
+    <p><b>The submitted report</b> (Options 0–4 trained from scratch with PPO and A2C, combined objectives, 3 seeds, 50 held-out instances) supplies the <i>"RL beat the best rule by 2–10%"</i> result. <b>The final-week study</b> (behaviour-cloned and fine-tuned policies, 50 <i>fresh</i> instances, 10 seeds) supplies the two charts on slide 3. They agree on the main message: nothing was significantly better than the best classic rule on the main objective. If asked "where is that number from", say which one.</p></div>
+</header>
+
+<section id="script">
+<h2>1 · Script cheat sheet</h2>
+<p>Total about 4 minutes. Visitors roam, so there are three lengths. Say the hook first; only go deeper if they stay.</p>
+<div class="two">
+  <div class="card say"><span class="tag">20 seconds</span><h4>The hook, for a passer-by</h4>
+    <p>"Every cloud provider has to decide which job runs next and on which machine. I asked whether a computer that teaches itself from reward can do that better than the hand-made rules used today. Short answer: not on the main goal, but it gets close, and it does better when the goals are mixed."</p></div>
+  <div class="card say"><span class="tag">60 seconds</span><h4>The short version</h4>
+    <p>"I turned cloud scheduling into a maths problem: jobs with deadlines and importance, 10 machines, minimise how late things finish. I compared 49 classic rules and an exact solver with reinforcement-learning schedulers trained by trial and error. On the main objective the best learned scheduler came within 5% of the best rule but never beat it. When the objective mixed goals, such as lateness, late-job count and energy, it did win by up to 10% offline. Online it needed far more training. So the gap looks like a training and design problem, not a dead end."</p></div>
+</div>
+
+<div class="slide"><div class="n">1</div><div>
+  <h3>Slide 1 · The problem <span class="time">about 40 s</span></h3>
+  <div class="card say"><span class="tag">Say</span>
+    <p>"Every block here is a job on a machine. The orange ones finish after their deadline, and that costs money. 94% of enterprises already use cloud services, an hour of downtime costs about $8,000 a minute, and the market is heading to $1.7 trillion by 2033. Deciding which job runs next, and where, is the same decision in hospitals, factories and deliveries."</p>
+    <p>"My question: can reinforcement learning, which teaches itself from reward, schedule better than classical heuristic and dispatching rules, and under what conditions?"</p></div>
+  <p><span class="tag">Point to</span> the orange blocks crossing the deadline line, then the three statistics. <span class="tag">If asked</span> where the figures come from: DigitalDefynd, "30 Surprising Cloud Computing Facts &amp; Statistics", 2026 (reference [1] at the bottom of the slide). They are context, not results.</p>
+  <p><span class="tag">Bridge</span> "To answer that I had to say precisely what 'better' means."</p></div></div>
+
+<div class="slide"><div class="n">2</div><div>
+  <h3>Slide 2 · Modelling decisions and methods compared <span class="time">about 75 s</span></h3>
+  <div class="card say"><span class="tag">Say</span>
+    <p>"I modelled it as a resource-constrained scheduling problem. Each job has a length, a resource demand across four resource types, a due date and an importance weight. There are 10 machines, and a job runs without interruption. How late job <i>j</i> finishes is its tardiness, and the objective adds up importance times lateness squared, so one very late job costs far more than many slightly late ones."</p>
+    <p>"I also tested a combined objective with three extra goals: lateness itself, how many jobs miss their deadline, and energy. The λ weights set how much each goal counts. I did not look at one metric; I examined the whole thing."</p>
+    <p>"On the left, how it was modelled: as a Markov decision process, which is the state, the action, and the reward. On the right, what I compared. Classical: 49 dispatching heuristics, each a priority rule plus a placement rule, and an exact solver, CP-SAT, which proves bounds on the best possible. Learned: two actor-critic algorithms, PPO and A2C, across five ways of choosing the action. Option 0 picks the job and machine directly. Option 1 chooses which classic rule to apply. Options 2 and 3 learn a priority for the next job, and Option 3 adds the ATC index as an input. Option 4 uses two output heads."</p></div>
+  <p><span class="tag">Point to</span> the objective, then the blue and grey bars: blue is chosen by the network, grey by a fixed rule. <span class="tag">Demo</span> "Press the button to train a tiny version yourself."</p>
+  <p><span class="tag">If asked</span> Q1–Q8 and Q9–Q14 below. <span class="tag warn">Check</span> see section 7: the formula line and "five variations" wording.</p></div></div>
+
+<div class="slide"><div class="n">3</div><div>
+  <h3>Slide 3 · The results <span class="time">about 75 s</span></h3>
+  <div class="card say"><span class="tag">Say</span>
+    <p>"Left: 50 fresh test cases under heavy load. Lower is better. The best classic rule scores 26,809. A learned scheduler that copies a rule scores about 30,700, and with extra training about 30,400. Learning entirely on its own scores 45,300, with large differences between training runs, shown by the dots."</p>
+    <p>"Right: five scenarios, cost relative to the best rule, where 1.0 is the best rule. The learned schedulers sit at or above that line."</p>
+    <p>"So no AI scheduler was significantly better than the best classic rule on the main objective. But there is an opportunity. When the objective mixes several goals and jobs differ in importance, RL did beat the best rule by up to 10% offline. Online it needed far more training and closed most of the gap without overtaking. So the gap looks like a training and design problem worth pursuing. I have not shown that yet."</p></div>
+  <p><span class="tag">Point to</span> the dots on the left bars, then the line at 1.0. <span class="tag">Demo</span> "The race page lets you set the situation and the goals and watch five schedulers compete."</p>
+  <p><span class="tag">If asked</span> Q18–Q28. <span class="tag warn">Careful</span> avoid "RL beats" or "RL matches" on the main objective; say "no significant difference". See section 7 about "small problems".</p></div></div>
+
+<div class="slide"><div class="n">4</div><div>
+  <h3>Slide 4 · Professional development and future work <span class="time">about 45 s</span></h3>
+  <div class="card say"><span class="tag">Say</span>
+    <p>"I built three kinds of skill. Modelling: turning a cloud problem into an optimisation. Machine learning: implementing and tuning several reinforcement-learning algorithms against strong baselines. Research and communication: collating findings and building interactive tools so non-experts can explore them."</p>
+    <p>"My direction is machine learning, optimisation and computational physics, and this project taught me where I need to grow: critical thinking, data analysis, algorithm design, advanced mathematics."</p>
+    <p>"Next: RL training is costly, so train longer on a cloud machine and see whether RL can then outperform; test on real traces such as Google's rather than synthetic data; and carry the approach to other optimisation problems."</p></div>
+  <p><span class="tag">If asked</span> Q29–Q32 (physics links, AI-tool use, why it matters, small problems).</p></div></div>
+</section>
+
+<section id="demo">
+<h2>2 · Driving the demos</h2>
+<div class="two">
+  <div class="card"><h4>Scheduler Race page</h4>
+    <ol><li>Step 1: pick the situation (how busy the machines are, deadline tightness, offline or online).</li>
+    <li>Step 2: pick the goals with a preset or the weight sliders.</li>
+    <li>Step 3: press Start. Five racers: two classic rules, one AI that copies a rule, two AI models trained on their own.</li>
+    <li>Bars show percent of the best score on an absolute scale; the winner is outlined.</li>
+    <li>Click any racer, step heading or the verdict for an explanation card with the maths.</li></ol>
+    <p>Say: "Change either choice and the race resets, so you can see that the best method changes with the situation."</p></div>
+  <div class="card"><h4>"How Reinforcement Learning Works" demo</h4>
+    <ol><li>Press Play at ×1 and follow the orb: jobs and machines feed State, State goes to the network, the network gives a probability for each job, the pick goes to Action and onto a machine, the result gives the Reward, time moves on.</li>
+    <li>Press Train: the left column widens so the learning curve is readable; the curve should fall toward the best-rule line.</li>
+    <li>Press Test: random order against the best classic rule against this learner on 200 new job sets.</li>
+    <li>Switch REINFORCE to Actor-critic to show the critic's numbers and V(s).</li></ol>
+    <p>Say: "This is a toy: 2 machines and 8 jobs. In the real problem there are 10 machines and 100 jobs, and a learner that beats a simple rule here does not beat the best rule there."</p></div>
+</div>
+</section>
+
+<section id="numbers">
+<h2>3 · Numbers card</h2>
+<p>Percentages are always (RL − heuristic) ÷ heuristic unless stated. Recomputed from your report tables.</p>
+<div class="scroll"><table>
+<tr><th>Result</th><th>Value</th><th>Source</th></tr>
+<tr><td>Offline, weighted: best RL (Option 2 PPO) vs best rule (WLST)</td><td>28,061 vs 26,670 = +5.2%</td><td>report, 3 seeds, 50 instances</td></tr>
+<tr><td>Same, RL vs best <i>published</i> rule (LST 39,536)</td><td>RL cost 29% lower</td><td>report</td></tr>
+<tr><td>Offline, unit weights: Option 1 reproduces LST</td><td>13,098 vs 13,098 = 0.0%</td><td>report</td></tr>
+<tr><td>Online ρ = 0.95, 300k steps: best RL vs EDF+Consolidate (21,986)</td><td>37,812 = +72%</td><td>report</td></tr>
+<tr><td>Online Option 2 PPO, 1M steps</td><td>26,515 = +20.6%</td><td>report, 3 seeds</td></tr>
+<tr><td>Online Option 2 PPO, 2M steps</td><td>24,921 = +13.4%</td><td>report, 2 seeds only</td></tr>
+<tr><td>Combined objectives, offline weighted: RL better than best rule</td><td>1.8–10.3% (linear tardiness ≥ ×1); 1.4–10.0% (late jobs ×0.5–×4); 8.6% (all four)</td><td>report</td></tr>
+<tr><td>Energy objective</td><td>RL worse by 3.4–4.8% at every weight</td><td>report</td></tr>
+<tr><td>Unit weights, combined objectives</td><td>RL never beats LST (0.0% to +10.8%)</td><td>report</td></tr>
+<tr><td>Online combined objectives</td><td>RL behind by 5.8–15.7%</td><td>report</td></tr>
+<tr><td>Fresh set, ρ = 0.95: best rule MDC+Consolidate</td><td>26,809</td><td>final week, slide 3</td></tr>
+<tr><td>Clone only / clone + PPO (windowed, 10 seeds each)</td><td>30,678 / 30,372</td><td>final week, slide 3</td></tr>
+<tr><td>Learning from scratch (windowed, 10 seeds)</td><td>45,331 (seed range 34,475–59,493)</td><td>final week, slide 3</td></tr>
+<tr><td>Clairvoyant rollout on 3 instances</td><td>J 24,682 → 7,339 (−70%)</td><td>final week; an upper bound, not a result</td></tr>
+<tr><td>Setup</td><td>100 jobs, 10 machines, 4 resources, capacity 30, H = 100; 50 test instances; 24 tuning studies of 12 trials × 300k steps</td><td>report</td></tr>
+<tr><td>Heuristics compared</td><td>12 priority rules × 4 placement rules = 48, + Tetris = 49</td><td>report</td></tr>
+</table></div>
+</section>
+
+<section id="qa">
+<h2>4 · Questions and answers</h2>
+<p>Each answer starts with the one-sentence version, then the depth. Grouped by how a question is likely to arrive.</p>
+
+<h3>A · The problem and the model</h3>
+<details><summary>Q1 · Why is this problem hard?</summary><div class="body">
+<p><b>One sentence:</b> choosing start times and machines for many jobs under capacity limits has an astronomically large number of possibilities, and problems of this family are NP-hard, so no known method is guaranteed to be both exact and fast at scale.</p>
+<p>Your report cites Lenstra et al. (1977) for NP-hardness of scheduling problems of this kind; even the single-machine total weighted tardiness problem <span class="m">1 \mid\mid \sum w_j T_j</span> is strongly NP-hard <span class="verify">(verify the exact citation before quoting)</span>. A time-indexed exact model has binary variables <span class="m">x_{jmt}</span> for each job, machine and start time: about <span class="m">100 \times 10 \times 600 \approx 6\times 10^{5}</span> variables with the extended horizon <span class="m">\bar H = H + \sum_j p_j \approx 100 + 500</span> <span class="verify">(order of magnitude)</span>, plus <span class="m">|M||R||\mathcal T|</span> capacity constraints. CP-SAT did not reach proven optimality at 100 jobs in 60 s; at 15 jobs it proved 13 of 15 instances optimal.</p></div></details>
+
+<details><summary>Q2 · Why lateness squared?</summary><div class="body">
+<p><b>One sentence:</b> squaring makes a few very late jobs cost much more than many slightly late ones, which matches how service agreements work, and it is convex so the penalty grows faster the later a job is.</p>
+<p>Linear tardiness cannot tell two schedules apart if they have the same total lateness; squared tardiness prefers the one with the more even lateness. It also has a clean reward form: a late job of weight <span class="m">w_j</span> is charged <span class="m">w_j(2k+1)</span> in its <span class="m">k</span>-th late step, and these add up exactly to <span class="m">w_jT_j^2</span> (see Maths 2).</p></div></details>
+
+<details><summary>Q3 · Why not just use the exact solver (CP-SAT)?</summary><div class="body">
+<p><b>One sentence:</b> it is excellent when it finishes, but at 100 jobs it does not finish, and it needs the whole problem in advance.</p>
+<p>Within 60 s it returned schedules worse than both RL and WLST (35,681 against 28,061 and 26,670 offline), so its lower bound could not tell us how far either was from optimal. Online, jobs arrive unpredictably, so an exact solver would have to be rerun at every arrival. A trained policy answers in milliseconds. That speed and the ability to adapt are the motivations for learning, not guaranteed quality.</p></div></details>
+
+<details><summary>Q4 · What is the "extended horizon" and why does it matter?</summary><div class="body">
+<p><b>One sentence:</b> no job is ever dropped, so leaving a job unscheduled is always costly, which closes a loophole where agents earned high reward by not scheduling jobs.</p>
+<p>The first objective (machines used + weighted tardiness + peak utilisation) could be gamed: unscheduled jobs cost nothing, so agents learned to leave jobs unassigned. That is reward hacking (Skalse et al. 2022). In the final objective, an unfinished job keeps accumulating tardiness until it completes, so the best schedule must finish everything.</p></div></details>
+
+<details><summary>Q5 · What is the combined objective and how were the λ weights set?</summary><div class="body">
+<p><b>One sentence:</b> it adds linear lateness, late-job count and energy to the squared-lateness term, and each λ is set so that its term equals J on the best heuristic's schedule, then scaled by 0.25 to 4.</p>
+<div class="eq">J_\lambda = \sum_j w_j T_j^{2} + \lambda_T \sum_j w_j T_j + \lambda_U \sum_j w_j U_j + \lambda_E E</div>
+<p>The calibration <span class="m">\lambda_m = J_{\text{ref}} / x_{m,\text{ref}}</span> (where <span class="m">x_{m,\text{ref}}</span> is the term's value on the best heuristic's schedule) stops a term dominating just because of its units. This is a weighted-sum scalarisation, which can only reach points on the convex part of a Pareto front.</p></div></details>
+
+<details><summary>Q6 · Offline versus online, and what is ρ?</summary><div class="body">
+<p><b>One sentence:</b> offline, all jobs are known at time 0; online, jobs arrive randomly, and ρ says how busy the cluster is.</p>
+<p><span class="m">\rho = \max_r \dfrac{\nu\,\mathbb E[p_j a_{jr}]}{|M|\,C_r}</span>: work arriving per step divided by work the cluster can do per step, for the bottleneck resource. Below 1 the queue is stable on average; at or above 1 it grows without bound. ρ = 0.95 is heavy but stable, where scheduling choices matter most (see Maths 11).</p></div></details>
+
+<details><summary>Q7 · What exactly is the MDP?</summary><div class="body">
+<p><b>One sentence:</b> the state is everything needed to decide, the action starts a job on a machine or waits, the reward is minus the lateness cost as it accrues, and time advances when a job finishes or arrives.</p>
+<ul><li><b>State</b> <span class="m">s_t</span>: waiting jobs and their features <span class="m">(p_j,a_j,d_j,w_j)</span>, running jobs with machine, start time and length, remaining capacity <span class="m">R_{mrt}</span>, which machines are on, and the time.</li>
+<li><b>Action</b>: <span class="m">A_t=\{(j,m)\}\cup\{\text{idle}\}</span>, with infeasible pairs masked.</li>
+<li><b>Transition</b>: deterministic offline; online, random only through arrivals.</li>
+<li><b>Reward</b>: negative of the objective, charged as it accrues, plus potential-based shaping.</li></ul>
+<p>The Markov property holds because the state contains the processing set and capacities: the future depends on nothing else.</p></div></details>
+
+<details><summary>Q8 · What are the offline and online instances like?</summary><div class="body">
+<p>Offline: 100 jobs, 10 machines, 4 resources of capacity 30, durations and demands uniform on {1,…,9}, weights on {1,…,5}, deadlines from the Potts–Van Wassenhove tardiness factor TF (0.5 main). Online: Poisson arrivals, log-normal sizes with the same mean, deadline = arrival + slack in {10,…,60}. At ρ = 0.95 that is roughly 11 jobs per time step, about 1,100 jobs over the horizon (see Maths 12).</p></div></details>
+
+<h3>B · The learning methods</h3>
+<details><summary>Q9 · What is reinforcement learning, in one breath?</summary><div class="body">
+<p>An agent improves a decision rule (a policy) by trying actions, receiving a reward, and shifting probability toward actions that led to higher total reward. There is no list of right answers, only the reward.</p></div></details>
+
+<details><summary>Q10 · How does the policy actually learn? (policy gradient)</summary><div class="body">
+<p><b>One sentence:</b> increase the log-probability of each action in proportion to how much better than usual its outcome was.</p>
+<div class="eq">\nabla_\theta J(\theta) = \mathbb E\Big[\sum_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)\,\big(G_t - b(s_t)\big)\Big]</div>
+<p>Full derivation in Maths 4. REINFORCE (Williams 1992) uses the whole-episode return minus a baseline; the baseline lowers variance without adding bias. That is what the "average reward from this step" bars in your demo are.</p></div></details>
+
+<details><summary>Q11 · What is the critic, and what is the advantage?</summary><div class="body">
+<p>The critic estimates the value <span class="m">V(s)</span>, the expected return from a state. The advantage says how much better an action did than the critic expected: <span class="m">\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)</span>. Generalised advantage estimation sums these with a decay <span class="m">\gamma\lambda</span> (Maths 5). The actor is nudged by the advantage; the critic is trained toward what actually happened.</p></div></details>
+
+<details><summary>Q12 · PPO versus A2C?</summary><div class="body">
+<p>Both are actor-critic. <b>A2C</b> is synchronous and takes one gradient step on each short rollout (20–320 steps in your search space). <b>PPO</b> collects longer rollouts (2,048–16,384) and takes several epochs of minibatch updates, made safe by a clipped objective that stops the policy moving too far in one update (Maths 6). In your results PPO trained online; online A2C did not learn (Option 0 A2C produced the FCFS+FirstFit schedule on all three seeds).</p></div></details>
+
+<details><summary>Q13 · What are Options 0 to 4 and why did priority learning win?</summary><div class="body">
+<p>They differ in how much the network decides. Priority learning (Options 2, 3) lets the network choose only the job and a fixed rule place it: a small action space (about <span class="m">|J_t|+1</span> instead of <span class="m">|J_t|\cdot|M|+1 = 1001</span>), and the same split used by DeepRM and Decima. Direct pairs (Option 0) face a 1,001-way choice, which policy-gradient methods find hard (Dulac-Arnold et al. 2015). Rule selection (Option 1) collapsed onto one rule, so it can at best match the best rule in its menu. Action branching (Option 4) splits the product into two heads, about <span class="m">|J_t|+|M|</span> outputs, and was competitive offline but failed online (J = 139,721).</p></div></details>
+
+<details><summary>Q14 · What went wrong in training, and how was it fixed?</summary><div class="body">
+<ol><li><b>The critic did not learn.</b> Squared-tardiness returns are in the hundreds to thousands, so value error swamped the shared clipped gradient; the critic explained none of the variance. Fix: divide rewards by a running estimate of the standard deviation of the return (Engstrom et al. 2020; Andrychowicz et al. 2021); explained variance rose to 30–99.9%.</li>
+<li><b>Deterministic evaluation idled.</b> Idle is one action while the probability of starting a job is split over many, so for an undecided policy idle can be the single most likely action everywhere. Fix: a two-stage rule (Maths 9).</li>
+<li><b>Idling repeated forever.</b> Fix: event-driven idling jumps to the next arrival or completion. Combined, validation J of Option 0 A2C fell from 234,116 to 43,164.</li></ol></div></details>
+
+<details><summary>Q15 · What is "invalid action masking"?</summary><div class="body">
+<p>Actions that would break a capacity limit are removed before the softmax, by setting their logits to −∞, so they get probability 0 and no gradient (Huang and Ontañón 2020). The policy only ever chooses among feasible actions, and training is not wasted on learning that infeasible actions are bad.</p></div></details>
+
+<details><summary>Q16 · What is potential-based reward shaping and why is it safe?</summary><div class="body">
+<p>Adding <span class="m">F(s,s')=\gamma\Phi(s')-\Phi(s)</span> to the reward gives earlier feedback and provably does not change the optimal policy (Ng, Harada and Russell 1999): the extra terms telescope along any trajectory into a constant that depends only on the start and end states (Maths 3).</p></div></details>
+
+<details><summary>Q17 · How were hyperparameters tuned, and why did the defaults often win?</summary><div class="body">
+<p>Optuna with the TPE sampler: 24 studies (6 designs × 2 algorithms × 2 cases), 12 trials of 300,000 steps each, median pruning, choice on 20 validation instances. Library defaults were the best configuration in 8 of 24 studies. With only 12 trials in a noisy landscape (one in eight identical Option 2 runs diverged), search rarely beats well-chosen defaults; it is consistent with the known sensitivity of RL to hyperparameters (Eimer et al. 2023).</p></div></details>
+
+<details><summary>Q18 · What is the "AI that copies a rule", and why is it in the final results?</summary><div class="body">
+<p>Behaviour cloning: a network is trained with ordinary supervised learning to imitate a classic rule's choices, then optionally fine-tuned with PPO. It is a strong test of whether the network and the pipeline can reach rule-level quality at all. Training from scratch must discover the rule by trial and error. Results: a clone lands within noise of its rule; fine-tuning added nothing measurable; scratch was far worse and very variable. See Maths 14. A policy that copies a rule is therefore an upper reference for what training from scratch ought to reach, not a source of new knowledge.</p></div></details>
+
+<details><summary>Q19 · Why a window of 20 jobs?</summary><div class="body">
+<p>The all-slot network scored over 1,200 job slots, of which about 10 are schedulable and about 30 pending; 88% of the update time went into those slots. Showing only the 20 earliest-deadline schedulable jobs made a 1M-step run about 40× faster (about 30 minutes). A surprise you should state openly: windowed training <i>from scratch</i> did worse than all-slot training, and a larger window did worse still, so the cause is unexplained.</p></div></details>
+
+<h3>C · Results, statistics and caveats</h3>
+<details><summary>Q20 · Is a 5.2% gap meaningful? How sure are you?</summary><div class="body">
+<p>The gap is outside seed noise (standard deviation across 3 seeds is 219 on a 1,391 gap), so it is not one unlucky run. But three seeds is a small sample, the heuristic WLST was constructed for this objective after RL had already beaten every published rule, and the test set informed some choices. Say: "RL came within about 5%, and I did not beat the best rule."</p></div></details>
+
+<details><summary>Q21 · Why do you say "no significant difference" and not "RL matches the rule"?</summary><div class="body">
+<p>A confidence interval that includes zero shows the data cannot separate the two; it does not show they are equal. To claim equivalence you need the whole interval inside a margin you chose in advance (for example ±5%) — a two one-sided test (TOST) logic. Your intervals were wider than ±5% for most arms, so equivalence was not shown. That is why the safe phrase is "not significantly different, exploratory".</p></div></details>
+
+<details><summary>Q22 · What is "winner's curse" and why did you use fresh instances?</summary><div class="body">
+<p>If you pick the best of about 40 heuristics on a test set and then compare against it on the same set, the reference looks better than it really is. Your EDF+Consolidate was exactly that. On 50 new instances (seeds 700000+) the best became MDC+Consolidate at 26,809, and the old "RL from scratch is 20–30% behind" statement turned out to rest on the flattered reference. Fresh data fixes selection bias; it does not fix running many comparisons without correction, which you flag as exploratory.</p></div></details>
+
+<details><summary>Q23 · Why does RL win on combined objectives offline?</summary><div class="body">
+<p>No single hand-made rule targets the sum of several goals, so there is room for a learned priority; weights matter because the right order then depends jointly on deadline, length and weight (it vanished with unit weights). Care is needed: at moderate λ the winners were trained on J alone, and had fewer late jobs as a side effect of how RL schedules (for example Option 0 A2C: 52.7 late jobs against WLST's 61.7). WLST gives up other metrics to get the lowest J. At the largest weights agents trained on the combined objective took over, which does indicate learning.</p></div></details>
+
+<details><summary>Q24 · Why is online harder?</summary><div class="body">
+<p>The return depends on a random arrival sequence the agent cannot predict, so the learning signal is much noisier, and episodes are about ten times longer with a thousand-plus job slots. More steps help: Option 2 fell from 39,947 (300k) to 26,515 (1M) to 24,921 (2M, 2 seeds), still 13% behind. A clairvoyant rollout that knows the future arrivals cut J by 70% on three instances, so information, not just training, is a large part of the gap; whether a forecast could capture any of it is untested.</p></div></details>
+
+<details><summary>Q25 · Why did RL lose when energy was in the objective?</summary><div class="body">
+<p>Options 2 and 3 always place with First-Fit, so they cannot consolidate jobs onto fewer machines, which is what lowers energy; the best energy-aware heuristic uses a Consolidate placement. This is a likely but untested explanation (listed as future work: let RL choose placement).</p></div></details>
+
+<details><summary>Q26 · Does tie-breaking matter?</summary><div class="body">
+<p>Yes. Deadlines are integers, so several jobs often tie for earliest. On 20 validation instances EDF's J ranged from 28.3k (longest job first) to 36.5k (heaviest first), and the order flipped on the 50 test instances. Differences of about 10% within the EDF family are therefore instance-set noise. A per-slot network cannot see the job index, so index tie-breaking cannot be cloned (agreement stalls near 97%); EDFL (ties by duration) clones at 99.5%.</p></div></details>
+
+<details><summary>Q27 · What are the main limitations?</summary><div class="body">
+<ul><li>Synthetic instances of one size (100 jobs, 10 machines); no real traces yet.</li><li>Three seeds for most arms; online 2M-step results rest on two seeds; three online tuning studies stopped early.</li><li>CP-SAT did not reach optimality, so the distance to the optimum is unknown.</li><li>Choosing the best RL variant on the test set slightly favours RL.</li><li>Fine-tuned arms used a learning rate of 1e-5 chosen on validation, scratch arms the PPO default 3e-4 untuned, so "scratch is unreliable" is confounded with "untuned".</li><li>Training-seed variance is not in the bootstrap intervals; no multiplicity correction.</li></ul></div></details>
+
+<details><summary>Q28 · What would you do with more time?</summary><div class="body">
+<p>Train longer on cloud compute with more seeds; test on Google or Azure traces; let RL choose placement; train one agent conditioned on the objective weights; extract readable rules from the learned priorities (RL for heuristic discovery); test a forecast of arrivals.</p></div></details>
+
+<h3>D · Broader questions</h3>
+<details><summary>Q29 · How does this connect to physics or control theory?</summary><div class="body"><p>See section 6: the softmax policy is a Boltzmann distribution, entropy regularisation is a temperature, REINFORCE is the score-function estimator, and the Bellman equation is the discrete-time Hamilton–Jacobi–Bellman equation.</p></div></details>
+<details><summary>Q30 · How did you use AI tools?</summary><div class="body"><p>As stated in the report's use statement: the environment and the translation of the formulation into code were written by hand; model implementation, training and evaluation were done with help from Claude Code. Say that you directed the work, designed the experiments, set the honesty rules (no "RL beats" claims, held-out and fresh test sets) and checked the results.</p></div></details>
+<details><summary>Q31 · Why does this matter in practice?</summary><div class="body"><p>Cloud scheduling decisions repeat millions of times; a few percent in lateness or energy is large in aggregate, and the same structure appears in logistics, manufacturing and hospitals. The honest finding that simple rules are hard to beat is itself useful: a heuristic needs no training and behaves identically every time.</p></div></details>
+<details><summary>Q32 · "RL did outperform on incredibly small problems": what is the evidence?</summary><div class="body"><p>Be careful with this one. In your report, on 15-job instances CP-SAT proved 13 of 15 optimal and LST matched the optimum on every one, so nothing outperformed there. The only place a learner beat a rule is the toy demo (2 machines, 8 jobs, three learned weights), where after training it scored about 28 against about 31 for the best classic rule on 200 new job sets (one run). Say "in my toy demo a learner beat a simple rule, but that does not carry over to the real problem", or reword the slide.</p></div></details>
+</section>
+
+<section id="maths">
+<h2>5 · Mathematics behind every model</h2>
+<p>Each section: statement, derivation, a plain-language line, and where it appears in your project. Items marked <span class="verify">verify</span> are from general knowledge and are not cited in your report.</p>
+
+<details open><summary>Maths 1 · The scheduling model and the objective</summary><div class="body">
+<p>Jobs <span class="m">j\in J</span> have duration <span class="m">p_j</span>, demand <span class="m">a_{jr}</span> for resource <span class="m">r\in R</span>, due date <span class="m">d_j</span> and weight <span class="m">w_j</span>. Machines <span class="m">m\in M</span> have capacity <span class="m">C_r</span>. Binary <span class="m">x_{jmt}=1</span> if job <span class="m">j</span> starts on machine <span class="m">m</span> at time <span class="m">t</span>.</p>
+<div class="eq">\sum_{m}\sum_{t} x_{jmt} = 1 \;\; \forall j, \qquad U_{mrt} = \sum_{j}\;\sum_{t-p_j < t' \le t} a_{jr}\,x_{jmt'} \le C_r \;\; \forall m,r,t</div>
+<div class="eq">s_j = \sum_{m}\sum_{t} t\,x_{jmt}, \qquad T_j = \max(0,\; s_j + p_j - d_j), \qquad U_j = \mathbf 1[T_j > 0]</div>
+<div class="eq">J = \sum_j w_j T_j^{2}, \qquad J_\lambda = J + \lambda_T\sum_j w_jT_j + \lambda_U\sum_j w_jU_j + \lambda_E E</div>
+<p>Here <span class="m">E</span> is total active machine-time, and the constraint inequalities for <span class="m">T_j</span> hold with equality at the optimum because the objective increases in <span class="m">T_j</span>.</p>
+<div class="say-it"><b>Plain:</b> pick a start and a machine for every job so that nothing overloads a machine, and add up how late things are.</div></div></details>
+
+<details><summary>Maths 2 · Why the reward adds up to exactly <span class="m">J</span></summary><div class="body">
+<p>A late job of weight <span class="m">w_j</span> is charged <span class="m">w_j(2k+1)</span> in its <span class="m">k</span>-th late step (<span class="m">k=0,1,\dots,T_j-1</span>).</p>
+<div class="eq">\sum_{k=0}^{T-1}(2k+1) = 2\cdot\frac{(T-1)T}{2} + T = T^2</div>
+<p>Induction: true for <span class="m">T=1</span>; if the sum is <span class="m">T^2</span> then adding <span class="m">2T+1</span> gives <span class="m">(T+1)^2</span>. So the total reward is <span class="m">-\sum_j w_jT_j^2 = -J</span>, and maximising return minimises <span class="m">J</span>.</p>
+<div class="say-it"><b>Plain:</b> each extra step of lateness costs more than the last (1, 3, 5, 7…), which sums to the square.</div>
+<div class="proj"><b>Your project:</b> the demo reward is <span class="m">r_t=-w_jT_j^2/10</span> for the started job; the real environment charges as lateness accrues.</div></div></details>
+
+<details><summary>Maths 3 · Discounting, returns, Bellman equations, shaping</summary><div class="body">
+<div class="eq">G_t = \sum_{k\ge t}\gamma^{k-t} r_k, \qquad V^\pi(s) = \mathbb E_\pi[G_t \mid s_t=s], \qquad Q^\pi(s,a)=\mathbb E_\pi[G_t\mid s_t=s,a_t=a]</div>
+<div class="eq">V^\pi(s) = \mathbb E_{a\sim\pi,\,s'\sim P}\big[r(s,a)+\gamma V^\pi(s')\big], \qquad V^*(s)=\max_a\Big[r(s,a)+\gamma\sum_{s'}P(s'\mid s,a)V^*(s')\Big]</div>
+<p><b>Shaping.</b> With <span class="m">r' = r + \gamma\Phi(s') - \Phi(s)</span>, the discounted sum along a trajectory telescopes:</p>
+<div class="eq">\sum_{t=0}^{T-1}\gamma^t\big(\gamma\Phi(s_{t+1})-\Phi(s_t)\big) = \gamma^T\Phi(s_T) - \Phi(s_0)</div>
+<p>so <span class="m">Q'^*(s,a)=Q^*(s,a)-\Phi(s)</span>, the ranking of actions in each state is unchanged, and the optimal policy is unchanged (Ng, Harada, Russell 1999). The episodes are finite and the discount is close to 1 (0.99–0.999 searched), so returns stay bounded.</p>
+<div class="say-it"><b>Plain:</b> a bonus for "moving to a better-looking state" is paid back when you leave it, so it only gives earlier feedback and cannot change what is best.</div></div></details>
+
+<details><summary>Maths 4 · The policy-gradient theorem, REINFORCE and the baseline</summary><div class="body">
+<p>Let a trajectory <span class="m">\tau=(s_0,a_0,\dots)</span> have probability <span class="m">P_\theta(\tau)=\rho(s_0)\prod_t\pi_\theta(a_t\mid s_t)P(s_{t+1}\mid s_t,a_t)</span> and total reward <span class="m">R(\tau)</span>.</p>
+<div class="eq">\nabla_\theta J(\theta)=\nabla_\theta\sum_\tau P_\theta(\tau)R(\tau)=\sum_\tau P_\theta(\tau)\,\nabla_\theta\log P_\theta(\tau)\,R(\tau)=\mathbb E\Big[\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)\,R(\tau)\Big]</div>
+<p>using <span class="m">\nabla P = P\nabla\log P</span> (the log-derivative trick); the transition terms do not depend on <span class="m">\theta</span> and drop out. Because an action cannot affect earlier rewards, replace <span class="m">R(\tau)</span> by the reward-to-go <span class="m">G_t</span>.</p>
+<p><b>Baseline is unbiased</b> if it does not depend on the action <span class="m">a_t</span>:</p>
+<div class="eq">\mathbb E_{a\sim\pi}\big[\nabla_\theta\log\pi_\theta(a\mid s)\,b(s)\big] = b(s)\sum_a\nabla_\theta\pi_\theta(a\mid s) = b(s)\,\nabla_\theta\sum_a\pi_\theta(a\mid s)=b(s)\,\nabla_\theta 1 = 0</div>
+<p>so subtracting <span class="m">b(s_t)</span> changes the variance but not the expectation. A good choice is <span class="m">b(s)=V^\pi(s)</span>, which makes <span class="m">G_t-b</span> an estimate of the advantage.</p>
+<p><b>Softmax policy with linear scores</b> (your demo): <span class="m">\pi(j\mid s)=e^{z_j}/\sum_k e^{z_k}</span>, <span class="m">z_j=\theta^\top\phi_j</span>. Then</p>
+<div class="eq">\nabla_\theta\log\pi(a\mid s)=\phi_a-\sum_j\pi(j\mid s)\,\phi_j</div>
+<p>(the feature of the chosen job minus the average feature under the policy), which is exactly the expression in the demo code.</p>
+<div class="say-it"><b>Plain:</b> make the actions that led to above-average outcomes more likely, and the others less likely. Subtracting the average does not bias this, and it makes it much less noisy.</div>
+<div class="proj"><b>Your demo:</b> the three weights are time left, length and importance; after training "time left" is strongly negative, so the learner rediscovers least-slack-first.</div></div></details>
+
+<details><summary>Maths 5 · Actor-critic and generalised advantage estimation</summary><div class="body">
+<div class="eq">\delta_t = r_t+\gamma V_\phi(s_{t+1})-V_\phi(s_t), \qquad \hat A_t^{\text{GAE}(\gamma,\lambda)}=\sum_{l\ge 0}(\gamma\lambda)^l\,\delta_{t+l}</div>
+<p>If <span class="m">V_\phi=V^\pi</span> then <span class="m">\mathbb E[\delta_t]=A^\pi(s_t,a_t)</span> (unbiased). <span class="m">\lambda=0</span> gives the one-step estimate <span class="m">\delta_t</span> (low variance, biased if the critic is wrong); <span class="m">\lambda=1</span> gives <span class="m">G_t-V(s_t)</span> (unbiased, high variance). Your search space: λ ∈ {0.9, 0.95, 0.98} for PPO and {0.9, 0.95, 1.0} for A2C; the demo uses 0.9. The critic is trained to minimise <span class="m">\mathbb E[(V_\phi(s_t)-\hat G_t)^2]</span>.</p>
+<p><b>Explained variance</b> measures whether the critic is learning anything:</p>
+<div class="eq">\mathrm{EV}=1-\frac{\mathrm{Var}(G-V)}{\mathrm{Var}(G)}</div>
+<p>EV near 0 means the critic is no better than a constant (your original fault); EV near 1 means it predicts returns well (after the fix, 30–99.9%).</p>
+<div class="say-it"><b>Plain:</b> the critic is a running guess of "how well will this go from here"; the actor is rewarded for beating that guess.</div></div></details>
+
+<details><summary>Maths 6 · PPO's clipped objective, A2C's loss</summary><div class="body">
+<div class="eq">L^{\text{CLIP}}(\theta)=\mathbb E_t\Big[\min\big(r_t(\theta)\hat A_t,\;\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\,\hat A_t\big)\Big],\qquad r_t(\theta)=\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)}</div>
+<p>If <span class="m">\hat A_t>0</span> the objective stops rewarding increases in the ratio beyond <span class="m">1+\epsilon</span>; if <span class="m">\hat A_t<0</span> it stops rewarding decreases below <span class="m">1-\epsilon</span>. Since the gradient vanishes outside the trust region, several epochs on the same rollout are safe. Search space: ε ∈ {0.1, 0.2, 0.3}, epochs ∈ {3, 5, 10}, minibatch ∈ {64, 256, 1024}.</p>
+<p><b>A2C</b> minimises <span class="m">L=-\mathbb E[\log\pi_\theta(a_t\mid s_t)\hat A_t]+c_v\,\mathbb E[(V_\phi-\hat G_t)^2]-c_e\,\mathbb E[H(\pi_\theta)]</span> with entropy bonus <span class="m">c_e\in[10^{-4},3\times10^{-2}]</span> (log-uniform), after each short rollout.</p>
+<div class="say-it"><b>Plain:</b> PPO says "improve, but not by more than a small step in one go", so it can safely reuse data; A2C takes small, frequent steps.</div></div></details>
+
+<details><summary>Maths 7 · Action-space sizes and masking</summary><div class="body">
+<div class="eq">|A|=|J_t|\cdot|M|+1\;\;\Rightarrow\;\;100\cdot10+1=1001 \text{ (Option 0)};\qquad |J_t|+1\le 101 \text{ (Options 2, 3)};\qquad |J_t|+|M| \text{ outputs (Option 4)}</div>
+<p>Option 1 chooses among 7 priority rules × 2 placements = 14. Option 3w restricts to the 20 most urgent jobs. <b>Masked softmax</b>: with feasible set <span class="m">\mathcal A(s)</span>,</p>
+<div class="eq">\pi(a\mid s)=\frac{e^{z_a}}{\sum_{a'\in\mathcal A(s)}e^{z_{a'}}}</div>
+<p>equivalent to setting infeasible logits to <span class="m">-\infty</span>; those actions get probability and gradient 0. A pointer network scores each job against the state and outputs a distribution over the input items, so the same network handles any number of waiting jobs (Vinyals et al. 2015; Kool et al. 2019).</p></div></details>
+
+<details><summary>Maths 8 · Reward scaling</summary><div class="body">
+<p>Squared-tardiness returns reach thousands, so the value-regression error dominates a shared gradient. Divide rewards by a running standard deviation of the return: <span class="m">\tilde r_t=r_t/\hat\sigma_G</span> (Engstrom et al. 2020; Andrychowicz et al. 2021). This rescales the loss landscape but not which policy is optimal (a positive constant multiple of the reward leaves the argmax unchanged).</p>
+<div class="proj"><b>Your project:</b> the single biggest fix; offline Option 0 A2C validation J fell from 234,116 to 43,164 together with the other two fixes.</div></div></details>
+
+<details><summary>Maths 9 · The idle action and the two-stage evaluation rule</summary><div class="body">
+<p>Idle is one action; "start a job" is spread over many (job, machine) actions. Suppose <span class="m">\pi(\text{idle})=0.20</span> and ten job actions share the remaining 0.80 equally (0.08 each). The most likely single action is idle, even though the policy starts a job with probability 0.8. Hence the rule:</p>
+<div class="eq">a=\text{idle}\quad\text{if}\quad \pi(\text{idle}) \ge \sum_{j}\pi(j)</div><div class="eq">a=\arg\max_{j}\pi(j)\quad\text{otherwise}</div>
+<p>For a confident policy this equals plain argmax. <b>Event-driven idling:</b> idle advances time to the next arrival or completion. Waiting between events cannot help: a job that fits at an intermediate step also fits now and finishes earlier, so no schedule is lost. (Idling matters at events because schedules that never idle can exclude the optimum; Giffler and Thompson 1960.)</p></div></details>
+
+<details><summary>Maths 10 · The classic heuristics, with the derivation of Smith's rule</summary><div class="body">
+<p>Slack <span class="m">\sigma_j(t)=d_j-p_j-t</span>. <b>EDF</b>: smallest <span class="m">d_j</span>. <b>LST</b>: smallest <span class="m">\sigma_j(t)</span>. <b>SPT/LPT</b>: shortest/longest <span class="m">p_j</span>. <b>WSPT</b>: largest <span class="m">w_j/p_j</span>. <b>ATC</b> (Vepsäläinen and Morton 1987), as implemented, with <span class="m">k=2</span> and <span class="m">\bar p</span> the mean duration:</p>
+<div class="eq">I_j(t)=\frac{w_j}{p_j}\exp\!\Big(-\frac{\max(\sigma_j(t),0)}{k\,\bar p}\Big)</div>
+<p><b>WLST/WEDF</b> (built for this project) scale the slack (or time to deadline) by the weight. <b>MDC</b> (marginal delay cost) is derived from your objective: delaying job <span class="m">j</span> by one tick raises its least possible squared tardiness by</p>
+<div class="eq">\Delta C_j(t)=w_j\Big[(t+1+p_j-d_j)_+^2-(t+p_j-d_j)_+^2\Big],\qquad \text{start the job with the largest } \Delta C_j/p_j</div>
+<p>This applies Smith's ratio rule to the current marginal cost. <b>Smith's rule</b> (1956) is optimal for <span class="m">1\mid\mid\sum w_jC_j</span> by adjacent interchange: for adjacent jobs <span class="m">i</span> then <span class="m">j</span> starting at time <span class="m">t</span>, swapping them changes the cost by</p>
+<div class="eq">\big[w_i(t+p_i)+w_j(t+p_i+p_j)\big]-\big[w_j(t+p_j)+w_i(t+p_j+p_i)\big]=w_jp_i-w_ip_j</div>
+<p>so <span class="m">i</span> first is better exactly when <span class="m">w_i/p_i\ge w_j/p_j</span>. On parallel multi-resource machines with squared tardiness this is a heuristic with no guarantee, as the code docstring says.</p></div></details>
+
+<details><summary>Maths 11 · Load, queues and why ρ = 0.95 is the interesting regime</summary><div class="body">
+<div class="eq">\rho=\max_{r}\frac{\nu\,\mathbb E[p_ja_{jr}]}{|M|\,C_r}</div>
+<p>For an M/M/1 queue (one server, Poisson arrivals, exponential service) the mean waiting time is</p>
+<div class="eq">W_q=\frac{\rho}{\mu(1-\rho)},\qquad \frac{\rho}{1-\rho}=1,\;3,\;19 \text{ at } \rho=0.50,\;0.75,\;0.95,\qquad \to\infty \text{ as } \rho\to1</div>
+<p>(your system is multi-machine, multi-resource and log-normal, so this is only the shape of the effect). Little's law <span class="m">L=\nu W</span> links the average number in the system to the arrival rate and time in system. Your best-heuristic <span class="m">J</span> grows with load roughly as the queue does: about 4,085 at ρ = 0.50, 5,990 at 0.75, 21,986 at 0.95 and 106,463 at 1.10 (old test set).</p>
+<div class="say-it"><b>Plain:</b> waiting grows slowly until the system is nearly full, then explodes; that is why the busy-but-not-overloaded setting is where scheduling choices matter most.</div></div></details>
+
+<details><summary>Maths 12 · Generating the instances (Poisson, log-normal, deadlines)</summary><div class="body">
+<p><b>Poisson arrivals</b> with rate <span class="m">\nu</span>: inter-arrival times are exponential with mean <span class="m">1/\nu</span>. Choosing <span class="m">\nu</span> for a target load: <span class="m">\nu=\rho\,|M|\,C_r/\mathbb E[p_ja_{jr}]</span>. With <span class="m">|M|C_r=10\cdot30=300</span> and (assuming independent, mean-matched sizes) <span class="m">\mathbb E[p]\,\mathbb E[a]\approx5\cdot5=25</span>: <span class="m">\nu\approx12\rho\approx11.4</span> jobs per step at ρ = 0.95, about 1,100 jobs over <span class="m">H=100</span> <span class="verify">(illustration; the exact arrival rate is in the code)</span>, matching the 1,200-ish slots in the all-slot network.</p>
+<p><b>Log-normal sizes</b>: <span class="m">\ln X\sim\mathcal N(\mu,\sigma^2)</span> gives <span class="m">\mathbb E[X]=e^{\mu+\sigma^2/2}</span>. To match the offline mean 5 with <span class="m">\sigma=1</span>: <span class="m">\mu=\ln 5-\tfrac{1}{2}\approx1.11</span>. Many small jobs, a few large ones, like real traces.</p>
+<p><b>Offline deadlines</b> (Potts and Van Wassenhove 1985): <span class="m">d_j\sim U\big[\bar C(1-\mathrm{TF}-\mathrm{RDD}/2),\;\bar C(1-\mathrm{TF}+\mathrm{RDD}/2)\big]</span>, floored at <span class="m">p_j</span>, where <span class="m">\bar C=\max(|J|,\;\sum_j p_j a_{jr}/(|M|C_r))</span> bounds the finish time; larger TF means tighter deadlines; RDD = 0.6.</p></div></details>
+
+<details><summary>Maths 13 · The statistics: paired bootstrap, equivalence, selection effects</summary><div class="body">
+<p>For arms A and B scored on the same <span class="m">n=50</span> instances, the paired difference is <span class="m">\bar\Delta=\frac1n\sum_i(J_{A,i}-J_{B,i})</span>. A <b>bootstrap confidence interval</b> resamples the 50 instances with replacement <span class="m">B</span> times, recomputes <span class="m">\bar\Delta</span>, and takes the 2.5th and 97.5th percentiles. Pairing removes instance difficulty, which is large because squared tardiness is dominated by a few heavy instances.</p>
+<ul><li><b>Conditional on the trained seeds:</b> the interval reflects test-instance variation only; training-seed variance is not in it.</li>
+<li><b>Significance ≠ equivalence:</b> an interval spanning 0 means "cannot tell". Equivalence within a margin <span class="m">\delta</span> needs <span class="m">(\text{CI}_{\text{lo}},\text{CI}_{\text{hi}})\subset(-\delta,\delta)</span> (TOST logic).</li>
+<li><b>Winner's curse:</b> the maximum of many noisy estimates is biased high, so a reference picked on the test set is optimistic.</li>
+<li><b>Multiplicity:</b> comparing about 11 arms against 7 heuristics without correction inflates false positives, hence "exploratory".</li>
+<li><b>Percent gaps:</b> (RL−H)/H. "RL is 29% below LST" means <span class="m">(39{,}536-28{,}061)/39{,}536=29.0\%</span>; the same fact is "LST is 40.9% above RL".</li></ul></div></details>
+
+<details><summary>Maths 14 · Imitation learning: behaviour cloning, compounding error, DAgger</summary><div class="body">
+<div class="eq">\hat\theta=\arg\min_\theta\;-\mathbb E_{(s,a^*)\sim d_{\pi^*}}\big[\log\pi_\theta(a^*\mid s)\big]</div>
+<p>This is supervised cross-entropy on the expert's states. If the learner errs with probability <span class="m">\epsilon</span> on the expert's states, its own state distribution drifts, and the cost over a horizon <span class="m">T</span> can grow as <span class="m">T^2\epsilon</span> (compounding error; Ross and Bagnell 2010) <span class="verify">(verify)</span>. <b>DAgger</b> (Ross, Gordon, Bagnell 2011) labels the states the <i>learner</i> visits with the expert and retrains, restoring a bound linear in <span class="m">T</span> under conditions <span class="verify">(verify)</span>; your <code>imitation.py</code> uses DAgger-style labelling.</p>
+<p>A per-slot network cannot see the job index, so EDF with index tie-breaks is not a function of the inputs it sees: agreement stalls near 97%; EDFL, which breaks ties by duration, is a function of job features and clones at 99.5%. PPO fine-tuning at learning rate 1e-5 left clones unchanged (higher rates, 1e-4, destroyed them: validation J 37k–52k).</p></div></details>
+
+<details><summary>Maths 15 · Hyperparameter search: TPE, pruning, budget</summary><div class="body">
+<p><b>TPE</b> (Bergstra et al. 2011) keeps two density models over hyperparameters <span class="m">x</span>: <span class="m">\ell(x)=p(x\mid y \lt y^*)</span> for good trials and <span class="m">g(x)=p(x\mid y\ge y^*)</span> for the rest, then proposes the <span class="m">x</span> maximising <span class="m">\ell(x)/g(x)</span>, which is proportional to expected improvement under its assumptions. <b>Median pruning</b> stops a trial whose intermediate validation J is worse than the median of earlier trials at the same step (only after 5 trials finish). Budget: <span class="m">24\times12\times300{,}000</span> steps of tuning in total (before final retraining at 1M steps offline and 300k online, 3 seeds).</p></div></details>
+
+<details><summary>Maths 16 · The exact solver: bounds and gaps</summary><div class="body">
+<p>CP-SAT returns an incumbent schedule of value <span class="m">U</span> (an upper bound on the minimum) and a proven lower bound <span class="m">L</span>. The relative gap is <span class="m">(U-L)/U</span>; the schedule is proven optimal when <span class="m">U=L</span>. At 100 jobs in 60 s the gap stayed open, so CP-SAT's <span class="m">U</span> could not certify RL or WLST. On 15-job instances the gap closed on 13 of 15 and LST matched the optimum on all of them.</p></div></details>
+
+<details><summary>Maths 17 · Weighted-sum scalarisation, Pareto fronts and the trade-off plot</summary><div class="body">
+<p>Minimising <span class="m">\sum_k\lambda_kf_k</span> for fixed <span class="m">\lambda\ge0</span> finds points on the Pareto front's convex part; a point <span class="m">u</span> dominates <span class="m">v</span> if <span class="m">u_k\le v_k</span> for all <span class="m">k</span> with one strict. Your trade-off figure draws the dashed line through the best trade-offs of J against weighted late jobs among heuristics; RL points below it achieve combinations no heuristic reaches. The calibration <span class="m">\lambda_m=J_{\text{ref}}/x_{m,\text{ref}}</span> makes each added term equal to <span class="m">J</span> on the best heuristic's schedule, so a multiplier of ×1 means "this goal counts as much as squared lateness".</p></div></details>
+
+<details><summary>Maths 18 · Symbols you may be asked to define</summary><div class="body">
+<div class="scroll"><table>
+<tr><th>Symbol</th><th>Meaning</th></tr>
+<tr><td><span class="m">s_t, a_t, r_t</span></td><td>state, action, reward at time t</td></tr>
+<tr><td><span class="m">\pi_\theta(a\mid s)</span></td><td>policy: probability of action a in state s, parameters θ</td></tr>
+<tr><td><span class="m">G_t, V, Q, A</span></td><td>return, state value, action value, advantage</td></tr>
+<tr><td><span class="m">\gamma,\;\lambda</span></td><td>discount; GAE decay (different from the objective weights λ<sub>T</sub>, λ<sub>U</sub>, λ<sub>E</sub>)</td></tr>
+<tr><td><span class="m">\epsilon</span></td><td>PPO clip range</td></tr>
+<tr><td><span class="m">p_j,\,a_{jr},\,d_j,\,w_j</span></td><td>duration, demand for resource r, due date, weight</td></tr>
+<tr><td><span class="m">T_j,\,U_j,\,E</span></td><td>tardiness, late indicator, energy</td></tr>
+<tr><td><span class="m">\rho,\,\nu</span></td><td>load factor, arrival rate</td></tr>
+<tr><td>TF, RDD</td><td>tardiness factor (tightness), due-date range</td></tr>
+</table></div></div></details>
+</section>
+
+<section id="bridges">
+<h2>6 · Links to other fields</h2>
+<p>Useful when the visitor is a physicist, a statistician or a control engineer.</p>
+<div class="two">
+<div class="card"><h4>Physics</h4>
+  <p>The softmax policy is a Boltzmann (Gibbs) distribution over scores: <span class="m">\pi(a)\propto e^{z_a/\tau}</span>. Maximising expected score plus an entropy bonus, <span class="m">\max_\pi\sum_a\pi_az_a+\tau H(\pi)</span> with <span class="m">\sum\pi_a=1</span>, gives exactly this by a Lagrange multiplier: <span class="m">z_a-\tau\log\pi_a-\tau-\mu=0</span>, so <span class="m">\pi_a\propto e^{z_a/\tau}</span>. The entropy coefficient plays the role of a temperature: high means more exploration, low means near-greedy. This is the same form as the partition function and free energy in statistical mechanics, and the reason simulated annealing and RL exploration look alike.</p></div>
+<div class="card"><h4>Control theory</h4>
+  <p>The Bellman optimality equation is the discrete-time, stochastic cousin of the Hamilton–Jacobi–Bellman equation of optimal control. RL replaces the known model with sampled experience. Classical baselines such as LQR play the role your dispatching rules play here: strong, model-based, and hard to beat in the cases they were built for.</p></div>
+<div class="card"><h4>Statistics</h4>
+  <p>REINFORCE is the score-function (likelihood-ratio) gradient estimator, <span class="m">\nabla\mathbb E_{x\sim p_\theta}[f]=\mathbb E[f\,\nabla\log p_\theta]</span>, used for Monte Carlo sensitivity analysis; the baseline is a control variate. Bootstrap, paired comparison and equivalence testing are the tools behind every "not significantly different" in the deck.</p></div>
+<div class="card"><h4>Operations research</h4>
+  <p>Dispatching rules are constructive heuristics; CP-SAT is constraint programming with clause learning; a selection hyper-heuristic (Option 1) searches over heuristics instead of schedules. NP-hardness explains why exact methods stop at small instances and why guarantees are rare at scale.</p></div>
+</div>
+</section>
+
+<section id="checks">
+<h2>7 · Check before you present</h2>
+<div class="card warn"><h4>Things in the deck worth a second look</h4>
+<ol>
+<li><b>Slide 2 formula line.</b> The report's objective is <span class="m">J_\lambda=\sum w_jT_j^2+\lambda_T\sum w_jT_j+\lambda_U\sum w_jU_j+\lambda_E E</span>. The slide's formula line reads "J<sub>λ</sub> = λ<sub>1</sub>Σ w<sub>j</sub>T<sub>j</sub><sup>2</sup> + λ<sub>2</sub>Σ w<sub>j</sub>T<sub>j</sub>" and the late-job and energy terms appear only in the list below it. Make sure all four terms are on the formula line, and say whether you are using λ<sub>1..4</sub> (slide) or λ<sub>T</sub>, λ<sub>U</sub>, λ<sub>E</sub> (report) so the two do not confuse a reader.</li>
+<li><b>"Five variations".</b> The report compares six designs (Options 0–4 plus 3w, the 20-job window of Option 3). The slide lists five; say "five, six counting the windowed version of Option 3".</li>
+<li><b>"On incredibly small problems RL did outperform".</b> See Q32: the only evidence is the toy demo. Safer: "In a toy problem with 8 jobs a learner beat a simple rule; at full size it did not beat the best rule."</li>
+<li><b>"RL Almost Never Beat Classical Heuristics".</b> Consistent with the evidence (the exceptions are the combined-objective offline wins). Do not shorten it to "RL loses".</li>
+<li><b>The report's "29% worse than the best RL agent".</b> RL's cost is 29% <i>lower</i> than LST's; LST is 41% higher than RL. If you quote it, use "RL cost 29% lower than the best published rule".</li>
+<li><b>Seeds.</b> Say "exploratory" and the seed counts (3 for most report arms; 10 for the windowed final-week arms; 2 for the online 2M-step result).</li>
+</ol></div>
+<div class="card"><h4>Say</h4><ul><li>"No learned scheduler was significantly better than the best classic rule on the main objective."</li><li>"Came within about 5%."</li><li>"On combined objectives with weighted jobs it did better by up to 10% offline."</li><li>"Closed most of the gap online; I have not shown it would overtake."</li></ul></div>
+<div class="card warn"><h4>Do not say</h4><ul><li>"RL beats the heuristics" or "RL matches the heuristics".</li><li>"RL from scratch is 20–30% behind" (it rested on a flattered reference).</li><li>"Training longer <i>will</i> beat the rules" (it is a hypothesis).</li><li>"The learner proved equivalent" (equivalence was not shown).</li></ul></div>
+</section>
+</main>
+</div>
+
+<script>
+/* A small TeX-to-MathML converter: enough for the formulas on this page (fractions, sub/superscripts, sums, Greek, a few operators). */
+(function () {
+  const GREEK = { ell: "ℓ", alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", theta: "θ", lambda: "λ", mu: "μ", nu: "ν", rho: "ρ", sigma: "σ", tau: "τ", phi: "φ", pi: "π", omega: "ω", kappa: "κ", Delta: "Δ", Phi: "Φ", Sigma: "Σ" };
+  const OPS = { lt: "&lt;", gt: "&gt;", cdot: "·", times: "×", le: "≤", ge: "≥", leq: "≤", geq: "≥", ne: "≠", approx: "≈", propto: "∝", in: "∈", to: "→", Rightarrow: "⇒", infty: "∞", nabla: "∇", pm: "±", mid: "|", ldots: "…", sim: "∼", subset: "⊂", forall: "∀" };
+  const BIG = { sum: "∑", prod: "∏" }, FN = new Set(["log", "exp", "max", "min", "arg", "lim"]), UNDER = new Set(["max", "min", "arg", "lim"]);
+  const RE = /\\(?:text|mathrm)\{([^}]*)\}|\\mathbb\{([A-Za-z])\}|\\([a-zA-Z]+)|\\(.)|([{}_^])|(\d+(?:\.\d+)?)|([a-zA-Z])|\s+|(.)/g;
+  function tokens(s) {
+    const t = []; let m; RE.lastIndex = 0;
+    while ((m = RE.exec(s))) {
+      if (m[1] !== undefined) t.push({ k: "txt", v: m[1] }); else if (m[2]) t.push({ k: "bb", v: m[2] }); else if (m[3]) t.push({ k: "cmd", v: m[3] });
+      else if (m[4]) t.push({ k: "sym", v: m[4] }); else if (m[5]) t.push({ k: m[5] }); else if (m[6]) t.push({ k: "num", v: m[6] }); else if (m[7]) t.push({ k: "id", v: m[7] }); else if (m[8]) t.push({ k: "op", v: m[8] });
+    }
+    return t;
+  }
+  const esc = x => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function convert(src) {
+    const tk = tokens(src); let i = 0, big = false;
+    const group = () => { if (tk[i] && tk[i].k === "{") { i++; const n = seq("}"); i++; return "<mrow>" + n + "</mrow>"; } return atom(); };
+    function seq(stop) { let o = ""; while (i < tk.length && tk[i].k !== stop) o += scripted(); return o; }
+    function scripted() {
+      big = false; const base = atom(), isBig = big; let sub = null, sup = null;
+      while (tk[i] && (tk[i].k === "_" || tk[i].k === "^")) { const k = tk[i].k; i++; const g = group(); if (k === "_") sub = g; else sup = g; }
+      if (sub === null && sup === null) return base;
+      if (isBig) return sub !== null && sup !== null ? `<munderover>${base}${sub}${sup}</munderover>` : sub !== null ? `<munder>${base}${sub}</munder>` : `<mover>${base}${sup}</mover>`;
+      return sub !== null && sup !== null ? `<msubsup>${base}${sub}${sup}</msubsup>` : sub !== null ? `<msub>${base}${sub}</msub>` : `<msup>${base}${sup}</msup>`;
+    }
+    function atom() {
+      const t = tk[i++]; if (!t) return "";
+      switch (t.k) {
+        case "{": { const n = seq("}"); i++; return "<mrow>" + n + "</mrow>"; }
+        case "num": return `<mn>${t.v}</mn>`;
+        case "id": return `<mi>${t.v}</mi>`;
+        case "op": return `<mo>${esc(t.v)}</mo>`;
+        case "txt": return `<mtext>${esc(t.v)}</mtext>`;
+        case "bb": return `<mi mathvariant="double-struck">${t.v}</mi>`;
+        case "sym": if (t.v === "!") return ""; return t.v === "," || t.v === ";" || t.v === " " ? '<mspace width="0.3em"/>' : t.v === "|" ? "<mo>‖</mo>" : `<mo>${esc(t.v)}</mo>`;
+        case "cmd": {
+          const c = t.v;
+          if (c === "frac" || c === "dfrac") { const a = group(), b = group(); return `<mfrac>${a}${b}</mfrac>`; }
+          if (c === "hat") return `<mover>${group()}<mo>^</mo></mover>`;
+          if (c === "bar") return `<mover>${group()}<mo>¯</mo></mover>`;
+          if (c === "tfrac") { const a = group(), b = group(); return `<mfrac>${a}${b}</mfrac>`; }
+          if (c === "mathbb") { const nx = tk[i++]; return `<mi mathvariant="double-struck">${nx ? nx.v : ""}</mi>`; }
+          if (c === "tilde") return `<mover>${group()}<mo>~</mo></mover>`;
+          if (c === "mathbf") { const g = group(); return `<mstyle mathvariant="bold">${g}</mstyle>`; }
+          if (c === "left" || c === "right" || c === "Big" || c === "big") return "";
+          if (c === "quad") return '<mspace width="1em"/>'; if (c === "qquad") return '<mspace width="2em"/>';
+          if (c === "begin" || c === "end") { while (tk[i] && tk[i].k !== "}") i++; i++; return ""; }
+          if (BIG[c]) { big = true; return `<mo>${BIG[c]}</mo>`; }
+          if (FN.has(c)) { if (UNDER.has(c)) big = true; return `<mi>${c}</mi>`; }
+          if (GREEK[c]) return `<mi>${GREEK[c]}</mi>`;
+          if (OPS[c]) return `<mo>${OPS[c]}</mo>`;
+          return `<mi>${c}</mi>`;
+        }
+        default: return "";
+      }
+    }
+    return seq(null);
+  }
+  function run() {
+    document.querySelectorAll(".eq, .m").forEach(el => {
+      const tex = el.textContent.trim(); el.setAttribute("data-tex", tex);
+      try { el.innerHTML = "<math" + (el.classList.contains("eq") ? ' display="block"' : "") + ">" + convert(tex) + "</math>"; } catch (e) { el.textContent = tex; }
+    });
+    const set = open => document.querySelectorAll("details").forEach(d => { d.open = open; });
+    document.getElementById("open-all").onclick = () => set(true); document.getElementById("close-all").onclick = () => set(false);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run); else run();
+})();
+</script>
